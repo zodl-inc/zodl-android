@@ -303,10 +303,11 @@ class MetadataDataSourceImpl(
      * file that does not decode is first set aside under a name
      * [MetadataStorageProvider.getStorageFiles] keeps finding, so nothing is written over it.
      *
-     * The result is read-only, and nothing is written or deleted, when the files cannot be listed,
-     * the canonical file cannot be created, the canonical file does not decode and cannot be set
-     * aside, or the canonical file is unreadable: a [SecurityException] on the first attempt, or
-     * another [IOException] after every retry.
+     * The result is read-only, and nothing with data is written and nothing is deleted, when the
+     * files cannot be listed, the canonical file cannot be created, the canonical file does not
+     * decode and cannot be set aside, or the canonical file is unreadable: a [SecurityException] on
+     * the first attempt, or another [IOException] after every retry. A missing canonical file may
+     * still be created empty first, since creating it does not depend on the listing.
      */
     private suspend fun readMetadata(key: MetadataKey): MetadataRead =
         withContext(ioDispatcher) {
@@ -667,8 +668,9 @@ private fun AccountMetadataV3.merge(other: AccountMetadataV3, otherIsNewer: Bool
     )
 
 /**
- * [SwapsMetadataV3.lastUsedAssetHistory] is an ordered recency list, not a union: it comes whole
- * from the side whose top-level timestamp is newer.
+ * Swaps compare [SwapMetadataV3.lastUpdated], the swap's creation time, which updateSwap keeps
+ * because it is the activity-list time. [SwapsMetadataV3.lastUsedAssetHistory] is an ordered
+ * recency list, not a union: it comes whole from the side whose top-level timestamp is newer.
  */
 private fun SwapsMetadataV3.merge(other: SwapsMetadataV3, otherIsNewer: Boolean): SwapsMetadataV3 =
     SwapsMetadataV3(

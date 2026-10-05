@@ -76,6 +76,12 @@ class MetadataKeyStorageProviderTest {
         }
 
     @Test
+    fun aNonNumericIndexDecodesToNull() =
+        runTest {
+            assertNull(storedSet(setOf("a:QUJD", "1:REVG")))
+        }
+
+    @Test
     fun aNegativeIndexDecodesToNull() =
         runTest {
             assertNull(storedSet(setOf("-1:QUJD", "0:REVG")))

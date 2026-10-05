@@ -24,7 +24,7 @@ interface MetadataProvider {
 
     fun readMetadataFromFile(
         file: File,
-        addressBookKey: MetadataKey
+        metadataKey: MetadataKey
     ): MetadataV3
 
     /**
@@ -92,11 +92,11 @@ class MetadataProviderImpl(
 
     override fun readMetadataFromFile(
         file: File,
-        addressBookKey: MetadataKey
+        metadataKey: MetadataKey
     ): MetadataV3 =
         file.inputStream().use { stream ->
             metadataEncryptor.decrypt(
-                key = addressBookKey,
+                key = metadataKey,
                 inputStream = stream
             )
         }

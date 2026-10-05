@@ -10,6 +10,13 @@ import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 
 interface MetadataStorageProvider {
+    /**
+     * Every existing file of [key], in [MetadataKey.fileIdentifiers] order, each identifier's own
+     * file followed by the files set aside under it by [setAsideUndecodable], oldest first. This
+     * order is a contract: a merge breaks timestamp ties in favour of the earlier file, so the
+     * canonical file, listed first, wins a tie. Throws when the files cannot be listed, so a
+     * listing failure never reads as "no files".
+     */
     fun getStorageFiles(key: MetadataKey): List<File>
 
     fun getOrCreateStorageFile(key: MetadataKey): File
@@ -39,11 +46,8 @@ class MetadataStorageProviderImpl(
     private val currentTimeMillis: () -> Long = System::currentTimeMillis
 ) : MetadataStorageProvider {
     /**
-     * Every existing file named after one of [key]'s identifiers, in [MetadataKey.fileIdentifiers]
-     * order, each followed by the files set aside under that identifier by [setAsideUndecodable].
-     * A key derived in a different preference order can leave data under more than one of these
+     * A key derived in a different preference order can leave data under more than one of [key]'s
      * names; merging them back into the canonical file is the caller's job, not this one's.
-     * Throws when the directory cannot be listed, so a listing failure never reads as "no files".
      */
     override fun getStorageFiles(key: MetadataKey): List<File> {
         val dir = getOrCreateMetadataDir()

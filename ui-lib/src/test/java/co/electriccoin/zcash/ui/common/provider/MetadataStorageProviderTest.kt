@@ -209,6 +209,41 @@ class MetadataStorageProviderTest {
         assertEquals(emptyList(), namedFiles.filter { it.exists() })
     }
 
+    @Test
+    fun getStorageFilesSkipsADirectoryNamedAfterAnIdentifier() {
+        val key = metadataKey(0, 1)
+        File(metadataDir, key.fileIdentifier()).mkdirs()
+        val legacyFile = metadataFile(key.fileIdentifiers()[1], contents = "legacy")
+
+        assertEquals(listOf(legacyFile), provider.getStorageFiles(key))
+    }
+
+    @Test
+    fun deleteStorageFilesKeepsGoingPastAFileItCannotDelete() {
+        val key = metadataKey(0, 1)
+        val undeletable = File(metadataDir, key.fileIdentifier()).apply { mkdirs() }
+        File(undeletable, "child").writeText("keeps the directory non-empty")
+        val legacyFile = metadataFile(key.fileIdentifiers()[1], contents = "legacy")
+
+        provider.deleteStorageFiles(key)
+
+        assertTrue(undeletable.exists())
+        assertFalse(legacyFile.exists())
+    }
+
+    @Test
+    fun deleteStorageFilesNeverThrowsWhenTheStorageIsUnavailable() {
+        val failingProvider =
+            MetadataStorageProviderImpl(
+                context =
+                    mockk<Context> {
+                        every { filesDir } throws IllegalStateException("no storage")
+                    }
+            )
+
+        failingProvider.deleteStorageFiles(metadataKey(0, 1))
+    }
+
     private fun metadataFile(identifier: String, contents: String = ""): File {
         metadataDir.mkdirs()
         return File(metadataDir, identifier).apply { writeText(contents) }

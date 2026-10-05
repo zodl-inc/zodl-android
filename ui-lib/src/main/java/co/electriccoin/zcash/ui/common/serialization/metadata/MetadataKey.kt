@@ -13,7 +13,8 @@ import com.google.crypto.tink.subtle.Hkdf
 import com.google.crypto.tink.util.SecretBytes
 
 /**
- * The long-term key that can decrypt an account's encrypted address book.
+ * The long-term key that can decrypt an account's encrypted metadata: notes, bookmarks, read
+ * memos and swaps.
  */
 class MetadataKey(
     val bytes: List<SecretBytes>

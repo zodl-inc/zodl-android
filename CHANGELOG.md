@@ -39,6 +39,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 - Choosing to keep the screen on while Zodl syncs now works after connecting a Ledger or a Keystone,
   and the screen stays on until that sync has finished after a restore or a resync as well.
+- Notes, bookmarks and swap history of Keystone and Ledger accounts no longer disappear after a
+  re-import or when stored data can't be read.
 
 ### Changed:
 
