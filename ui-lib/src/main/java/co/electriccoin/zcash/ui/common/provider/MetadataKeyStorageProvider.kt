@@ -61,21 +61,28 @@ private fun MetadataKey?.encode(secretKeyAccess: SecretKeyAccess?): Set<String>?
         }?.toSet()
 
 /**
- * Returns null for a legacy set whose entries carry no "$index:" prefix, since its original
- * order is unknown; the caller re-derives the key in canonical order in that case.
+ * Returns null, so the caller re-derives the key in canonical order, for an empty set, a legacy
+ * set whose entries carry no "$index:" prefix, indices other than exactly 0 until the entry count,
+ * or an entry whose bytes are not valid base64.
  */
 @OptIn(ExperimentalEncodingApi::class)
 private fun Set<String>?.decode(secretKeyAccess: SecretKeyAccess?): MetadataKey? {
     val indexedEntries = this?.map { it.parseIndexedEntry() }
-    return if (indexedEntries == null || indexedEntries.any { it == null }) {
+    return if (indexedEntries.isNullOrEmpty() || indexedEntries.any { it == null }) {
         null
     } else {
-        MetadataKey(
-            indexedEntries
-                .filterNotNull()
-                .sortedBy { (index, _) -> index }
-                .map { (_, encoded) -> SecretBytes.copyFrom(Base64.decode(encoded), secretKeyAccess) }
-        )
+        val sortedEntries = indexedEntries.filterNotNull().sortedBy { (index, _) -> index }
+        if (sortedEntries.map { (index, _) -> index } != sortedEntries.indices.toList()) {
+            null
+        } else {
+            runCatching {
+                MetadataKey(
+                    sortedEntries.map { (_, encoded) ->
+                        SecretBytes.copyFrom(Base64.decode(encoded), secretKeyAccess)
+                    }
+                )
+            }.getOrNull()
+        }
     }
 }
 

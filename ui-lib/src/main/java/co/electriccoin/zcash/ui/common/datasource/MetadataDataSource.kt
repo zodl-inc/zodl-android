@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.common.provider.MetadataStorageProvider
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -25,8 +26,11 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.IOException
 import java.math.BigDecimal
 import java.time.Instant
+import kotlin.time.Duration.Companion.milliseconds
 
 interface MetadataDataSource {
     fun observe(key: MetadataKey): Flow<MetadataV3?>
@@ -279,56 +283,104 @@ class MetadataDataSourceImpl(
             }
         }
 
+    private suspend fun getMetadataInternal(key: MetadataKey): MetadataV3 = readMetadata(key).metadata
+
     /**
      * A hardware-wallet account's metadata key can have more than one file on disk: the SDK
      * derives one key per viewing-key item, and a key read back in a different order than it was
      * derived in names a different file. This reads every file that exists under any of [key]'s
-     * identifiers, merges their contents into one [MetadataV3], writes the result to the
-     * canonical file and removes the rest, so a later call always finds exactly one file again.
+     * identifiers, merges the ones that decode into one [MetadataV3], writes the result to the
+     * canonical file and, only once that write landed, removes the merged files.
+     *
+     * A file that does not decode is never deleted and is retried on every read. A canonical file
+     * that does not decode is first set aside under a name [MetadataStorageProvider.getStorageFiles]
+     * keeps finding, so nothing is written over it. When the files cannot be listed or the
+     * canonical file cannot be created, the result is read-only and nothing is written.
      */
-    private suspend fun getMetadataInternal(key: MetadataKey): MetadataV3 =
+    private suspend fun readMetadata(key: MetadataKey): MetadataRead =
         withContext(Dispatchers.IO) {
-            val existingFiles = runCatching { metadataStorageProvider.getStorageFiles(key) }.getOrDefault(emptyList())
-            val canonicalFile = metadataStorageProvider.getOrCreateStorageFile(key)
+            val existingFiles =
+                runCatching { metadataStorageProvider.getStorageFiles(key) }
+                    .onFailure { e -> Twig.warn(e) { "Failed to list metadata files" } }
+                    .getOrNull()
+            val canonicalFile =
+                runCatching { metadataStorageProvider.getOrCreateStorageFile(key) }
+                    .onFailure { e -> Twig.warn(e) { "Failed to create metadata file" } }
+                    .getOrNull()
 
-            val decodedByFile =
-                existingFiles.associateWith { file ->
-                    runCatching { metadataProvider.readMetadataFromFile(file, key) }
-                        .onFailure { e -> Twig.warn(e) { "Failed to decrypt metadata" } }
-                        .getOrNull()
-                }
-
-            val onlyCanonicalFileExists = existingFiles.singleOrNull() == canonicalFile
-            val canonicalMetadata = decodedByFile[canonicalFile]
-            if (onlyCanonicalFileExists && canonicalMetadata != null) {
-                return@withContext canonicalMetadata
+            if (existingFiles == null || canonicalFile == null) {
+                val readable = existingFiles ?: listOfNotNull(canonicalFile)
+                return@withContext MetadataRead(
+                    metadata = readable.mapNotNull { readNonEmpty(it, key) }.mergeOrDefault(),
+                    isWritable = false
+                )
             }
 
-            val candidates = decodedByFile.values.filterNotNull()
-            val merged =
-                if (candidates.isEmpty()) {
-                    MetadataV3(
-                        lastUpdated = Instant.now(),
-                        accountMetadata = defaultAccountMetadata(),
-                    )
-                } else {
-                    candidates.reduce(MetadataV3::merge)
-                }
+            val canonicalExists = canonicalFile in existingFiles && canonicalFile.length() > 0
+            val canonicalMetadata = if (canonicalExists) readWithRetry(canonicalFile, key) else null
+            val decodedOthers =
+                existingFiles
+                    .filterNot { it == canonicalFile }
+                    .mapNotNull { file -> readWithRetry(file, key)?.let { file to it } }
 
-            writeToLocalStorage(merged, key)
-            existingFiles.filterNot { it == canonicalFile }.forEach { it.delete() }
+            if (canonicalExists && canonicalMetadata == null && !setAsideUndecodable(canonicalFile)) {
+                return@withContext MetadataRead(
+                    metadata = decodedOthers.map { it.second }.mergeOrDefault(),
+                    isWritable = false
+                )
+            }
 
-            merged
+            if (decodedOthers.isEmpty()) {
+                return@withContext MetadataRead(
+                    metadata = canonicalMetadata ?: defaultMetadata(),
+                    isWritable = true
+                )
+            }
+
+            val merged = (listOfNotNull(canonicalMetadata) + decodedOthers.map { it.second }).mergeOrDefault()
+            if (writeToLocalStorage(merged, key)) {
+                decodedOthers.forEach { (file, _) -> file.delete() }
+            }
+            MetadataRead(metadata = merged, isWritable = true)
         }
 
-    private suspend fun writeToLocalStorage(metadata: MetadataV3, key: MetadataKey) {
+    private fun setAsideUndecodable(file: File): Boolean =
+        runCatching { check(metadataStorageProvider.setAsideUndecodable(file)) { "Rename failed" } }
+            .onFailure { e -> Twig.warn(e) { "Failed to set the undecodable metadata file aside" } }
+            .isSuccess
+
+    private suspend fun readNonEmpty(file: File, key: MetadataKey): MetadataV3? =
+        if (file.length() > 0) readWithRetry(file, key) else null
+
+    /**
+     * Reads [file], retrying only an [IOException], up to [READ_ATTEMPTS] attempts in total; a
+     * decryption or format failure is final at once. Returns null when the file does not decode.
+     */
+    private suspend fun readWithRetry(file: File, key: MetadataKey): MetadataV3? {
+        var attempt = 1
+        while (true) {
+            val result = runCatching { metadataProvider.readMetadataFromFile(file, key) }
+            val error = result.exceptionOrNull() ?: return result.getOrThrow()
+            if (error !is IOException || attempt >= READ_ATTEMPTS) {
+                Twig.warn(error) { "Failed to decrypt metadata" }
+                return null
+            }
+            attempt++
+            delay(READ_RETRY_DELAY)
+        }
+    }
+
+    /**
+     * Returns whether the write landed. A failed write leaves the previous file content intact.
+     */
+    private suspend fun writeToLocalStorage(metadata: MetadataV3, key: MetadataKey): Boolean =
         withContext(Dispatchers.IO) {
             runCatching {
                 val file = metadataStorageProvider.getOrCreateStorageFile(key)
                 metadataProvider.writeMetadataToFile(file, metadata, key)
-            }.onFailure { e -> Twig.warn(e) { "Failed to write address book" } }
+            }.onFailure { e -> Twig.warn(e) { "Failed to write metadata" } }
+                .isSuccess
         }
-    }
 
     private suspend fun updateMetadataAnnotation(
         txId: String,
@@ -401,7 +453,12 @@ class MetadataDataSourceImpl(
         key: MetadataKey,
         transform: (AccountMetadataV3) -> AccountMetadataV3
     ) = withContext(Dispatchers.IO) {
-        val metadata = getMetadataInternal(key)
+        val read = readMetadata(key)
+        if (!read.isWritable) {
+            Twig.warn { "Skipping the metadata update, the metadata storage is unavailable" }
+            return@withContext
+        }
+        val metadata = read.metadata
 
         val accountMetadata = metadata.accountMetadata
 
@@ -416,6 +473,15 @@ class MetadataDataSourceImpl(
         metadataUpdatePipeline.emit(key to updatedMetadata)
     }
 
+    private fun List<MetadataV3>.mergeOrDefault(): MetadataV3 =
+        if (isEmpty()) defaultMetadata() else reduce { merged, next -> merged.merge(next) }
+
+    private fun defaultMetadata() =
+        MetadataV3(
+            lastUpdated = Instant.now(),
+            accountMetadata = defaultAccountMetadata(),
+        )
+
     private fun Set<String>.toSimpleAssetSet() =
         this
             .map {
@@ -423,6 +489,15 @@ class MetadataDataSourceImpl(
                 simpleSwapAssetProvider.get(data[0], data[1])
             }.toSet()
 }
+
+/**
+ * The metadata a read produced and whether it may be written back, which it may not when the
+ * storage could not be listed or the canonical file could not be created.
+ */
+private data class MetadataRead(
+    val metadata: MetadataV3,
+    val isWritable: Boolean
+)
 
 private fun defaultAccountMetadata() =
     AccountMetadataV3(
@@ -533,3 +608,7 @@ private fun <T> List<T>.mergeById(
 }
 
 private const val MAX_SWAP_ASSETS_IN_HISTORY = 10
+
+private const val READ_ATTEMPTS = 3
+
+private val READ_RETRY_DELAY = 75.milliseconds

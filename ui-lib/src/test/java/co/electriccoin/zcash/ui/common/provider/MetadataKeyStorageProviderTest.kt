@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 /**
@@ -45,15 +46,52 @@ class MetadataKeyStorageProviderTest {
         }
 
     @Test
-    fun aNullValueClearsTheEntry() =
+    fun aClearedEntryDecodesToNull() =
         runTest {
             val store = FakeMetadataPreferenceProvider()
             provider(store).store(accountUuid, metadataKey(0, 1))
+            assertNotNull(provider(store).get(accountUuid))
 
             store.putStringSet(PreferenceKey(metadataPreferenceKey), null)
 
             assertNull(provider(store).get(accountUuid))
         }
+
+    @Test
+    fun anEmptySetDecodesToNull() =
+        runTest {
+            assertNull(storedSet(emptySet()))
+        }
+
+    @Test
+    fun anEntryWithInvalidBase64DecodesToNull() =
+        runTest {
+            assertNull(storedSet(setOf("0:QUJD", "1:not base64!")))
+        }
+
+    @Test
+    fun aNegativeIndexDecodesToNull() =
+        runTest {
+            assertNull(storedSet(setOf("-1:QUJD", "0:REVG")))
+        }
+
+    @Test
+    fun aGapInTheIndicesDecodesToNull() =
+        runTest {
+            assertNull(storedSet(setOf("0:QUJD", "2:REVG")))
+        }
+
+    @Test
+    fun aDuplicateIndexDecodesToNull() =
+        runTest {
+            assertNull(storedSet(setOf("0:QUJD", "0:REVG")))
+        }
+
+    private suspend fun storedSet(value: Set<String>): MetadataKey? {
+        val store = FakeMetadataPreferenceProvider()
+        store.putStringSet(PreferenceKey(metadataPreferenceKey), value)
+        return provider(store).get(accountUuid)
+    }
 
     private val metadataPreferenceKey get() = "metadata_key_${accountUuid.hex()}"
 

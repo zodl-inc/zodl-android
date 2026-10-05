@@ -4,8 +4,15 @@ import co.electriccoin.zcash.ui.common.model.metadata.MetadataV3
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataEncryptor
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
 import java.io.File
+import java.io.FileOutputStream
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 interface MetadataProvider {
+    /**
+     * Replaces [file]'s content atomically: a failure or a crash leaves the previous content
+     * intact. Throws when the write did not land.
+     */
     fun writeMetadataToFile(
         file: File,
         metadata: MetadataV3,
@@ -26,14 +33,27 @@ class MetadataProviderImpl(
         metadata: MetadataV3,
         metadataKey: MetadataKey
     ) {
-        file.outputStream().buffered().use { stream ->
-            metadataEncryptor.encrypt(
-                key = metadataKey,
-                outputStream = stream,
-                data = metadata
+        val tempFile = File(file.parentFile, file.name + TEMP_FILE_SUFFIX)
+        runCatching {
+            FileOutputStream(tempFile).use { fileStream ->
+                val stream = fileStream.buffered()
+                metadataEncryptor.encrypt(
+                    key = metadataKey,
+                    outputStream = stream,
+                    data = metadata
+                )
+                stream.flush()
+                fileStream.fd.sync()
+            }
+            Files.move(
+                tempFile.toPath(),
+                file.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING
             )
-            stream.flush()
-        }
+        }.onFailure {
+            tempFile.delete()
+        }.getOrThrow()
     }
 
     override fun readMetadataFromFile(
@@ -47,3 +67,5 @@ class MetadataProviderImpl(
             )
         }
 }
+
+private const val TEMP_FILE_SUFFIX = ".tmp"

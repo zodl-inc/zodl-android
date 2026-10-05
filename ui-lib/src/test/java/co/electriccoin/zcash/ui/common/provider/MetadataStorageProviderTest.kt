@@ -7,13 +7,17 @@ import com.google.crypto.tink.util.SecretBytes
 import io.mockk.every
 import io.mockk.mockk
 import java.io.File
+import java.io.IOException
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * [MetadataStorageProviderImpl] naming, listing and creating an account's metadata files.
+ * [MetadataStorageProviderImpl] naming, listing, creating and setting aside an account's metadata
+ * files.
  */
 class MetadataStorageProviderTest {
     private val filesDir = createTempDirectory("metadata-storage-provider-test").toFile()
@@ -79,6 +83,39 @@ class MetadataStorageProviderTest {
 
         assertEquals(canonicalFile, result)
         assertEquals("canonical", result.readText())
+    }
+
+    @Test
+    fun getStorageFilesReturnsFilesSetAsideUnderEveryIdentifierAfterTheirOwnFile() {
+        val key = metadataKey(0, 1)
+        val (canonicalName, legacyName) = key.fileIdentifiers()
+        val canonicalFile = metadataFile(canonicalName, contents = "canonical")
+        val canonicalAside = metadataFile("$canonicalName.undecodable-1", contents = "aside")
+        val legacyAside = metadataFile("$legacyName.undecodable-2", contents = "aside")
+        metadataFile("unrelated.undecodable-3", contents = "other")
+
+        assertEquals(listOf(canonicalFile, canonicalAside, legacyAside), provider.getStorageFiles(key))
+    }
+
+    @Test
+    fun getStorageFilesThrowsWhenTheDirectoryCannotBeListed() {
+        filesDir.mkdirs()
+        metadataDir.writeText("not a directory")
+
+        assertFailsWith<IOException> { provider.getStorageFiles(metadataKey(0, 1)) }
+    }
+
+    @Test
+    fun setAsideUndecodableRenamesTheFileWhereTheListingStillFindsIt() {
+        val key = metadataKey(0, 1)
+        val canonicalFile = metadataFile(key.fileIdentifier(), contents = "canonical")
+
+        assertTrue(provider.setAsideUndecodable(canonicalFile))
+
+        assertFalse(canonicalFile.exists())
+        val setAside = provider.getStorageFiles(key).single()
+        assertTrue(setAside.name.startsWith(key.fileIdentifier() + ".undecodable-"))
+        assertEquals("canonical", setAside.readText())
     }
 
     private fun metadataFile(identifier: String, contents: String = ""): File {
