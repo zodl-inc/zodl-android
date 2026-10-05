@@ -27,6 +27,7 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.TickerLocation
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.loadingImageRes
+import co.electriccoin.zcash.ui.design.util.pluralStringRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByDynamicCurrencyNumber
 import co.electriccoin.zcash.ui.design.util.withStyle
@@ -423,8 +424,9 @@ class RedeemGiftVM(
             phase.confirmationsRemaining?.takeIf { it > 0 }
                 ?: return stringRes(R.string.redeemGift_pending_subtitle, stringRes(phase.pending))
         val minutes = ((remaining * BLOCK_TIME_SECONDS) + SECONDS_PER_MINUTE - 1) / SECONDS_PER_MINUTE
-        return stringRes(
-            R.string.redeemGift_pending_subtitle_confirmations,
+        return pluralStringRes(
+            R.plurals.redeemGift_pending_subtitle_confirmations,
+            remaining,
             stringRes(phase.pending),
             remaining,
             minutes

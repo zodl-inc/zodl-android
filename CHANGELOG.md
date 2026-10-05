@@ -14,8 +14,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   The chooser carries the logo and name of the selected wallet, Zodl or Keystone.
 - Redeem gift cards: scan a gift card QR code or paste its link from the new Redeem Gift Card item in the Home
   menu, from any address scanner, or open a `gift.zodl.com` link, and the card's funds are swept into the
-  selected account. The redeem screen shows the gift's amount and its sender's message, waits for pending funds,
-  and reports cards that are already redeemed, invalid or for another network. A card is checked and redeemed
+  selected account. The redeem screen shows the gift's amount and its sender's message, waits for pending funds
+  (showing how many confirmations they still need and about how long that takes), and reports cards that are
+  already redeemed, invalid or for another network. A card is checked and redeemed
   over Tor when Tor is turned on for the wallet, and a card holding no more than the network fee is shown as
   having nothing to redeem.
 
