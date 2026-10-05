@@ -1,5 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import android.system.Os
+import android.system.OsConstants
 import co.electriccoin.zcash.ui.common.model.metadata.MetadataV3
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataEncryptor
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
@@ -23,17 +25,42 @@ interface MetadataProvider {
         file: File,
         addressBookKey: MetadataKey
     ): MetadataV3
+
+    /**
+     * Flushes the directory holding [file] to disk, so a rename into it survives a crash. Throws
+     * when the flush did not land.
+     */
+    fun syncDirectoryOf(file: File)
+}
+
+/**
+ * Flushes a directory to disk; a seam so JVM tests never reach [Os].
+ */
+fun interface DirectorySync {
+    fun sync(directory: File)
+}
+
+class OsDirectorySync : DirectorySync {
+    override fun sync(directory: File) {
+        val descriptor = Os.open(directory.path, OsConstants.O_RDONLY, 0)
+        try {
+            Os.fsync(descriptor)
+        } finally {
+            Os.close(descriptor)
+        }
+    }
 }
 
 class MetadataProviderImpl(
-    private val metadataEncryptor: MetadataEncryptor
+    private val metadataEncryptor: MetadataEncryptor,
+    private val directorySync: DirectorySync
 ) : MetadataProvider {
     override fun writeMetadataToFile(
         file: File,
         metadata: MetadataV3,
         metadataKey: MetadataKey
     ) {
-        val tempFile = File(file.parentFile, file.name + TEMP_FILE_SUFFIX)
+        val tempFile = File(file.parentFile, file.name + METADATA_TEMP_FILE_SUFFIX)
         runCatching {
             FileOutputStream(tempFile).use { fileStream ->
                 val stream = fileStream.buffered()
@@ -66,6 +93,6 @@ class MetadataProviderImpl(
                 inputStream = stream
             )
         }
-}
 
-private const val TEMP_FILE_SUFFIX = ".tmp"
+    override fun syncDirectoryOf(file: File) = directorySync.sync(checkNotNull(file.absoluteFile.parentFile))
+}

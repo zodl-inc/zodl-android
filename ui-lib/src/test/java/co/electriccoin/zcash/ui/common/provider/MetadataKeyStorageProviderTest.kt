@@ -70,6 +70,12 @@ class MetadataKeyStorageProviderTest {
         }
 
     @Test
+    fun anEntryWithAnEmptyPayloadDecodesToNull() =
+        runTest {
+            assertNull(storedSet(setOf("0:", "1:REVG")))
+        }
+
+    @Test
     fun aNegativeIndexDecodesToNull() =
         runTest {
             assertNull(storedSet(setOf("-1:QUJD", "0:REVG")))

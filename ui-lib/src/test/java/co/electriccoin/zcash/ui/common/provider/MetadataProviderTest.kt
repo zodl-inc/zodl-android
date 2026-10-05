@@ -14,13 +14,14 @@ import java.io.IOException
 import java.io.OutputStream
 import java.time.Instant
 import kotlin.io.path.createTempDirectory
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 /**
  * [MetadataProviderImpl] replacing a metadata file atomically, so a failed write never leaves a
- * truncated file behind.
+ * truncated file behind, and flushing the directory that holds it.
  */
 class MetadataProviderTest {
     private val dir = createTempDirectory("metadata-provider-test").toFile()
@@ -38,6 +39,28 @@ class MetadataProviderTest {
                     swaps = SwapsMetadataV3(swapIds = emptyList(), lastUsedAssetHistory = emptySet())
                 )
         )
+
+    private val syncedDirectories = mutableListOf<File>()
+
+    @AfterTest
+    fun deleteTempDir() {
+        dir.deleteRecursively()
+    }
+
+    @Test
+    fun aFirstWriteCreatesTheFile() {
+        provider(writes = "first").writeMetadataToFile(file, metadata, key)
+
+        assertEquals("first", file.readText())
+        assertEquals(listOf(file.name), dir.list()?.toList())
+    }
+
+    @Test
+    fun syncDirectoryOfFlushesTheParentDirectory() {
+        provider(writes = "").syncDirectoryOf(file)
+
+        assertEquals(listOf(dir.absoluteFile), syncedDirectories)
+    }
 
     @Test
     fun aSuccessfulWriteReplacesTheContentAndLeavesNoTemporaryFile() {
@@ -71,7 +94,8 @@ class MetadataProviderTest {
                         stream.flush()
                         if (thenFails) throw IOException("write failed")
                     }
-                }
+                },
+            directorySync = { directory -> syncedDirectories += directory }
         )
 
     private companion object {

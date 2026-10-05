@@ -9,6 +9,7 @@ import io.mockk.mockk
 import java.io.File
 import java.io.IOException
 import kotlin.io.path.createTempDirectory
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -16,8 +17,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * [MetadataStorageProviderImpl] naming, listing, creating and setting aside an account's metadata
- * files.
+ * [MetadataStorageProviderImpl] naming, listing, creating, setting aside and deleting an account's
+ * metadata files.
  */
 class MetadataStorageProviderTest {
     private val filesDir = createTempDirectory("metadata-storage-provider-test").toFile()
@@ -29,6 +30,12 @@ class MetadataStorageProviderTest {
                     every { filesDir } returns this@MetadataStorageProviderTest.filesDir
                 }
         )
+
+    @AfterTest
+    fun deleteTempDir() {
+        metadataDir.setReadable(true)
+        filesDir.deleteRecursively()
+    }
 
     @Test
     fun getStorageFilesReturnsNothingWhenNothingExists() {
@@ -116,6 +123,45 @@ class MetadataStorageProviderTest {
         val setAside = provider.getStorageFiles(key).single()
         assertTrue(setAside.name.startsWith(key.fileIdentifier() + ".undecodable-"))
         assertEquals("canonical", setAside.readText())
+    }
+
+    @Test
+    fun deleteStorageFilesRemovesEveryFileOfTheKeyAndNothingElse() {
+        val key = metadataKey(0, 1)
+        val (canonicalName, legacyName) = key.fileIdentifiers()
+        val keyFiles =
+            listOf(
+                metadataFile(canonicalName, contents = "canonical"),
+                metadataFile("$canonicalName.tmp", contents = "partial"),
+                metadataFile("$canonicalName.undecodable-1", contents = "aside"),
+                metadataFile(legacyName, contents = "legacy"),
+                metadataFile("$legacyName.tmp", contents = "partial"),
+                metadataFile("$legacyName.undecodable-2", contents = "aside"),
+            )
+        val unrelated = metadataFile("unrelated", contents = "other")
+
+        provider.deleteStorageFiles(key)
+
+        assertEquals(emptyList(), keyFiles.filter { it.exists() })
+        assertTrue(unrelated.exists())
+    }
+
+    @Test
+    fun deleteStorageFilesStillRemovesFilesByNameWhenListingFails() {
+        val key = metadataKey(0, 1)
+        val (canonicalName, legacyName) = key.fileIdentifiers()
+        val namedFiles =
+            listOf(
+                metadataFile(canonicalName, contents = "canonical"),
+                metadataFile("$canonicalName.tmp", contents = "partial"),
+                metadataFile(legacyName, contents = "legacy"),
+            )
+        metadataDir.setReadable(false)
+
+        provider.deleteStorageFiles(key)
+
+        metadataDir.setReadable(true)
+        assertEquals(emptyList(), namedFiles.filter { it.exists() })
     }
 
     private fun metadataFile(identifier: String, contents: String = ""): File {

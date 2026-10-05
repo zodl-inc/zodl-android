@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
 import android.content.Context
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
 import java.io.File
 import java.io.IOException
@@ -15,6 +16,13 @@ interface MetadataStorageProvider {
      * and returns whether the rename landed.
      */
     fun setAsideUndecodable(file: File): Boolean
+
+    /**
+     * Deletes every file of [key]: each identifier's own file and its temporary write file by name,
+     * and the files set aside under it. A failure is logged, never thrown, and a failed listing
+     * leaves only the set-aside files behind.
+     */
+    fun deleteStorageFiles(key: MetadataKey)
 }
 
 class MetadataStorageProviderImpl(
@@ -52,6 +60,20 @@ class MetadataStorageProviderImpl(
     override fun setAsideUndecodable(file: File): Boolean =
         file.renameTo(File(file.parentFile, file.name + UNDECODABLE_INFIX + System.currentTimeMillis()))
 
+    override fun deleteStorageFiles(key: MetadataKey) {
+        runCatching {
+            val dir = getOrCreateMetadataDir()
+            val dirFiles = dir.listFiles()
+            if (dirFiles == null) Twig.error { "Failed to list metadata files for deletion" }
+            key.fileIdentifiers().forEach { identifier ->
+                val setAside = dirFiles.orEmpty().filter { it.name.startsWith(identifier + UNDECODABLE_INFIX) }
+                (listOf(File(dir, identifier), File(dir, identifier + METADATA_TEMP_FILE_SUFFIX)) + setAside)
+                    .filter { it.exists() && !it.delete() }
+                    .forEach { _ -> Twig.error { "Failed to delete a metadata file" } }
+            }
+        }.onFailure { e -> Twig.error(e) { "Failed to delete metadata files" } }
+    }
+
     private fun getOrCreateMetadataDir(): File {
         val filesDir = context.filesDir
         val addressBookDir = File(filesDir, "metadata")
@@ -63,3 +85,8 @@ class MetadataStorageProviderImpl(
 }
 
 private const val UNDECODABLE_INFIX = ".undecodable-"
+
+/**
+ * The suffix of the temporary file a metadata write lands in before it replaces the target.
+ */
+internal const val METADATA_TEMP_FILE_SUFFIX = ".tmp"

@@ -278,7 +278,7 @@ class MetadataDataSourceImpl(
     override suspend fun delete(key: MetadataKey) =
         withContext(Dispatchers.IO) {
             mutex.withLock {
-                metadataStorageProvider.getStorageFiles(key).forEach { it.delete() }
+                metadataStorageProvider.deleteStorageFiles(key)
                 metadataUpdatePipeline.emit(key to null)
             }
         }
@@ -290,12 +290,17 @@ class MetadataDataSourceImpl(
      * derives one key per viewing-key item, and a key read back in a different order than it was
      * derived in names a different file. This reads every file that exists under any of [key]'s
      * identifiers, merges the ones that decode into one [MetadataV3], writes the result to the
-     * canonical file and, only once that write landed, removes the merged files.
+     * canonical file and, only once that write and the directory flush landed, removes the merged
+     * files.
      *
-     * A file that does not decode is never deleted and is retried on every read. A canonical file
-     * that does not decode is first set aside under a name [MetadataStorageProvider.getStorageFiles]
-     * keeps finding, so nothing is written over it. When the files cannot be listed or the
-     * canonical file cannot be created, the result is read-only and nothing is written.
+     * An empty file carries no data: an empty canonical file counts as absent, and any other empty
+     * file is deleted. A non-empty file that does not decode is never deleted and is retried on
+     * every read. A canonical file that does not decode is first set aside under a name
+     * [MetadataStorageProvider.getStorageFiles] keeps finding, so nothing is written over it.
+     *
+     * The result is read-only, and nothing is written or deleted, when the files cannot be listed,
+     * the canonical file cannot be created, the canonical file does not decode and cannot be set
+     * aside, or the canonical file still fails with an [IOException] after every retry.
      */
     private suspend fun readMetadata(key: MetadataKey): MetadataRead =
         withContext(Dispatchers.IO) {
@@ -309,27 +314,26 @@ class MetadataDataSourceImpl(
                     .getOrNull()
 
             if (existingFiles == null || canonicalFile == null) {
-                val readable = existingFiles ?: listOfNotNull(canonicalFile)
-                return@withContext MetadataRead(
-                    metadata = readable.mapNotNull { readNonEmpty(it, key) }.mergeOrDefault(),
-                    isWritable = false
-                )
+                return@withContext readOnly(existingFiles ?: listOfNotNull(canonicalFile), key)
             }
 
-            val canonicalExists = canonicalFile in existingFiles && canonicalFile.length() > 0
-            val canonicalMetadata = if (canonicalExists) readWithRetry(canonicalFile, key) else null
-            val decodedOthers =
+            val (emptyOthers, others) =
                 existingFiles
                     .filterNot { it == canonicalFile }
-                    .mapNotNull { file -> readWithRetry(file, key)?.let { file to it } }
+                    .partition { it.length() == 0L }
+            emptyOthers.forEach { it.delete() }
 
-            if (canonicalExists && canonicalMetadata == null && !setAsideUndecodable(canonicalFile)) {
+            val canonicalRead = readNonEmpty(canonicalFile, key)
+            val decodedOthers = others.mapNotNull { file -> readWithRetry(file, key).decoded()?.let { file to it } }
+
+            if (!isUsableAsCanonical(canonicalRead, canonicalFile)) {
                 return@withContext MetadataRead(
                     metadata = decodedOthers.map { it.second }.mergeOrDefault(),
                     isWritable = false
                 )
             }
 
+            val canonicalMetadata = canonicalRead.decoded()
             if (decodedOthers.isEmpty()) {
                 return@withContext MetadataRead(
                     metadata = canonicalMetadata ?: defaultMetadata(),
@@ -338,10 +342,27 @@ class MetadataDataSourceImpl(
             }
 
             val merged = (listOfNotNull(canonicalMetadata) + decodedOthers.map { it.second }).mergeOrDefault()
-            if (writeToLocalStorage(merged, key)) {
+            if (writeToLocalStorage(merged, key) && syncDirectoryOf(canonicalFile)) {
                 decodedOthers.forEach { (file, _) -> file.delete() }
             }
             MetadataRead(metadata = merged, isWritable = true)
+        }
+
+    private suspend fun readOnly(files: List<File>, key: MetadataKey) =
+        MetadataRead(
+            metadata = files.mapNotNull { readNonEmpty(it, key).decoded() }.mergeOrDefault(),
+            isWritable = false
+        )
+
+    /**
+     * Whether [canonicalFile] may be written over after [read]; an undecodable file first has to
+     * be set aside.
+     */
+    private fun isUsableAsCanonical(read: FileRead, canonicalFile: File): Boolean =
+        when (read) {
+            is FileRead.Decoded, FileRead.Absent -> true
+            FileRead.Undecodable -> setAsideUndecodable(canonicalFile)
+            FileRead.Unreadable -> false
         }
 
     private fun setAsideUndecodable(file: File): Boolean =
@@ -349,25 +370,40 @@ class MetadataDataSourceImpl(
             .onFailure { e -> Twig.warn(e) { "Failed to set the undecodable metadata file aside" } }
             .isSuccess
 
-    private suspend fun readNonEmpty(file: File, key: MetadataKey): MetadataV3? =
-        if (file.length() > 0) readWithRetry(file, key) else null
+    private fun syncDirectoryOf(file: File): Boolean =
+        runCatching { metadataProvider.syncDirectoryOf(file) }
+            .onFailure { e -> Twig.warn(e) { "Failed to flush the metadata directory" } }
+            .isSuccess
+
+    private suspend fun readNonEmpty(file: File, key: MetadataKey): FileRead =
+        if (file.length() > 0) readWithRetry(file, key) else FileRead.Absent
 
     /**
-     * Reads [file], retrying only an [IOException], up to [READ_ATTEMPTS] attempts in total; a
-     * decryption or format failure is final at once. Returns null when the file does not decode.
+     * Reads [file], retrying only an [IOException], up to [READ_ATTEMPTS] attempts in total; any
+     * other failure is a decode failure and final at once.
      */
-    private suspend fun readWithRetry(file: File, key: MetadataKey): MetadataV3? {
+    private suspend fun readWithRetry(file: File, key: MetadataKey): FileRead {
         var attempt = 1
-        while (true) {
+        var read: FileRead? = null
+        while (read == null) {
             val result = runCatching { metadataProvider.readMetadataFromFile(file, key) }
-            val error = result.exceptionOrNull() ?: return result.getOrThrow()
-            if (error !is IOException || attempt >= READ_ATTEMPTS) {
-                Twig.warn(error) { "Failed to decrypt metadata" }
-                return null
+            val error = result.exceptionOrNull()
+            read =
+                when {
+                    error == null -> FileRead.Decoded(result.getOrThrow())
+                    error !is IOException -> FileRead.Undecodable
+                    attempt >= READ_ATTEMPTS -> FileRead.Unreadable
+                    else -> null
+                }
+            if (error != null && read != null) {
+                Twig.warn(error) { "Failed to read metadata" }
             }
-            attempt++
-            delay(READ_RETRY_DELAY)
+            if (read == null) {
+                attempt++
+                delay(READ_RETRY_DELAY)
+            }
         }
+        return read
     }
 
     /**
@@ -455,7 +491,7 @@ class MetadataDataSourceImpl(
     ) = withContext(Dispatchers.IO) {
         val read = readMetadata(key)
         if (!read.isWritable) {
-            Twig.warn { "Skipping the metadata update, the metadata storage is unavailable" }
+            Twig.error { "Skipping the metadata update, the metadata storage is unavailable" }
             return@withContext
         }
         val metadata = read.metadata
@@ -468,9 +504,11 @@ class MetadataDataSourceImpl(
                 accountMetadata = transform(accountMetadata)
             )
 
-        writeToLocalStorage(updatedMetadata, key)
-
-        metadataUpdatePipeline.emit(key to updatedMetadata)
+        if (writeToLocalStorage(updatedMetadata, key)) {
+            metadataUpdatePipeline.emit(key to updatedMetadata)
+        } else {
+            Twig.error { "Skipping the metadata update, the write failed" }
+        }
     }
 
     private fun List<MetadataV3>.mergeOrDefault(): MetadataV3 =
@@ -492,12 +530,33 @@ class MetadataDataSourceImpl(
 
 /**
  * The metadata a read produced and whether it may be written back, which it may not when the
- * storage could not be listed or the canonical file could not be created.
+ * files could not be listed, the canonical file could not be created, the canonical file does not
+ * decode and could not be set aside, or the canonical file kept failing with an [IOException].
  */
 private data class MetadataRead(
     val metadata: MetadataV3,
     val isWritable: Boolean
 )
+
+/**
+ * The outcome of reading one metadata file.
+ */
+private sealed interface FileRead {
+    data class Decoded(
+        val metadata: MetadataV3
+    ) : FileRead
+
+    /** The file is empty or missing and carries no data. */
+    data object Absent : FileRead
+
+    /** The file was read but does not decrypt or parse. */
+    data object Undecodable : FileRead
+
+    /** Reading the file kept failing with an [IOException]. */
+    data object Unreadable : FileRead
+}
+
+private fun FileRead.decoded(): MetadataV3? = (this as? FileRead.Decoded)?.metadata
 
 private fun defaultAccountMetadata() =
     AccountMetadataV3(
@@ -553,7 +612,8 @@ private fun <T : Any> List<T>.update(predicate: (T) -> Boolean, transform: (T) -
 
 /**
  * Merges [other] into this metadata by one rule: the newer timestamp wins and older data is
- * dropped. A tie keeps this side, which callers pass as the canonical file.
+ * dropped. A tie keeps this side, the accumulator, which starts with the first candidate in
+ * listing order: the canonical file when present.
  */
 private fun MetadataV3.merge(other: MetadataV3): MetadataV3 =
     MetadataV3(

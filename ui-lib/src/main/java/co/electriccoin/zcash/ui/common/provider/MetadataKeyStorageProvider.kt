@@ -63,7 +63,7 @@ private fun MetadataKey?.encode(secretKeyAccess: SecretKeyAccess?): Set<String>?
 /**
  * Returns null, so the caller re-derives the key in canonical order, for an empty set, a legacy
  * set whose entries carry no "$index:" prefix, indices other than exactly 0 until the entry count,
- * or an entry whose bytes are not valid base64.
+ * or an entry whose bytes are empty or not valid base64.
  */
 @OptIn(ExperimentalEncodingApi::class)
 private fun Set<String>?.decode(secretKeyAccess: SecretKeyAccess?): MetadataKey? {
@@ -87,11 +87,11 @@ private fun Set<String>?.decode(secretKeyAccess: SecretKeyAccess?): MetadataKey?
 }
 
 /**
- * Parses one "$index:$base64Bytes" entry, or null if it carries no "$index:" prefix.
+ * Parses one "$index:$base64Bytes" entry, or null if it carries no "$index:" prefix or no bytes.
  */
 private fun String.parseIndexedEntry(): Pair<Int, String>? {
     val separatorIndex = indexOf(':')
-    return if (separatorIndex <= 0) {
+    return if (separatorIndex <= 0 || separatorIndex == lastIndex) {
         null
     } else {
         substring(0, separatorIndex).toIntOrNull()?.let { index -> index to substring(separatorIndex + 1) }
