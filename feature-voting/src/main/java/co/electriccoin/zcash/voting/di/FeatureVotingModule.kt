@@ -16,6 +16,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingConfigRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRepository
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSessionHolder
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
@@ -26,6 +27,7 @@ import co.electriccoin.zcash.ui.common.usecase.AuthorizeVotingSubmissionUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateVotingKeystonePcztEncoderUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetAllVotingRoundsUseCase
 import co.electriccoin.zcash.ui.common.usecase.ParseVotingKeystonePCZTUseCase
+import co.electriccoin.zcash.ui.common.usecase.PrecomputeVotingSnapshotBundlesUseCase
 import co.electriccoin.zcash.ui.common.usecase.PrepareVotingRoundUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshActiveVotingSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshVotingRoundsUseCase
@@ -34,7 +36,7 @@ import co.electriccoin.zcash.ui.common.usecase.ResolveVotingRoundSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.SkipRemainingKeystoneBundlesUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitVotesUseCase
 import co.electriccoin.zcash.ui.common.usecase.TrackVotingSharesUseCase
-import co.electriccoin.zcash.ui.common.usecase.VoteChainClientFactory
+import co.electriccoin.zcash.ui.common.usecase.WarmVotingPirProofsUseCase
 import co.electriccoin.zcash.ui.common.voting.VotingHomeHooks
 import co.electriccoin.zcash.ui.common.voting.VotingHomeMessageSource
 import co.electriccoin.zcash.ui.common.voting.VotingNavContributor
@@ -78,14 +80,14 @@ val featureVotingModule =
         // Providers
         singleOf(::VotingCryptoClientImpl) bind VotingCryptoClient::class
         singleOf(::VotingHotkeySeedProviderImpl) bind VotingHotkeySeedProvider::class
-        single {
+        single<VotingApiProvider> {
             KtorVotingApiProvider(
                 httpClientProvider = get(),
                 configurationRepository = get(),
                 votingChainConfigRepository = get(),
                 votingCryptoClient = get()
             )
-        } bind VotingApiProvider::class
+        }
         singleOf(::HttpPirSnapshotResolver) bind PirSnapshotResolver::class
         singleOf(::VotingShareTrackingScheduler)
 
@@ -97,10 +99,12 @@ val featureVotingModule =
         single<VotingProofPrecomputeRepository> {
             VotingProofPrecomputeRepositoryImpl(
                 votingCryptoClient = get(),
-                pirSnapshotResolver = get()
+                pirSnapshotResolver = get(),
+                synchronizerProvider = get()
             )
         }
         singleOf(::VotingKeystoneRepositoryImpl) bind VotingKeystoneRepository::class
+        singleOf(::VotingKeystoneSessionHolder)
         singleOf(::VotingSessionStoreImpl) bind VotingSessionStore::class
 
         // Use cases
@@ -115,28 +119,12 @@ val featureVotingModule =
         factoryOf(::PrepareVotingRoundUseCase)
         factoryOf(::AuthorizeVotingSubmissionUseCase)
         factoryOf(::SkipRemainingKeystoneBundlesUseCase)
-        factory {
-            SubmitVotesUseCase(
-                resolveVotingRoundSession = get(),
-                votingRecoveryRepository = get(),
-                votingSessionStore = get(),
-                votingCryptoClient = get(),
-                votingProofPrecomputeRepository = get(),
-                votingApiProvider = get(),
-                pirSnapshotResolver = get(),
-                votingHotkeySeedProvider = get(),
-                synchronizerProvider = get(),
-                getSelectedWalletAccount = get(),
-                getWalletSeedBytes = get(),
-                prepareVotingRound = get(),
-                votingShareTrackingScheduler = get(),
-                chainClientFactory =
-                    VoteChainClientFactory { get<KtorVotingApiProvider>().createIsolatedClient() }
-            )
-        }
+        factoryOf(::SubmitVotesUseCase)
         factoryOf(::TrackVotingSharesUseCase)
         factoryOf(::ParseVotingKeystonePCZTUseCase)
         factoryOf(::CreateVotingKeystonePcztEncoderUseCase)
+        factoryOf(::WarmVotingPirProofsUseCase)
+        factoryOf(::PrecomputeVotingSnapshotBundlesUseCase)
 
         // View models
         viewModelOf(::VoteCoinholderPollingVM)
