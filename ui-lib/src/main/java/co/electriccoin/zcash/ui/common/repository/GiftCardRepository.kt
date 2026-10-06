@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -31,7 +32,6 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.TimeSource
 
 /**
  * Owns gift card redemptions. Each redemption is a session that runs in this repository's own scope, from parsing
@@ -351,12 +351,19 @@ class GiftCardRepositoryImpl(
     ) {
         val handle = session.handle ?: return
         synchronized(lock) { sweepJob }?.join()
-        val started = TimeSource.Monotonic.markNow()
-        val phase = checkCard(handle).getOrElse { session.phaseAfterFailedCheck(it, isQuiet) }
-        if (isQuiet) {
-            val remaining = quietRecheckMinDuration - started.elapsedNow()
-            if (remaining.isPositive()) delay(remaining)
-        }
+        val phase =
+            coroutineScope {
+                // The minimum runs alongside the check, so that the check's own time counts towards it.
+                val minimum =
+                    if (isQuiet && quietRecheckMinDuration.isPositive()) {
+                        launch { delay(quietRecheckMinDuration) }
+                    } else {
+                        null
+                    }
+                val checked = checkCard(handle).getOrElse { session.phaseAfterFailedCheck(it, isQuiet) }
+                minimum?.join()
+                checked
+            }
         synchronized(lock) {
             if (session.isClosed) return
             session.update { it.copy(phase = phase) }
