@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.datasource
 
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.exception.LedgerException
+import cash.z.ecc.android.sdk.ledger.LedgerAccountBinding
 import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerBluetoothTransport
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceIdentity
@@ -20,6 +21,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.slot
 import io.mockk.unmockkAll
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
@@ -166,6 +168,41 @@ class LedgerSigningDataSourceTest {
             coVerify(exactly = 1) { transport.close() }
             coVerify(exactly = 0) { synchronizer.signPcztWithLedger(any(), any(), any(), any(), any()) }
             assertFalse(dataSource.isLinked)
+        }
+
+    /**
+     * The device signs for the account it was paired at: the binding handed to the SDK carries the
+     * account's stored index, whichever one the user chose.
+     */
+    @Test
+    fun signingDerivesAgainstTheAccountsStoredIndex() =
+        runTest {
+            val transport = mockk<LedgerBluetoothTransport>(relaxed = true)
+            coEvery { ledgerScannerProvider.connect(any()) } returns transport
+            val binding = slot<LedgerAccountBinding>()
+            coEvery {
+                synchronizer.signPcztWithLedger(any(), any(), capture(binding), any(), any())
+            } returns Pczt(byteArrayOf(1))
+
+            dataSource.connect(device()) { }
+            dataSource.sign(Pczt(byteArrayOf(0)), ledgerAccount(Zip32AccountIndex.new(7))) { }
+
+            assertEquals(Zip32AccountIndex.new(7), binding.captured.zip32AccountIndex)
+        }
+
+    @Test
+    fun anAccountWithoutAStoredIndexIsAnUnusableBindingAndNothingIsSigned() =
+        runTest {
+            val transport = mockk<LedgerBluetoothTransport>(relaxed = true)
+            coEvery { ledgerScannerProvider.connect(any()) } returns transport
+
+            dataSource.connect(device()) { }
+            assertFailsWith<LedgerBindingUnusableException> {
+                dataSource.sign(Pczt(byteArrayOf(0)), ledgerAccount(zip32AccountIndex = null)) { }
+            }
+
+            coVerify(exactly = 0) { synchronizer.signPcztWithLedger(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 1) { transport.close() }
         }
 
     @Test
@@ -334,7 +371,7 @@ class LedgerSigningDataSourceTest {
             rssi = -40,
         )
 
-    private fun ledgerAccount() =
+    private fun ledgerAccount(zip32AccountIndex: Zip32AccountIndex? = Zip32AccountIndex.new(0L)) =
         LedgerAccount(
             sdkAccount = Account.new(AccountUuid.new(ByteArray(16) { it.toByte() })),
             unifiedAddress = "u1secret",
@@ -344,6 +381,6 @@ class LedgerSigningDataSourceTest {
             transparentBalance = null,
             isSelected = false,
             deviceIdentity = "tpk0-deadbeef",
-            zip32AccountIndex = Zip32AccountIndex.new(0L),
+            zip32AccountIndex = zip32AccountIndex,
         )
 }

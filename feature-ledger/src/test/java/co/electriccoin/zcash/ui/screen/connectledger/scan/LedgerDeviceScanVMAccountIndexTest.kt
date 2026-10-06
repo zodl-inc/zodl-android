@@ -135,6 +135,108 @@ class LedgerDeviceScanVMAccountIndexTest {
             assertTrue(vm.state.value.primaryButton.isEnabled)
         }
 
+    /**
+     * Each input with the index it stands for, or null when it must be refused. Only ASCII digits
+     * count: `toLongOrNull` alone would accept a sign and non-ASCII digits such as Arabic-Indic or
+     * full-width ones.
+     */
+    @Test
+    fun theInputTableMapsOnlyAsciiDigitsFromZeroToOneHundredToAnIndex() =
+        runTest(dispatcher) {
+            val table =
+                listOf(
+                    "0" to 0L,
+                    "00" to 0L,
+                    "007" to 7L,
+                    "0100" to 100L,
+                    "100" to 100L,
+                    "101" to null,
+                    "-0" to null,
+                    "+5" to null,
+                    "" to null,
+                    " " to null,
+                    " 5" to null,
+                    "5 " to null,
+                    "\t3" to null,
+                    "1.0" to null,
+                    "1e2" to null,
+                    "\u0663" to null,
+                    "\uFF13" to null,
+                    "9223372036854775807" to null,
+                    "99999999999999999999" to null,
+                )
+            table.forEach { (input, expected) ->
+                val connectLedgerDevice =
+                    mockk<ConnectLedgerDeviceUseCase> {
+                        coEvery { this@mockk.invoke(any(), any()) } returns false
+                    }
+                val vm = vm(connectLedgerDevice = connectLedgerDevice)
+                collect(vm)
+                vm.onPermissionsGranted()
+                listAndSelect(vm)
+                type(vm, input)
+
+                val options = assertNotNull(vm.state.value.advancedOptions)
+                assertEquals(expected == null, options.accountIndex.isError, "error for '$input'")
+                assertEquals(expected != null, vm.state.value.primaryButton.isEnabled, "Connect for '$input'")
+
+                vm.state.value.primaryButton
+                    .onClick()
+                runCurrent()
+                if (expected == null) {
+                    coVerify(exactly = 0) { connectLedgerDevice.invoke(any(), any()) }
+                } else {
+                    coVerify(exactly = 1) { connectLedgerDevice.invoke(device(), Zip32AccountIndex.new(expected)) }
+                }
+            }
+        }
+
+    /**
+     * Connect is enabled only with a device selected, a valid index and no connection running.
+     */
+    @Test
+    fun connectIsEnabledOnlyForASelectedDeviceWithAValidIndexWhileIdle() =
+        runTest(dispatcher) {
+            val connectLedgerDevice =
+                mockk<ConnectLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any(), any()) } coAnswers { awaitCancellation() }
+                }
+            val vm = vm(connectLedgerDevice = connectLedgerDevice)
+            collect(vm)
+            vm.onPermissionsGranted()
+            runCurrent()
+            assertFalse(vm.state.value.primaryButton.isEnabled, "no device listed")
+
+            devices.value = listOf(device())
+            runCurrent()
+            assertFalse(vm.state.value.primaryButton.isEnabled, "device listed, none selected")
+            vm.state.value.primaryButton
+                .onClick()
+            runCurrent()
+            coVerify(exactly = 0) { connectLedgerDevice.invoke(any(), any()) }
+
+            vm.state.value.devices
+                .single()
+                .onClick()
+            runCurrent()
+            type(vm, "101")
+            assertFalse(vm.state.value.primaryButton.isEnabled, "device selected, index invalid")
+
+            type(vm, "100")
+            assertTrue(vm.state.value.primaryButton.isEnabled, "device selected, index valid")
+
+            vm.state.value.primaryButton
+                .onClick()
+            runCurrent()
+            assertFalse(vm.state.value.primaryButton.isEnabled, "connecting")
+            assertTrue(vm.state.value.primaryButton.isLoading)
+
+            vm.state.value.primaryButton
+                .onClick()
+            runCurrent()
+            coVerify(exactly = 1) { connectLedgerDevice.invoke(device(), Zip32AccountIndex.new(100)) }
+        }
+
     @Test
     fun anInvalidIndexKeepsTheCardOpenUntilItIsFixed() =
         runTest(dispatcher) {
@@ -325,6 +427,54 @@ class LedgerDeviceScanVMAccountIndexTest {
             runCurrent()
 
             coVerify(exactly = 1) { connectLedgerDevice.invoke(device(), Zip32AccountIndex.new(0)) }
+        }
+
+    /**
+     * A stored first account reads like a fresh pairing: the card stays closed.
+     */
+    @Test
+    fun pairingAnAccountAgainWithTheFirstAccountStoredStartsCollapsed() =
+        runTest(dispatcher) {
+            val vm = vm(ledgerRepairTargetRepository = repairTarget(Zip32AccountIndex.new(0)))
+            collect(vm)
+            vm.onPermissionsGranted()
+            listAndSelect(vm)
+
+            val options = assertNotNull(vm.state.value.advancedOptions)
+            assertFalse(options.isExpanded)
+            assertEquals(StringResource.ByString("0"), options.accountIndex.value)
+        }
+
+    /**
+     * A stored index past what the app accepts is shown, open and in error, and cannot be folded
+     * away until the user enters one it accepts.
+     */
+    @Test
+    fun pairingAnAccountAgainWithAStoredIndexPastOneHundredStartsOpenInError() =
+        runTest(dispatcher) {
+            val connectLedgerDevice = mockk<ConnectLedgerDeviceUseCase>(relaxed = true)
+            val vm =
+                vm(
+                    connectLedgerDevice = connectLedgerDevice,
+                    ledgerRepairTargetRepository = repairTarget(Zip32AccountIndex.new(150)),
+                )
+            collect(vm)
+            vm.onPermissionsGranted()
+            listAndSelect(vm)
+
+            val options = assertNotNull(vm.state.value.advancedOptions)
+            assertTrue(options.isExpanded)
+            assertTrue(options.accountIndex.isError)
+            assertEquals(StringResource.ByString("150"), options.accountIndex.value)
+            assertFalse(vm.state.value.primaryButton.isEnabled)
+
+            options.onToggle()
+            runCurrent()
+            assertTrue(assertNotNull(vm.state.value.advancedOptions).isExpanded)
+            vm.state.value.primaryButton
+                .onClick()
+            runCurrent()
+            coVerify(exactly = 0) { connectLedgerDevice.invoke(any(), any()) }
         }
 
     private fun repairTarget(zip32AccountIndex: Zip32AccountIndex?) =

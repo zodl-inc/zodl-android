@@ -138,6 +138,35 @@ class LedgerHandshakeVMTest {
         }
 
     /**
+     * The device and the account chosen with it are set together, so a device without an account
+     * means the flow lost its state; nothing is asked of the device.
+     */
+    @Test
+    fun aDeviceWithoutItsChosenAccountFallsBackToTheWalletRoot() =
+        runTest(dispatcher) {
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val pairLedgerDevice = mockk<PairLedgerDeviceUseCase>(relaxed = true)
+            val vm =
+                LedgerHandshakeVM(
+                    application = mockk<Application>(relaxed = true),
+                    pairLedgerDevice = pairLedgerDevice,
+                    selectWalletAccount = mockk(relaxed = true),
+                    ledgerSelectedDeviceRepository =
+                        mockk<LedgerSelectedDeviceRepository>(relaxed = true) {
+                            every { get() } returns device
+                            every { getZip32AccountIndex() } returns null
+                        },
+                    navigateToError = mockk(relaxed = true),
+                    navigationRouter = navigationRouter,
+                )
+            collect(vm)
+            runCurrent()
+
+            verify(exactly = 1) { navigationRouter.backToRoot() }
+            coVerify(exactly = 0) { pairLedgerDevice.invoke(any(), any()) }
+        }
+
+    /**
      * Every failure also leaves an enabled page button behind the sheet, Retry or the sheet's own
      * action, so dismissing the sheet never strands the user on a dead page.
      */
@@ -323,7 +352,7 @@ class LedgerHandshakeVMTest {
             assertNotNull(sheet.primary).onClick()
             runCurrent()
 
-            coVerify(exactly = 2) { pairLedgerDevice.invoke(device, any()) }
+            coVerify(exactly = 2) { pairLedgerDevice.invoke(device, account) }
             verify(exactly = 1) { navigationRouter.replace(HWNewOrActiveArgs(HWWalletEnrollment.Ledger)) }
         }
 
@@ -428,7 +457,7 @@ class LedgerHandshakeVMTest {
 
             assertTrue(vm.state.value.isConnecting)
             assertNull(vm.state.value.errorSheet)
-            coVerify(exactly = 2) { pairLedgerDevice.invoke(device, any()) }
+            coVerify(exactly = 2) { pairLedgerDevice.invoke(device, account) }
         }
 
     @Test
@@ -456,7 +485,7 @@ class LedgerHandshakeVMTest {
                 .onClick()
             runCurrent()
 
-            coVerify(exactly = 2) { pairLedgerDevice.invoke(device, any()) }
+            coVerify(exactly = 2) { pairLedgerDevice.invoke(device, account) }
             assertTrue(vm.state.value.isConnecting)
             assertNull(vm.state.value.errorSheet)
             assertEquals(
@@ -482,7 +511,7 @@ class LedgerHandshakeVMTest {
             vm.onPermissionsGranted()
             runCurrent()
 
-            coVerify(exactly = 1) { pairLedgerDevice.invoke(device, any()) }
+            coVerify(exactly = 1) { pairLedgerDevice.invoke(device, account) }
         }
 
     @Test
@@ -515,7 +544,7 @@ class LedgerHandshakeVMTest {
             runCurrent()
 
             verify(exactly = 0) { navigationRouter.backToRoot() }
-            coVerify(exactly = 1) { pairLedgerDevice.invoke(device, any()) }
+            coVerify(exactly = 1) { pairLedgerDevice.invoke(device, account) }
             assertTrue(vm.state.value.isConnecting)
         }
 
@@ -551,7 +580,7 @@ class LedgerHandshakeVMTest {
             vm.onBluetoothEnabled()
             runCurrent()
             assertTrue(vm.state.value.isConnecting)
-            coVerify(exactly = 2) { pairLedgerDevice.invoke(device, any()) }
+            coVerify(exactly = 2) { pairLedgerDevice.invoke(device, account) }
         }
 
     @Suppress("TooGenericExceptionThrown")

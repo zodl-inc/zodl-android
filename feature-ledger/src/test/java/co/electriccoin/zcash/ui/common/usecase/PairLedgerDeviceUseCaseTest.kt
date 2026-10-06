@@ -231,6 +231,63 @@ class PairLedgerDeviceUseCaseTest {
             coVerify(exactly = 0) { bindingProvider.save(any(), any(), any()) }
         }
 
+    /**
+     * The binding stored when an account is paired again carries the index the device exported, not
+     * the one the account had before.
+     */
+    @Test
+    fun pairingAnAccountAgainStoresTheIndexItWasPairedAt() =
+        runTest {
+            val target = ledgerAccount(ufvk = "ufvk-known", bound = false, zip32AccountIndex = null)
+            val dataSource = dataSource(pairing(ufvk = "ufvk-known", zip32AccountIndex = 4L))
+
+            val result =
+                useCase(dataSource, LedgerPairingRepositoryImpl(), listOf(target), repairTarget(target))
+                    .invoke(device, Zip32AccountIndex.new(4))
+
+            assertEquals(PairLedgerDeviceResult.Rebound(target), result)
+            val accountUuid = target.sdkAccount.accountUuid
+            coVerify(exactly = 1) {
+                bindingProvider.save(
+                    accountUuid = accountUuid,
+                    deviceIdentityEncoding = IDENTITY,
+                    zip32AccountIndex = 4L,
+                )
+            }
+        }
+
+    /**
+     * A viewing key that belongs to a Ledger account other than the one being paired again is still
+     * the wrong Ledger; neither account's binding is touched.
+     */
+    @Test
+    fun pairingAnAccountAgainWithAnotherAccountsKeyIsTheWrongLedger() =
+        runTest {
+            val target = ledgerAccount(ufvk = "ufvk-target", bound = false)
+            val other = ledgerAccount(ufvk = "ufvk-other", bound = true)
+            val repairTarget = repairTarget(target)
+            val existing = listOf(target, other)
+
+            val result =
+                useCase(pairing(ufvk = "ufvk-other"), LedgerPairingRepositoryImpl(), existing, repairTarget)
+                    .invoke(device, Zip32AccountIndex.new(1))
+
+            assertEquals(PairLedgerDeviceResult.WrongLedger, result)
+            assertEquals(target.sdkAccount.accountUuid, repairTarget.get())
+            coVerify(exactly = 0) { bindingProvider.save(any(), any(), any()) }
+        }
+
+    @Test
+    fun aFreshPairingIsStashedWithTheIndexItWasPairedAt() =
+        runTest {
+            val pairing = pairing(ufvk = "ufvk-new", zip32AccountIndex = 7L)
+            val repository = LedgerPairingRepositoryImpl()
+
+            useCase(pairing, repository, existing = emptyList()).invoke(device, Zip32AccountIndex.new(7))
+
+            assertEquals(Zip32AccountIndex.new(7), repository.get()?.binding?.zip32AccountIndex)
+        }
+
     @Test
     fun anEarlierPairingIsReplacedRatherThanKept() =
         runTest {
@@ -271,13 +328,16 @@ class PairLedgerDeviceUseCaseTest {
             coEvery { pair(any(), any()) } returns pairing
         }
 
-    private fun pairing(ufvk: String) =
+    private fun pairing(
+        ufvk: String,
+        zip32AccountIndex: Long = 0L,
+    ) =
         mockk<LedgerAccountPairing> {
             every { this@mockk.ufvk } returns UnifiedFullViewingKey(ufvk)
             every { binding } returns
                 LedgerAccountBinding(
                     deviceIdentity = mockk<LedgerDeviceIdentity> { every { encoding } returns IDENTITY },
-                    zip32AccountIndex = Zip32AccountIndex.new(0L),
+                    zip32AccountIndex = Zip32AccountIndex.new(zip32AccountIndex),
                 )
         }
 
