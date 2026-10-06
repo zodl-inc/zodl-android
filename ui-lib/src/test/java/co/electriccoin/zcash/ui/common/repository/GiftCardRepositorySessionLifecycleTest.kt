@@ -24,6 +24,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -250,6 +251,34 @@ class GiftCardRepositorySessionLifecycleTest {
             assertIs<GiftCardPhase.Ready>(observer.latest().phase)
             assertFalse(observer.values.drop(seenBefore).any { it.phase == GiftCardPhase.Checking })
             assertEquals(1, dataSource.parsedLinks.size)
+            observer.job.cancel()
+        }
+
+    /**
+     * The card wallet of a live session answers a check again within milliseconds. Its progress stays on screen for
+     * [GiftCardRepositoryImpl.quietRecheckMinDuration] anyway, so that the button visibly does something.
+     */
+    @Test
+    fun aQuietRecheckKeepsItsProgressOnScreenForTheMinimumDuration() =
+        runTest {
+            dataSource.statuses = listOf(GiftCardStatus.Empty, GiftCardStatus.Empty)
+            val repository = repository()
+            repository.quietRecheckMinDuration = 700.milliseconds
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            repository.checkAgain(linkId)
+            runCurrent()
+            assertEquals(GiftCardPhase.Empty(isRechecking = true), observer.latest().phase)
+
+            advanceTimeBy(699.milliseconds)
+            runCurrent()
+            assertEquals(GiftCardPhase.Empty(isRechecking = true), observer.latest().phase)
+
+            advanceTimeBy(2.milliseconds)
+            runCurrent()
+            assertEquals(GiftCardPhase.Empty(isRechecking = false), observer.latest().phase)
             observer.job.cancel()
         }
 

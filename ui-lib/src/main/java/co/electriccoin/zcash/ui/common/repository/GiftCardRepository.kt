@@ -28,8 +28,10 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 /**
  * Owns gift card redemptions. Each redemption is a session that runs in this repository's own scope, from parsing
@@ -153,6 +155,13 @@ class GiftCardRepositoryImpl(
 
     /** How long an unfinished session may go unobserved before its card is closed. */
     internal var idleTimeout: Duration = IDLE_TIMEOUT
+
+    /**
+     * How long a check again the user asked for keeps its progress on screen at least. The card wallet of a live
+     * session is already synced, so it answers within milliseconds, and the button would look like it did nothing.
+     * The app sets [QUIET_RECHECK_MIN_DURATION]; it is zero elsewhere, so that tests need not wait for it.
+     */
+    internal var quietRecheckMinDuration: Duration = Duration.ZERO
 
     /** Guards [links], [sweepJob] and the mutable fields of every [Session]. */
     private val lock = Any()
@@ -342,7 +351,12 @@ class GiftCardRepositoryImpl(
     ) {
         val handle = session.handle ?: return
         synchronized(lock) { sweepJob }?.join()
+        val started = TimeSource.Monotonic.markNow()
         val phase = checkCard(handle).getOrElse { session.phaseAfterFailedCheck(it, isQuiet) }
+        if (isQuiet) {
+            val remaining = quietRecheckMinDuration - started.elapsedNow()
+            if (remaining.isPositive()) delay(remaining)
+        }
         synchronized(lock) {
             if (session.isClosed) return
             session.update { it.copy(phase = phase) }
@@ -629,6 +643,9 @@ class GiftCardRepositoryImpl(
 
     companion object {
         val PENDING_RETRY_INTERVAL = 30.seconds
+
+        /** How long a check again keeps showing its progress at least, in the app. */
+        val QUIET_RECHECK_MIN_DURATION = 700.milliseconds
 
         /** The default [idleTimeout]. */
         val IDLE_TIMEOUT = 2.minutes

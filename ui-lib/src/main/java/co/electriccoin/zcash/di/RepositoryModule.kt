@@ -64,6 +64,10 @@ val repositoryModule =
         singleOf(::SwapRepositoryImpl) bind SwapRepository::class
         singleOf(::EphemeralAddressRepositoryImpl) bind EphemeralAddressRepository::class
         singleOf(::MockOrchardBalanceRepositoryImpl) bind MockOrchardBalanceRepository::class
-        singleOf(::GiftCardRepositoryImpl) bind GiftCardRepository::class
+        single {
+            GiftCardRepositoryImpl(get(), get()).apply {
+                quietRecheckMinDuration = GiftCardRepositoryImpl.QUIET_RECHECK_MIN_DURATION
+            }
+        } bind GiftCardRepository::class
         singleOf(::GiftCardLinkStoreImpl) bind GiftCardLinkStore::class
     }
