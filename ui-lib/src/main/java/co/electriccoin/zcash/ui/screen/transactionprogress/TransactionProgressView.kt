@@ -14,8 +14,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -66,14 +68,24 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 
+/** The room the designs keep free below centered content for the buttons. */
+private val CENTERED_CONTENT_BOTTOM_PADDING = 96.dp
+
 @Composable
 fun TransactionProgressView(state: TransactionProgressState) {
+    // The gift card designs use the blue of the hyper blue family, a little stronger than indigo.
+    val pendingColor =
+        if (state.centerContent) {
+            ZashiColors.Utility.HyperBlue.utilityBlueDark100
+        } else {
+            ZashiColors.Utility.Indigo.utilityIndigo100
+        }
     GradientBgScaffold(
         startColor =
             when (state.background) {
                 null -> ZashiColors.Surfaces.bgPrimary
                 SUCCESS -> ZashiColors.Utility.SuccessGreen.utilitySuccess100
-                PENDING -> ZashiColors.Utility.Indigo.utilityIndigo100
+                PENDING -> pendingColor
                 ERROR -> ZashiColors.Utility.ErrorRed.utilityError100
             },
         endColor = ZashiColors.Surfaces.bgPrimary,
@@ -82,7 +94,17 @@ fun TransactionProgressView(state: TransactionProgressState) {
         content = {
             Content(
                 state = state,
-                modifier = Modifier.scaffoldPadding(it)
+                modifier =
+                    if (state.centerContent) {
+                        // Centered on the screen, not in what the app bar and the buttons leave: the same place
+                        // on every screen, with room reserved for the buttons below, as in the designs.
+                        Modifier
+                            .padding(horizontal = ZashiDimensions.Spacing.spacing3xl)
+                            .windowInsetsPadding(WindowInsets.statusBars)
+                            .padding(bottom = CENTERED_CONTENT_BOTTOM_PADDING)
+                    } else {
+                        Modifier.scaffoldPadding(it)
+                    }
             )
         }
     )
@@ -108,20 +130,33 @@ private fun BottomBar(state: TransactionProgressState) {
     if (state.centerContent) {
         // The final designs put the buttons straight on the screen, without the rounded, shadowed sheet.
         Column {
-            BottomBarButtons(state)
+            BottomBarButtons(state, isFlat = true)
             Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingLg))
             Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
         }
     } else {
-        OldZashiBottomBar { BottomBarButtons(state) }
+        OldZashiBottomBar { BottomBarButtons(state, isFlat = false) }
     }
 }
 
 @Composable
-private fun ColumnScope.BottomBarButtons(state: TransactionProgressState) {
+private fun ColumnScope.BottomBarButtons(
+    state: TransactionProgressState,
+    isFlat: Boolean
+) {
     if (state.secondaryButton != null) {
         ZashiButton(
             state = state.secondaryButton,
+            // The designs give the secondary button on a flat bar the soft grey of the hover state; the
+            // default secondary background is white and would vanish on the white screen.
+            defaultSecondaryColors =
+                if (isFlat) {
+                    ZashiButtonDefaults.secondaryColors(
+                        containerColor = ZashiColors.Btns.Secondary.btnSecondaryBgHover
+                    )
+                } else {
+                    ZashiButtonDefaults.secondaryColors()
+                },
             modifier =
                 Modifier
                     .fillMaxWidth()

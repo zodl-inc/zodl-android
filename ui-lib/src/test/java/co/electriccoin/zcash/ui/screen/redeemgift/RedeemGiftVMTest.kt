@@ -154,7 +154,7 @@ class RedeemGiftVMTest {
         }
 
     @Test
-    fun checkingHasACloseThatCancelsTheCheckAndEndsTheSession() =
+    fun checkingCanBeLeftWithBackWhichCancelsTheCheckAndEndsTheSession() =
         runTest(dispatcher) {
             val env = Env(this)
             env.dataSource.checkGate = CompletableDeferred()
@@ -163,7 +163,8 @@ class RedeemGiftVMTest {
             val checking = statusOf(vm)
             assertEquals(stringRes(R.string.redeemGift_checking_title), checking.title)
             assertEquals(stringRes(R.string.redeemGift_checking_subtitle).withStyle(), checking.subtitle)
-            assertTrue(checking.showAppBar)
+            // The designs show no close button on this screen; back still leaves it.
+            assertFalse(checking.showAppBar)
 
             checking.onBack()
             runCurrent()

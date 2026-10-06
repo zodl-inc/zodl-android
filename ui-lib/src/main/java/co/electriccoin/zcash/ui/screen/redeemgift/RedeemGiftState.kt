@@ -131,6 +131,7 @@ sealed interface RedeemGiftState {
                 primaryButton = null,
                 secondaryButton = null,
                 onBack = onBack,
+                showAppBar = false,
                 centerContent = true,
             )
 

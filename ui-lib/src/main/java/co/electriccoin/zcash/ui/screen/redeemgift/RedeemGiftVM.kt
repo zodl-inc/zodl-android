@@ -112,6 +112,7 @@ class RedeemGiftVM(
                     secondaryButton = null,
                     onBack = {},
                     showAppBar = false,
+                    centerContent = true,
                 )
             }
 
