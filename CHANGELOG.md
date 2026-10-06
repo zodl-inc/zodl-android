@@ -7,6 +7,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.15.0 (2852)] - 2026-09-28
+
 ### Added:
 
 - Export Viewing Key in Advanced Settings: share the selected account's Incoming or Full Viewing Key
