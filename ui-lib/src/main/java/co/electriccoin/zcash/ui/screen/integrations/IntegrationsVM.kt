@@ -75,12 +75,6 @@ class IntegrationsVM(
         items =
             listOfNotNull(
                 ListItemState(
-                    title = stringRes(R.string.integrations_redeemGift),
-                    subtitle = stringRes(R.string.integrations_redeemGift_subtitle),
-                    bigIcon = imageRes(R.drawable.ic_integrations_gift),
-                    onClick = ::onRedeemGiftClick
-                ),
-                ListItemState(
                     // Set the wallet currency by app build is more future-proof, although we hide it from
                     // the UI in the Testnet build
                     isEnabled = isRestoring.not() && selectedAccount is ZashiAccount,
@@ -102,6 +96,12 @@ class IntegrationsVM(
                     bigIcon = imageRes(R.drawable.ic_integrations_keystone),
                     onClick = ::onConnectKeystoneClick
                 ).takeIf { keystoneStatus != UNAVAILABLE },
+                ListItemState(
+                    title = stringRes(R.string.integrations_redeemGift),
+                    subtitle = stringRes(R.string.integrations_redeemGift_subtitle),
+                    bigIcon = imageRes(R.drawable.ic_integrations_gift),
+                    onClick = ::onRedeemGiftClick
+                ),
                 ListItemState(
                     title =
                         stringRes(co.electriccoin.zcash.ui.design.R.string.general_more) +

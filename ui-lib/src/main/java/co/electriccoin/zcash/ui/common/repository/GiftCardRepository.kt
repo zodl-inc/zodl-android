@@ -50,6 +50,12 @@ interface GiftCardRepository {
     fun isGiftCardLink(value: String): Boolean
 
     /**
+     * Whether [value] is, ignoring case and surrounding whitespace, the start of a gift card link's prefix, so that
+     * text still being typed is not reported as invalid too early. Blank text is such a start.
+     */
+    fun isGiftCardLinkStart(value: String): Boolean
+
+    /**
      * The session for [linkId]. The first call starts it: the link is taken out of [GiftCardLinkStore], parsed and
      * the card checked. Later calls, while the session is alive, observe the same session.
      *
@@ -107,6 +113,11 @@ internal object GiftCardLinkPrefixes {
         val trimmed = value.trim()
         return all.any { trimmed.startsWith(it, ignoreCase = true) }
     }
+
+    fun isStartOfAny(value: String): Boolean {
+        val trimmed = value.trim()
+        return all.any { it.startsWith(trimmed, ignoreCase = true) }
+    }
 }
 
 /**
@@ -148,6 +159,8 @@ class GiftCardRepositoryImpl(
     private var sweepJob: Job? = null
 
     override fun isGiftCardLink(value: String): Boolean = GiftCardLinkPrefixes.matches(value)
+
+    override fun isGiftCardLinkStart(value: String): Boolean = GiftCardLinkPrefixes.isStartOfAny(value)
 
     override fun observeSession(linkId: String): Flow<GiftCardSession> = link(linkId).flatMapLatest { it.state }
 
@@ -222,7 +235,7 @@ class GiftCardRepositoryImpl(
     private fun link(linkId: String): MutableStateFlow<Session> =
         synchronized(lock) {
             links.getOrPut(linkId) {
-                val session = Session(linkIds = mutableSetOf(linkId))
+                val session = Session(linkIds = setOf(linkId))
                 session.link = giftCardLinkStore.take(linkId)
                 session.workJob = scope.launch { start(session) }
                 session.idleJob = scope.launch { closeWhenIdle(session) }
@@ -244,13 +257,11 @@ class GiftCardRepositoryImpl(
      */
     private suspend fun parse(session: Session): Boolean {
         val link = session.link
-        val parsed =
-            if (link == null) {
-                session.update { it.copy(phase = LINK_UNAVAILABLE) }
-                null
-            } else {
-                parseLink(session, link)
-            }
+        if (link == null) {
+            session.update { it.copy(phase = LINK_UNAVAILABLE) }
+            return false
+        }
+        val parsed = parseLink(session, link)
         return parsed != null && attach(session, parsed)
     }
 
@@ -320,26 +331,13 @@ class GiftCardRepositoryImpl(
     /**
      * Checks the card. A quiet check (a re-check of a pending card) keeps the pending screen when it fails.
      */
-    @Suppress("TooGenericExceptionCaught")
     private suspend fun check(
         session: Session,
         isQuiet: Boolean
     ) {
         val handle = session.handle ?: return
         synchronized(lock) { sweepJob }?.join()
-        val phase =
-            try {
-                giftCardDataSource.check(handle).toPhase()
-            } catch (e: CancellationException) {
-                currentCoroutineContext().ensureActive()
-                Twig.error { "Checking a gift card was cancelled from within" }
-                session.phaseAfterFailedCheck(e, isQuiet)
-            } catch (e: GiftCardException) {
-                session.phaseAfterFailedCheck(e, isQuiet)
-            } catch (e: Exception) {
-                Twig.error { "Checking a gift card failed: ${e::class.simpleName}" }
-                session.phaseAfterFailedCheck(e, isQuiet)
-            }
+        val phase = checkCard(handle).getOrElse { session.phaseAfterFailedCheck(it, isQuiet) }
         synchronized(lock) {
             if (session.isClosed) return
             session.update { it.copy(phase = phase) }
@@ -367,33 +365,38 @@ class GiftCardRepositoryImpl(
         }
     }
 
-    @Suppress("TooGenericExceptionCaught")
     private suspend fun checkQuietly(session: Session) {
         val handle = session.handle ?: return
-        val phase =
-            try {
-                giftCardDataSource.check(handle).toPhase()
-            } catch (_: CancellationException) {
-                currentCoroutineContext().ensureActive()
-                null
-            } catch (_: GiftCardException) {
-                null
-            } catch (e: Exception) {
-                Twig.error { "Checking a gift card failed: ${e::class.simpleName}" }
-                null
-            }
+        val phase = checkCard(handle).getOrNull() ?: return
         synchronized(lock) {
-            if (phase != null && !session.isClosed && !session.isBusyLocked()) {
-                session.update { it.copy(phase = phase) }
-            }
+            if (!session.isClosed && !session.isBusyLocked()) session.update { it.copy(phase = phase) }
         }
     }
+
+    /**
+     * Checks the card held as [handle]. A failure, including a cancellation from within the data source while this
+     * coroutine itself is still active, is returned rather than thrown; an untyped one is logged.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun checkCard(handle: GiftCardHandle): Result<GiftCardPhase> =
+        try {
+            Result.success(giftCardDataSource.check(handle).toPhase())
+        } catch (e: CancellationException) {
+            currentCoroutineContext().ensureActive()
+            Twig.error { "Checking a gift card was cancelled from within" }
+            Result.failure(e)
+        } catch (e: GiftCardException) {
+            Result.failure(e)
+        } catch (e: Exception) {
+            Twig.error { "Checking a gift card failed: ${e::class.simpleName}" }
+            Result.failure(e)
+        }
 
     /**
      * The phase after a failed check: a quiet check (a re-check of a pending card) keeps the pending screen.
      */
     private fun Session.phaseAfterFailedCheck(
-        e: Exception,
+        e: Throwable,
         isQuiet: Boolean
     ): GiftCardPhase {
         val current = state.value.phase
@@ -443,12 +446,12 @@ class GiftCardRepositoryImpl(
                 Twig.error { "Listing gift card wallets failed: ${e::class.simpleName}" }
                 return
             }
-        stored.forEach { wallet ->
+        for (wallet in stored) {
             val isLive =
                 synchronized(lock) {
                     links.values.any { !it.value.isClosed && it.value.walletAlias == wallet.alias }
                 }
-            if (isLive) return@forEach
+            if (isLive) continue
             try {
                 giftCardDataSource.eraseCardWallet(wallet)
             } catch (_: CancellationException) {
@@ -488,11 +491,7 @@ class GiftCardRepositoryImpl(
             if (session.state.value.phase == GiftCardPhase.Redeeming) return false
             if (!session.isClosed) {
                 closeCardLocked(session)
-                if (!session.state.value.phase
-                        .isFinal()
-                ) {
-                    session.update { it.copy(phase = LINK_UNAVAILABLE) }
-                }
+                session.update { if (it.phase.isFinal()) it else it.copy(phase = LINK_UNAVAILABLE) }
             }
             true
         }
@@ -551,7 +550,7 @@ class GiftCardRepositoryImpl(
      * [GiftCardException.InUse] (another redemption of this card still holds its wallet) and
      * [GiftCardException.NotChecked] both lead to a failed check, whose retry checks the card again.
      */
-    private fun Exception.toPhase(): GiftCardPhase =
+    private fun Throwable.toPhase(): GiftCardPhase =
         when (this) {
             is GiftCardException.WrongNetwork -> GiftCardPhase.Failed(GiftCardFailure.WRONG_NETWORK)
             is GiftCardException.NotAvailable -> GiftCardPhase.Failed(GiftCardFailure.NOT_AVAILABLE)
@@ -569,7 +568,7 @@ class GiftCardRepositoryImpl(
      * unexpected reason can be retried.
      */
     private class Session(
-        val linkIds: MutableSet<String>,
+        var linkIds: Set<String>,
     ) {
         /**
          * What the session's observers collect. Nothing in the repository collects it, so that its

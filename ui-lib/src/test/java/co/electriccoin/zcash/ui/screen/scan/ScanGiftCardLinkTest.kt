@@ -1,18 +1,15 @@
 package co.electriccoin.zcash.ui.screen.scan
 
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
-import co.electriccoin.zcash.ui.common.repository.GiftCardLinkPrefixes
 import co.electriccoin.zcash.ui.common.repository.GiftCardLinkStoreImpl
-import co.electriccoin.zcash.ui.common.repository.GiftCardRepository
-import co.electriccoin.zcash.ui.common.usecase.NavigateToRedeemGiftCardUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToScanGenericAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.OnAddressScannedUseCase
 import co.electriccoin.zcash.ui.common.usecase.OnZip321ScannedUseCase
 import co.electriccoin.zcash.ui.common.usecase.Zip321ParseUriValidationUseCase
 import co.electriccoin.zcash.ui.screen.redeemgift.RecordingNavigationRouter
 import co.electriccoin.zcash.ui.screen.redeemgift.RedeemGiftArgs
+import co.electriccoin.zcash.ui.screen.redeemgift.navigateToRedeemGiftCard
 import io.mockk.confirmVerified
-import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -43,12 +40,7 @@ class ScanGiftCardLinkTest {
 
     private val router = RecordingNavigationRouter()
 
-    private val giftCardRepository =
-        mockk<GiftCardRepository> {
-            every { isGiftCardLink(any()) } answers { GiftCardLinkPrefixes.matches(firstArg()) }
-        }
-
-    private val navigateToRedeemGiftCard = NavigateToRedeemGiftCardUseCase(giftCardRepository, store, router)
+    private val navigateToRedeemGiftCard = navigateToRedeemGiftCard(store, router)
 
     private val zip321Parser = mockk<Zip321ParseUriValidationUseCase>()
 

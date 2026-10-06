@@ -4,10 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.usecase.ClearClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToRedeemGiftCardUseCase
-import co.electriccoin.zcash.ui.common.usecase.ReadClipboardTextUseCase
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.redeemgift.paste.PasteGiftCardLinkArgs
 import co.electriccoin.zcash.ui.screen.scan.ImageToQrCodeResult
 import co.electriccoin.zcash.ui.screen.scan.ScanValidationState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,17 +14,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
- * The first step of the redeem flow: scan a gift card QR code, pick an image of one, or paste its link.
+ * The first step of the redeem flow: scan a gift card QR code, pick an image of one, or go on to paste its link.
+ * Every callback runs on the main thread without suspending, so they never interleave.
  */
 class ScanGiftCardVM(
     args: ScanGiftCardArgs,
     private val navigateToRedeemGiftCard: NavigateToRedeemGiftCardUseCase,
-    private val readClipboardText: ReadClipboardTextUseCase,
-    private val clearClipboard: ClearClipboardUseCase,
     private val navigationRouter: NavigationRouter,
 ) : ViewModel() {
     private val mutableState =
@@ -40,56 +36,47 @@ class ScanGiftCardVM(
 
     val state: StateFlow<ScanGiftCardState> = mutableState.asStateFlow()
 
-    private val mutex = Mutex()
-
     private var hasBeenScannedSuccessfully = false
 
-    fun onScanned(result: String) =
-        viewModelScope.launch {
-            mutex.withLock { handle(result) }
-        }
+    fun onScanned(result: String) = viewModelScope.launch { handle(result) }
 
-    fun onPaste() =
-        viewModelScope.launch {
-            mutex.withLock {
-                if (handle(readClipboardText().orEmpty())) clearClipboard()
-            }
-        }
+    /**
+     * Opens the screen where the user pastes or types the gift card link; the scanner stays below it. Ignored once a
+     * scanned link is taking the scanner's place.
+     */
+    fun onPaste() {
+        if (hasBeenScannedSuccessfully) return
+        navigationRouter.forward(PasteGiftCardLinkArgs)
+    }
 
     fun onScannedError() =
         viewModelScope.launch {
-            mutex.withLock {
-                if (!hasBeenScannedSuccessfully) setValidation(ScanValidationState.INVALID)
-            }
+            if (!hasBeenScannedSuccessfully) setValidation(ScanValidationState.INVALID)
         }
 
     fun onImageScanned(result: ImageToQrCodeResult) =
         viewModelScope.launch {
-            mutex.withLock {
-                if (hasBeenScannedSuccessfully) return@withLock
-                when (result) {
-                    is ImageToQrCodeResult.SingleCode -> handle(result.text)
-                    ImageToQrCodeResult.MultipleCodes -> setValidation(ScanValidationState.SEVERAL_CODES_FOUND)
-                    ImageToQrCodeResult.NoCode -> setValidation(ScanValidationState.INVALID_IMAGE)
-                }
+            if (hasBeenScannedSuccessfully) return@launch
+            when (result) {
+                is ImageToQrCodeResult.SingleCode -> handle(result.text)
+                ImageToQrCodeResult.MultipleCodes -> setValidation(ScanValidationState.SEVERAL_CODES_FOUND)
+                ImageToQrCodeResult.NoCode -> setValidation(ScanValidationState.INVALID_IMAGE)
             }
         }
 
     private fun onBack() = navigationRouter.back()
 
     /**
-     * Opens the redeem screen for [text] if it is a gift card link. Returns whether it was one and was taken.
+     * Opens the redeem screen for [text] if it is a gift card link and no link was taken yet.
      */
-    private fun handle(text: String): Boolean {
-        if (hasBeenScannedSuccessfully) return false
-        return if (navigateToRedeemGiftCard.isGiftCardLink(text)) {
+    private fun handle(text: String) {
+        if (hasBeenScannedSuccessfully) return
+        if (navigateToRedeemGiftCard.isGiftCardLink(text)) {
             hasBeenScannedSuccessfully = true
             setValidation(ScanValidationState.VALID)
-            navigateToRedeemGiftCard.replaceWithRedeem(text.trim())
-            true
+            navigateToRedeemGiftCard.replaceGiftCardScanWithRedeem(text.trim())
         } else {
             setValidation(ScanValidationState.INVALID)
-            false
         }
     }
 

@@ -48,19 +48,16 @@ interface GiftCardLinkStore {
 }
 
 class GiftCardLinkStoreImpl : GiftCardLinkStore {
-    private val links = mutableMapOf<String, String>()
+    private val links = MutableStateFlow(emptyMap<String, String>())
 
     private val scanRequested = MutableStateFlow(false)
 
     override val isInAppScanRequested: StateFlow<Boolean> = scanRequested.asStateFlow()
 
-    override fun stash(link: String): String {
-        val id = UUID.randomUUID().toString()
-        synchronized(links) { links[id] = link }
-        return id
-    }
+    override fun stash(link: String): String =
+        UUID.randomUUID().toString().also { id -> links.update { it + (id to link) } }
 
-    override fun take(id: String): String? = synchronized(links) { links.remove(id) }
+    override fun take(id: String): String? = links.getAndUpdate { it - id }[id]
 
     override fun requestInAppScan() {
         scanRequested.update { true }

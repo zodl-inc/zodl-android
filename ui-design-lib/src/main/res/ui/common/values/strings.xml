@@ -560,17 +560,25 @@
     <string name="redeemGift_title">Redeem Gift Card</string>
     <string name="redeemGift_scan_invalid">This isn\'t a valid gift card. Scan the gift card\'s QR code or copy its link and try again.</string>
     <string name="redeemGift_scan_externalLink">Looks like you opened a gift card from another app. For better safety and security, scan the gift card\'s QR code with Zodl.</string>
+    <string name="redeemGift_paste_title">Paste your gift card link</string>
+    <string name="redeemGift_paste_subtitle">Paste the link that came with your Zcash gift card. You will see the amount before you redeem it.</string>
+    <string name="redeemGift_paste_label">Gift card link</string>
+    <string name="redeemGift_paste_placeholder">Paste link here</string>
+    <string name="redeemGift_paste_paste">Paste</string>
+    <string name="redeemGift_paste_clear">Clear</string>
+    <string name="redeemGift_paste_invalid">This link is not a valid gift card. Check it and try again.</string>
+    <string name="redeemGift_paste_continue">Continue</string>
     <string name="redeemGift_checking_title">Looking for your gift…</string>
-    <string name="redeemGift_checking_subtitle">Checking the gift card on the Zcash network. This can take a moment.</string>
+    <string name="redeemGift_checking_subtitle">Checking your gift card. This can take a moment.</string>
     <string name="redeemGift_ready_title">You received a gift!</string>
     <string name="redeemGift_ready_messageLabel">Message from the sender</string>
-    <string name="redeemGift_ready_destination">The funds will be sent to your <xliff:g id="wallet" example="Zodl">%1$s</xliff:g> wallet.</string>
-    <string name="redeemGift_ready_feeHint">This is what you\'ll receive. The network fee is paid from the gift card.</string>
+    <string name="redeemGift_ready_disclaimer">The funds will be sent to your <xliff:g id="wallet" example="Zodl">%1$s</xliff:g> wallet. The network fee is already deducted from the amount shown.</string>
+    <string name="redeemGift_ready_disclaimer_noWallet">The network fee is already deducted from the amount shown.</string>
     <!-- The memo on the redeem transaction; followed by " · " and the card's message when it has one -->
-    <string name="redeemGift_memo">Gift card</string>
+    <string name="redeemGift_memo">Gift Card</string>
     <string name="redeemGift_redeem">Redeem</string>
-    <string name="redeemGift_pending_title">Your gift is on its way</string>
-    <string name="redeemGift_pending_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> needs a few more confirmations before it can be redeemed. We\'ll keep checking while this screen is open.</string>
+    <string name="redeemGift_pending_title">Preparing your gift…</string>
+    <string name="redeemGift_pending_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> needs a few more confirmations before it can be redeemed. We’ll keep checking while this screen is open.</string>
     <string name="redeemGift_empty_title">Nothing to redeem</string>
     <string name="redeemGift_empty_subtitle">This gift card has already been redeemed, or it hasn\'t been funded yet.</string>
     <string name="redeemGift_invalid_title">Invalid gift card</string>
@@ -586,8 +594,8 @@
     <string name="redeemGift_redeeming_title">Redeeming your gift…</string>
     <string name="redeemGift_redeeming_subtitle">Sending the gift card\'s funds to your wallet.</string>
     <string name="redeemGift_success_title">Gift redeemed!</string>
-    <string name="redeemGift_success_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> is on its way to your wallet. It will show up in your activity shortly.</string>
-    <string name="redeemGift_success_subtitle_noAmount">Your gift is on its way to your wallet. It will show up in your activity shortly.</string>
+    <string name="redeemGift_success_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> is on its way to your wallet.\nIt will show up in your activity shortly.</string>
+    <string name="redeemGift_success_subtitle_noAmount">Your gift is on its way to your wallet.\nIt will show up in your activity shortly.</string>
     <string name="redeemGift_failure_title">Redemption failed</string>
     <string name="redeemGift_failure_subtitle">Something went wrong while redeeming the gift card. Try again.</string>
     <string name="redeemGift_retry">Try again</string>

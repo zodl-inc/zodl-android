@@ -3,6 +3,12 @@ package co.electriccoin.zcash.ui.common.model
 import cash.z.ecc.android.sdk.model.Zatoshi
 
 /**
+ * Joins the "Gift Card" label and the card's message in the redeem memo; the redeem screen shows the message the same
+ * way.
+ */
+internal const val GIFT_CARD_MEMO_SEPARATOR = " · "
+
+/**
  * Opaque reference to a gift card that has been parsed and is held by a
  * [co.electriccoin.zcash.ui.common.repository.GiftCardRepository]. It never carries the card's link or secret, so
  * it is safe to keep in UI state.

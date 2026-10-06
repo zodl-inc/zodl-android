@@ -11,6 +11,7 @@ import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.GIFT_CARD_MEMO_SEPARATOR
 import co.electriccoin.zcash.ui.common.model.GiftCardException
 import co.electriccoin.zcash.ui.common.model.GiftCardHandle
 import co.electriccoin.zcash.ui.common.model.GiftCardOrigin
@@ -363,7 +364,7 @@ class GiftCardDataSourceImpl(
 }
 
 /**
- * The memo on the redeem transaction: the localized "Gift card" [label], followed by the card's [message] when it
+ * The memo on the redeem transaction: the localized "Gift Card" [label], followed by the card's [message] when it
  * has one. The message is the SDK's [GiftCard.description], which the SDK has already sanitized (no control or
  * invisible characters, never blank); here it is only cut on a UTF-8 character boundary so that the memo always fits
  * [MemoContent.MAX_MEMO_LENGTH_BYTES]. A card's message is never a reason to fail the redemption.
@@ -376,13 +377,11 @@ private fun redeemMemo(
         if (message == null) {
             label
         } else {
-            val prefix = label + MEMO_MESSAGE_SEPARATOR
+            val prefix = label + GIFT_CARD_MEMO_SEPARATOR
             prefix + message.truncatedToUtf8Bytes(MemoContent.MAX_MEMO_LENGTH_BYTES - MemoContent.length(prefix))
         }
     return MemoContent.fromString(memo)
 }
-
-private const val MEMO_MESSAGE_SEPARATOR = " · "
 
 /**
  * The longest prefix of this string that encodes to at most [maxBytes] UTF-8 bytes, cut on a code point boundary:

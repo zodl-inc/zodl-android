@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.common.repository
 
-import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.common.datasource.GiftCardDataSource
 import co.electriccoin.zcash.ui.common.datasource.ParsedGiftCard
 import co.electriccoin.zcash.ui.common.datasource.StoredCardWallet
@@ -8,15 +7,12 @@ import co.electriccoin.zcash.ui.common.model.GiftCardException
 import co.electriccoin.zcash.ui.common.model.GiftCardFailure
 import co.electriccoin.zcash.ui.common.model.GiftCardHandle
 import co.electriccoin.zcash.ui.common.model.GiftCardPhase
-import co.electriccoin.zcash.ui.common.model.GiftCardSession
 import co.electriccoin.zcash.ui.common.model.GiftCardStatus
 import co.electriccoin.zcash.ui.fixture.FakeGiftCardDataSource
 import co.electriccoin.zcash.ui.fixture.GiftCardSummaryFixture
+import co.electriccoin.zcash.ui.fixture.GiftCardSummaryFixture.pendingStatus
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -27,7 +23,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
@@ -63,6 +58,30 @@ class GiftCardRepositorySessionLifecycleTest {
                 "https://evil.example/https://gift.zodl.com/#v=1"
             ).forEach { assertFalse(repository.isGiftCardLink(it), it) }
             assertTrue(dataSource.parsedLinks.isEmpty())
+        }
+
+    @Test
+    fun theStartOfAGiftCardLinkPrefixIsRecognisedWhileTyping() =
+        runTest {
+            val repository = repository()
+
+            listOf(
+                "",
+                "  ",
+                "h",
+                "HTTPS://GIFT",
+                " https://gift.zodl.com",
+                "https://gift.zodl.com/",
+                "https://gift.zodl.com/#",
+                "https://link.vizor.cash/payment-links/op"
+            ).forEach { assertTrue(repository.isGiftCardLinkStart(it), it) }
+            listOf(
+                "x",
+                "zcash:u1",
+                "https://gift.zodl.org",
+                "https://gift.zodl.com/#v=1",
+                "https://evil.example/https://gift.zodl.com/#"
+            ).forEach { assertFalse(repository.isGiftCardLinkStart(it), it) }
         }
 
     @Test
@@ -145,7 +164,7 @@ class GiftCardRepositorySessionLifecycleTest {
     @Test
     fun redeemIsIgnoredUnlessTheCardIsReady() =
         runTest {
-            dataSource.statuses = listOf(pending())
+            dataSource.statuses = listOf(pendingStatus())
             val repository = repository()
             val linkId = store.stash(LINK)
             val observer = observe(repository.observeSession(linkId))
@@ -190,7 +209,7 @@ class GiftCardRepositorySessionLifecycleTest {
     @Test
     fun aFailedRecheckTheUserAskedForKeepsTheCardPending() =
         runTest {
-            dataSource.statuses = listOf(pending())
+            dataSource.statuses = listOf(pendingStatus())
             val repository = repository()
             val linkId = store.stash(LINK)
             val observer = observe(repository.observeSession(linkId))
@@ -201,7 +220,10 @@ class GiftCardRepositorySessionLifecycleTest {
                 repository.checkAgain(linkId)
                 runCurrent()
 
-                assertEquals(GiftCardPhase.Pending(pending().pending, isRechecking = false), observer.latest().phase)
+                assertEquals(
+                    GiftCardPhase.Pending(pendingStatus().pending, isRechecking = false),
+                    observer.latest().phase
+                )
             }
             assertEquals(3, dataSource.checkCount)
             repository.dismiss(linkId)
@@ -211,7 +233,7 @@ class GiftCardRepositorySessionLifecycleTest {
     @Test
     fun aRecheckThatIsStillPendingKeepsPolling() =
         runTest {
-            dataSource.statuses = listOf(pending(), pending(), GiftCardSummaryFixture.readyStatus())
+            dataSource.statuses = listOf(pendingStatus(), pendingStatus(), GiftCardSummaryFixture.readyStatus())
             val repository = repository()
             val linkId = store.stash(LINK)
             val observer = observe(repository.observeSession(linkId))
@@ -219,7 +241,7 @@ class GiftCardRepositorySessionLifecycleTest {
 
             repository.checkAgain(linkId)
             runCurrent()
-            assertEquals(GiftCardPhase.Pending(pending().pending), observer.latest().phase)
+            assertEquals(GiftCardPhase.Pending(pendingStatus().pending), observer.latest().phase)
 
             advanceTimeBy(GiftCardRepositoryImpl.PENDING_RETRY_INTERVAL + 1.seconds)
 
@@ -231,7 +253,7 @@ class GiftCardRepositorySessionLifecycleTest {
     @Test
     fun aPollThatFailsWithAKnownErrorKeepsTheCardPending() =
         runTest {
-            dataSource.statuses = listOf(pending())
+            dataSource.statuses = listOf(pendingStatus())
             val repository = repository()
             val linkId = store.stash(LINK)
             val observer = observe(repository.observeSession(linkId))
@@ -241,7 +263,7 @@ class GiftCardRepositorySessionLifecycleTest {
             advanceTimeBy(GiftCardRepositoryImpl.PENDING_RETRY_INTERVAL + 1.seconds)
 
             assertEquals(2, dataSource.checkCount)
-            assertEquals(GiftCardPhase.Pending(pending().pending), observer.latest().phase)
+            assertEquals(GiftCardPhase.Pending(pendingStatus().pending), observer.latest().phase)
             repository.dismiss(linkId)
             observer.job.cancel()
         }
@@ -249,7 +271,7 @@ class GiftCardRepositorySessionLifecycleTest {
     @Test
     fun dismissDuringAPollCancelsItsCheck() =
         runTest {
-            dataSource.statuses = listOf(pending(), GiftCardSummaryFixture.readyStatus())
+            dataSource.statuses = listOf(pendingStatus(), GiftCardSummaryFixture.readyStatus())
             val repository = repository()
             val linkId = store.stash(LINK)
             val observer = observe(repository.observeSession(linkId))
@@ -311,7 +333,7 @@ class GiftCardRepositorySessionLifecycleTest {
     @Test
     fun aCheckThatFinishesAfterDismissChangesNothing() =
         runTest {
-            dataSource.statuses = listOf(pending())
+            dataSource.statuses = listOf(pendingStatus())
             val source = GatedDataSource(dataSource, isCancellable = false, gateParse = false)
             source.checkGate = CompletableDeferred()
             val repository = repository(source)
@@ -376,21 +398,6 @@ class GiftCardRepositorySessionLifecycleTest {
             giftCardDataSource = source,
             giftCardLinkStore = store,
         ).also { it.scope = backgroundScope }
-
-    private fun TestScope.observe(flow: Flow<GiftCardSession>): Observer {
-        val observer = Observer()
-        observer.job = launch { flow.collect { observer.values += it } }
-        return observer
-    }
-
-    private class Observer {
-        val values = mutableListOf<GiftCardSession>()
-        lateinit var job: Job
-
-        fun latest(): GiftCardSession = assertNotNull(values.lastOrNull())
-    }
-
-    private fun pending() = GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT))
 
     /**
      * [delegate] with [parse] held until [parseGate] completes and [check] until [checkGate] does, if set. A

@@ -526,15 +526,23 @@
     <string name="redeemGift_title">Canjear tarjeta de regalo</string>
     <string name="redeemGift_scan_invalid">Esta no es una tarjeta de regalo válida. Escanea el código QR de la tarjeta o copia su enlace e inténtalo de nuevo.</string>
     <string name="redeemGift_scan_externalLink">Parece que abriste una tarjeta de regalo desde otra aplicación. Para mayor seguridad y protección, escanea el código QR de la tarjeta de regalo con Zodl.</string>
+    <string name="redeemGift_paste_title">Pega el enlace de tu tarjeta de regalo</string>
+    <string name="redeemGift_paste_subtitle">Pega el enlace que vino con tu tarjeta de regalo de Zcash. Verás el monto antes de canjearla.</string>
+    <string name="redeemGift_paste_label">Enlace de la tarjeta de regalo</string>
+    <string name="redeemGift_paste_placeholder">Pega el enlace aquí</string>
+    <string name="redeemGift_paste_paste">Pegar</string>
+    <string name="redeemGift_paste_clear">Borrar</string>
+    <string name="redeemGift_paste_invalid">Este enlace no es una tarjeta de regalo válida. Revísalo e inténtalo de nuevo.</string>
+    <string name="redeemGift_paste_continue">Continuar</string>
     <string name="redeemGift_checking_title">Buscando tu regalo…</string>
-    <string name="redeemGift_checking_subtitle">Verificando la tarjeta de regalo en la red de Zcash. Esto puede tardar un momento.</string>
+    <string name="redeemGift_checking_subtitle">Verificando tu tarjeta de regalo. Esto puede tardar un momento.</string>
     <string name="redeemGift_ready_title">¡Recibiste un regalo!</string>
     <string name="redeemGift_ready_messageLabel">Mensaje de quien la envía</string>
-    <string name="redeemGift_ready_destination">Los fondos se enviarán a tu billetera <xliff:g id="wallet" example="Zodl">%1$s</xliff:g>.</string>
-    <string name="redeemGift_ready_feeHint">Esto es lo que recibirás. La comisión de red se paga desde la tarjeta de regalo.</string>
+    <string name="redeemGift_ready_disclaimer">Los fondos se enviarán a tu billetera <xliff:g id="wallet" example="Zodl">%1$s</xliff:g>. La comisión de red ya está descontada del monto mostrado.</string>
+    <string name="redeemGift_ready_disclaimer_noWallet">La comisión de red ya está descontada del monto mostrado.</string>
     <string name="redeemGift_memo">Tarjeta de regalo</string>
     <string name="redeemGift_redeem">Canjear</string>
-    <string name="redeemGift_pending_title">Tu regalo está en camino</string>
+    <string name="redeemGift_pending_title">Preparando tu regalo…</string>
     <string name="redeemGift_pending_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> necesita algunas confirmaciones más antes de poder canjearse. Seguiremos verificando mientras esta pantalla esté abierta.</string>
     <string name="redeemGift_empty_title">Nada para canjear</string>
     <string name="redeemGift_empty_subtitle">Esta tarjeta de regalo ya fue canjeada o todavía no tiene fondos.</string>
@@ -551,8 +559,8 @@
     <string name="redeemGift_redeeming_title">Canjeando tu regalo…</string>
     <string name="redeemGift_redeeming_subtitle">Enviando los fondos de la tarjeta de regalo a tu billetera.</string>
     <string name="redeemGift_success_title">¡Regalo canjeado!</string>
-    <string name="redeemGift_success_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> está en camino a tu billetera. Aparecerá en tu actividad en breve.</string>
-    <string name="redeemGift_success_subtitle_noAmount">Tu regalo está en camino a tu billetera. Aparecerá en tu actividad en breve.</string>
+    <string name="redeemGift_success_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> está en camino a tu billetera.\nAparecerá en tu actividad en breve.</string>
+    <string name="redeemGift_success_subtitle_noAmount">Tu regalo está en camino a tu billetera.\nAparecerá en tu actividad en breve.</string>
     <string name="redeemGift_failure_title">El canje falló</string>
     <string name="redeemGift_failure_subtitle">Algo salió mal al canjear la tarjeta de regalo. Inténtalo de nuevo.</string>
     <string name="redeemGift_retry">Intentar de nuevo</string>

@@ -784,7 +784,7 @@ class GiftCardDataSourceImplTest {
         const val AMOUNT = 10_000_000L
         const val FEE = 10_000L
         const val MESSAGE = "Welcome to Zcash Summit"
-        const val MEMO_LABEL = "Gift card"
+        const val MEMO_LABEL = "Gift Card"
         const val CLOSE_DURATION_MS = 1_000L
         val ENDPOINT = LightWalletEndpoint(host = "zec.rocks", port = 443, isSecure = true)
         val TX_ID = FirstClassByteArray(ByteArray(32) { it.toByte() })

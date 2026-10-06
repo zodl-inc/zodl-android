@@ -23,7 +23,6 @@ import kotlinx.coroutines.CompletableDeferred
  *
  * [checkGate] and [redeemGate], when set, hold [check] and [redeem] until completed, to observe in-flight states.
  */
-@Suppress("LongParameterList")
 class FakeGiftCardDataSource(
     var summary: GiftCardSummary = GiftCardSummaryFixture.new(),
     var statuses: List<GiftCardStatus> = listOf(GiftCardSummaryFixture.readyStatus()),
@@ -107,6 +106,8 @@ object GiftCardSummaryFixture {
     )
 
     fun readyStatus() = GiftCardStatus.Ready(spendable = Zatoshi(AMOUNT), redeemable = Zatoshi(RECEIVED))
+
+    fun pendingStatus() = GiftCardStatus.Pending(Zatoshi(AMOUNT))
 
     fun storedWallet(alias: String = WALLET_ALIAS) = StoredCardWallet(network = ZcashNetwork.Mainnet, alias = alias)
 }

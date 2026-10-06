@@ -7,6 +7,8 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlin.reflect.KClass
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 internal class RecordingNavigationRouter : NavigationRouter {
     var backCount = 0
@@ -15,6 +17,19 @@ internal class RecordingNavigationRouter : NavigationRouter {
         private set
     val forwardedRoutes = mutableListOf<Any>()
     val replacedRoutes = mutableListOf<Any>()
+
+    /** Every [replaceFrom] call: the route popped back to, inclusive, and the routes added in its place. */
+    val replacedFrom = mutableListOf<Pair<KClass<*>, List<Any>>>()
+
+    /**
+     * The redeem screens that replaced the gift card flow's screens from the gift card scanner on, one per
+     * [replaceFrom] call; fails on any other [replaceFrom] call.
+     */
+    fun redeemReplacingGiftCardScan(): List<RedeemGiftArgs> =
+        replacedFrom.map { (route, routes) ->
+            assertEquals(ScanGiftCardArgs::class, route)
+            assertIs<RedeemGiftArgs>(routes.single())
+        }
 
     override fun forward(vararg routes: Any) {
         forwardedRoutes.addAll(routes)
@@ -26,7 +41,9 @@ internal class RecordingNavigationRouter : NavigationRouter {
 
     override fun replaceAll(vararg routes: Any) = Unit
 
-    override fun replaceFrom(route: KClass<*>, vararg routes: Any) = Unit
+    override fun replaceFrom(route: KClass<*>, vararg routes: Any) {
+        replacedFrom += route to routes.toList()
+    }
 
     override fun back() {
         backCount++

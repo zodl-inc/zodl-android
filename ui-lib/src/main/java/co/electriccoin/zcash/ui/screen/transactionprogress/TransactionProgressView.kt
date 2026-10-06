@@ -138,18 +138,14 @@ private fun Content(state: TransactionProgressState, modifier: Modifier = Modifi
                     top.linkTo(parent.top)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
+                    bottom.linkTo(content.top)
 
-                    if (state.centerContent) {
-                        height = Dimension.value(0.dp)
-                    } else {
-                        bottom.linkTo(content.top)
-                        height =
-                            if (state.transactionIds == null) {
-                                Dimension.percent(.45f)
-                            } else {
-                                Dimension.value(12.dp)
-                            }
-                    }
+                    height =
+                        if (state.transactionIds == null) {
+                            Dimension.percent(.45f)
+                        } else {
+                            Dimension.value(12.dp)
+                        }
                 }
         )
 
@@ -158,13 +154,7 @@ private fun Content(state: TransactionProgressState, modifier: Modifier = Modifi
             modifier =
                 Modifier
                     .constrainAs(content) {
-                        if (state.centerContent) {
-                            top.linkTo(parent.top)
-                            bottom.linkTo(parent.bottom)
-                            verticalBias = .5f
-                        } else {
-                            top.linkTo(spaceTop.bottom)
-                        }
+                        top.linkTo(spaceTop.bottom)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
                         width = Dimension.fillToConstraints
