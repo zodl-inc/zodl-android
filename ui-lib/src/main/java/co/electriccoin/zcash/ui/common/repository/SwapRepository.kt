@@ -29,16 +29,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.seconds
 
 interface SwapRepository {
@@ -151,15 +148,8 @@ class SwapRepositoryImpl(
     override suspend fun requestRefreshAssetsOnce() {
         while (true) {
             val session = getOrStartRefreshAssetsSession(keepRefreshing = false)
-            try {
-                session.firstRefresh.await()
-                return
-            } catch (e: CancellationException) {
-                // clear() may stop the screen-owned periodic refresh while a status lookup is
-                // awaiting its first result. Retry in a fresh session unless this caller itself
-                // was cancelled.
-                currentCoroutineContext().ensureActive()
-            }
+            session.firstRefresh.join()
+            if (!session.firstRefresh.isCancelled) return
         }
     }
 
@@ -169,33 +159,52 @@ class SwapRepositoryImpl(
      */
     private fun getOrStartRefreshAssetsSession(keepRefreshing: Boolean): AssetsRefreshSession =
         synchronized(this) {
-            refreshSession
-                ?.takeIf { it.job?.isActive == true }
-                ?.also { if (keepRefreshing) it.keepRefreshing.set(true) }
-                ?: AssetsRefreshSession(keepRefreshing = AtomicBoolean(keepRefreshing)).also { session ->
-                    refreshSession = session
-                    session.job =
-                        scope.launch {
-                            try {
-                                hydrateAssetsFromCache()
-                                do {
-                                    refreshAssetsInternal()
-                                    session.firstRefresh.complete(Unit)
-                                    if (!session.keepRefreshing.get()) break
-                                    delay(ASSET_REFRESH_INTERVAL)
-                                } while (true)
-                            } finally {
-                                if (!session.firstRefresh.isCompleted) {
-                                    session.firstRefresh.cancel()
-                                }
+            val activeSession = refreshSession?.takeIf { it.job?.isActive == true }
+            if (activeSession != null && !activeSession.firstRefresh.isCompleted) {
+                activeSession.keepRefreshing = activeSession.keepRefreshing || keepRefreshing
+                return@synchronized activeSession
+            }
+
+            // A completed first refresh means the periodic job is sleeping. A user-driven refresh
+            // must fetch immediately instead of waiting for the next 30-second tick.
+            val shouldKeepRefreshing = keepRefreshing || activeSession?.keepRefreshing == true
+            activeSession?.job?.cancel()
+
+            AssetsRefreshSession(keepRefreshing = shouldKeepRefreshing).also { session ->
+                refreshSession = session
+                val job =
+                    scope
+                        .launch {
+                            hydrateAssetsFromCache()
+                            do {
+                                refreshAssetsInternal()
+                                session.firstRefresh.complete(Unit)
+                                val continueRefreshing =
+                                    synchronized(this@SwapRepositoryImpl) {
+                                        if (refreshSession === session && session.keepRefreshing) {
+                                            true
+                                        } else {
+                                            if (refreshSession === session) refreshSession = null
+                                            false
+                                        }
+                                    }
+                                if (!continueRefreshing) break
+                                delay(ASSET_REFRESH_INTERVAL)
+                            } while (true)
+                        }.also { launchedJob ->
+                            // launch may be cancelled before its body is dispatched, so cleanup cannot
+                            // rely on a finally block inside the coroutine.
+                            launchedJob.invokeOnCompletion {
+                                if (!session.firstRefresh.isCompleted) session.firstRefresh.cancel()
                             }
                         }
-                }
+                session.job = job
+            }
         }
 
     private class AssetsRefreshSession(
         val firstRefresh: CompletableDeferred<Unit> = CompletableDeferred(),
-        val keepRefreshing: AtomicBoolean,
+        var keepRefreshing: Boolean,
         var job: Job? = null,
     )
 

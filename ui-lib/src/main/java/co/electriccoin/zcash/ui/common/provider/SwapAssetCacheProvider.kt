@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import co.electriccoin.zcash.crash.android.GlobalCrashReporter
 import co.electriccoin.zcash.preference.StandardPreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.PreferenceKey
 import co.electriccoin.zcash.preference.model.entry.StringPreferenceDefault
@@ -24,6 +25,7 @@ class SwapAssetCacheProviderImpl(
     private val preference = StringPreferenceDefault(PreferenceKey(CACHE_KEY), "")
     private val json = Json { ignoreUnknownKeys = true }
 
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun get(): List<SwapAsset> =
         try {
             preference
@@ -35,6 +37,7 @@ class SwapAssetCacheProviderImpl(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            GlobalCrashReporter.reportCaughtException(e)
             emptyList()
         }
 

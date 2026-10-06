@@ -39,7 +39,11 @@ class SwapAssetCacheProviderTest {
         runTest {
             val preferences =
                 RecordingPreferenceProvider(
-                    """[{"assetId":"btc-btc","tokenTicker":"btc","chainTicker":"btc","contractAddress":"old","decimals":8}]"""
+                    """
+                    [
+                        {"assetId":"btc-btc","tokenTicker":"btc","chainTicker":"btc","contractAddress":"old","decimals":8}
+                    ]
+                    """.trimIndent()
                 )
 
             val restored = provider(preferences).get().single()

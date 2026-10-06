@@ -179,6 +179,7 @@ internal class PayVM(
                     val refreshed = catalog.firstOrNull { it.assetId == selected.assetId }
                     when {
                         refreshed == selected -> state
+                        refreshed != null && selected.usdPrice != null -> state.copy(asset = refreshed)
                         refreshed != null -> state.withAsset(refreshed)
                         !assets.isLoading -> state.withAsset(null)
                         else -> state

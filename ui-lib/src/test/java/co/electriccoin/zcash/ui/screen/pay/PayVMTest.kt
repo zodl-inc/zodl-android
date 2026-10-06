@@ -90,7 +90,12 @@ class PayVMTest {
     fun livePricePreservesTypedFiatAndRecomputesTokenAmount() =
         runTest {
             val cachedAsset = SwapAssetTestFixture.asset(tokenTicker = "eth", chainTicker = "eth", usdPrice = null)
-            val liveAsset = SwapAssetTestFixture.asset(tokenTicker = "eth", chainTicker = "eth", usdPrice = BigDecimal("2"))
+            val liveAsset =
+                SwapAssetTestFixture.asset(
+                    tokenTicker = "eth",
+                    chainTicker = "eth",
+                    usdPrice = BigDecimal("2")
+                )
             val typedFiat = NumberTextFieldInnerState.fromAmount(BigDecimal("50"))
             val recomputedAmount = NumberTextFieldInnerState.fromAmount(BigDecimal("25"))
             val cachedAssets = SwapAssetsData(data = listOf(cachedAsset), isLoading = true)
@@ -111,6 +116,39 @@ class PayVMTest {
             verify(exactly = 1) {
                 harness.mapper.createAmountInnerState(typedFiat, any(), liveAsset)
             }
+        }
+
+    @Test
+    fun periodicPriceUpdatePreservesTypedValues() =
+        runTest {
+            val selectedAsset =
+                SwapAssetTestFixture.asset(
+                    tokenTicker = "eth",
+                    chainTicker = "eth",
+                    usdPrice = BigDecimal("2")
+                )
+            val refreshedAsset =
+                SwapAssetTestFixture.asset(
+                    tokenTicker = "eth",
+                    chainTicker = "eth",
+                    usdPrice = BigDecimal("3")
+                )
+            val typedAmount = NumberTextFieldInnerState.fromAmount(BigDecimal("25"))
+            val typedFiat = NumberTextFieldInnerState.fromAmount(BigDecimal("50"))
+            val harness =
+                harness(
+                    preselect = selectedAsset,
+                    assets = SwapAssetsData(data = listOf(selectedAsset))
+                )
+            harness.collectState(this)
+            harness.onTextFieldChange(typedAmount, typedFiat)
+
+            harness.repositoryAssets.value =
+                SwapAssetsData(data = listOf(refreshedAsset), isLoading = false)
+
+            assertEquals(typedAmount, harness.capturedState.amount)
+            assertEquals(typedFiat, harness.capturedState.fiatAmount)
+            assertEquals(refreshedAsset, harness.capturedState.asset)
         }
 
     @Test

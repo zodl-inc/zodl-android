@@ -149,7 +149,10 @@ internal class ExactOutputVMMapper {
         return amountInnerState.copy(
             innerTextFieldState =
                 amountInnerState.innerTextFieldState.copy(
-                    value = amount?.let { stringResByDynamicNumber(it, includeGroupingSeparator = false) } ?: stringRes(""),
+                    value =
+                        amount
+                            ?.let { stringResByDynamicNumber(it, includeGroupingSeparator = false) }
+                            ?: stringRes(""),
                     selection = TextSelection.End
                 ),
             amount = amount,
