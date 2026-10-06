@@ -238,10 +238,6 @@ class VoteConfirmSubmissionVM(
             votingWeightZEC =
                 recovery?.eligibleWeight?.toVotingWeightLabel()?.let(::stringRes)
                     ?: stringRes(R.string.vote_confirm_preparing),
-            excludedWeightNote =
-                recovery
-                    ?.takeIf { snapshot -> snapshot.trimmedBundleCount > 0 }
-                    ?.let { snapshot -> stringRes(snapshot.trimmedWeight.toVotingWeightLabel()) },
             hotkeyAddress = recovery?.hotkeyAddress?.let(::stringRes) ?: stringRes(R.string.vote_confirm_preparing),
             isKeystoneUser = isKeystone,
             includesAuthorizationProgress = includesAuthorizationProgress,
@@ -485,6 +481,19 @@ class VoteConfirmSubmissionVM(
                         current = progress.current,
                         total = progress.total,
                         progress = progress.progress
+                    )
+                }
+
+                is VotingSubmissionProgress.RunningRound -> {
+                    // completedProposals/totalProposals are already ratcheted (never regress)
+                    // in SubmitVotesUseCase -- see VotingSubmissionProgress.RunningRound's doc
+                    // comment for why the round-driver's own tally, not a per-event bundle/
+                    // proposal id, is what this status carries.
+                    VoteSubmissionStatus.RunningRound(
+                        completedProposals = progress.completedProposals,
+                        totalProposals = progress.totalProposals,
+                        proofProgress = progress.proofProgress,
+                        isRetrying = progress.isRetrying
                     )
                 }
             }
