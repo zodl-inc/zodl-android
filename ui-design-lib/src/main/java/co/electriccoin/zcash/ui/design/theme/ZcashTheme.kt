@@ -16,8 +16,10 @@ import androidx.compose.material3.RippleConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -177,10 +179,21 @@ private data class SystemBarAppearance(
 private val LocalSystemBarAppearance = staticCompositionLocalOf<SystemBarAppearance?> { null }
 
 /**
+ * The theme that applied the system bar style last. Used on the main thread only, by [ZcashSystemBarTheme].
+ */
+private object SystemBarOwnership {
+    var owner: Any? = null
+}
+
+/**
  * Applies the system bar style of this theme. A theme nested in another one with a different appearance (for example
  * a screen that forces the dark one over a light app) gives the enclosing theme's style back when it leaves the
  * composition. Without that, the bars keep the nested style on the screens that follow, because their own theme has
  * not changed and so never applies its style again - e.g. white status bar icons on a light screen.
+ *
+ * The style is given back only while this theme still owns the bars. A screen that leaves while another one has
+ * already applied its own style (a dark screen followed by another dark screen: the old one is disposed after the
+ * transition, when the new one has applied) must not undo it.
  */
 @Composable
 private fun ZcashSystemBarTheme(
@@ -188,14 +201,20 @@ private fun ZcashSystemBarTheme(
     useOledDark: Boolean
 ) {
     val activity = LocalActivity.current
-    val enclosing = LocalSystemBarAppearance.current
+    val enclosing by rememberUpdatedState(LocalSystemBarAppearance.current)
     DisposableEffect(activity, useDarkMode, useOledDark) {
+        val owner = Any()
         if (activity is ComponentActivity) {
+            SystemBarOwnership.owner = owner
             activity.applySystemBars(useDarkMode, useOledDark)
         }
         onDispose {
-            if (activity is ComponentActivity && enclosing != null) {
-                activity.applySystemBars(enclosing.useDarkMode, enclosing.useOledDark)
+            val restored = enclosing
+            if (activity is ComponentActivity && SystemBarOwnership.owner === owner) {
+                SystemBarOwnership.owner = null
+                if (restored != null && restored != SystemBarAppearance(useDarkMode, useOledDark)) {
+                    activity.applySystemBars(restored.useDarkMode, restored.useOledDark)
+                }
             }
         }
     }
