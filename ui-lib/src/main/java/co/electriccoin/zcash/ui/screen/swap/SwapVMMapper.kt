@@ -445,6 +445,9 @@ internal class SwapVMMapper {
         }
 
         val amount = textField.textField.innerState.amount
+        val isWaitingForPrices =
+            state.swapAssets.isLoading &&
+                (state.swapAsset?.usdPrice == null || state.swapAssets.zecAsset?.usdPrice == null)
         return ButtonState(
             text =
                 when {
@@ -456,7 +459,7 @@ internal class SwapVMMapper {
                         stringRes(co.electriccoin.zcash.ui.design.R.string.disconnectHWWallet_tryAgain)
                     }
 
-                    state.swapAssets.isLoading && state.swapAssets.data == null -> {
+                    isWaitingForPrices -> {
                         stringRes(co.electriccoin.zcash.ui.design.R.string.general_loading)
                     }
 
@@ -500,7 +503,7 @@ internal class SwapVMMapper {
             isLoading =
                 state.isEphemeralAddressLocked ||
                     state.isRequestingQuote ||
-                    (state.swapAssets.isLoading && state.swapAssets.data == null)
+                    isWaitingForPrices
         )
     }
 

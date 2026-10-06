@@ -5,6 +5,7 @@ import co.electriccoin.zcash.preference.model.entry.PreferenceKey
 import co.electriccoin.zcash.preference.model.entry.StringPreferenceDefault
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.near.NearSwapAsset
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -21,16 +22,21 @@ class SwapAssetCacheProviderImpl(
     private val blockchainProvider: BlockchainProvider,
 ) : SwapAssetCacheProvider {
     private val preference = StringPreferenceDefault(PreferenceKey(CACHE_KEY), "")
+    private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun get(): List<SwapAsset> =
-        runCatching {
+        try {
             preference
                 .getValue(standardPreferenceProvider())
                 .takeIf { it.isNotEmpty() }
-                ?.let { Json.decodeFromString<List<CachedSwapAsset>>(it) }
+                ?.let { json.decodeFromString<List<CachedSwapAsset>>(it) }
                 .orEmpty()
                 .map { it.toSwapAsset() }
-        }.getOrDefault(emptyList())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
 
     override suspend fun store(assets: List<SwapAsset>) {
         val cachedAssets =
@@ -42,7 +48,11 @@ class SwapAssetCacheProviderImpl(
                     decimals = it.decimals,
                 )
             }
-        preference.putValue(standardPreferenceProvider(), Json.encodeToString(cachedAssets))
+        val encoded = json.encodeToString(cachedAssets)
+        val preferences = standardPreferenceProvider()
+        if (preference.getValue(preferences) != encoded) {
+            preference.putValue(preferences, encoded)
+        }
     }
 
     private fun CachedSwapAsset.toSwapAsset(): SwapAsset =
@@ -61,8 +71,6 @@ class SwapAssetCacheProviderImpl(
         val assetId: String,
         val tokenTicker: String,
         val chainTicker: String,
-        // Kept only so caches written before SwapAsset dropped this field still decode.
-        val contractAddress: String? = null,
         val decimals: Int,
     )
 
