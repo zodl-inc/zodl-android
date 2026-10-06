@@ -72,18 +72,7 @@ class LedgerDeviceScanVM(
     private val navigateToError: NavigateToErrorUseCase,
     private val navigationRouter: NavigationRouter,
 ) : AndroidViewModel(application) {
-    /**
-     * The account index starts from the one stored for an account being paired again, read once
-     * since the target does not change while this screen lives, and from the first account
-     * otherwise.
-     */
-    private val internalState =
-        MutableStateFlow(
-            LedgerScanInternalState(
-                accountIndexText =
-                    (ledgerRepairTargetRepository.getZip32AccountIndex()?.index ?: MIN_ACCOUNT_INDEX).toString(),
-            )
-        )
+    private val internalState = MutableStateFlow(initialState(ledgerRepairTargetRepository))
 
     private var scanJob: Job? = null
 
@@ -281,8 +270,17 @@ class LedgerDeviceScanVM(
         internalState.update { it.copy(accountIndexText = text) }
     }
 
+    /**
+     * An invalid index keeps the card open, so the reason Connect is disabled stays in view.
+     */
     private fun onAdvancedOptionsToggle() {
-        internalState.update { it.copy(isAdvancedExpanded = !it.isAdvancedExpanded) }
+        internalState.update {
+            if (it.isAdvancedExpanded && parseAccountIndex(it.accountIndexText) == null) {
+                it
+            } else {
+                it.copy(isAdvancedExpanded = !it.isAdvancedExpanded)
+            }
+        }
     }
 
     private fun issueSheets(internal: LedgerScanInternalState) =
@@ -569,6 +567,20 @@ private data class LedgerScanInternalState(
     val isAdvancedExpanded: Boolean = false,
     val accountIndexText: String = MIN_ACCOUNT_INDEX.toString(),
 )
+
+/**
+ * The account index starts from the one stored for an account being paired again, read once since
+ * the target does not change while the scan screen lives, and from the first account otherwise.
+ * The card starts open when that index is anything but the first account, so the user sees which
+ * account is about to be paired, and when it is not valid.
+ */
+private fun initialState(ledgerRepairTargetRepository: LedgerRepairTargetRepository): LedgerScanInternalState {
+    val storedIndex = ledgerRepairTargetRepository.getZip32AccountIndex()?.index ?: MIN_ACCOUNT_INDEX
+    return LedgerScanInternalState(
+        isAdvancedExpanded = storedIndex != MIN_ACCOUNT_INDEX,
+        accountIndexText = storedIndex.toString(),
+    )
+}
 
 /**
  * The account index the user typed, when it is a whole number from [MIN_ACCOUNT_INDEX] to

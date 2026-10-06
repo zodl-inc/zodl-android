@@ -16,9 +16,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.collapse
+import androidx.compose.ui.semantics.expand
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -31,11 +40,14 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.screen.connectledger.common.UntrimmedTextSm
+import co.electriccoin.zcash.ui.screen.connectledger.common.UntrimmedTextXs
 import co.electriccoin.zcash.ui.design.R as DesignR
 
 /**
  * The Figma "Advanced options" card of step 2: a header that expands and collapses the card, then
- * the explanation and the account index field with its label and hint.
+ * the explanation and the account index field with its label and hint. The header announces
+ * whether the card is open through the expand and collapse accessibility actions.
  */
 @Composable
 internal fun LedgerAdvancedOptions(
@@ -55,7 +67,19 @@ internal fun LedgerAdvancedOptions(
                 Modifier
                     .fillMaxWidth()
                     .clickable(role = Role.Button, onClick = state.onToggle)
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
+                    .semantics {
+                        if (state.isExpanded) {
+                            collapse {
+                                state.onToggle()
+                                true
+                            }
+                        } else {
+                            expand {
+                                state.onToggle()
+                                true
+                            }
+                        }
+                    }.padding(horizontal = 16.dp, vertical = 14.dp)
                     .testTag(LedgerDeviceScanTag.ADVANCED_OPTIONS_HEADER),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -85,13 +109,13 @@ internal fun LedgerAdvancedOptions(
             ) {
                 Text(
                     text = state.message.getValue(),
-                    style = ZashiTypography.textXs,
+                    style = UntrimmedTextXs,
                     color = ZashiColors.Text.textTertiary,
                 )
                 Spacer(16.dp)
                 Text(
                     text = state.accountIndexLabel.getValue(),
-                    style = ZashiTypography.textSm,
+                    style = UntrimmedTextSm,
                     color = ZashiColors.Inputs.Default.label,
                     fontWeight = FontWeight.Medium,
                 )
@@ -101,8 +125,15 @@ internal fun LedgerAdvancedOptions(
                     modifier = Modifier.fillMaxWidth(),
                     innerModifier =
                         ZashiTextFieldDefaults.innerModifier
+                            .errorRing(state.accountIndex.isError, ZashiColors.Utility.ErrorRed.utilityError200)
                             .testTag(LedgerDeviceScanTag.ACCOUNT_INDEX_FIELD),
+                    textStyle = ZashiTypography.textSm,
                     singleLine = true,
+                    shape = RoundedCornerShape(FIELD_RADIUS.dp),
+                    colors =
+                        ZashiTextFieldDefaults.defaultColors(
+                            errorBorderColor = ZashiColors.Inputs.ErrorFilled.stroke,
+                        ),
                     keyboardOptions =
                         KeyboardOptions(
                             autoCorrectEnabled = false,
@@ -113,7 +144,7 @@ internal fun LedgerAdvancedOptions(
                 Spacer(6.dp)
                 Text(
                     text = state.hint.getValue(),
-                    style = ZashiTypography.textXs,
+                    style = UntrimmedTextXs,
                     color =
                         if (state.accountIndex.isError) {
                             ZashiColors.Inputs.ErrorDefault.hint
@@ -125,6 +156,33 @@ internal fun LedgerAdvancedOptions(
         }
     }
 }
+
+/**
+ * Figma's error state rings the field with a 2 dp "Focus Rings/Inner Error" shadow outside its
+ * stroke. It is drawn behind the field and outside its bounds, so it takes no layout space and the
+ * field does not move when the error comes and goes.
+ */
+private fun Modifier.errorRing(
+    isError: Boolean,
+    color: Color,
+) = if (isError) {
+    drawBehind {
+        val width = ERROR_RING_WIDTH.dp.toPx()
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(-width / 2, -width / 2),
+            size = Size(size.width + width, size.height + width),
+            cornerRadius = CornerRadius(FIELD_RADIUS.dp.toPx() + width / 2),
+            style = Stroke(width),
+        )
+    }
+} else {
+    this
+}
+
+private const val FIELD_RADIUS = 10
+
+private const val ERROR_RING_WIDTH = 2
 
 @PreviewScreens
 @Composable

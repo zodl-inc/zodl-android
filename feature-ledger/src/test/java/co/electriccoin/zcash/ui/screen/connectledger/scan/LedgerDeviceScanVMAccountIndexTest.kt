@@ -136,6 +136,60 @@ class LedgerDeviceScanVMAccountIndexTest {
         }
 
     @Test
+    fun anInvalidIndexKeepsTheCardOpenUntilItIsFixed() =
+        runTest(dispatcher) {
+            val vm = vm()
+            collect(vm)
+            vm.onPermissionsGranted()
+            listAndSelect(vm)
+            assertNotNull(vm.state.value.advancedOptions).onToggle()
+            runCurrent()
+            type(vm, "101")
+
+            assertNotNull(vm.state.value.advancedOptions).onToggle()
+            runCurrent()
+            assertTrue(assertNotNull(vm.state.value.advancedOptions).isExpanded)
+
+            type(vm, "5")
+            assertNotNull(vm.state.value.advancedOptions).onToggle()
+            runCurrent()
+            assertFalse(assertNotNull(vm.state.value.advancedOptions).isExpanded)
+        }
+
+    /**
+     * A successful connection clears the device list for the scan that starts once the user is
+     * back on the page; the index they typed is kept for the next attempt.
+     */
+    @Test
+    fun theTypedIndexSurvivesAConnectionAndComingBack() =
+        runTest(dispatcher) {
+            val connectLedgerDevice =
+                mockk<ConnectLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any(), any()) } returns false
+                }
+            val vm = vm(connectLedgerDevice = connectLedgerDevice)
+            collect(vm)
+            vm.onPermissionsGranted()
+            listAndSelect(vm)
+            type(vm, "7")
+            vm.state.value.primaryButton
+                .onClick()
+            runCurrent()
+            assertNull(vm.state.value.advancedOptions, "the list is cleared once connected")
+
+            vm.onPermissionsGranted()
+            runCurrent()
+            listAndSelect(vm)
+
+            val options = assertNotNull(vm.state.value.advancedOptions)
+            assertEquals(StringResource.ByString("7"), options.accountIndex.value)
+            vm.state.value.primaryButton
+                .onClick()
+            runCurrent()
+            coVerify(exactly = 2) { connectLedgerDevice.invoke(device(), Zip32AccountIndex.new(7)) }
+        }
+
+    @Test
     fun anInvalidIndexKeepsConnectFromConnecting() =
         runTest(dispatcher) {
             val connectLedgerDevice = mockk<ConnectLedgerDeviceUseCase>(relaxed = true)
@@ -231,6 +285,7 @@ class LedgerDeviceScanVMAccountIndexTest {
             listAndSelect(vm)
 
             val options = assertNotNull(vm.state.value.advancedOptions)
+            assertTrue(options.isExpanded, "a stored index other than 0 is shown at once")
             assertEquals(StringResource.ByString("4"), options.accountIndex.value)
             assertTrue(options.accountIndex.isEnabled)
             assertFalse(options.accountIndex.isError)
@@ -261,6 +316,7 @@ class LedgerDeviceScanVMAccountIndexTest {
             listAndSelect(vm)
 
             val options = assertNotNull(vm.state.value.advancedOptions)
+            assertFalse(options.isExpanded)
             assertEquals(StringResource.ByString("0"), options.accountIndex.value)
             assertTrue(options.accountIndex.isEnabled)
 

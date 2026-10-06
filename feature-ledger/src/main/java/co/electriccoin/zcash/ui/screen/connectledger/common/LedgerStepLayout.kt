@@ -152,15 +152,23 @@ private fun LedgerStepTitle(step: Int) {
  * top and the last line's bottom, which pulls single-line Texts stacked in Figma's 20 px boxes
  * closer together than drawn and lifts a row's text above the top of the badge beside it.
  */
-private val UntrimmedTextSm: TextStyle
-    @Composable get() =
-        ZashiTypography.textSm.copy(
-            lineHeightStyle =
-                LineHeightStyle(
-                    alignment = LineHeightStyle.Alignment.Proportional,
-                    trim = LineHeightStyle.Trim.None,
-                )
-        )
+internal val UntrimmedTextSm: TextStyle
+    @Composable get() = ZashiTypography.textSm.untrimmed()
+
+/**
+ * Text XS with its full 16 sp line box kept, for the same reason as [UntrimmedTextSm].
+ */
+internal val UntrimmedTextXs: TextStyle
+    @Composable get() = ZashiTypography.textXs.untrimmed()
+
+private fun TextStyle.untrimmed() =
+    copy(
+        lineHeightStyle =
+            LineHeightStyle(
+                alignment = LineHeightStyle.Alignment.Proportional,
+                trim = LineHeightStyle.Trim.None,
+            )
+    )
 
 /**
  * A card listing what should be true before the user moves on, one [LedgerChecklistItem] per item.
