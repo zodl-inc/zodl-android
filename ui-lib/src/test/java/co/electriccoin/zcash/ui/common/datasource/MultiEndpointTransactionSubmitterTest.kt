@@ -482,6 +482,52 @@ class MultiEndpointTransactionSubmitterTest {
     }
 
     @Test
+    fun timeoutAndDefinitiveRejectionStayPendingWithTimeoutMetadata() {
+        val firstTransaction = transaction(32)
+        val secondTransaction = transaction(33)
+
+        val result =
+            listOf(
+                failure(
+                    firstTransaction,
+                    code = -1,
+                    grpcError = true,
+                    description = MULTI_SUBMIT_TIMEOUT_DESCRIPTION
+                ),
+                failure(secondTransaction, code = -25, grpcError = false)
+            ).toSubmitResult()
+
+        assertEquals(
+            SubmitResult.GrpcFailure(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString()),
+                description = MULTI_SUBMIT_TIMEOUT_DESCRIPTION,
+                reason = SubmitResult.GrpcFailure.Reason.TIMEOUT
+            ),
+            result
+        )
+    }
+
+    @Test
+    fun definitiveRejectionThenNotAttemptedRemainsPartial() {
+        val firstTransaction = transaction(34)
+        val secondTransaction = transaction(35)
+
+        val result =
+            listOf(
+                failure(firstTransaction, code = -25, grpcError = false),
+                TransactionSubmitResult.NotAttempted(secondTransaction.txId)
+            ).toSubmitResult()
+
+        assertEquals(
+            SubmitResult.Partial(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString()),
+                statuses = listOf("rejected code: -25", "notAttempted")
+            ),
+            result
+        )
+    }
+
+    @Test
     fun nonTimeoutGrpcFailuresMapToDefaultPendingResult() {
         val firstTransaction = transaction(15)
         val secondTransaction = transaction(16)

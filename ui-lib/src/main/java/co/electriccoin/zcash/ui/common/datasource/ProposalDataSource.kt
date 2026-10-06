@@ -382,7 +382,13 @@ internal fun List<TransactionSubmitResult>.toSubmitResult(): SubmitResult {
             SubmitResult.Success(txIds = txIds)
         }
 
-        firstNonGrpcFailure != null && successCount == 0 -> {
+        hasNotAttempted -> {
+            // The SDK can only retry a transaction after submit() registered an endpoint for it.
+            // Keeping an untouched leg pending would promise a retry that cannot happen.
+            SubmitResult.Partial(txIds = txIds, statuses = map { it.statusDescription() })
+        }
+
+        firstNonGrpcFailure != null && successCount == 0 && failures.all { !it.grpcError } -> {
             SubmitResult.Failure(
                 txIds = txIds,
                 code = firstNonGrpcFailure.code,
@@ -390,16 +396,13 @@ internal fun List<TransactionSubmitResult>.toSubmitResult(): SubmitResult {
             )
         }
 
-        hasNotAttempted -> {
-            // The SDK can only retry a transaction after submit() registered an endpoint for it.
-            // Keeping an untouched leg pending would promise a retry that cannot happen.
-            SubmitResult.Partial(txIds = txIds, statuses = map { it.statusDescription() })
-        }
-
         else -> {
             // Every non-accepted transaction was attempted, so its SDK retry plan remains active.
             // This includes server rejections: reporting a terminal partial failure would invite a
             // manual retry while background resubmission can still broadcast the same transaction.
+            firstNonGrpcFailure?.let { failure ->
+                Twig.warn { "Transaction submission remains pending after rejected code: ${failure.code}" }
+            }
             SubmitResult.GrpcFailure(
                 txIds = txIds,
                 description = grpcFailureDescription,
