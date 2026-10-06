@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.screen.swap.orconfirmation
 
-import android.content.Context
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.ViewModel
@@ -19,7 +18,6 @@ import co.electriccoin.zcash.ui.design.component.BigIconButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.util.StringResource
-import co.electriccoin.zcash.ui.design.util.getString
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByAddress
 import co.electriccoin.zcash.ui.design.util.stringResByDynamicCurrencyNumber
@@ -47,7 +45,6 @@ class ORSwapConfirmationVM(
     private val navigationRouter: NavigationRouter,
     private val saveORSwap: SaveORSwapUseCase,
     private val shareQR: ShareQRUseCase,
-    private val context: Context
 ) : ViewModel() {
     private val _dialogState = MutableStateFlow<ErrorState?>(null)
     val dialogState = _dialogState.asStateFlow()
@@ -162,19 +159,17 @@ class ORSwapConfirmationVM(
         tokenTicker: String,
         chainName: StringResource
     ) = viewModelScope.launch {
-        val shareText =
-            stringRes(
-                R.string.swap_to_zec_share_text,
-                stringResByNumber(amount),
-                tokenTicker.uppercase(),
-                chainName,
-                CURRENCY_TICKER
-            ).getString(context)
-
         shareQR(
             qrData = qrData,
-            shareText = shareText,
-            sharePickerText = "Swap Deposit Address",
+            shareText =
+                stringRes(
+                    R.string.swap_to_zec_share_text,
+                    stringResByNumber(amount),
+                    tokenTicker.uppercase(),
+                    chainName,
+                    CURRENCY_TICKER
+                ),
+            sharePickerText = stringRes("Swap Deposit Address"),
             filenamePrefix = "swap_deposit_address_"
         )
     }

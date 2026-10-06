@@ -108,7 +108,7 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ZashiScreenModalBottomSheet(
-    onDismissRequest: () -> Unit,
+    onDismissRequest: (() -> Unit)? = null,
     sheetState: SheetState = rememberScreenModalBottomSheetState(),
     shape: Shape = ZashiModalBottomSheetDefaults.SheetShape,
     dragHandle: @Composable (() -> Unit)? = { ZashiModalBottomSheetDragHandle() },
@@ -117,9 +117,13 @@ fun ZashiScreenModalBottomSheet(
     ZashiScreenModalBottomSheet(
         state =
             remember(onDismissRequest) {
-                object : ModalBottomSheetState {
-                    override val onBack: () -> Unit = {
-                        onDismissRequest()
+                if (onDismissRequest == null) {
+                    null
+                } else {
+                    object : ModalBottomSheetState {
+                        override val onBack: () -> Unit = {
+                            onDismissRequest()
+                        }
                     }
                 }
             },

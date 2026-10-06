@@ -1,4 +1,4 @@
-package co.electriccoin.zcash.ui.screen.theme
+package co.electriccoin.zcash.ui.design.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,7 +27,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import co.electriccoin.zcash.ui.design.component.ZashiRadioIndicator
+import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
+import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 
@@ -44,14 +46,11 @@ private val CHECKED_BORDER_WIDTH = 2.dp
 private val UNCHECKED_RADIO_STROKE_WIDTH = 1.dp
 
 /**
- * The System/Light/Dark and Classic Dark/Pure Black option card shared by [co.electriccoin.zcash.ui.screen.theme.settings.ThemeSettingsView]
- * and [co.electriccoin.zcash.ui.screen.theme.darklook.ThemeDarkLookView]. Distinct from
- * [co.electriccoin.zcash.ui.screen.exchangerate.settings.Option] - same title/subtitle/haptics shape, but its
- * own card and radio-indicator styling per the Figma theme spec, so the exchange-rate screens keep their
- * existing look untouched.
+ * A single-choice option card with a radio indicator, a title and a subtitle, styled per the Figma theme spec.
+ * Callers group several of them in a `selectableGroup` and keep exactly one [isChecked].
  */
 @Composable
-internal fun ThemeOption(
+fun ZodlRadioOptionCard(
     isChecked: Boolean,
     title: String,
     subtitle: String,
@@ -89,7 +88,7 @@ internal fun ThemeOption(
                 ).padding(20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        ThemeRadioIndicator(isChecked = isChecked)
+        RadioOptionIndicator(isChecked = isChecked)
         Spacer(modifier = Modifier.width(12.dp))
         Column(
             modifier = Modifier.weight(1f),
@@ -112,7 +111,7 @@ internal fun ThemeOption(
 }
 
 @Composable
-private fun ThemeRadioIndicator(
+private fun RadioOptionIndicator(
     isChecked: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -149,3 +148,28 @@ private fun ThemeRadioIndicator(
         )
     }
 }
+
+@PreviewScreens
+@Composable
+private fun Preview() =
+    ZcashTheme {
+        BlankSurface {
+            Column {
+                ZodlRadioOptionCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    isChecked = true,
+                    title = "Checked",
+                    subtitle = "Subtitle",
+                    onClick = {}
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                ZodlRadioOptionCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    isChecked = false,
+                    title = "Unchecked",
+                    subtitle = "Subtitle",
+                    onClick = {}
+                )
+            }
+        }
+    }

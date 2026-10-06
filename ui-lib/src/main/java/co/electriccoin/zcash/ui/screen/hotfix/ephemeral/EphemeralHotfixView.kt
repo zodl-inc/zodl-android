@@ -28,7 +28,7 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.common.InfoBottomSheetView
+import co.electriccoin.zcash.ui.screen.common.ZodlInfoBottomSheetView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,29 +37,28 @@ fun EphemeralHotfixView(
     sheetState: SheetState = rememberInScreenModalBottomSheetState(),
     onSheetOpen: (FocusRequester) -> Unit = { },
 ) {
-    state ?: return
     val onSheetOpen by rememberUpdatedState(onSheetOpen)
     val focusRequester = remember { FocusRequester() }
 
-    InfoBottomSheetView(
-        onBack = state.onBack,
+    ZodlInfoBottomSheetView(
+        state = state,
         sheetState = sheetState,
-    ) {
+    ) { innerState ->
         Text(
-            state.title.getValue(),
+            innerState.title.getValue(),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textXl,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(12.dp)
         Text(
-            text = state.message.getValue(),
+            text = innerState.message.getValue(),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textTertiary,
         )
         Spacer(24.dp)
         Text(
-            state.subtitle.getValue(),
+            innerState.subtitle.getValue(),
             style = ZashiTypography.textSm,
             fontWeight = FontWeight.Medium,
             color = ZashiColors.Inputs.Default.label,
@@ -67,21 +66,21 @@ fun EphemeralHotfixView(
         Spacer(6.dp)
         ZashiAddressTextField(
             modifier = Modifier.focusRequester(focusRequester),
-            state = state.address,
+            state = innerState.address,
             placeholder = {
                 Text(text = "Enter or paste...")
             },
         )
-        if (state.info != null) {
+        if (innerState.info != null) {
             Spacer(24.dp)
-            ZashiInfoText(text = state.info.getValue())
+            ZashiInfoText(text = innerState.info.getValue())
             Spacer(24.dp)
         } else {
             Spacer(32.dp)
         }
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
-            state = state.button,
+            state = innerState.button,
         )
         LaunchedEffect(sheetState.currentValue) {
             if (sheetState.currentValue == SheetValue.Expanded) {
