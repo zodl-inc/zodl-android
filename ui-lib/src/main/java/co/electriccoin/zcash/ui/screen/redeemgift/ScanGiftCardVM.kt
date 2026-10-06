@@ -68,6 +68,10 @@ class ScanGiftCardVM(
 
     /**
      * Opens the redeem screen for [text] if it is a gift card link and no link was taken yet.
+     *
+     * This must stay non-suspending. Its callers all run on the main thread, so without a suspension point between
+     * reading and setting [hasBeenScannedSuccessfully] no other scan can interleave, and that is what makes the
+     * scanned-once guard race-free without a mutex. Adding a suspending call here would need a mutex instead.
      */
     private fun handle(text: String) {
         if (hasBeenScannedSuccessfully) return

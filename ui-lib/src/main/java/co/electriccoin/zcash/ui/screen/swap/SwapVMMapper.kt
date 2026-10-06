@@ -11,7 +11,7 @@ import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_FROM_ZEC
 import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_INTO_ZEC
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
-import co.electriccoin.zcash.ui.common.repository.GiftCardLinkPrefixes
+import co.electriccoin.zcash.ui.common.repository.GiftCardSecretDetector.mayContainGiftCardSecret
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.design.component.AssetCardState
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -493,7 +493,7 @@ internal class SwapVMMapper {
                             amount != null &&
                             amount > BigDecimal(0) &&
                             (state.addressText.isNotBlank() || state.selectedContact != null) &&
-                            !GiftCardLinkPrefixes.matches(state.selectedContact?.address ?: state.addressText) &&
+                            !mayContainGiftCardSecret(state.selectedContact?.address ?: state.addressText) &&
                             !state.isRequestingQuote
                     }
                 },
@@ -512,7 +512,7 @@ internal class SwapVMMapper {
                 when {
                     text.isEmpty() -> null
                     text.isBlank() -> stringRes("")
-                    GiftCardLinkPrefixes.matches(text) -> stringRes(R.string.swap_error_giftCardLink)
+                    mayContainGiftCardSecret(text) -> stringRes(R.string.swap_error_giftCardLink)
                     else -> null
                 },
             value = stringRes(text),

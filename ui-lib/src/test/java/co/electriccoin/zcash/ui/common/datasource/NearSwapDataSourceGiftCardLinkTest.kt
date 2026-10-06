@@ -14,6 +14,7 @@ import co.electriccoin.zcash.ui.common.provider.ResponseWithNearErrorException
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.TokenIconProvider
 import co.electriccoin.zcash.ui.common.provider.TokenNameProvider
+import co.electriccoin.zcash.ui.common.repository.GiftCardSecretFixture
 import io.mockk.Called
 import io.mockk.every
 import io.mockk.mockk
@@ -28,8 +29,8 @@ import kotlin.test.assertTrue
 
 /**
  * A gift card link carries the card's spending key in its fragment. [NearSwapDataSource.requestQuote] must reject one
- * given as the recipient or the refund address before anything reaches the 1Click API, and the rejection must not
- * repeat the link.
+ * given as the recipient or the refund address, in any disguise of [GiftCardSecretFixture], before anything reaches
+ * the 1Click API, and the rejection must not repeat the link.
  */
 class NearSwapDataSourceGiftCardLinkTest {
     private val nearApiProvider = RecordingNearApiProvider()
@@ -49,9 +50,9 @@ class NearSwapDataSourceGiftCardLinkTest {
     @Test
     fun giftCardLinkAsRecipientIsRejectedBeforeAnyCall() =
         runBlocking {
-            GIFT_LINKS.forEach { link ->
+            GiftCardSecretFixture.all.forEach { (name, link) ->
                 val exception =
-                    assertFailsWith<GiftCardAddressNotAllowedException> {
+                    assertFailsWith<GiftCardAddressNotAllowedException>(name) {
                         requestQuote(refundAddress = ORDINARY_ADDRESS, destinationAddress = link)
                     }
                 assertDoesNotLeak(exception)
@@ -64,9 +65,9 @@ class NearSwapDataSourceGiftCardLinkTest {
     @Test
     fun giftCardLinkAsRefundAddressIsRejectedBeforeAnyCall() =
         runBlocking {
-            GIFT_LINKS.forEach { link ->
+            GiftCardSecretFixture.all.forEach { (name, link) ->
                 val exception =
-                    assertFailsWith<GiftCardAddressNotAllowedException> {
+                    assertFailsWith<GiftCardAddressNotAllowedException>(name) {
                         requestQuote(
                             swapMode = SwapMode.FLEX_INPUT,
                             refundAddress = link,
@@ -83,13 +84,15 @@ class NearSwapDataSourceGiftCardLinkTest {
     @Test
     fun ordinaryAddressesStillReachTheApi() =
         runBlocking {
-            assertFailsWith<QuoteLowAmountException> {
-                requestQuote(refundAddress = ORDINARY_ADDRESS, destinationAddress = "bc1qordinaryrecipient")
-            }
+            GiftCardSecretFixture.ordinaryAddresses.forEachIndexed { index, address ->
+                assertFailsWith<QuoteLowAmountException>(address) {
+                    requestQuote(refundAddress = ORDINARY_ADDRESS, destinationAddress = address)
+                }
 
-            assertEquals(1, nearApiProvider.calls)
-            assertEquals(ORDINARY_ADDRESS, nearApiProvider.lastRequest?.refundTo)
-            assertEquals("bc1qordinaryrecipient", nearApiProvider.lastRequest?.recipient)
+                assertEquals(index + 1, nearApiProvider.calls, address)
+                assertEquals(ORDINARY_ADDRESS, nearApiProvider.lastRequest?.refundTo)
+                assertEquals(address, nearApiProvider.lastRequest?.recipient)
+            }
         }
 
     @Test
@@ -155,16 +158,7 @@ class NearSwapDataSourceGiftCardLinkTest {
     }
 
     private companion object {
-        const val SECRET = "zgift1testsecretkey"
+        const val SECRET = GiftCardSecretFixture.SECRET
         const val ORDINARY_ADDRESS = "u1ordinaryrefundaddress"
-
-        val GIFT_LINKS =
-            listOf(
-                "https://gift.zodl.com/#v=1&key=$SECRET&height=1",
-                "https://gift.zodl.com#v=1&key=$SECRET&height=1",
-                "  HTTPS://GIFT.ZODL.COM/#v=1&key=$SECRET&height=1 \n",
-                "https://link.vizor.cash/payment-links/open#v1=$SECRET",
-                "\tHttps://Link.Vizor.Cash/Payment-Links/Open#v1=$SECRET  ",
-            )
     }
 }

@@ -3,13 +3,12 @@ package co.electriccoin.zcash.ui.common.usecase
 import co.electriccoin.zcash.ui.common.model.SwapBlockchain
 import co.electriccoin.zcash.ui.common.repository.AddressBookRepository
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
-import co.electriccoin.zcash.ui.common.repository.GiftCardRepository
+import co.electriccoin.zcash.ui.common.repository.GiftCardSecretDetector
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 
 class ValidateSwapABContactAddressUseCase(
     private val addressBookRepository: AddressBookRepository,
-    private val giftCardRepository: GiftCardRepository,
 ) {
     suspend operator fun invoke(
         address: String,
@@ -17,7 +16,7 @@ class ValidateSwapABContactAddressUseCase(
         exclude: EnhancedABContact? = null
     ): ContactAddressValidationResult =
         when {
-            giftCardRepository.isGiftCardLink(address) -> ContactAddressValidationResult.GiftCardLink
+            GiftCardSecretDetector.mayContainGiftCardSecret(address) -> ContactAddressValidationResult.GiftCardLink
 
             addressBookRepository.contacts
                 .filterNotNull()

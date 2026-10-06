@@ -28,6 +28,7 @@ import co.electriccoin.zcash.ui.fixture.FakeGiftCardDataSource
 import co.electriccoin.zcash.ui.fixture.GiftCardSummaryFixture
 import co.electriccoin.zcash.ui.fixture.GiftCardSummaryFixture.pendingStatus
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState
+import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -90,10 +91,11 @@ class RedeemGiftVMTest {
             val state = assertIs<RedeemGiftState.Ready>(vm.state.value)
             val amountWithoutTicker =
                 stringRes(Zatoshi(GiftCardSummaryFixture.RECEIVED), TickerLocation.HIDDEN).withStyle()
-            val mutedTicker = stringRes(" ZEC").withStyle(StyledStringStyle(color = StringResourceColor.QUARTERNARY))
+            val muted = StyledStringStyle(color = StringResourceColor.QUARTERNARY)
+            val mutedTicker = (stringRes(" ") + stringRes("ZEC")).withStyle(muted)
             assertEquals(amountWithoutTicker + mutedTicker, state.amount)
             assertNotEquals(
-                RedeemGiftState.amount(Zatoshi(GiftCardSummaryFixture.AMOUNT)),
+                RedeemGiftState.amount(Zatoshi(GiftCardSummaryFixture.AMOUNT), stringRes(CURRENCY_TICKER)),
                 state.amount,
                 "the amount is net of the fee, not the card's spendable funds"
             )
@@ -382,6 +384,93 @@ class RedeemGiftVMTest {
             assertEquals(ButtonStyle.PRIMARY, close.style)
 
             empty.onBack()
+            runCurrent()
+
+            assertEquals(1, env.router.backCount)
+            assertEquals(1, env.dataSource.closed.size)
+        }
+
+    /** The ticker follows the network: mainnet builds, which these tests run as, show ZEC; testnet builds TAZ. */
+    @Test
+    fun theReadyAmountTickerComesFromTheNetwork() =
+        runTest(dispatcher) {
+            val state = assertIs<RedeemGiftState.Ready>(Env(this).startedVm().state.value)
+
+            assertEquals("ZEC", CURRENCY_TICKER)
+            assertEquals(
+                RedeemGiftState.amount(Zatoshi(GiftCardSummaryFixture.RECEIVED), stringRes(CURRENCY_TICKER)),
+                state.amount
+            )
+            assertNotEquals(
+                RedeemGiftState.amount(Zatoshi(GiftCardSummaryFixture.RECEIVED), stringRes("TAZ")),
+                state.amount
+            )
+        }
+
+    @Test
+    fun checkAgainOnAnEmptyCardShowsProgressOnTheButtonAndKeepsTheEmptyScreen() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.statuses = listOf(GiftCardStatus.Empty, GiftCardSummaryFixture.readyStatus())
+            val vm = env.startedVm()
+
+            env.dataSource.checkGate = CompletableDeferred()
+            assertNotNull(statusOf(vm).secondaryButton).onClick()
+            runCurrent()
+
+            val rechecking = statusOf(vm)
+            assertEquals(stringRes(R.string.redeemGift_empty_title), rechecking.title)
+            val checkAgain = assertNotNull(rechecking.secondaryButton)
+            assertTrue(checkAgain.isLoading)
+            assertFalse(checkAgain.isEnabled)
+
+            env.dataSource.checkGate?.complete(Unit)
+            runCurrent()
+            assertIs<RedeemGiftState.Ready>(vm.state.value)
+        }
+
+    @Test
+    fun aFailedCheckAgainOnAnEmptyCardKeepsTheEmptyScreen() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.statuses = listOf(GiftCardStatus.Empty)
+            val vm = env.startedVm()
+
+            env.dataSource.checkError = GiftCardException.CheckFailed()
+            assertNotNull(statusOf(vm).secondaryButton).onClick()
+            runCurrent()
+
+            val empty = statusOf(vm)
+            assertEquals(stringRes(R.string.redeemGift_empty_title), empty.title)
+            assertEquals(stringRes(R.string.redeemGift_empty_subtitle).withStyle(), empty.subtitle)
+            val checkAgain = assertNotNull(empty.secondaryButton)
+            assertFalse(checkAgain.isLoading)
+            assertTrue(checkAgain.isEnabled)
+            assertEquals(2, env.dataSource.checkCount)
+        }
+
+    @Test
+    fun aDustCardShowsTooLittleForTheFeeWithOnlyClose() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.redeemError = GiftCardException.NothingToRedeem()
+            val vm = env.startedVm()
+
+            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
+            runCurrent()
+
+            val dust = statusOf(vm)
+            assertEquals(TransactionProgressState.Background.ERROR, dust.background)
+            assertEquals(imageRes(R.drawable.ic_gift_empty), dust.image)
+            assertEquals(stringRes(R.string.redeemGift_empty_title), dust.title)
+            assertEquals(stringRes(R.string.redeemGift_empty_subtitle_dust).withStyle(), dust.subtitle)
+            assertFalse(dust.showAppBar)
+            assertNull(dust.secondaryButton, "retrying cannot help a dust card, so there is no Check again")
+            val close = assertNotNull(dust.primaryButton)
+            assertEquals(stringRes(R.string.general_close), close.text)
+            assertEquals(ButtonStyle.PRIMARY, close.style)
+
+            close.onClick()
             runCurrent()
 
             assertEquals(1, env.router.backCount)

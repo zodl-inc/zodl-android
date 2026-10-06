@@ -240,6 +240,13 @@ private fun EmptyPreview() =
 
 @PreviewScreens
 @Composable
+private fun EmptyDustPreview() =
+    ZcashTheme {
+        RedeemGiftView(RedeemGiftState.previewEmptyDust)
+    }
+
+@PreviewScreens
+@Composable
 private fun SuccessPreview() =
     ZcashTheme {
         RedeemGiftView(RedeemGiftState.previewSuccess)

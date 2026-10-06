@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.loadingImageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.ERROR
+import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
@@ -75,6 +76,7 @@ class RedeemGiftVM(
             is GiftCardPhase.Ready -> {
                 RedeemGiftState.ready(
                     redeemable = phase.redeemable,
+                    ticker = stringRes(CURRENCY_TICKER),
                     message = session.summary?.message?.takeIf { it.isNotBlank() },
                     walletName = account?.name,
                     onRedeem = ::onRedeemClick,
@@ -91,8 +93,13 @@ class RedeemGiftVM(
                 )
             }
 
-            GiftCardPhase.Empty -> {
-                RedeemGiftState.empty(onCheckAgain = ::onRetryClick, onClose = ::onBack)
+            is GiftCardPhase.Empty -> {
+                RedeemGiftState.empty(
+                    isDust = phase.isDust,
+                    isRechecking = phase.isRechecking,
+                    onCheckAgain = ::onRetryClick,
+                    onClose = ::onBack
+                )
             }
 
             GiftCardPhase.Redeeming -> {

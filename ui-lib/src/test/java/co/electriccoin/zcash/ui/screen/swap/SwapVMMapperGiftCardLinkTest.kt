@@ -8,6 +8,7 @@ import co.electriccoin.zcash.ui.common.model.SwapDirection
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.DEFAULT_SLIPPAGE
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
+import co.electriccoin.zcash.ui.common.repository.GiftCardSecretFixture
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldInnerState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import io.mockk.every
@@ -52,11 +53,11 @@ class SwapVMMapperGiftCardLinkTest {
     @Test
     fun giftCardLinkShowsErrorAndDisablesQuote() {
         SwapDirection.entries.forEach { direction ->
-            GIFT_LINKS.forEach { link ->
+            GiftCardSecretFixture.all.forEach { (name, link) ->
                 val state = mapper.createState(internalState(addressText = link, direction = direction), callbacks)
 
-                assertEquals(stringRes(R.string.swap_error_giftCardLink), state.address.error)
-                assertFalse(state.primaryButton?.isEnabled ?: true)
+                assertEquals(stringRes(R.string.swap_error_giftCardLink), state.address.error, name)
+                assertFalse(state.primaryButton?.isEnabled ?: true, name)
             }
         }
     }
@@ -64,31 +65,35 @@ class SwapVMMapperGiftCardLinkTest {
     @Test
     fun ordinaryAddressKeepsQuoteEnabled() {
         SwapDirection.entries.forEach { direction ->
-            val state =
-                mapper.createState(internalState(addressText = "bc1qordinaryaddress", direction = direction), callbacks)
+            GiftCardSecretFixture.ordinaryAddresses.forEach { address ->
+                val state =
+                    mapper.createState(internalState(addressText = address, direction = direction), callbacks)
 
-            assertNull(state.address.error)
-            assertTrue(state.primaryButton?.isEnabled == true)
+                assertNull(state.address.error, address)
+                assertTrue(state.primaryButton?.isEnabled == true, address)
+            }
         }
     }
 
     @Test
     fun giftCardLinkContactDisablesQuote() {
-        val contact =
-            EnhancedABContact(
-                contact =
-                    AddressBookContact(
-                        name = "Card",
-                        address = GIFT_LINKS.first(),
-                        lastUpdated = Instant.fromEpochMilliseconds(0),
-                        chain = "btc"
-                    ),
-                blockchain = SwapAssetTestFixture.blockchain("btc")
-            )
+        GiftCardSecretFixture.all.forEach { (name, link) ->
+            val contact =
+                EnhancedABContact(
+                    contact =
+                        AddressBookContact(
+                            name = "Card",
+                            address = link,
+                            lastUpdated = Instant.fromEpochMilliseconds(0),
+                            chain = "btc"
+                        ),
+                    blockchain = SwapAssetTestFixture.blockchain("btc")
+                )
 
-        val state = mapper.createState(internalState(addressText = "", selectedContact = contact), callbacks)
+            val state = mapper.createState(internalState(addressText = "", selectedContact = contact), callbacks)
 
-        assertFalse(state.primaryButton?.isEnabled ?: true)
+            assertFalse(state.primaryButton?.isEnabled ?: true, name)
+        }
     }
 
     private fun internalState(
@@ -127,13 +132,4 @@ class SwapVMMapperGiftCardLinkTest {
             onChangeButtonClick = {},
             onAddressClick = {},
         )
-
-    private companion object {
-        val GIFT_LINKS =
-            listOf(
-                "https://gift.zodl.com/#v=1&key=zgift1testsecret&height=1",
-                "  HTTPS://GIFT.ZODL.COM#v=1&key=zgift1testsecret&height=1 ",
-                "https://link.vizor.cash/payment-links/open#v1=testsecret",
-            )
-    }
 }

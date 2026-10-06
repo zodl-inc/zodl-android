@@ -5,7 +5,7 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
-import co.electriccoin.zcash.ui.common.repository.GiftCardLinkPrefixes
+import co.electriccoin.zcash.ui.common.repository.GiftCardSecretDetector.mayContainGiftCardSecret
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.design.component.AssetCardState
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -358,7 +358,7 @@ internal class ExactOutputVMMapper {
                             amount != null &&
                             amount > BigDecimal(0) &&
                             (state.address.isNotBlank() || state.selectedABContact != null) &&
-                            !GiftCardLinkPrefixes.matches(state.selectedABContact?.address ?: state.address) &&
+                            !mayContainGiftCardSecret(state.selectedABContact?.address ?: state.address) &&
                             !state.isRequestingQuote
                     }
                 },
@@ -379,7 +379,7 @@ internal class ExactOutputVMMapper {
                 when {
                     text.isEmpty() -> null
                     text.isBlank() -> stringRes("")
-                    GiftCardLinkPrefixes.matches(text) -> stringRes(R.string.swap_error_giftCardLink)
+                    mayContainGiftCardSecret(text) -> stringRes(R.string.swap_error_giftCardLink)
                     else -> null
                 },
             value = stringRes(text),

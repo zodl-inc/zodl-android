@@ -125,7 +125,7 @@ class GiftCardRepositoryIdlePolicyTest {
             assertTrue(dataSource.closed.isEmpty())
             val again = observe(repository.observeSession(linkId))
             runCurrent()
-            assertEquals(GiftCardPhase.Empty, again.latest().phase)
+            assertEquals(GiftCardPhase.Empty(), again.latest().phase)
             repository.checkAgain(linkId)
             runCurrent()
 

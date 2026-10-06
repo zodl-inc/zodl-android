@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.design.util.loadingImageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.withStyle
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState
+import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
 
 @Immutable
 sealed interface RedeemGiftState {
@@ -57,11 +58,15 @@ sealed interface RedeemGiftState {
 
     companion object {
         /**
-         * The amount of a [Ready] card: [value] without a ticker, followed by a muted " ZEC".
+         * The amount of a [Ready] card: [value] without a ticker, followed by the network's muted [ticker] (ZEC, or TAZ
+         * on testnet).
          */
-        fun amount(value: Zatoshi): StyledStringResource =
+        fun amount(
+            value: Zatoshi,
+            ticker: StringResource
+        ): StyledStringResource =
             stringRes(value, TickerLocation.HIDDEN).withStyle() +
-                stringRes(AMOUNT_TICKER).withStyle(StyledStringStyle(color = StringResourceColor.QUARTERNARY))
+                (stringRes(" ") + ticker).withStyle(StyledStringStyle(color = StringResourceColor.QUARTERNARY))
 
         val preview: RedeemGiftState = previewReady(message = "Welcome to Zcash Summit")
 
@@ -77,16 +82,21 @@ sealed interface RedeemGiftState {
                 onClose = {}
             )
 
-        val previewEmpty: RedeemGiftState = empty(onCheckAgain = {}, onClose = {})
+        val previewEmpty: RedeemGiftState = empty(isDust = false, isRechecking = false, onCheckAgain = {}, onClose = {})
+
+        val previewEmptyDust: RedeemGiftState =
+            empty(isDust = true, isRechecking = false, onCheckAgain = {}, onClose = {})
 
         val previewSuccess: RedeemGiftState = redeemed(received = Zatoshi(PREVIEW_AMOUNT), onDone = {})
 
         /**
          * A card that can be redeemed now. [message] is the sender's note and [walletName] the wallet the funds go to;
-         * `null` picks the copy without a wallet name.
+         * `null` picks the copy without a wallet name. [ticker] is the network's currency ticker.
          */
+        @Suppress("LongParameterList")
         fun ready(
             redeemable: Zatoshi,
+            ticker: StringResource,
             message: String?,
             walletName: StringResource?,
             onRedeem: () -> Unit,
@@ -95,7 +105,7 @@ sealed interface RedeemGiftState {
             title = stringRes(R.string.redeemGift_title),
             image = ImageResource.ByDrawable(R.drawable.ic_gift_closed),
             heading = stringRes(R.string.redeemGift_ready_title),
-            amount = amount(redeemable),
+            amount = amount(redeemable, ticker),
             messageLabel = stringRes(R.string.redeemGift_ready_messageLabel),
             message = message?.let { stringRes(R.string.redeemGift_memo) + GIFT_CARD_MEMO_SEPARATOR + it },
             disclaimer =
@@ -141,18 +151,38 @@ sealed interface RedeemGiftState {
             onClose = onClose,
         )
 
+        /**
+         * Nothing to redeem. A card that [isDust] holds too little to cover the network fee, so checking it again
+         * cannot help and only Close is offered; otherwise Check again checks it quietly, with progress while
+         * [isRechecking].
+         */
         fun empty(
+            isDust: Boolean,
+            isRechecking: Boolean,
             onCheckAgain: () -> Unit,
             onClose: () -> Unit,
-        ) = checkAgainStatus(
-            background = TransactionProgressState.Background.ERROR,
-            image = imageRes(R.drawable.ic_gift_empty),
-            title = stringRes(R.string.redeemGift_empty_title),
-            subtitle = stringRes(R.string.redeemGift_empty_subtitle),
-            isRechecking = false,
-            onCheckAgain = onCheckAgain,
-            onClose = onClose,
-        )
+        ) = if (isDust) {
+            status(
+                background = TransactionProgressState.Background.ERROR,
+                image = imageRes(R.drawable.ic_gift_empty),
+                title = stringRes(R.string.redeemGift_empty_title),
+                subtitle = stringRes(R.string.redeemGift_empty_subtitle_dust),
+                primaryButton = closeButton(onClose),
+                secondaryButton = null,
+                onBack = onClose,
+                showAppBar = false,
+            )
+        } else {
+            checkAgainStatus(
+                background = TransactionProgressState.Background.ERROR,
+                image = imageRes(R.drawable.ic_gift_empty),
+                title = stringRes(R.string.redeemGift_empty_title),
+                subtitle = stringRes(R.string.redeemGift_empty_subtitle),
+                isRechecking = isRechecking,
+                onCheckAgain = onCheckAgain,
+                onClose = onClose,
+            )
+        }
 
         /**
          * The card was redeemed; [received] is `null` when the amount is not known.
@@ -218,12 +248,7 @@ sealed interface RedeemGiftState {
             image = image,
             title = title,
             subtitle = subtitle,
-            primaryButton =
-                ButtonState(
-                    text = stringRes(R.string.general_close),
-                    style = ButtonStyle.PRIMARY,
-                    onClick = onClose
-                ),
+            primaryButton = closeButton(onClose),
             secondaryButton =
                 ButtonState(
                     text = stringRes(R.string.redeemGift_checkAgain),
@@ -236,16 +261,22 @@ sealed interface RedeemGiftState {
             showAppBar = false,
         )
 
+        private fun closeButton(onClose: () -> Unit) =
+            ButtonState(
+                text = stringRes(R.string.general_close),
+                style = ButtonStyle.PRIMARY,
+                onClick = onClose
+            )
+
         private fun previewReady(message: String?) =
             ready(
                 redeemable = Zatoshi(PREVIEW_AMOUNT),
+                ticker = stringRes(CURRENCY_TICKER),
                 message = message,
                 walletName = stringRes("Zodl"),
                 onRedeem = {},
                 onBack = {}
             )
-
-        private const val AMOUNT_TICKER = " ZEC"
 
         private const val PREVIEW_AMOUNT = 10_000_000L
     }

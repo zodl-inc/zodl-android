@@ -63,15 +63,31 @@ class PasteGiftCardLinkVM(
 
     /**
      * Opens the redeem screen in place of this one, and clears the clipboard when anything was pasted from it on this
-     * screen, so that the secret does not stay there even when the pasted text was edited afterwards.
+     * screen, so that the secret does not stay there even when the pasted text was edited afterwards. The field's text
+     * is cleared too, so that the link does not linger in this view model's memory.
      */
     private fun onContinueClick() {
         if (hasContinued) return
         val link = linkIn(text.value) ?: return
         hasContinued = true
         navigateToRedeemGiftCard.replaceGiftCardScanWithRedeem(link)
-        if (hasPasted) clearClipboard()
+        clearPasted()
+        text.update { "" }
     }
 
-    private fun onBack() = navigationRouter.back()
+    /**
+     * Leaves without redeeming. The clipboard is cleared when anything was pasted from it on this screen, as on
+     * Continue, so that backing out does not leave the secret there either.
+     */
+    private fun onBack() {
+        if (!hasContinued) clearPasted()
+        navigationRouter.back()
+    }
+
+    /** Clears the clipboard once, if anything was pasted from it on this screen. */
+    private fun clearPasted() {
+        if (!hasPasted) return
+        hasPasted = false
+        clearClipboard()
+    }
 }

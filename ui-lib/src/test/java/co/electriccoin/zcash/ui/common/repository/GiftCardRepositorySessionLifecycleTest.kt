@@ -92,7 +92,7 @@ class GiftCardRepositorySessionLifecycleTest {
             val linkId = store.stash(LINK)
             val observer = observe(repository.observeSession(linkId))
             runCurrent()
-            assertEquals(GiftCardPhase.Empty, observer.latest().phase)
+            assertEquals(GiftCardPhase.Empty(), observer.latest().phase)
 
             repository.checkAgain(linkId)
             runCurrent()
@@ -135,7 +135,7 @@ class GiftCardRepositorySessionLifecycleTest {
             runCurrent()
 
             assertEquals(1, dataSource.checkCount)
-            assertEquals(GiftCardPhase.Empty, observer.latest().phase)
+            assertEquals(GiftCardPhase.Empty(), observer.latest().phase)
             observer.job.cancel()
         }
 
@@ -191,7 +191,7 @@ class GiftCardRepositorySessionLifecycleTest {
                     GiftCardException.InvalidLink() to GiftCardPhase.Failed(GiftCardFailure.INVALID_LINK),
                     GiftCardException.InUse() to GiftCardPhase.Failed(GiftCardFailure.CHECK_FAILED),
                     GiftCardException.NotChecked() to GiftCardPhase.Failed(GiftCardFailure.CHECK_FAILED),
-                    GiftCardException.NothingToRedeem() to GiftCardPhase.Empty,
+                    GiftCardException.NothingToRedeem() to GiftCardPhase.Empty(),
                     IllegalStateException("sync") to GiftCardPhase.Failed(GiftCardFailure.CHECK_FAILED)
                 )
             expected.forEach { (error, phase) ->
@@ -227,6 +227,133 @@ class GiftCardRepositorySessionLifecycleTest {
             }
             assertEquals(3, dataSource.checkCount)
             repository.dismiss(linkId)
+            observer.job.cancel()
+        }
+
+    @Test
+    fun checkAgainOnAnEmptyCardIsAQuietRecheckThatKeepsTheEmptyPhase() =
+        runTest {
+            dataSource.statuses = listOf(GiftCardStatus.Empty, GiftCardSummaryFixture.readyStatus())
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+            val seenBefore = observer.values.size
+            dataSource.checkGate = CompletableDeferred()
+
+            repository.checkAgain(linkId)
+            runCurrent()
+
+            assertEquals(GiftCardPhase.Empty(isRechecking = true), observer.latest().phase)
+            dataSource.checkGate?.complete(Unit)
+            runCurrent()
+            assertIs<GiftCardPhase.Ready>(observer.latest().phase)
+            assertFalse(observer.values.drop(seenBefore).any { it.phase == GiftCardPhase.Checking })
+            assertEquals(1, dataSource.parsedLinks.size)
+            observer.job.cancel()
+        }
+
+    @Test
+    fun aQuietRecheckOfAnEmptyCardCanFindItPending() =
+        runTest {
+            dataSource.statuses = listOf(GiftCardStatus.Empty, pendingStatus())
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            repository.checkAgain(linkId)
+            runCurrent()
+
+            assertEquals(GiftCardPhase.Pending(pendingStatus().pending), observer.latest().phase)
+            repository.dismiss(linkId)
+            observer.job.cancel()
+        }
+
+    @Test
+    fun aFailedRecheckOfAnEmptyCardKeepsItEmptyInsteadOfShowingCheckFailed() =
+        runTest {
+            dataSource.statuses = listOf(GiftCardStatus.Empty)
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            listOf(GiftCardException.CheckFailed(), GiftCardException.InUse(), IllegalStateException("network"))
+                .forEach { error ->
+                    dataSource.checkError = error
+                    repository.checkAgain(linkId)
+                    runCurrent()
+
+                    assertEquals(GiftCardPhase.Empty(), observer.latest().phase, error::class.simpleName)
+                }
+            assertFalse(observer.values.any { it.phase is GiftCardPhase.Failed })
+            assertEquals(4, dataSource.checkCount)
+            observer.job.cancel()
+        }
+
+    @Test
+    fun checkAgainIsIgnoredWhileAnEmptyCardIsRechecked() =
+        runTest {
+            dataSource.statuses = listOf(GiftCardStatus.Empty)
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+            dataSource.checkGate = CompletableDeferred()
+
+            repository.checkAgain(linkId)
+            repository.checkAgain(linkId)
+            runCurrent()
+            dataSource.checkGate?.complete(Unit)
+            runCurrent()
+
+            assertEquals(2, dataSource.checkCount)
+            assertEquals(GiftCardPhase.Empty(), observer.latest().phase)
+            observer.job.cancel()
+        }
+
+    /**
+     * A card checked as redeemable whose redemption is refused as holding nothing above the fee is dust: the fee takes
+     * all of it, so Check again is ignored and the phase is final.
+     */
+    @Test
+    fun aRedemptionRefusedForNothingAboveTheFeeLeavesADustCard() =
+        runTest {
+            dataSource.redeemError = GiftCardException.NothingToRedeem()
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            repository.redeem(linkId) { ADDRESS }
+            runCurrent()
+            assertEquals(GiftCardPhase.Empty(isDust = true), observer.latest().phase)
+
+            repository.checkAgain(linkId)
+            runCurrent()
+            assertEquals(1, dataSource.checkCount)
+            assertEquals(GiftCardPhase.Empty(isDust = true), observer.latest().phase)
+
+            observer.job.cancel()
+            runCurrent()
+            assertEquals(1, dataSource.closed.size, "a dust card is final, so it is closed once nobody observes it")
+            val again = observe(repository.observeSession(linkId))
+            runCurrent()
+            assertEquals(GiftCardPhase.Empty(isDust = true), again.latest().phase)
+            again.job.cancel()
+        }
+
+    @Test
+    fun anEmptyCardFromACheckIsNotDust() =
+        runTest {
+            dataSource.statuses = listOf(GiftCardStatus.Empty)
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            assertEquals(GiftCardPhase.Empty(isDust = false), observer.latest().phase)
             observer.job.cancel()
         }
 

@@ -178,8 +178,18 @@ sealed interface GiftCardPhase {
         val isRechecking: Boolean = false
     ) : GiftCardPhase
 
-    /** Nothing to redeem. */
-    data object Empty : GiftCardPhase
+    /**
+     * Nothing to redeem.
+     *
+     * @param isDust whether the card is known to hold something, but no more than the network fee a redemption would
+     * pay, so that checking it again cannot help. The SDK's check reports such a card as empty without its balance,
+     * so this is known only when a redemption of a card that was checked as redeemable is refused for it.
+     * @param isRechecking whether a check the user asked for is running.
+     */
+    data class Empty(
+        val isDust: Boolean = false,
+        val isRechecking: Boolean = false
+    ) : GiftCardPhase
 
     /** The redemption is being created and submitted. It cannot be cancelled. */
     data object Redeeming : GiftCardPhase

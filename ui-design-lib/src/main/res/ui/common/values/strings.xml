@@ -578,9 +578,10 @@
     <string name="redeemGift_memo">Gift Card</string>
     <string name="redeemGift_redeem">Redeem</string>
     <string name="redeemGift_pending_title">Preparing your gift…</string>
-    <string name="redeemGift_pending_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> needs a few more confirmations before it can be redeemed. We’ll keep checking while this screen is open.</string>
+    <string name="redeemGift_pending_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> needs a few more confirmations before it can be redeemed. We\'ll keep checking while this screen is open.</string>
     <string name="redeemGift_empty_title">Nothing to redeem</string>
     <string name="redeemGift_empty_subtitle">This gift card was already redeemed, or hasn\'t been funded yet. Try again in a few minutes.</string>
+    <string name="redeemGift_empty_subtitle_dust">This gift card holds too little to cover the network fee, so there\'s nothing to redeem.</string>
     <string name="redeemGift_invalid_title">Invalid gift card</string>
     <string name="redeemGift_invalid_subtitle">This link isn\'t a valid gift card. Check the link and try again.</string>
     <string name="redeemGift_wrongNetwork_title">Wrong network</string>
@@ -888,6 +889,7 @@
     <string name="swap_quote_error_too_low_try_at_least">Amount is too low for bridge, try at least %s</string>
     <string name="swap_quote_error_too_low_try_higher">Amount is too low for bridge, try higher amount.</string>
     <string name="swap_error_giftCardLink">Gift card links can\'t be used as swap addresses. Use Redeem Gift Card instead.</string>
+    <string name="contact_error_giftCardLink">Gift card links can\'t be saved as contacts. Use Redeem Gift Card instead.</string>
     <string name="swap_quoteUnavailable">We tried but couldn\’t get a quote for a payment with your parameters. You can try to adjust the slippage or try again later.</string>
     <string name="swap_quoteUnavailableSwap">We tried but couldn\’t get a quote for a swap with your parameters. You can try to adjust the slippage or try again later.</string>
     <string name="swapAndPay_quoteUnavailable">Quote Unavailable</string>

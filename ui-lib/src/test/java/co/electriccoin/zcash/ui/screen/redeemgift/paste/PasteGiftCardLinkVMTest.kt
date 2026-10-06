@@ -247,6 +247,77 @@ class PasteGiftCardLinkVMTest {
 
             assertEquals(1, env.router.backCount)
             assertTrue(env.router.replacedFrom.isEmpty())
+            verify(exactly = 0) { env.clearClipboard() }
+        }
+
+    @Test
+    fun backAfterPastingClearsTheClipboard() =
+        runTest(dispatcher) {
+            val env = Env(this, clipboard = LINK)
+            env.state.fieldButton.onClick()
+            runCurrent()
+
+            env.state.onBack()
+
+            assertEquals(1, env.router.backCount)
+            assertTrue(env.router.redeemReplacingGiftCardScan().isEmpty())
+            verify(exactly = 1) { env.clearClipboard() }
+        }
+
+    @Test
+    fun backAfterPastingSomethingElseAndClearingTheFieldStillClearsTheClipboard() =
+        runTest(dispatcher) {
+            val env = Env(this, clipboard = "not a link")
+            env.state.fieldButton.onClick()
+            runCurrent()
+            env.state.fieldButton.onClick()
+            runCurrent()
+
+            env.state.onBack()
+
+            verify(exactly = 1) { env.clearClipboard() }
+        }
+
+    @Test
+    fun backAfterTypingLeavesTheClipboardAlone() =
+        runTest(dispatcher) {
+            val env = Env(this, clipboard = "something else")
+            env.state.field.onValueChange(LINK)
+            runCurrent()
+
+            env.state.onBack()
+
+            assertEquals(1, env.router.backCount)
+            verify(exactly = 0) { env.clearClipboard() }
+        }
+
+    @Test
+    fun continueClearsTheFieldSoTheLinkDoesNotLinger() =
+        runTest(dispatcher) {
+            val env = Env(this, clipboard = LINK)
+            env.state.fieldButton.onClick()
+            runCurrent()
+
+            env.state.continueButton.onClick()
+            runCurrent()
+
+            assertEquals(stringRes(""), env.state.field.value)
+            assertFalse(env.state.continueButton.isEnabled)
+            assertEquals(1, env.router.redeemReplacingGiftCardScan().size)
+        }
+
+    @Test
+    fun backAfterContinueDoesNotClearTheClipboardAgain() =
+        runTest(dispatcher) {
+            val env = Env(this, clipboard = LINK)
+            env.state.fieldButton.onClick()
+            runCurrent()
+            env.state.continueButton.onClick()
+            runCurrent()
+
+            env.state.onBack()
+
+            verify(exactly = 1) { env.clearClipboard() }
         }
 
     private class Env(

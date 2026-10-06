@@ -326,7 +326,7 @@ class GiftCardRepositoryImplTest {
 
             assertEquals(2, dataSource.checkCount)
             assertEquals(1, dataSource.redeemedTo.size)
-            assertEquals(GiftCardPhase.Empty, observer.latest().phase)
+            assertEquals(GiftCardPhase.Empty(), observer.latest().phase)
             observer.job.cancel()
         }
 

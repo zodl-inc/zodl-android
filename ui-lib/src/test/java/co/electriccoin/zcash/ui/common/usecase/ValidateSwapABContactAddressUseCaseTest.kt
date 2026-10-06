@@ -4,8 +4,7 @@ import co.electriccoin.zcash.ui.common.model.AddressBookContact
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.repository.AddressBookRepository
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
-import co.electriccoin.zcash.ui.common.repository.GiftCardLinkPrefixes
-import co.electriccoin.zcash.ui.common.repository.GiftCardRepository
+import co.electriccoin.zcash.ui.common.repository.GiftCardSecretFixture
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,8 +14,8 @@ import kotlin.test.assertEquals
 import kotlin.time.Instant
 
 /**
- * A gift card link must never be saved as a swap contact, from where it would reach the swap provider. Ordinary
- * addresses keep the uniqueness check.
+ * A gift card link, in any disguise of [GiftCardSecretFixture], must never be saved as a swap contact, from where it
+ * would reach the swap provider. Ordinary addresses keep the uniqueness check.
  */
 class ValidateSwapABContactAddressUseCaseTest {
     private val btc = SwapAssetTestFixture.blockchain("btc")
@@ -38,25 +37,14 @@ class ValidateSwapABContactAddressUseCaseTest {
             every { contacts } returns MutableStateFlow(listOf(existing))
         }
 
-    private val validate =
-        ValidateSwapABContactAddressUseCase(
-            addressBookRepository = addressBookRepository,
-            giftCardRepository =
-                mockk<GiftCardRepository> {
-                    every { isGiftCardLink(any()) } answers { GiftCardLinkPrefixes.matches(firstArg()) }
-                }
-        )
+    private val validate = ValidateSwapABContactAddressUseCase(addressBookRepository = addressBookRepository)
 
     @Test
     fun giftCardLinkIsRejected() =
         runTest {
-            listOf(
-                "https://gift.zodl.com/#v=1&key=zgift1testsecret&height=1",
-                "  HTTPS://GIFT.ZODL.COM#v=1&key=zgift1testsecret&height=1 ",
-                "https://link.vizor.cash/payment-links/open#v1=testsecret",
-            ).forEach { link ->
-                assertEquals(ContactAddressValidationResult.GiftCardLink, validate(link, btc))
-                assertEquals(ContactAddressValidationResult.GiftCardLink, validate(link, null))
+            GiftCardSecretFixture.all.forEach { (name, link) ->
+                assertEquals(ContactAddressValidationResult.GiftCardLink, validate(link, btc), name)
+                assertEquals(ContactAddressValidationResult.GiftCardLink, validate(link, null), name)
             }
         }
 

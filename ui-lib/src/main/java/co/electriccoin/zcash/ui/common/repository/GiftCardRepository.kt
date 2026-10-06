@@ -65,7 +65,10 @@ interface GiftCardRepository {
     fun observeSession(linkId: String): Flow<GiftCardSession>
 
     /**
-     * Checks the card again: after a failure, or on a pending card. Ignored while a check or a redemption runs.
+     * Checks the card again: after a failure, or on a pending or empty card. A pending or empty card is checked
+     * quietly: it keeps its phase, with [GiftCardPhase.Pending.isRechecking] or [GiftCardPhase.Empty.isRechecking]
+     * set, until the check succeeds, and keeps it if the check fails. Ignored while a check or a redemption runs, and
+     * for a card that is [GiftCardPhase.Empty.isDust].
      */
     fun checkAgain(linkId: String)
 
@@ -128,12 +131,12 @@ internal object GiftCardLinkPrefixes {
  * A session can also lose its screen without a [dismiss]: a back press while a redemption starts, a back stack reset
  * elsewhere, the wallet being deleted. So a session nobody collects (see [MutableStateFlow.subscriptionCount]) closes
  * its card on its own: right away once its phase is final ([GiftCardPhase.Redeemed], or a failure that cannot be
- * retried), else once it has gone unobserved for [idleTimeout], unless it is being redeemed. [GiftCardPhase.Empty] is
- * not final, as the card can still be checked again, so a screen that returns within [idleTimeout] can still check it.
- * A redemption, once started, runs to its end whoever observes it, and the card is closed right after it when nobody
- * does. A closed session keeps showing its final phase to a screen that observes it again; an unfinished one shows
- * [GiftCardFailure.LINK_UNAVAILABLE], as its card is gone. A closed session that stays unobserved for another
- * [idleTimeout] is forgotten.
+ * retried, or a dust [GiftCardPhase.Empty]), else once it has gone unobserved for [idleTimeout], unless it is being
+ * redeemed. Any other [GiftCardPhase.Empty] is not final, as the card can still be checked again, so a screen that
+ * returns within [idleTimeout] can still check it. A redemption, once started, runs to its end whoever observes it,
+ * and the card is closed right after it when nobody does. A closed session keeps showing its final phase to a screen
+ * that observes it again; an unfinished one shows [GiftCardFailure.LINK_UNAVAILABLE], as its card is gone. A closed
+ * session that stays unobserved for another [idleTimeout] is forgotten.
  *
  * The re-checks of a pending card run only while someone collects the session.
  *
@@ -169,20 +172,21 @@ class GiftCardRepositoryImpl(
         synchronized(lock) {
             val session = links[linkId]?.value?.takeIf { !it.isBusyLocked() } ?: return
             val phase = session.state.value.phase
-            val canStartOver =
-                phase == GiftCardPhase.Empty || (phase is GiftCardPhase.Failed && phase.failure.isRetryable)
+            val canStartOver = phase is GiftCardPhase.Failed && phase.failure.isRetryable
+            val canRecheckQuietly =
+                phase is GiftCardPhase.Pending || (phase is GiftCardPhase.Empty && !phase.isDust)
             when {
                 session.isClosed -> {
-                    if (canStartOver) session.update { it.copy(phase = LINK_UNAVAILABLE) }
+                    if (canStartOver || canRecheckQuietly) session.update { it.copy(phase = LINK_UNAVAILABLE) }
                 }
 
-                phase is GiftCardPhase.Pending -> {
+                canRecheckQuietly && session.handle != null -> {
                     session.pollJob?.cancel()
-                    session.update { it.copy(phase = phase.copy(isRechecking = true)) }
+                    session.update { it.copy(phase = phase.withRechecking(true)) }
                     session.workJob = scope.launch { check(session, isQuiet = true) }
                 }
 
-                canStartOver -> {
+                canStartOver || canRecheckQuietly -> {
                     session.workJob = scope.launch { start(session) }
                 }
             }
@@ -330,7 +334,7 @@ class GiftCardRepositoryImpl(
         }
 
     /**
-     * Checks the card. A quiet check (a re-check of a pending card) keeps the pending screen when it fails.
+     * Checks the card. A quiet check (a re-check of a pending or empty card) keeps that screen when it fails.
      */
     private suspend fun check(
         session: Session,
@@ -394,16 +398,30 @@ class GiftCardRepositoryImpl(
         }
 
     /**
-     * The phase after a failed check: a quiet check (a re-check of a pending card) keeps the pending screen.
+     * The phase after a failed check: a quiet check (a re-check of a pending or empty card) keeps that screen.
      */
     private fun Session.phaseAfterFailedCheck(
         e: Throwable,
         isQuiet: Boolean
     ): GiftCardPhase {
         val current = state.value.phase
-        return if (isQuiet && current is GiftCardPhase.Pending) current.copy(isRechecking = false) else e.toPhase()
+        val isRechecked = current is GiftCardPhase.Pending || current is GiftCardPhase.Empty
+        return if (isQuiet && isRechecked) current.withRechecking(false) else e.toPhase()
     }
 
+    /** This phase with its check-again progress set to [isRechecking], for the phases that show one. */
+    private fun GiftCardPhase.withRechecking(isRechecking: Boolean): GiftCardPhase =
+        when (this) {
+            is GiftCardPhase.Pending -> copy(isRechecking = isRechecking)
+            is GiftCardPhase.Empty -> copy(isRechecking = isRechecking)
+            else -> this
+        }
+
+    /**
+     * Redeems the session's card. Only a [GiftCardPhase.Ready] card is redeemed, so the card was checked to hold more
+     * than the fee: a redemption refused as [GiftCardException.NothingToRedeem] means that the fee its notes require
+     * takes all of it, and the card is [GiftCardPhase.Empty.isDust].
+     */
     @Suppress("TooGenericExceptionCaught")
     private suspend fun redeem(
         session: Session,
@@ -421,6 +439,8 @@ class GiftCardRepositoryImpl(
                 null
             } catch (_: GiftCardException.InUse) {
                 GiftCardPhase.Failed(GiftCardFailure.REDEEM_FAILED)
+            } catch (_: GiftCardException.NothingToRedeem) {
+                GiftCardPhase.Empty(isDust = true)
             } catch (e: GiftCardException) {
                 e.toPhase()
             } catch (e: Exception) {
@@ -534,7 +554,8 @@ class GiftCardRepositoryImpl(
 
     /**
      * Whether nothing more can happen in this phase without the user opening the card again. [GiftCardPhase.Empty] is
-     * not final: Check again checks the held card, so its card must stay open as long as an unfinished phase's.
+     * not final unless it is dust: Check again checks the held card, so its card must stay open as long as an
+     * unfinished phase's. A dust card offers no Check again.
      */
     private fun GiftCardPhase.isFinal(): Boolean =
         when (this) {
@@ -542,18 +563,19 @@ class GiftCardRepositoryImpl(
 
             is GiftCardPhase.Failed -> !failure.isRetryable
 
+            is GiftCardPhase.Empty -> isDust
+
             GiftCardPhase.Checking,
             is GiftCardPhase.Ready,
             is GiftCardPhase.Pending,
-            GiftCardPhase.Redeeming,
-            GiftCardPhase.Empty -> false
+            GiftCardPhase.Redeeming -> false
         }
 
     private fun GiftCardStatus.toPhase(): GiftCardPhase =
         when (this) {
             is GiftCardStatus.Ready -> GiftCardPhase.Ready(spendable = spendable, redeemable = redeemable)
             is GiftCardStatus.Pending -> GiftCardPhase.Pending(pending)
-            GiftCardStatus.Empty -> GiftCardPhase.Empty
+            GiftCardStatus.Empty -> GiftCardPhase.Empty()
         }
 
     /**
@@ -567,7 +589,7 @@ class GiftCardRepositoryImpl(
             is GiftCardException.UnknownHandle -> GiftCardPhase.Failed(GiftCardFailure.LINK_UNAVAILABLE)
             is GiftCardException.InvalidLink -> GiftCardPhase.Failed(GiftCardFailure.INVALID_LINK)
             is GiftCardException.SubmitFailed -> GiftCardPhase.Failed(GiftCardFailure.REDEEM_FAILED)
-            is GiftCardException.NothingToRedeem -> GiftCardPhase.Empty
+            is GiftCardException.NothingToRedeem -> GiftCardPhase.Empty()
             else -> GiftCardPhase.Failed(GiftCardFailure.CHECK_FAILED)
         }
 

@@ -52,7 +52,7 @@ class AddZashiABContactVM(
                         }
 
                         ContactAddressValidationResult.GiftCardLink -> {
-                            stringRes(R.string.swap_error_giftCardLink)
+                            stringRes(R.string.contact_error_giftCardLink)
                         }
 
                         ContactAddressValidationResult.Valid -> {
