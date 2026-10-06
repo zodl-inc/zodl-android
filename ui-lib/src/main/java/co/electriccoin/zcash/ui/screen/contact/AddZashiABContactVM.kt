@@ -51,6 +51,10 @@ class AddZashiABContactVM(
                             stringRes(R.string.contact_address_error_not_unique)
                         }
 
+                        ContactAddressValidationResult.GiftCardLink -> {
+                            stringRes(R.string.swap_error_giftCardLink)
+                        }
+
                         ContactAddressValidationResult.Valid -> {
                             null
                         }

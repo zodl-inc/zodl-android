@@ -596,8 +596,8 @@
     <string name="redeemGift_success_title">Gift redeemed!</string>
     <string name="redeemGift_success_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> is on its way to your wallet.\nIt will show up in your activity shortly.</string>
     <string name="redeemGift_success_subtitle_noAmount">Your gift is on its way to your wallet.\nIt will show up in your activity shortly.</string>
-    <string name="redeemGift_failure_title">Redemption failed</string>
-    <string name="redeemGift_failure_subtitle">Something went wrong while redeeming the gift card. Try again.</string>
+    <string name="redeemGift_failure_title">Redemption not confirmed</string>
+    <string name="redeemGift_failure_subtitle">We couldn\'t confirm redemption. Tap Try again to check the card\'s current status.</string>
     <string name="redeemGift_retry">Try again</string>
     <string name="redeemGift_checkAgain">Check again</string>
 
@@ -887,6 +887,7 @@
     <string name="swap_cancel_positive">Don\’t cancel</string>
     <string name="swap_quote_error_too_low_try_at_least">Amount is too low for bridge, try at least %s</string>
     <string name="swap_quote_error_too_low_try_higher">Amount is too low for bridge, try higher amount.</string>
+    <string name="swap_error_giftCardLink">Gift card links can\'t be used as swap addresses. Use Redeem Gift Card instead.</string>
     <string name="swap_quoteUnavailable">We tried but couldn\’t get a quote for a payment with your parameters. You can try to adjust the slippage or try again later.</string>
     <string name="swap_quoteUnavailableSwap">We tried but couldn\’t get a quote for a swap with your parameters. You can try to adjust the slippage or try again later.</string>
     <string name="swapAndPay_quoteUnavailable">Quote Unavailable</string>

@@ -561,8 +561,8 @@
     <string name="redeemGift_success_title">¡Regalo canjeado!</string>
     <string name="redeemGift_success_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> está en camino a tu billetera.\nAparecerá en tu actividad en breve.</string>
     <string name="redeemGift_success_subtitle_noAmount">Tu regalo está en camino a tu billetera.\nAparecerá en tu actividad en breve.</string>
-    <string name="redeemGift_failure_title">El canje falló</string>
-    <string name="redeemGift_failure_subtitle">Algo salió mal al canjear la tarjeta de regalo. Inténtalo de nuevo.</string>
+    <string name="redeemGift_failure_title">Canje no confirmado</string>
+    <string name="redeemGift_failure_subtitle">No pudimos confirmar el canje. Toca Intentar de nuevo para comprobar el estado actual de la tarjeta.</string>
     <string name="redeemGift_retry">Intentar de nuevo</string>
     <string name="redeemGift_checkAgain">Verificar de nuevo</string>
 
@@ -818,6 +818,7 @@
     <string name="swap_cancel_positive">No cancelar</string>
     <string name="swap_quote_error_too_low_try_at_least">El monto es muy bajo para el puente, intenta al menos %s</string>
     <string name="swap_quote_error_too_low_try_higher">El monto es muy bajo para el puente, intenta con un monto mayor.</string>
+    <string name="swap_error_giftCardLink">Los enlaces de tarjetas de regalo no se pueden usar como direcciones de intercambio. Usa Canjear tarjeta de regalo.</string>
     <string name="swap_quoteUnavailable">Intentamos, pero no pudimos obtener una cotización para un pago con tus parámetros. Puedes ajustar el slippage o intentarlo más tarde.</string>
     <string name="swap_quoteUnavailableSwap">Intentamos, pero no pudimos obtener una cotización para un swap con tus parámetros. Puedes ajustar el slippage o intentarlo más tarde.</string>
     <string name="swapAndPay_quoteUnavailable">Cotización no disponible</string>

@@ -76,9 +76,10 @@ class AddGenericABContactVM(
             blockchain
             ->
             val validation =
-                when (blockchain) {
-                    null -> null
-                    zcashBlockchain -> zashiValidation
+                when {
+                    swapValidation == ContactAddressValidationResult.GiftCardLink -> swapValidation
+                    blockchain == null -> null
+                    blockchain == zcashBlockchain -> zashiValidation
                     else -> swapValidation
                 }
 
@@ -93,6 +94,10 @@ class AddGenericABContactVM(
                     } else {
                         stringRes(R.string.contact_chain_address_error_not_unique)
                     }
+                }
+
+                ContactAddressValidationResult.GiftCardLink -> {
+                    stringRes(R.string.swap_error_giftCardLink)
                 }
 
                 ContactAddressValidationResult.Valid -> {

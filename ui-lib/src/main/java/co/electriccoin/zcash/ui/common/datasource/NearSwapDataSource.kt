@@ -30,6 +30,7 @@ import co.electriccoin.zcash.ui.common.provider.ResponseWithNearErrorException
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.TokenIconProvider
 import co.electriccoin.zcash.ui.common.provider.TokenNameProvider
+import co.electriccoin.zcash.ui.common.repository.GiftCardLinkPrefixes
 import co.electriccoin.zcash.ui.util.loggableNot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -78,6 +79,10 @@ class NearSwapDataSource(
         slippage: BigDecimal,
         affiliateAddress: String
     ): SwapQuote {
+        if (GiftCardLinkPrefixes.matches(destinationAddress) || GiftCardLinkPrefixes.matches(refundAddress)) {
+            throw GiftCardAddressNotAllowedException()
+        }
+
         val decimals =
             when (swapMode) {
                 SwapMode.EXACT_INPUT, SwapMode.FLEX_INPUT -> originAsset.decimals

@@ -37,4 +37,10 @@ sealed interface ContactAddressValidationResult {
     data object Invalid : ContactAddressValidationResult
 
     data object NotUnique : ContactAddressValidationResult
+
+    /**
+     * The address is a gift card link. Such a link carries the card's spending key, so it must never be saved as a
+     * swap contact, from where it would be sent to the swap provider.
+     */
+    data object GiftCardLink : ContactAddressValidationResult
 }
