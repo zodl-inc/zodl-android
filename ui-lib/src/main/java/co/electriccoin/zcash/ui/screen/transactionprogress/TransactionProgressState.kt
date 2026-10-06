@@ -16,6 +16,8 @@ data class TransactionProgressState(
     val onBack: () -> Unit,
     val transactionIds: List<StringResource>? = null,
     val showAppBar: Boolean = false,
+    /** Centers the content in the free space instead of starting it at 45 % of the height. */
+    val centerContent: Boolean = false,
 ) {
     enum class Background { SUCCESS, PENDING, ERROR }
 }

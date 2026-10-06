@@ -68,7 +68,8 @@ sealed interface RedeemGiftState {
                     primaryButton = null,
                     secondaryButton = null,
                     onBack = {},
-                    showAppBar = true
+                    showAppBar = true,
+                    centerContent = true
                 )
             )
 
@@ -87,7 +88,8 @@ sealed interface RedeemGiftState {
                     secondaryButton =
                         ButtonState(text = stringRes(R.string.general_close), style = ButtonStyle.SECONDARY),
                     onBack = {},
-                    showAppBar = true
+                    showAppBar = true,
+                    centerContent = true
                 )
             )
 
