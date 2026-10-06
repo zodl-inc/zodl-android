@@ -15,7 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RippleConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -72,6 +72,7 @@ fun ZcashTheme(
     ZcashSystemBarTheme(useDarkMode, useOledDark)
 
     CompositionLocalProvider(
+        LocalSystemBarAppearance provides SystemBarAppearance(useDarkMode, useOledDark),
         LocalExtendedColors provides extendedColors,
         LocalZashiColors provides zashiColors,
         LocalZashiTypography provides ZashiTypographyInternal,
@@ -166,27 +167,55 @@ private fun themePalettes(
     else -> Triple(LightColorPalette, LightExtendedColorPalette, LightZashiColorsInternal)
 }
 
+/** What a [ZcashTheme] asked the system bars to look like. */
+private data class SystemBarAppearance(
+    val useDarkMode: Boolean,
+    val useOledDark: Boolean
+)
+
+/** The system bar appearance of the enclosing [ZcashTheme], `null` for the outermost one. */
+private val LocalSystemBarAppearance = staticCompositionLocalOf<SystemBarAppearance?> { null }
+
+/**
+ * Applies the system bar style of this theme. A theme nested in another one with a different appearance (for example
+ * a screen that forces the dark one over a light app) gives the enclosing theme's style back when it leaves the
+ * composition. Without that, the bars keep the nested style on the screens that follow, because their own theme has
+ * not changed and so never applies its style again - e.g. white status bar icons on a light screen.
+ */
 @Composable
 private fun ZcashSystemBarTheme(
     useDarkMode: Boolean,
     useOledDark: Boolean
 ) {
     val activity = LocalActivity.current
-    LaunchedEffect(useDarkMode, useOledDark) {
+    val enclosing = LocalSystemBarAppearance.current
+    DisposableEffect(activity, useDarkMode, useOledDark) {
         if (activity is ComponentActivity) {
-            if (useDarkMode) {
-                activity.enableEdgeToEdge(
-                    statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-                    navigationBarStyle =
-                        SystemBarStyle.dark(if (useOledDark) DefaultOledScrim else DefaultDarkScrim)
-                )
-            } else {
-                activity.enableEdgeToEdge(
-                    statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
-                    navigationBarStyle = SystemBarStyle.light(DefaultLightScrim, DefaultDarkScrim)
-                )
+            activity.applySystemBars(useDarkMode, useOledDark)
+        }
+        onDispose {
+            if (activity is ComponentActivity && enclosing != null) {
+                activity.applySystemBars(enclosing.useDarkMode, enclosing.useOledDark)
             }
         }
+    }
+}
+
+private fun ComponentActivity.applySystemBars(
+    useDarkMode: Boolean,
+    useOledDark: Boolean
+) {
+    if (useDarkMode) {
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle =
+                SystemBarStyle.dark(if (useOledDark) DefaultOledScrim else DefaultDarkScrim)
+        )
+    } else {
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(DefaultLightScrim, DefaultDarkScrim)
+        )
     }
 }
 
