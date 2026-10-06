@@ -9,9 +9,6 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Added:
 
-- Export Viewing Key in Advanced Settings: share the selected account's Incoming or Full Viewing Key
-  as a QR code or key string, revealed behind biometrics and behind a consent sheet for the Full key.
-  The chooser carries the logo and name of the selected wallet, Zodl or Keystone.
 - Redeem gift cards: scan a gift card QR code or paste its link from the new Redeem Gift Card item in the Home
   menu or from any address scanner, and the card's funds are swept into the selected account. Opening a
   `gift.zodl.com` link from another app only opens the in-app gift card scanner, which asks for the card to be
@@ -22,6 +19,14 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   is closed and its temporary wallet erased, as are all cards when the wallet is reset. A card is checked and
   redeemed over Tor when Tor is turned on for the wallet, and a card holding no more than the network fee is shown
   as having nothing to redeem.
+
+## [3.15.0 (2852)] - 2026-09-28
+
+### Added:
+
+- Export Viewing Key in Advanced Settings: share the selected account's Incoming or Full Viewing Key
+  as a QR code or key string, revealed behind biometrics and behind a consent sheet for the Full key.
+  The chooser carries the logo and name of the selected wallet, Zodl or Keystone.
 
 ### Changed:
 
