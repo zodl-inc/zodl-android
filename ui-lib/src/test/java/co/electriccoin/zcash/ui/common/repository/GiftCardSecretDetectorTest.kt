@@ -41,6 +41,24 @@ class GiftCardSecretDetectorTest {
     }
 
     @Test
+    fun textWithMoreLayersOfPercentEncodingThanTheCapIsRefused() {
+        // A real marker under nine layers of encoding: eight rounds of decoding do not get to it, so it is refused.
+        val layered = (1..9).fold("%67ift.zodl.com") { current, _ -> current.replace("%", "%25") }
+
+        assertTrue(GiftCardSecretDetector.mayContainGiftCardSecret(layered), layered)
+    }
+
+    @Test
+    fun randomLookingTextDoesNotTrigger() {
+        val random = java.util.Random(1)
+        val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        repeat(20_000) {
+            val text = CharArray(64) { alphabet[random.nextInt(alphabet.length)] }.concatToString()
+            assertFalse(GiftCardSecretDetector.mayContainGiftCardSecret(text), text)
+        }
+    }
+
+    @Test
     fun theRoutingPrefixCheckIsUnchanged() {
         assertTrue(GiftCardLinkPrefixes.matches(GiftCardSecretFixture.LINK))
         assertFalse(GiftCardLinkPrefixes.matches("Your gift: ${GiftCardSecretFixture.LINK}"))
