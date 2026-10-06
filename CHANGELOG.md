@@ -7,6 +7,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Changed:
+
+- Swap and Pay now restore asset and network choices immediately while current prices load in the background (MOB-1923).
+
 ## [3.15.0 (2852)] - 2026-09-28
 
 ### Added:
