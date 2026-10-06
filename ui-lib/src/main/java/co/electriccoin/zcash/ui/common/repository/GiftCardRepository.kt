@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -452,7 +453,9 @@ class GiftCardRepositoryImpl(
         val handle = session.handle ?: return
         val phase =
             try {
-                GiftCardPhase.Redeemed(giftCardDataSource.redeem(handle, toAddress()))
+                withTimeout(TO_ADDRESS_TIMEOUT) { toAddress() }.let { address ->
+                    GiftCardPhase.Redeemed(giftCardDataSource.redeem(handle, address))
+                }
             } catch (_: CancellationException) {
                 currentCoroutineContext().ensureActive()
                 Twig.error { "Redeeming a gift card was cancelled from within" }
@@ -492,7 +495,10 @@ class GiftCardRepositoryImpl(
         for (wallet in stored) {
             val isLive =
                 synchronized(lock) {
-                    links.values.any { !it.value.isClosed && it.value.walletAlias == wallet.alias }
+                    links.values.any {
+                        (!it.value.isClosed || it.value.redeemJob?.isActive == true) &&
+                            it.value.walletAlias == wallet.alias
+                    }
                 }
             if (isLive) continue
             try {
@@ -657,6 +663,9 @@ class GiftCardRepositoryImpl(
 
         /** The default [idleTimeout]. */
         val IDLE_TIMEOUT = 2.minutes
+
+        /** How long the destination address of a redemption may take to arrive, before the redemption fails. */
+        private val TO_ADDRESS_TIMEOUT = 30.seconds
 
         private val LINK_UNAVAILABLE = GiftCardPhase.Failed(GiftCardFailure.LINK_UNAVAILABLE)
     }
