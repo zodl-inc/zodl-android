@@ -5,13 +5,17 @@ package co.electriccoin.zcash.ui.screen.transactionprogress
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -101,27 +105,39 @@ private fun TopBar(state: TransactionProgressState) {
 
 @Composable
 private fun BottomBar(state: TransactionProgressState) {
-    OldZashiBottomBar {
-        if (state.secondaryButton != null) {
-            ZashiButton(
-                state = state.secondaryButton,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = ZashiDimensions.Spacing.spacing2xl)
-                        .testTag(TransactionProgressTag.TX_PROGRESS_SECONDARY_BUTTON)
-            )
+    if (state.centerContent) {
+        // The final designs put the buttons straight on the screen, without the rounded, shadowed sheet.
+        Column {
+            BottomBarButtons(state)
+            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingLg))
+            Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
         }
-        if (state.primaryButton != null) {
-            ZashiButton(
-                state = state.primaryButton,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = ZashiDimensions.Spacing.spacing2xl)
-                        .testTag(TransactionProgressTag.TX_PROGRESS_PRIMARY_BUTTON),
-            )
-        }
+    } else {
+        OldZashiBottomBar { BottomBarButtons(state) }
+    }
+}
+
+@Composable
+private fun ColumnScope.BottomBarButtons(state: TransactionProgressState) {
+    if (state.secondaryButton != null) {
+        ZashiButton(
+            state = state.secondaryButton,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = ZashiDimensions.Spacing.spacing2xl)
+                    .testTag(TransactionProgressTag.TX_PROGRESS_SECONDARY_BUTTON)
+        )
+    }
+    if (state.primaryButton != null) {
+        ZashiButton(
+            state = state.primaryButton,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = ZashiDimensions.Spacing.spacing2xl)
+                    .testTag(TransactionProgressTag.TX_PROGRESS_PRIMARY_BUTTON),
+        )
     }
 }
 
@@ -138,14 +154,18 @@ private fun Content(state: TransactionProgressState, modifier: Modifier = Modifi
                     top.linkTo(parent.top)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
-                    bottom.linkTo(content.top)
 
-                    height =
-                        if (state.transactionIds == null) {
-                            Dimension.percent(.45f)
-                        } else {
-                            Dimension.value(12.dp)
-                        }
+                    if (state.centerContent) {
+                        height = Dimension.value(0.dp)
+                    } else {
+                        bottom.linkTo(content.top)
+                        height =
+                            if (state.transactionIds == null) {
+                                Dimension.percent(.45f)
+                            } else {
+                                Dimension.value(12.dp)
+                            }
+                    }
                 }
         )
 
@@ -154,7 +174,13 @@ private fun Content(state: TransactionProgressState, modifier: Modifier = Modifi
             modifier =
                 Modifier
                     .constrainAs(content) {
-                        top.linkTo(spaceTop.bottom)
+                        if (state.centerContent) {
+                            top.linkTo(parent.top)
+                            bottom.linkTo(parent.bottom)
+                            verticalBias = .5f
+                        } else {
+                            top.linkTo(spaceTop.bottom)
+                        }
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
                         width = Dimension.fillToConstraints

@@ -131,6 +131,7 @@ sealed interface RedeemGiftState {
                 primaryButton = null,
                 secondaryButton = null,
                 onBack = onBack,
+                centerContent = true,
             )
 
         /**
@@ -171,6 +172,7 @@ sealed interface RedeemGiftState {
                 secondaryButton = null,
                 onBack = onClose,
                 showAppBar = false,
+                centerContent = true,
             )
         } else {
             checkAgainStatus(
@@ -207,6 +209,7 @@ sealed interface RedeemGiftState {
             secondaryButton = null,
             onBack = onDone,
             showAppBar = false,
+            centerContent = true,
         )
 
         @Suppress("LongParameterList")
@@ -219,6 +222,7 @@ sealed interface RedeemGiftState {
             secondaryButton: ButtonState?,
             onBack: () -> Unit,
             showAppBar: Boolean = true,
+            centerContent: Boolean = false,
         ): RedeemGiftState =
             Status(
                 TransactionProgressState(
@@ -231,6 +235,7 @@ sealed interface RedeemGiftState {
                     secondaryButton = secondaryButton,
                     onBack = onBack,
                     showAppBar = showAppBar,
+                    centerContent = centerContent,
                 )
             )
 
@@ -259,6 +264,7 @@ sealed interface RedeemGiftState {
                 ),
             onBack = onClose,
             showAppBar = false,
+            centerContent = true,
         )
 
         private fun closeButton(onClose: () -> Unit) =
