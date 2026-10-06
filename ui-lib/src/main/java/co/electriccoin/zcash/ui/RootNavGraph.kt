@@ -29,6 +29,12 @@ import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
+/**
+ * Also opens the gift card scanner for a gift card link that arrived from outside the app. Such a link can arrive
+ * before there is a wallet, or before the wallet graph is shown (cold start, onboarding); MainActivity only records
+ * that one arrived (the link itself is discarded), and the scanner opens once the wallet graph is up, so the user
+ * scans the card with the app.
+ */
 @Composable
 fun RootNavGraph(
     secretState: SecretState,
@@ -126,9 +132,6 @@ fun RootNavGraph(
         }
     }
 
-    // Gift card links from outside the app can arrive before there is a wallet, or before the wallet graph is shown
-    // (cold start, onboarding). MainActivity only records that one arrived (the link itself is discarded); open the
-    // gift card scanner once the wallet graph is up, so the user scans the card with the app.
     LaunchedEffect(secretState, navController) {
         if (secretState != SecretState.READY) return@LaunchedEffect
         navController.currentBackStackEntryFlow.first {

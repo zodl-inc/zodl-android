@@ -94,7 +94,6 @@ private fun scanFailureText(
             else -> null
         }
 
-    // Check permission request result, if any
     return when (scanState) {
         ScanScreenState.Permission -> {
             stringResource(
@@ -113,12 +112,15 @@ private fun scanFailureText(
     }
 }
 
+/**
+ * Shows [failureText], or [infoText] when there is no failure: a failure takes the place of the info text while it
+ * is shown.
+ */
 @Composable
 private fun ScanInfoRow(
     failureText: String?,
     infoText: String?,
 ) {
-    // A failure takes the place of the info text while it is shown.
     val messageText = failureText ?: infoText ?: return
     Row(
         modifier = Modifier.fillMaxWidth(),

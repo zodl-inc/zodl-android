@@ -562,10 +562,10 @@
     <string name="redeemGift_scan_externalLink">Looks like you opened a gift card from another app. For better safety and security, scan the gift card\'s QR code with Zodl.</string>
     <string name="redeemGift_checking_title">Looking for your gift…</string>
     <string name="redeemGift_checking_subtitle">Checking the gift card on the Zcash network. This can take a moment.</string>
-    <string name="redeemGift_checking_progress"><xliff:g id="percent" example="42">%1$d</xliff:g>%% checked</string>
     <string name="redeemGift_ready_title">You received a gift!</string>
     <string name="redeemGift_ready_messageLabel">Message from the sender</string>
-    <string name="redeemGift_ready_destination">The funds will be sent to your <xliff:g id="wallet" example="Zodl">%1$s</xliff:g> wallet. The network fee is paid from the gift card, so you\'ll receive slightly less than the amount shown.</string>
+    <string name="redeemGift_ready_destination">The funds will be sent to your <xliff:g id="wallet" example="Zodl">%1$s</xliff:g> wallet.</string>
+    <string name="redeemGift_ready_feeHint">This is what you\'ll receive. The network fee is paid from the gift card.</string>
     <!-- The memo on the redeem transaction; followed by " · " and the card's message when it has one -->
     <string name="redeemGift_memo">Gift card</string>
     <string name="redeemGift_redeem">Redeem</string>

@@ -620,6 +620,10 @@ fun ScanCameraView(
 
 // Using callbackFlow because QrCodeAnalyzer has a non-suspending callback which makes
 // a basic flow builder not work here.
+
+/**
+ * Scanned codes are logged by length only, never by content: a scanned gift card link carries a spending secret.
+ */
 @Composable
 fun ImageAnalysis.qrCodeFlow(framePosition: FramePosition): Flow<String> {
     val context = LocalContext.current
@@ -631,7 +635,6 @@ fun ImageAnalysis.qrCodeFlow(framePosition: FramePosition): Flow<String> {
                 QrCodeAnalyzerImpl(
                     framePosition = framePosition,
                     onQrCodeScanned = { result ->
-                        // Never log the content: a scanned gift card link carries a spending secret.
                         Twig.debug { "Scan result onQrCodeScanned: ${result.length} chars" }
                         // Note that these callbacks aren't tied to the Compose lifecycle, so they could occur
                         // after the view goes away.  Collection needs to occur within the Compose lifecycle

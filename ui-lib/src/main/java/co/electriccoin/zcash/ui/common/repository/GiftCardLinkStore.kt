@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.getAndUpdate
+import kotlinx.coroutines.flow.update
 import java.util.UUID
 
 /**
@@ -62,7 +63,7 @@ class GiftCardLinkStoreImpl : GiftCardLinkStore {
     override fun take(id: String): String? = synchronized(links) { links.remove(id) }
 
     override fun requestInAppScan() {
-        scanRequested.value = true
+        scanRequested.update { true }
     }
 
     override fun consumeInAppScanRequest(): Boolean = scanRequested.getAndUpdate { false }

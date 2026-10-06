@@ -25,12 +25,15 @@ internal class ScanGenericAddressVM(
 
     private var hasBeenScannedSuccessfully = false
 
+    /**
+     * A gift card link opens the redeem flow and resolves the pending scan as cancelled: a link carries a spending
+     * secret, so it is never handed to the caller as an address.
+     */
     fun onScanned(result: String) =
         viewModelScope.launch {
             mutex.withLock {
                 if (!hasBeenScannedSuccessfully) {
                     if (navigateToRedeemGiftCard.isGiftCardLink(result)) {
-                        // Never hand a gift card link (it carries a spending secret) to the caller as an address.
                         onGiftCardScanned(result)
                         return@withLock
                     }

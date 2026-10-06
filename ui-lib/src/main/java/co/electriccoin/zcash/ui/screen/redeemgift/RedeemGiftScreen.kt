@@ -12,8 +12,8 @@ import org.koin.core.parameter.parametersOf
 fun RedeemGiftScreen(args: RedeemGiftArgs) {
     val vm = koinViewModel<RedeemGiftVM> { parametersOf(args) }
     val state by vm.state.collectAsStateWithLifecycle()
-    BackHandler { state.onBack() }
-    RedeemGiftView(state)
+    BackHandler(state != null) { state?.onBack?.invoke() }
+    state?.let { RedeemGiftView(it) }
 }
 
 /**

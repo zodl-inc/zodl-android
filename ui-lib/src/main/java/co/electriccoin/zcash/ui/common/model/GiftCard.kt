@@ -40,10 +40,12 @@ data class GiftCardSummary(
  */
 sealed interface GiftCardStatus {
     /**
-     * The card holds [spendable] funds that can be swept now.
+     * The card holds [spendable] funds that can be swept now. A redemption pays the network fee out of them, so the
+     * user receives [redeemable].
      */
     data class Ready(
-        val spendable: Zatoshi
+        val spendable: Zatoshi,
+        val redeemable: Zatoshi
     ) : GiftCardStatus
 
     /**
@@ -107,8 +109,107 @@ sealed class GiftCardException(
     ) : GiftCardException("Gift card has nothing to redeem", cause)
 
     /**
-     * The redemption transaction was created but the network did not accept it. The card has been reset: a new
-     * check reports its true state, and the redemption can be attempted again.
+     * The card's temporary wallet could not be created or synced, e.g. because the server could not be reached.
+     * Checking the card again may succeed.
      */
-    class SubmitFailed : GiftCardException("Gift card redemption was not submitted")
+    class CheckFailed(
+        cause: Throwable? = null
+    ) : GiftCardException("Gift card could not be checked", cause)
+
+    /**
+     * The redemption failed once its transaction may already have been created: the network did not accept it, or
+     * creating or submitting it failed. The card has been reset: a new check reports its true state, and the
+     * redemption can be attempted again.
+     */
+    class SubmitFailed(
+        cause: Throwable? = null
+    ) : GiftCardException("Gift card redemption was not submitted", cause)
+}
+
+/**
+ * A successful redemption.
+ *
+ * @param txId the id of the submitted transaction.
+ * @param received what the user's wallet receives, after the network fee; `null` when it is not known.
+ */
+data class GiftCardRedemption(
+    val txId: String,
+    val received: Zatoshi?
+)
+
+/**
+ * The state of one gift card redemption, as held by
+ * [co.electriccoin.zcash.ui.common.repository.GiftCardRepository] for as long as the redemption lasts, independently
+ * of any screen.
+ *
+ * @param summary what the card's link says about the card; `null` until the link has been parsed.
+ */
+data class GiftCardSession(
+    val summary: GiftCardSummary?,
+    val phase: GiftCardPhase
+)
+
+/**
+ * Where a [GiftCardSession] is.
+ */
+sealed interface GiftCardPhase {
+    /** The link is being parsed, or the card is being checked on chain. */
+    data object Checking : GiftCardPhase
+
+    /** The card can be redeemed now. */
+    data class Ready(
+        val spendable: Zatoshi,
+        val redeemable: Zatoshi
+    ) : GiftCardPhase
+
+    /**
+     * Funds were found but cannot be spent yet. The card is checked again periodically while the session is observed.
+     *
+     * @param isRechecking whether a check the user asked for is running.
+     */
+    data class Pending(
+        val pending: Zatoshi,
+        val isRechecking: Boolean = false
+    ) : GiftCardPhase
+
+    /** Nothing to redeem. */
+    data object Empty : GiftCardPhase
+
+    /** The redemption is being created and submitted. It cannot be cancelled. */
+    data object Redeeming : GiftCardPhase
+
+    /** The redemption was submitted. */
+    data class Redeemed(
+        val redemption: GiftCardRedemption
+    ) : GiftCardPhase
+
+    /** The session failed; [GiftCardFailure.isRetryable] tells whether it can be retried. */
+    data class Failed(
+        val failure: GiftCardFailure
+    ) : GiftCardPhase
+}
+
+/**
+ * Why a [GiftCardSession] failed.
+ */
+enum class GiftCardFailure(
+    val isRetryable: Boolean
+) {
+    /** The link is not a valid gift card link. */
+    INVALID_LINK(isRetryable = false),
+
+    /** The card is for another network than the wallet's. */
+    WRONG_NETWORK(isRetryable = false),
+
+    /** The link is no longer held by the app, e.g. after process death. */
+    LINK_UNAVAILABLE(isRetryable = false),
+
+    /** Gift card redemption is not available in this build. */
+    NOT_AVAILABLE(isRetryable = false),
+
+    /** The card could not be checked; checking it again may succeed. */
+    CHECK_FAILED(isRetryable = true),
+
+    /** The redemption failed; it is retried through a fresh check. */
+    REDEEM_FAILED(isRetryable = true)
 }

@@ -1,94 +1,94 @@
 package co.electriccoin.zcash.ui.common.repository
 
-import android.app.Application
-import cash.z.ecc.android.sdk.GiftCardRedeemer
-import cash.z.ecc.android.sdk.model.GiftCard
-import cash.z.ecc.android.sdk.model.GiftCardLinkError
-import cash.z.ecc.android.sdk.model.MemoContent
-import cash.z.ecc.android.sdk.model.RecipientAddress
-import cash.z.ecc.android.sdk.model.ZcashNetwork
-import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.spackle.Twig
-import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.datasource.GiftCardDataSource
+import co.electriccoin.zcash.ui.common.datasource.ParsedGiftCard
 import co.electriccoin.zcash.ui.common.model.GiftCardException
+import co.electriccoin.zcash.ui.common.model.GiftCardFailure
 import co.electriccoin.zcash.ui.common.model.GiftCardHandle
-import co.electriccoin.zcash.ui.common.model.GiftCardOrigin
+import co.electriccoin.zcash.ui.common.model.GiftCardPhase
+import co.electriccoin.zcash.ui.common.model.GiftCardSession
 import co.electriccoin.zcash.ui.common.model.GiftCardStatus
-import co.electriccoin.zcash.ui.common.model.GiftCardSummary
-import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
-import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
-import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.UUID
-import cash.z.ecc.android.sdk.exception.GiftCardException as SdkGiftCardException
-import cash.z.ecc.android.sdk.model.GiftCardOrigin as SdkGiftCardOrigin
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 /**
- * The app's only boundary to gift card redemption. Everything gift-card specific that needs the SDK lives behind
- * this interface, so wiring the SDK in is limited to [GiftCardRepositoryImpl].
+ * Owns gift card redemptions. Each redemption is a session that runs in this repository's own scope, from parsing
+ * the link to the card wallet's erase, so a redeem screen being destroyed, recreated or navigated away from never
+ * cancels or restarts it: the screen only observes the session and forwards the user's intents.
  *
- * Implementations must never log, persist or put into exception messages the link passed to [parse], nor any
- * secret derived from it.
+ * Sessions are keyed by the id of the link in [GiftCardLinkStore], which is all a screen knows. A link for a card
+ * that already has a live session joins that session instead of starting another one.
+ *
+ * Implementations must never log, persist or put into exception messages a gift card link, nor any secret derived
+ * from it.
  */
 interface GiftCardRepository {
     /**
      * A cheap check on the text's shape only, without parsing or validating it. Used by the scanners and the app
-     * link entry point to route text to the redeem flow; [parse] does the real validation.
+     * link entry point to route text to the redeem flow; the session does the real validation.
      */
     fun isGiftCardLink(value: String): Boolean
 
     /**
-     * Parses [link] and keeps the card in memory until [cleanup].
+     * The session for [linkId]. The first call starts it: the link is taken out of [GiftCardLinkStore], parsed and
+     * the card checked. Later calls, while the session is alive, observe the same session.
      *
-     * @throws GiftCardException.InvalidLink when the link cannot be read
-     * @throws GiftCardException.WrongNetwork when the card is for another network than the wallet's
-     * @throws GiftCardException.NotAvailable when this build cannot redeem gift cards
+     * While the card is [GiftCardPhase.Pending] it is checked again periodically, but only while this flow is
+     * collected. A session nobody collects closes its card wallet on its own, see [GiftCardRepositoryImpl].
      */
-    suspend fun parse(link: String): GiftCardSummary
+    fun observeSession(linkId: String): Flow<GiftCardSession>
 
     /**
-     * Progress of the card's sync while [check] runs, from 0 to 1. Emits nothing when the implementation cannot
-     * report progress.
+     * Checks the card again: after a failure, or on a pending card. Ignored while a check or a redemption runs.
      */
-    fun observeCheckProgress(handle: GiftCardHandle): Flow<Float>
+    fun checkAgain(linkId: String)
 
     /**
-     * Syncs the card's own temporary wallet and reports what it holds. A card holding no more than the fee a
-     * redemption would pay is [GiftCardStatus.Empty].
-     *
-     * @throws GiftCardException.InUse when another redemption of the same card is still using its wallet
+     * Redeems a [GiftCardPhase.Ready] card to the address [toAddress] returns. Ignored in any other phase, so a
+     * second tap cannot redeem twice. Once started, the redemption is never cancelled.
      */
-    suspend fun check(handle: GiftCardHandle): GiftCardStatus
+    fun redeem(
+        linkId: String,
+        toAddress: suspend () -> String
+    )
 
     /**
-     * Sends everything the card holds to [toAddress], with a memo that identifies the transaction as a gift card
-     * redemption (and carries the card's message, if any) in the user's history. [toAddress] must therefore be a
-     * shielded address.
-     *
-     * @return the id of the submitted transaction
-     * @throws GiftCardException.NotChecked when no [check] of this card has completed
-     * @throws GiftCardException.NothingToRedeem when the card holds nothing spendable above the fee
-     * @throws GiftCardException.InUse when another redemption of the same card is still using its wallet
-     * @throws GiftCardException.SubmitFailed when the network did not accept the redemption
+     * Ends the session for [linkId]: cancels a running check and erases the card's temporary wallet. Ignored while
+     * the card is being redeemed.
      */
-    suspend fun redeem(
-        handle: GiftCardHandle,
-        toAddress: String
-    ): String
+    fun dismiss(linkId: String)
 
     /**
-     * Forgets the card and erases the card's temporary wallet data, and only that. Safe to call more than once and
-     * for unknown handles. Does not suspend: the erase completes in the implementation's own scope so that it also
-     * runs when the caller's scope is being cancelled.
+     * Ends every session as [dismiss] does, including one being redeemed: its redemption still runs to its end, and
+     * its card wallet is erased after it. For when the wallet the cards are redeemed into is deleted.
      */
-    fun cleanup(handle: GiftCardHandle)
+    fun closeAllSessions()
+
+    /**
+     * Erases the card wallets that a session did not get to erase, e.g. because the process died. Card wallets of
+     * live sessions are kept.
+     */
+    suspend fun sweepOrphanedCardWallets()
 }
 
 /**
@@ -110,279 +110,498 @@ internal object GiftCardLinkPrefixes {
 }
 
 /**
- * SDK-backed implementation: a [GiftCardRedeemer] per parsed card, which runs the card's temporary wallet beside
- * the main one. The card wallet syncs from, and submits to, the lightwalletd endpoint the main synchronizer is
- * using, which is the one stored in the [PersistableWalletProvider]'s wallet (the main synchronizer is rebuilt
- * from that same wallet whenever it changes). It also connects the way the main synchronizer does: over Tor
- * exactly when the user's Tor setting ([IsTorEnabledStorageProvider]) is on, so the server never sees the user's IP
- * address next to the card's birthday and claim when the user chose Tor.
+ * Sessions live in [scope], which outlives every screen. A session's card stays held in [GiftCardDataSource] and its
+ * card wallet on disk until the session closes it; closing the card in the data source erases the card wallet and
+ * wipes the card's key. [dismiss] closes the card and forgets the session at once.
  *
- * The redemption is also recorded in the main synchronizer as a trusted transaction (ZIP 315), so the wallet shows
- * the claimed funds at once and can spend them after 3 confirmations rather than 10. Failing to record it does not
- * fail the redemption: the wallet then finds the funds on its next sync, as an ordinary receive.
+ * A session can also lose its screen without a [dismiss]: a back press while a redemption starts, a back stack reset
+ * elsewhere, the wallet being deleted. So a session nobody collects (see [MutableStateFlow.subscriptionCount]) closes
+ * its card on its own: right away once its phase is final ([GiftCardPhase.Redeemed], [GiftCardPhase.Empty], or a
+ * failure that cannot be retried), else once it has gone unobserved for [idleTimeout], unless it is being redeemed.
+ * A redemption, once started, runs to its end whoever observes it, and the card is closed right after it when nobody
+ * does. A closed session keeps showing its final phase to a screen that observes it again; an unfinished one shows
+ * [GiftCardFailure.LINK_UNAVAILABLE], as its card is gone. A closed session that stays unobserved for another
+ * [idleTimeout] is forgotten.
  *
- * Redeemers are keyed by [GiftCardHandle]; the SDK keys the card wallet's data on disk by an alias derived from
- * the card itself, so two live redeemers for the same card would share that data. Parsing a card that is already
- * held therefore evicts and closes the earlier redeemer first, and operations on the new one wait for that close.
+ * The re-checks of a pending card run only while someone collects the session.
  *
- * Closing (which erases the card wallet's data) happens in this repository's own scope, so it still runs when
- * the caller's scope is cancelled; the SDK serializes it after any in-flight operation on the same redeemer, and
- * [redeem] itself runs in that scope too, so an interrupted screen cannot abandon a half-done redemption.
+ * Two sessions never hold the same card: a link whose card ([ParsedGiftCard.walletAlias]) already has a live session
+ * joins it, and its own parse is discarded.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
+@Suppress("TooManyFunctions")
 class GiftCardRepositoryImpl(
-    private val application: Application,
-    private val persistableWalletProvider: PersistableWalletProvider,
-    private val synchronizerProvider: SynchronizerProvider,
-    private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider,
+    private val giftCardDataSource: GiftCardDataSource,
+    private val giftCardLinkStore: GiftCardLinkStore,
 ) : GiftCardRepository {
     internal var scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    /** Guards [cards] and [closeJobs]. */
+    /** How long an unfinished session may go unobserved before its card is closed. */
+    internal var idleTimeout: Duration = IDLE_TIMEOUT
+
+    /** Guards [links], [sweepJob] and the mutable fields of every [Session]. */
     private val lock = Any()
 
-    private val cards = mutableMapOf<GiftCardHandle, HeldCard>()
+    /** The session each link id observes; several ids point at the same session once a link joins another. */
+    private val links = mutableMapOf<String, MutableStateFlow<Session>>()
 
-    /** The latest close of each alias' card wallet, so that a new redeemer for the alias can wait for it. */
-    private val closeJobs = mutableMapOf<String, Job>()
+    private var sweepJob: Job? = null
 
     override fun isGiftCardLink(value: String): Boolean = GiftCardLinkPrefixes.matches(value)
 
-    override suspend fun parse(link: String): GiftCardSummary {
-        val wallet = persistableWalletProvider.getPersistableWallet() ?: throw GiftCardException.NotAvailable()
-        val card =
-            try {
-                GiftCard.parse(link)
-            } catch (e: SdkGiftCardException.InvalidLink) {
-                throw e.toAppException()
-            }
-        if (card.network != wallet.network) throw GiftCardException.WrongNetwork()
-        val redeemer = newRedeemer(card, wallet.network, wallet.endpoint)
+    override fun observeSession(linkId: String): Flow<GiftCardSession> = link(linkId).flatMapLatest { it.state }
 
-        val handle = GiftCardHandle(UUID.randomUUID().toString())
-        val held = HeldCard(card = card, network = wallet.network, endpoint = wallet.endpoint, redeemer = redeemer)
+    override fun checkAgain(linkId: String) {
         synchronized(lock) {
-            val evicted = cards.filterValues { it.redeemer.alias == redeemer.alias }
-            evicted.keys.forEach { cards.remove(it) }
-            evicted.values.forEach { closeLocked(it.redeemer) }
-            held.priorClose = closeJobs[redeemer.alias]
-            cards[handle] = held
-        }
-        return GiftCardSummary(
-            handle = handle,
-            origin = card.origin.toAppOrigin(),
-            birthdayHeight = card.birthdayHeight.value,
-            statedAmount = card.statedAmount,
-            message = card.description
-        )
-    }
+            val session = links[linkId]?.value?.takeIf { !it.isBusyLocked() } ?: return
+            val phase = session.state.value.phase
+            val canStartOver =
+                phase == GiftCardPhase.Empty || (phase is GiftCardPhase.Failed && phase.failure.isRetryable)
+            when {
+                session.isClosed -> {
+                    if (canStartOver) session.update { it.copy(phase = LINK_UNAVAILABLE) }
+                }
 
-    // The SDK reports no sync progress for the card wallet, so the UI keeps its indeterminate state.
-    override fun observeCheckProgress(handle: GiftCardHandle): Flow<Float> = emptyFlow()
+                phase is GiftCardPhase.Pending -> {
+                    session.pollJob?.cancel()
+                    session.update { it.copy(phase = phase.copy(isRechecking = true)) }
+                    session.workJob = scope.launch { check(session, isQuiet = true) }
+                }
 
-    override suspend fun check(handle: GiftCardHandle): GiftCardStatus {
-        val held = held(handle)
-        held.priorClose?.join()
-        val status =
-            try {
-                held.redeemer.check()
-            } catch (e: SdkGiftCardException.Closed) {
-                throw GiftCardException.UnknownHandle(e)
-            } catch (e: SdkGiftCardException.InUse) {
-                throw GiftCardException.InUse(e)
-            }
-        return when (status) {
-            is GiftCardRedeemer.Status.Ready -> {
-                GiftCardStatus.Ready(spendable = status.balance.spendable)
-            }
-
-            is GiftCardRedeemer.Status.Pending -> {
-                GiftCardStatus.Pending(pending = status.balance.pending)
-            }
-
-            GiftCardRedeemer.Status.Empty -> {
-                GiftCardStatus.Empty
-            }
-        }
-    }
-
-    override suspend fun redeem(
-        handle: GiftCardHandle,
-        toAddress: String
-    ): String {
-        val held = held(handle)
-        held.priorClose?.join()
-        val recipient = RecipientAddress.new(toAddress, held.network)
-        val memo = redeemMemo(label = application.getString(R.string.redeemGift_memo), message = held.card.description)
-        val redeemer = held.redeemer
-        // The main wallet, which owns toAddress, is told about the claim right away. Not waited for: without a
-        // loaded synchronizer the redemption goes ahead and the wallet finds the funds on its next sync.
-        val destination = synchronizerProvider.synchronizer.value
-        // Runs in this repository's scope: once started, a redemption is never left half done by the caller going
-        // away. The SDK serializes any later close() after it.
-        val redemption =
-            try {
-                scope.async { redeemer.redeem(recipient, memo, destination) }.await()
-            } catch (e: SdkGiftCardException.Closed) {
-                throw GiftCardException.UnknownHandle(e)
-            } catch (e: SdkGiftCardException.NetworkMismatch) {
-                throw GiftCardException.WrongNetwork(e)
-            } catch (e: SdkGiftCardException.NotChecked) {
-                throw GiftCardException.NotChecked(e)
-            } catch (e: SdkGiftCardException.NothingToRedeem) {
-                throw GiftCardException.NothingToRedeem(e)
-            } catch (e: SdkGiftCardException.InUse) {
-                throw GiftCardException.InUse(e)
-            }
-        if (!redemption.isSubmitted) {
-            // The unsubmitted transaction holds the funds in the card wallet: per the SDK contract, drop that
-            // wallet and start over with a fresh one so that the next check sees the card's true state.
-            replaceRedeemer(handle, held)
-            throw GiftCardException.SubmitFailed()
-        }
-        if (!redemption.recordedInDestination) {
-            Twig.warn { "Gift card redemption not recorded in the wallet as trusted; it will be found on sync" }
-        }
-        return redemption.results.first().txIdString()
-    }
-
-    override fun cleanup(handle: GiftCardHandle) {
-        synchronized(lock) {
-            cards.remove(handle)?.let { closeLocked(it.redeemer) }
-        }
-    }
-
-    private fun held(handle: GiftCardHandle): HeldCard =
-        synchronized(lock) { cards[handle] } ?: throw GiftCardException.UnknownHandle()
-
-    /**
-     * A redeemer whose card wallet connects as the main synchronizer does: over Tor exactly when the user's Tor
-     * setting is on (an unset setting means off, as for the main synchronizer). Read at creation, like the endpoint.
-     */
-    private suspend fun newRedeemer(
-        card: GiftCard,
-        network: ZcashNetwork,
-        endpoint: LightWalletEndpoint
-    ): GiftCardRedeemer {
-        val isTorEnabled = isTorEnabledStorageProvider.get() == true
-        return try {
-            GiftCardRedeemer.new(
-                context = application,
-                card = card,
-                network = network,
-                lightWalletEndpoint = endpoint,
-                isTorEnabled = isTorEnabled
-            )
-        } catch (e: SdkGiftCardException.NetworkMismatch) {
-            throw GiftCardException.WrongNetwork(e)
-        }
-    }
-
-    private suspend fun replaceRedeemer(
-        handle: GiftCardHandle,
-        held: HeldCard
-    ) {
-        val fresh = newRedeemer(held.card, held.network, held.endpoint)
-        synchronized(lock) {
-            // The card was cleaned up meanwhile: its redeemer is already being closed.
-            if (cards[handle] !== held) return
-            closeLocked(held.redeemer)
-            held.priorClose = closeJobs[fresh.alias]
-            held.redeemer = fresh
-        }
-    }
-
-    /**
-     * Closes [redeemer] in [scope], after any earlier close of the same alias. Call with [lock] held.
-     */
-    @Suppress("TooGenericExceptionCaught")
-    private fun closeLocked(redeemer: GiftCardRedeemer) {
-        val alias = redeemer.alias
-        val previous = closeJobs[alias]
-        val job =
-            scope.launch {
-                previous?.join()
-                try {
-                    redeemer.close()
-                } catch (e: Exception) {
-                    // Only the failure's type: its message may carry server or database error text.
-                    Twig.error { "Closing a gift card wallet failed: ${e::class.simpleName}" }
+                canStartOver -> {
+                    session.workJob = scope.launch { start(session) }
                 }
             }
-        closeJobs[alias] = job
-        job.invokeOnCompletion {
-            synchronized(lock) { if (closeJobs[alias] === job) closeJobs.remove(alias) }
         }
     }
 
-    private class HeldCard(
-        val card: GiftCard,
-        val network: ZcashNetwork,
-        val endpoint: LightWalletEndpoint,
-        @Volatile var redeemer: GiftCardRedeemer,
+    override fun redeem(
+        linkId: String,
+        toAddress: suspend () -> String
     ) {
-        /** A close of this card's alias that must finish before [redeemer] touches the card wallet. */
-        @Volatile
-        var priorClose: Job? = null
-    }
-}
-
-/**
- * The memo on the redeem transaction: the localized "Gift card" [label], followed by the card's [message] when it
- * has one. The message is the SDK's [GiftCard.description], which the SDK has already sanitized (no control or
- * invisible characters, never blank); here it is only cut on a UTF-8 character boundary so that the memo always fits
- * [MemoContent.MAX_MEMO_LENGTH_BYTES]. A card's message is never a reason to fail the redemption.
- */
-private fun redeemMemo(
-    label: String,
-    message: String?
-): MemoContent {
-    val memo =
-        if (message == null) {
-            label
-        } else {
-            val prefix = label + MEMO_MESSAGE_SEPARATOR
-            prefix + message.truncatedToUtf8Bytes(MemoContent.MAX_MEMO_LENGTH_BYTES - MemoContent.length(prefix))
+        synchronized(lock) {
+            val session =
+                idleSessionLocked(linkId)?.takeIf { it.state.value.phase is GiftCardPhase.Ready } ?: return
+            session.pollJob?.cancel()
+            session.update { it.copy(phase = GiftCardPhase.Redeeming) }
+            session.redeemJob = scope.launch { redeem(session, toAddress) }
         }
-    return MemoContent.fromString(memo)
-}
-
-private const val MEMO_MESSAGE_SEPARATOR = " · "
-
-/**
- * The longest prefix of this string that encodes to at most [maxBytes] UTF-8 bytes, cut on a code point boundary.
- */
-private fun String.truncatedToUtf8Bytes(maxBytes: Int): String {
-    val bytes = toByteArray(Charsets.UTF_8)
-    if (bytes.size <= maxBytes) return this
-    var end = maxBytes.coerceAtLeast(0)
-    // Step back over the continuation bytes (10xxxxxx) of a code point cut in the middle.
-    while (end > 0 && (bytes[end].toInt() and CONTINUATION_BYTE_MASK) == CONTINUATION_BYTE) end--
-    return String(bytes, 0, end, Charsets.UTF_8)
-}
-
-private const val CONTINUATION_BYTE_MASK = 0xC0
-private const val CONTINUATION_BYTE = 0x80
-
-private fun SdkGiftCardException.InvalidLink.toAppException(): GiftCardException =
-    when (reason) {
-        GiftCardLinkError.NetworkMismatch,
-        GiftCardLinkError.UnsupportedNetwork -> GiftCardException.WrongNetwork()
-
-        GiftCardLinkError.NotAGiftLink,
-        GiftCardLinkError.UnsupportedVersion,
-        GiftCardLinkError.MissingField,
-        GiftCardLinkError.DuplicateField,
-        GiftCardLinkError.InvalidField,
-        GiftCardLinkError.TooLong,
-        GiftCardLinkError.KeyDerivation,
-        GiftCardLinkError.Unknown -> GiftCardException.InvalidLink(this)
     }
 
-private fun SdkGiftCardOrigin.toAppOrigin(): GiftCardOrigin =
-    when (this) {
-        SdkGiftCardOrigin.Zodl -> GiftCardOrigin.ZODL
-
-        SdkGiftCardOrigin.LegacyV1,
-        SdkGiftCardOrigin.LegacyV2,
-        SdkGiftCardOrigin.LegacyV3 -> GiftCardOrigin.VIZOR
+    override fun dismiss(linkId: String) {
+        synchronized(lock) {
+            val session = links[linkId]?.value ?: return
+            if (session.redeemJob?.isActive == true) return
+            closeLocked(session)
+        }
     }
+
+    override fun closeAllSessions() {
+        synchronized(lock) {
+            links.values
+                .map { it.value }
+                .distinct()
+                .forEach { closeLocked(it) }
+        }
+    }
+
+    override suspend fun sweepOrphanedCardWallets() {
+        val job =
+            synchronized(lock) {
+                sweepJob ?: scope.launch { sweep() }.also { sweepJob = it }
+            }
+        job.join()
+    }
+
+    /**
+     * The live session of [linkId] when no check or redemption of it is running. Call with [lock] held.
+     */
+    private fun idleSessionLocked(linkId: String): Session? =
+        links[linkId]?.value?.takeIf { !it.isClosed && !it.isBusyLocked() }
+
+    private fun link(linkId: String): MutableStateFlow<Session> =
+        synchronized(lock) {
+            links.getOrPut(linkId) {
+                val session = Session(linkIds = mutableSetOf(linkId))
+                session.link = giftCardLinkStore.take(linkId)
+                session.workJob = scope.launch { start(session) }
+                session.idleJob = scope.launch { closeWhenIdle(session) }
+                MutableStateFlow(session)
+            }
+        }
+
+    /**
+     * Parses the session's link if that has not succeeded yet, then checks the card.
+     */
+    private suspend fun start(session: Session) {
+        session.update { it.copy(phase = GiftCardPhase.Checking) }
+        if (session.handle != null || parse(session)) check(session, isQuiet = false)
+    }
+
+    /**
+     * Parses the session's link and attaches the card to the session. Returns whether the session goes on with the
+     * card; otherwise its phase says why not, or it joined another session.
+     */
+    private suspend fun parse(session: Session): Boolean {
+        val link = session.link
+        val parsed =
+            if (link == null) {
+                session.update { it.copy(phase = LINK_UNAVAILABLE) }
+                null
+            } else {
+                parseLink(session, link)
+            }
+        return parsed != null && attach(session, parsed)
+    }
+
+    /**
+     * Parses [link], or records in [session] why it could not be parsed and returns `null`.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun parseLink(
+        session: Session,
+        link: String
+    ): ParsedGiftCard? =
+        try {
+            giftCardDataSource.parse(link)
+        } catch (e: CancellationException) {
+            currentCoroutineContext().ensureActive()
+            Twig.error { "Parsing a gift card link was cancelled from within" }
+            session.update { it.copy(phase = e.toPhase()) }
+            null
+        } catch (e: GiftCardException) {
+            session.update { it.copy(phase = e.toPhase()) }
+            null
+        } catch (e: Exception) {
+            Twig.error { "Parsing a gift card link failed: ${e::class.simpleName}" }
+            session.update { it.copy(phase = GiftCardPhase.Failed(GiftCardFailure.CHECK_FAILED)) }
+            null
+        }
+
+    /**
+     * Gives [session] the card it parsed, or, if that card already has a live session, moves [session]'s link ids
+     * over to that one and discards the parse. Returns whether [session] goes on with the card.
+     */
+    private fun attach(
+        session: Session,
+        parsed: ParsedGiftCard
+    ): Boolean =
+        synchronized(lock) {
+            val live =
+                links.values
+                    .map { it.value }
+                    .firstOrNull { it !== session && !it.isClosed && it.walletAlias == parsed.walletAlias }
+            when {
+                session.isClosed -> {
+                    giftCardDataSource.close(parsed.summary.handle)
+                    false
+                }
+
+                live != null -> {
+                    giftCardDataSource.close(parsed.summary.handle)
+                    session.isClosed = true
+                    session.idleJob?.cancel()
+                    session.link = null
+                    session.linkIds.forEach { id -> links[id]?.update { live } }
+                    live.linkIds += session.linkIds
+                    false
+                }
+
+                else -> {
+                    session.link = null
+                    session.handle = parsed.summary.handle
+                    session.walletAlias = parsed.walletAlias
+                    session.update { it.copy(summary = parsed.summary) }
+                    true
+                }
+            }
+        }
+
+    /**
+     * Checks the card. A quiet check (a re-check of a pending card) keeps the pending screen when it fails.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun check(
+        session: Session,
+        isQuiet: Boolean
+    ) {
+        val handle = session.handle ?: return
+        synchronized(lock) { sweepJob }?.join()
+        val phase =
+            try {
+                giftCardDataSource.check(handle).toPhase()
+            } catch (e: CancellationException) {
+                currentCoroutineContext().ensureActive()
+                Twig.error { "Checking a gift card was cancelled from within" }
+                session.phaseAfterFailedCheck(e, isQuiet)
+            } catch (e: GiftCardException) {
+                session.phaseAfterFailedCheck(e, isQuiet)
+            } catch (e: Exception) {
+                Twig.error { "Checking a gift card failed: ${e::class.simpleName}" }
+                session.phaseAfterFailedCheck(e, isQuiet)
+            }
+        synchronized(lock) {
+            if (session.isClosed) return
+            session.update { it.copy(phase = phase) }
+            if (phase is GiftCardPhase.Pending) {
+                session.pollJob?.cancel()
+                session.pollJob = scope.launch { pollWhilePending(session) }
+            }
+        }
+    }
+
+    /**
+     * Checks a pending card again every [PENDING_RETRY_INTERVAL], but only while someone observes the session.
+     */
+    private suspend fun pollWhilePending(session: Session) {
+        while (session.state.value.phase is GiftCardPhase.Pending) {
+            session.state.subscriptionCount.first { it > 0 }
+            delay(PENDING_RETRY_INTERVAL)
+            if (session.state.subscriptionCount.value == 0) continue
+            val isStillPending =
+                synchronized(lock) {
+                    !session.isClosed && !session.isBusyLocked() && session.state.value.phase is GiftCardPhase.Pending
+                }
+            if (!isStillPending) return
+            checkQuietly(session)
+        }
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun checkQuietly(session: Session) {
+        val handle = session.handle ?: return
+        val phase =
+            try {
+                giftCardDataSource.check(handle).toPhase()
+            } catch (_: CancellationException) {
+                currentCoroutineContext().ensureActive()
+                null
+            } catch (_: GiftCardException) {
+                null
+            } catch (e: Exception) {
+                Twig.error { "Checking a gift card failed: ${e::class.simpleName}" }
+                null
+            }
+        synchronized(lock) {
+            if (phase != null && !session.isClosed && !session.isBusyLocked()) {
+                session.update { it.copy(phase = phase) }
+            }
+        }
+    }
+
+    /**
+     * The phase after a failed check: a quiet check (a re-check of a pending card) keeps the pending screen.
+     */
+    private fun Session.phaseAfterFailedCheck(
+        e: Exception,
+        isQuiet: Boolean
+    ): GiftCardPhase {
+        val current = state.value.phase
+        return if (isQuiet && current is GiftCardPhase.Pending) current.copy(isRechecking = false) else e.toPhase()
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun redeem(
+        session: Session,
+        toAddress: suspend () -> String
+    ) {
+        val handle = session.handle ?: return
+        val phase =
+            try {
+                GiftCardPhase.Redeemed(giftCardDataSource.redeem(handle, toAddress()))
+            } catch (_: CancellationException) {
+                currentCoroutineContext().ensureActive()
+                Twig.error { "Redeeming a gift card was cancelled from within" }
+                GiftCardPhase.Failed(GiftCardFailure.REDEEM_FAILED)
+            } catch (_: GiftCardException.NotChecked) {
+                null
+            } catch (_: GiftCardException.InUse) {
+                GiftCardPhase.Failed(GiftCardFailure.REDEEM_FAILED)
+            } catch (e: GiftCardException) {
+                e.toPhase()
+            } catch (e: Exception) {
+                Twig.error { "Redeeming a gift card failed: ${e::class.simpleName}" }
+                GiftCardPhase.Failed(GiftCardFailure.REDEEM_FAILED)
+            }
+        if (phase == null) {
+            check(session, isQuiet = false)
+        } else {
+            session.update { it.copy(phase = phase) }
+        }
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun sweep() {
+        val stored =
+            try {
+                giftCardDataSource.findStoredCardWallets()
+            } catch (_: CancellationException) {
+                currentCoroutineContext().ensureActive()
+                Twig.error { "Listing gift card wallets was cancelled from within" }
+                return
+            } catch (e: Exception) {
+                Twig.error { "Listing gift card wallets failed: ${e::class.simpleName}" }
+                return
+            }
+        stored.forEach { wallet ->
+            val isLive =
+                synchronized(lock) {
+                    links.values.any { !it.value.isClosed && it.value.walletAlias == wallet.alias }
+                }
+            if (isLive) return@forEach
+            try {
+                giftCardDataSource.eraseCardWallet(wallet)
+            } catch (_: CancellationException) {
+                currentCoroutineContext().ensureActive()
+                Twig.error { "Erasing an orphaned gift card wallet was cancelled from within" }
+            } catch (e: Exception) {
+                Twig.error { "Erasing an orphaned gift card wallet failed: ${e::class.simpleName}" }
+            }
+        }
+    }
+
+    /**
+     * Closes the card of [session] when nobody observes it: right away once its phase is final, else after
+     * [idleTimeout]; never while it is being redeemed. Then forgets the session once it has gone unobserved for
+     * another [idleTimeout]. Any observer arriving, and any change of phase, starts the wait over, so the end of a
+     * redemption is seen whatever phase it ends in.
+     */
+    private suspend fun closeWhenIdle(session: Session) {
+        combine(session.state.subscriptionCount, session.phase) { count, phase -> (count == 0) to phase }
+            .distinctUntilChanged()
+            .collectLatest { (isUnobserved, phase) ->
+                if (!isUnobserved) return@collectLatest
+                if (!phase.isFinal()) delay(idleTimeout)
+                if (!closeCardIfIdle(session)) return@collectLatest
+                delay(idleTimeout)
+                forget(session)
+            }
+    }
+
+    /**
+     * Closes the card of [session] unless it is being redeemed; an unfinished phase becomes
+     * [GiftCardFailure.LINK_UNAVAILABLE], as the card cannot be checked or redeemed any more. Returns whether the card
+     * is closed.
+     */
+    private fun closeCardIfIdle(session: Session): Boolean =
+        synchronized(lock) {
+            if (session.state.value.phase == GiftCardPhase.Redeeming) return false
+            if (!session.isClosed) {
+                closeCardLocked(session)
+                if (!session.state.value.phase
+                        .isFinal()
+                ) {
+                    session.update { it.copy(phase = LINK_UNAVAILABLE) }
+                }
+            }
+            true
+        }
+
+    /** Removes [session]'s link ids and stops watching it, unless someone observes it again. */
+    private fun forget(session: Session) {
+        synchronized(lock) {
+            if (session.state.subscriptionCount.value > 0) return
+            session.idleJob?.cancel()
+            forgetLocked(session)
+        }
+    }
+
+    /**
+     * Ends [session] and removes all of its link ids. Call with [lock] held.
+     */
+    private fun closeLocked(session: Session) {
+        closeCardLocked(session)
+        session.idleJob?.cancel()
+        forgetLocked(session)
+    }
+
+    /**
+     * Cancels [session]'s check and polling, and closes its card in the data source. Call with [lock] held.
+     */
+    private fun closeCardLocked(session: Session) {
+        session.isClosed = true
+        session.link = null
+        session.workJob?.cancel()
+        session.pollJob?.cancel()
+        session.handle?.let { giftCardDataSource.close(it) }
+        session.handle = null
+    }
+
+    /** Removes the link ids that still point at [session]. Call with [lock] held. */
+    private fun forgetLocked(session: Session) {
+        session.linkIds.forEach { id -> if (links[id]?.value === session) links.remove(id) }
+    }
+
+    /** Whether nothing more can happen in this phase without the user starting over. */
+    private fun GiftCardPhase.isFinal(): Boolean =
+        when (this) {
+            is GiftCardPhase.Redeemed, GiftCardPhase.Empty -> true
+            is GiftCardPhase.Failed -> !failure.isRetryable
+            GiftCardPhase.Checking, is GiftCardPhase.Ready, is GiftCardPhase.Pending, GiftCardPhase.Redeeming -> false
+        }
+
+    private fun GiftCardStatus.toPhase(): GiftCardPhase =
+        when (this) {
+            is GiftCardStatus.Ready -> GiftCardPhase.Ready(spendable = spendable, redeemable = redeemable)
+            is GiftCardStatus.Pending -> GiftCardPhase.Pending(pending)
+            GiftCardStatus.Empty -> GiftCardPhase.Empty
+        }
+
+    /**
+     * [GiftCardException.InUse] (another redemption of this card still holds its wallet) and
+     * [GiftCardException.NotChecked] both lead to a failed check, whose retry checks the card again.
+     */
+    private fun Exception.toPhase(): GiftCardPhase =
+        when (this) {
+            is GiftCardException.WrongNetwork -> GiftCardPhase.Failed(GiftCardFailure.WRONG_NETWORK)
+            is GiftCardException.NotAvailable -> GiftCardPhase.Failed(GiftCardFailure.NOT_AVAILABLE)
+            is GiftCardException.UnknownHandle -> GiftCardPhase.Failed(GiftCardFailure.LINK_UNAVAILABLE)
+            is GiftCardException.InvalidLink -> GiftCardPhase.Failed(GiftCardFailure.INVALID_LINK)
+            is GiftCardException.SubmitFailed -> GiftCardPhase.Failed(GiftCardFailure.REDEEM_FAILED)
+            is GiftCardException.NothingToRedeem -> GiftCardPhase.Empty
+            else -> GiftCardPhase.Failed(GiftCardFailure.CHECK_FAILED)
+        }
+
+    /**
+     * One redemption. [linkIds] are the link ids observing it. Its fields are guarded by [lock].
+     *
+     * @property link the card's link, kept only until it has been parsed, so that a parse that failed for an
+     * unexpected reason can be retried.
+     */
+    private class Session(
+        val linkIds: MutableSet<String>,
+    ) {
+        /**
+         * What the session's observers collect. Nothing in the repository collects it, so that its
+         * [MutableStateFlow.subscriptionCount] counts observers only; change it through [update].
+         */
+        val state = MutableStateFlow(GiftCardSession(summary = null, phase = GiftCardPhase.Checking))
+
+        /** The phase of [state], for the repository's own watchers. */
+        val phase = MutableStateFlow<GiftCardPhase>(GiftCardPhase.Checking)
+        var link: String? = null
+        var handle: GiftCardHandle? = null
+        var walletAlias: String? = null
+        var isClosed = false
+        var workJob: Job? = null
+        var pollJob: Job? = null
+        var redeemJob: Job? = null
+        var idleJob: Job? = null
+
+        fun isBusyLocked(): Boolean = workJob?.isActive == true || redeemJob?.isActive == true
+
+        fun update(transform: (GiftCardSession) -> GiftCardSession) {
+            state.update(transform)
+            phase.update { state.value.phase }
+        }
+    }
+
+    companion object {
+        val PENDING_RETRY_INTERVAL = 30.seconds
+
+        /** The default [idleTimeout]. */
+        val IDLE_TIMEOUT = 2.minutes
+
+        private val LINK_UNAVAILABLE = GiftCardPhase.Failed(GiftCardFailure.LINK_UNAVAILABLE)
+    }
+}

@@ -6,6 +6,7 @@ import co.electriccoin.zcash.ui.common.usecase.ApplyTransactionFulltextFiltersUs
 import co.electriccoin.zcash.ui.common.usecase.CancelProposalFlowUseCase
 import co.electriccoin.zcash.ui.common.usecase.CancelSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.CancelSwapUseCase
+import co.electriccoin.zcash.ui.common.usecase.ClearClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.ConfirmResyncUseCase
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateFlexaTransactionUseCase
@@ -139,6 +140,7 @@ import co.electriccoin.zcash.ui.common.usecase.ShowErrorUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitIncreaseEphemeralGapLimitUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitKSProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitProposalUseCase
+import co.electriccoin.zcash.ui.common.usecase.SweepOrphanedGiftCardWalletsUseCase
 import co.electriccoin.zcash.ui.common.usecase.UpdateABContactUseCase
 import co.electriccoin.zcash.ui.common.usecase.UpdateSwapActivityMetadataUseCase
 import co.electriccoin.zcash.ui.common.usecase.ValidateAddressUseCase
@@ -318,4 +320,6 @@ val useCaseModule =
         factoryOf(::NavigateToRedeemGiftCardUseCase)
         factoryOf(::HandleExternalLinkUseCase)
         factoryOf(::ReadClipboardTextUseCase)
+        factoryOf(::ClearClipboardUseCase)
+        factoryOf(::SweepOrphanedGiftCardWalletsUseCase)
     }

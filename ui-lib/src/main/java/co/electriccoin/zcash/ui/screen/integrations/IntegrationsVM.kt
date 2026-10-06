@@ -74,8 +74,6 @@ class IntegrationsVM(
         onBack = ::onBack,
         items =
             listOfNotNull(
-                // Not tied to the restore state or the account type: redeeming syncs the card's own temporary
-                // wallet and only needs an address of the selected account to send to.
                 ListItemState(
                     title = stringRes(R.string.integrations_redeemGift),
                     subtitle = stringRes(R.string.integrations_redeemGift_subtitle),

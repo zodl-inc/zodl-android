@@ -743,7 +743,7 @@ fun ImageAnalysis.qrCodeFlow(framePosition: FramePosition): Flow<String> {
                 QrCodeAnalyzerImpl(
                     framePosition = framePosition,
                     onQrCodeScanned = { result ->
-                        Twig.debug { "Scan result onQrCodeScanned: $result" }
+                        Twig.debug { "Scan result onQrCodeScanned: ${result.length} chars" }
                         // Note that these callbacks aren't tied to the Compose lifecycle, so they could occur
                         // after the view goes away.  Collection needs to occur within the Compose lifecycle
                         // to make this not be a problem.

@@ -30,7 +30,6 @@ class ExternalGiftCardLinkTest {
         val navigateToRedeemGiftCard = NavigateToRedeemGiftCardUseCase(giftCardRepository, store, router)
 
         assertTrue(handleExternalLink(host = "gift.zodl.com", isRedelivery = false))
-        // Nothing is navigated to before the wallet is ready.
         assertTrue(router.forwardedRoutes.isEmpty())
         assertTrue(store.isInAppScanRequested.value)
 
@@ -39,7 +38,6 @@ class ExternalGiftCardLinkTest {
         assertEquals(listOf<Any>(ScanGiftCardArgs(isFromExternalLink = true)), router.forwardedRoutes)
         assertTrue(router.replacedRoutes.isEmpty())
         assertFalse(store.isInAppScanRequested.value)
-        // The link was never stashed, parsed nor checked.
         verify(exactly = 0) { store.stash(any()) }
         verify(exactly = 0) { giftCardRepository.isGiftCardLink(any()) }
         confirmVerified(giftCardRepository)

@@ -107,7 +107,9 @@ class MainActivity : FragmentActivity() {
 
     /**
      * Links from outside the app are never used as they are: `zcash:` URIs go to the third party scan screen and gift
-     * card app links to the gift card scanner, both asking the user to scan the code with the app instead.
+     * card app links to the gift card scanner, both asking the user to scan the code with the app instead. A gift
+     * card link is then dropped from the intent: it is not trusted, and it carries a spending secret that must not
+     * stay around in the activity's intent.
      */
     private fun handleViewIntent(
         intent: Intent,
@@ -117,8 +119,6 @@ class MainActivity : FragmentActivity() {
         val isFromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
         val isGiftCardLink = handleExternalLink(host = data.host, isRedelivery = isRecreated || isFromHistory)
         if (isGiftCardLink) {
-            // Discard the link: it is not trusted, and it carries a spending secret that must not stay around in
-            // the activity's intent.
             intent.data = null
         }
     }

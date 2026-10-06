@@ -1,525 +1,475 @@
 package co.electriccoin.zcash.ui.common.repository
 
-import android.app.Application
-import cash.z.ecc.android.sdk.GiftCardRedeemer
-import cash.z.ecc.android.sdk.Synchronizer
-import cash.z.ecc.android.sdk.model.BlockHeight
-import cash.z.ecc.android.sdk.model.FirstClassByteArray
-import cash.z.ecc.android.sdk.model.GiftCard
-import cash.z.ecc.android.sdk.model.GiftCardLinkError
-import cash.z.ecc.android.sdk.model.MemoContent
-import cash.z.ecc.android.sdk.model.PersistableWallet
-import cash.z.ecc.android.sdk.model.RecipientAddress
-import cash.z.ecc.android.sdk.model.TransactionSubmitResult
 import cash.z.ecc.android.sdk.model.Zatoshi
-import cash.z.ecc.android.sdk.model.ZcashNetwork
-import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
-import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.GiftCardException
+import co.electriccoin.zcash.ui.common.model.GiftCardFailure
 import co.electriccoin.zcash.ui.common.model.GiftCardHandle
-import co.electriccoin.zcash.ui.common.model.GiftCardOrigin
+import co.electriccoin.zcash.ui.common.model.GiftCardPhase
+import co.electriccoin.zcash.ui.common.model.GiftCardRedemption
+import co.electriccoin.zcash.ui.common.model.GiftCardSession
 import co.electriccoin.zcash.ui.common.model.GiftCardStatus
-import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
-import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
-import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.slot
-import io.mockk.unmockkAll
-import io.mockk.verify
+import co.electriccoin.zcash.ui.fixture.FakeGiftCardDataSource
+import co.electriccoin.zcash.ui.fixture.GiftCardSummaryFixture
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertNotEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import kotlin.test.assertSame
-import cash.z.ecc.android.sdk.exception.GiftCardException as SdkGiftCardException
-import cash.z.ecc.android.sdk.model.GiftCardOrigin as SdkGiftCardOrigin
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 
 /**
- * [GiftCardRepositoryImpl] against a mocked SDK: link errors and statuses map to the app's types, the card wallet
- * uses the main wallet's network, endpoint and Tor setting, redemptions are recorded in the main wallet, and
- * redeemers are closed exactly once.
+ * [GiftCardRepositoryImpl] owns each redemption as a session in its own scope: the session survives its observers
+ * going away, a screen opened again for the same card joins it, pending cards are polled only while observed, and
+ * the card wallet is erased when the session is dismissed (never while redeeming), when nobody observes it any more
+ * (see [GiftCardRepositoryIdlePolicyTest]) or when found orphaned at startup.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GiftCardRepositoryImplTest {
-    private val application =
-        mockk<Application>(relaxed = true) {
-            every { getString(R.string.redeemGift_memo) } returns MEMO_LABEL
-        }
+    private val dataSource = FakeGiftCardDataSource()
 
-    private val persistableWalletProvider = mockk<PersistableWalletProvider>()
-
-    private val mainSynchronizer = mockk<Synchronizer>()
-
-    private val synchronizerProvider =
-        mockk<SynchronizerProvider> {
-            every { synchronizer } returns MutableStateFlow(mainSynchronizer)
-        }
-
-    private val isTorEnabledStorageProvider = mockk<IsTorEnabledStorageProvider>()
-
-    private val redeemer = mockk<GiftCardRedeemer>()
-
-    private val replacementRedeemer = mockk<GiftCardRedeemer>()
-
-    private val recipient = mockk<RecipientAddress>()
-
-    private var newRedeemerCalls = 0
-
-    @BeforeTest
-    fun setUp() {
-        mockkObject(GiftCard.Companion)
-        mockkObject(GiftCardRedeemer.Companion)
-        mockkObject(RecipientAddress.Companion)
-
-        coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(ZcashNetwork.Mainnet)
-        coEvery { GiftCard.parse(LINK) } returns card(ZcashNetwork.Mainnet)
-        coEvery { isTorEnabledStorageProvider.get() } returns true
-        every { GiftCardRedeemer.new(any(), any(), any(), any(), any(), any()) } answers {
-            listOf(redeemer, replacementRedeemer)[newRedeemerCalls++]
-        }
-        listOf(redeemer, replacementRedeemer).forEach {
-            every { it.alias } returns ALIAS
-            coEvery { it.close() } returns Unit
-        }
-        coEvery { RecipientAddress.new(ADDRESS, ZcashNetwork.Mainnet) } returns recipient
-    }
-
-    @AfterTest
-    fun tearDown() {
-        unmockkAll()
-    }
+    private val store = GiftCardLinkStoreImpl()
 
     @Test
-    fun parseCreatesTheRedeemerForTheMainWalletsNetworkAndEndpoint() =
-        runTest {
-            val summary = repository().parse(LINK)
-
-            assertEquals(GiftCardOrigin.VIZOR, summary.origin)
-            assertEquals(BIRTHDAY, summary.birthdayHeight)
-            assertEquals(Zatoshi(AMOUNT), summary.statedAmount)
-            assertEquals(MESSAGE, summary.message)
-            verify(exactly = 1) {
-                GiftCardRedeemer.new(
-                    context = any(),
-                    card = any(),
-                    network = ZcashNetwork.Mainnet,
-                    lightWalletEndpoint = ENDPOINT,
-                    isTorEnabled = any(),
-                    alias = any()
-                )
-            }
-        }
-
-    @Test
-    fun theCardWalletUsesTorWhenTheMainWalletDoes() =
-        runTest {
-            repository().parse(LINK)
-
-            verify(exactly = 1) { GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = true, alias = any()) }
-        }
-
-    @Test
-    fun theCardWalletConnectsDirectlyWhenTorIsOff() =
-        runTest {
-            coEvery { isTorEnabledStorageProvider.get() } returns false
-
-            repository().parse(LINK)
-
-            verify(exactly = 1) {
-                GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = false, alias = any())
-            }
-        }
-
-    @Test
-    fun anUnsetTorSettingConnectsDirectlyLikeTheMainWallet() =
-        runTest {
-            coEvery { isTorEnabledStorageProvider.get() } returns null
-
-            repository().parse(LINK)
-
-            verify(exactly = 1) {
-                GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = false, alias = any())
-            }
-        }
-
-    @Test
-    fun theFreshRedeemerAfterAnUnsubmittedRedeemAlsoUsesTor() =
-        runTest {
-            val repository = repository(this)
-            val handle = repository.parse(LINK).handle
-            coEvery { redeemer.redeem(recipient, any(), any()) } returns
-                GiftCardRedeemer.Redemption(
-                    fee = Zatoshi(FEE),
-                    results = listOf(TransactionSubmitResult.NotAttempted(TX_ID))
-                )
-
-            assertFailsWith<GiftCardException.SubmitFailed> { repository.redeem(handle, ADDRESS) }
-
-            verify(exactly = 2) { GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = true, alias = any()) }
-        }
-
-    @Test
-    fun eachParseGetsItsOwnHandle() =
-        runTest {
-            coEvery { GiftCard.parse(OTHER_LINK) } returns card(ZcashNetwork.Mainnet)
-            every { replacementRedeemer.alias } returns OTHER_ALIAS
-            val repository = repository()
-
-            assertNotEquals(repository.parse(LINK).handle, repository.parse(OTHER_LINK).handle)
-        }
-
-    @Test
-    fun malformedLinkIsInvalid() =
-        runTest {
-            val cause = SdkGiftCardException.InvalidLink(GiftCardLinkError.MissingField)
-            coEvery { GiftCard.parse(LINK) } throws cause
-
-            val e = assertFailsWith<GiftCardException.InvalidLink> { repository().parse(LINK) }
-
-            assertSame(cause, e.cause)
-            assertEquals(0, newRedeemerCalls)
-        }
-
-    @Test
-    fun linkForAnotherNetworkIsWrongNetwork() =
-        runTest {
-            coEvery { GiftCard.parse(LINK) } throws
-                SdkGiftCardException.InvalidLink(GiftCardLinkError.NetworkMismatch)
-
-            assertFailsWith<GiftCardException.WrongNetwork> { repository().parse(LINK) }
-        }
-
-    @Test
-    fun cardForAnotherNetworkThanTheWalletIsWrongNetwork() =
-        runTest {
-            coEvery { GiftCard.parse(LINK) } returns card(ZcashNetwork.Testnet)
-
-            assertFailsWith<GiftCardException.WrongNetwork> { repository().parse(LINK) }
-            assertEquals(0, newRedeemerCalls)
-        }
-
-    @Test
-    fun withoutAWalletRedemptionIsNotAvailable() =
-        runTest {
-            coEvery { persistableWalletProvider.getPersistableWallet() } returns null
-
-            assertFailsWith<GiftCardException.NotAvailable> { repository().parse(LINK) }
-        }
-
-    @Test
-    fun checkMapsTheCardsStatus() =
+    fun aSessionParsesAndChecksTheCardInTheRepositoryScope() =
         runTest {
             val repository = repository()
-            val handle = repository.parse(LINK).handle
-            val balance =
-                GiftCardRedeemer.Balance(total = Zatoshi(300), spendable = Zatoshi(200), pending = Zatoshi(100))
+            val linkId = store.stash(LINK)
 
-            coEvery { redeemer.check() } returns GiftCardRedeemer.Status.Ready(balance)
-            assertEquals(GiftCardStatus.Ready(Zatoshi(200)), repository.check(handle))
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
 
-            coEvery { redeemer.check() } returns GiftCardRedeemer.Status.Pending(balance)
-            assertEquals(GiftCardStatus.Pending(Zatoshi(100)), repository.check(handle))
-
-            coEvery { redeemer.check() } returns GiftCardRedeemer.Status.Empty
-            assertEquals(GiftCardStatus.Empty, repository.check(handle))
+            assertEquals(listOf(LINK), dataSource.parsedLinks)
+            assertNull(store.take(linkId))
+            val session = observer.latest()
+            assertEquals(GiftCardSummaryFixture.MESSAGE, session.summary?.message)
+            assertEquals(
+                GiftCardPhase.Ready(
+                    spendable = Zatoshi(GiftCardSummaryFixture.AMOUNT),
+                    redeemable = Zatoshi(GiftCardSummaryFixture.RECEIVED)
+                ),
+                session.phase
+            )
+            observer.job.cancel()
         }
 
     @Test
-    fun aCardHoldingNoMoreThanTheFeeIsEmpty() =
+    fun workSurvivesItsObserverGoingAway() =
+        runTest {
+            dataSource.checkGate = CompletableDeferred()
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+            assertEquals(GiftCardPhase.Checking, observer.latest().phase)
+
+            observer.job.cancel()
+            dataSource.checkGate?.complete(Unit)
+            runCurrent()
+
+            val again = observe(repository.observeSession(linkId))
+            runCurrent()
+            assertIs<GiftCardPhase.Ready>(again.latest().phase)
+            assertEquals(1, dataSource.checkCount)
+            assertTrue(dataSource.closed.isEmpty())
+            again.job.cancel()
+        }
+
+    @Test
+    fun observingTheSameLinkAgainReattachesWithoutStartingOver() =
         runTest {
             val repository = repository()
-            val handle = repository.parse(LINK).handle
-            // The SDK reports a dust card as Empty; it is never offered for redemption.
-            coEvery { redeemer.check() } returns GiftCardRedeemer.Status.Empty
+            val linkId = store.stash(LINK)
+            val first = observe(repository.observeSession(linkId))
+            runCurrent()
+            first.job.cancel()
 
-            assertEquals(GiftCardStatus.Empty, repository.check(handle))
+            val second = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            assertEquals(1, dataSource.parsedLinks.size)
+            assertEquals(1, dataSource.checkCount)
+            assertIs<GiftCardPhase.Ready>(second.latest().phase)
+            second.job.cancel()
         }
 
     @Test
-    fun aCardWhoseWalletIsInUseIsReportedAsInUse() =
+    fun aNewLinkForACardWithALiveSessionJoinsIt() =
         runTest {
             val repository = repository()
-            val handle = repository.parse(LINK).handle
-            val cause = SdkGiftCardException.InUse()
-            coEvery { redeemer.check() } throws cause
+            val firstId = store.stash(LINK)
+            val first = observe(repository.observeSession(firstId))
+            runCurrent()
 
-            val e = assertFailsWith<GiftCardException.InUse> { repository.check(handle) }
-            assertSame(cause, e.cause)
+            val secondId = store.stash(LINK)
+            val second = observe(repository.observeSession(secondId))
+            runCurrent()
+
+            assertEquals(2, dataSource.parsedLinks.size)
+            assertEquals(1, dataSource.checkCount)
+            assertEquals(listOf(GiftCardHandle("fixture-2")), dataSource.closed)
+            assertEquals(first.latest(), second.latest())
+
+            repository.dismiss(secondId)
+            assertEquals(listOf(GiftCardHandle("fixture-2"), GiftCardHandle("fixture-1")), dataSource.closed)
+            first.job.cancel()
+            second.job.cancel()
         }
 
     @Test
-    fun aFailedCardWalletSyncReachesTheScreenAsACheckFailure() =
+    fun aPendingCardIsPolledOnlyWhileTheSessionIsObserved() =
+        runTest {
+            dataSource.statuses = listOf(pending(), pending(), GiftCardSummaryFixture.readyStatus())
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+            assertIs<GiftCardPhase.Pending>(observer.latest().phase)
+
+            advanceTimeBy(GiftCardRepositoryImpl.PENDING_RETRY_INTERVAL + 1.seconds)
+            assertEquals(2, dataSource.checkCount)
+
+            observer.job.cancel()
+            advanceTimeBy(GiftCardRepositoryImpl.PENDING_RETRY_INTERVAL * 3)
+            assertEquals(2, dataSource.checkCount, "no polling without observers")
+
+            val again = observe(repository.observeSession(linkId))
+            advanceTimeBy(GiftCardRepositoryImpl.PENDING_RETRY_INTERVAL + 1.seconds)
+            assertEquals(3, dataSource.checkCount)
+            assertIs<GiftCardPhase.Ready>(again.latest().phase)
+            again.job.cancel()
+        }
+
+    @Test
+    fun aFailingQuietRecheckKeepsTheCardPending() =
+        runTest {
+            dataSource.statuses = listOf(pending())
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            dataSource.checkError = IllegalStateException("network")
+            advanceTimeBy(GiftCardRepositoryImpl.PENDING_RETRY_INTERVAL + 1.seconds)
+
+            assertEquals(2, dataSource.checkCount)
+            assertIs<GiftCardPhase.Pending>(observer.latest().phase)
+            repository.dismiss(linkId)
+            observer.job.cancel()
+        }
+
+    @Test
+    fun checkAgainOnAPendingCardRechecksInPlace() =
+        runTest {
+            dataSource.statuses = listOf(pending(), GiftCardSummaryFixture.readyStatus())
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            dataSource.checkGate = CompletableDeferred()
+            repository.checkAgain(linkId)
+            runCurrent()
+            assertEquals(pending().pending, assertIs<GiftCardPhase.Pending>(observer.latest().phase).pending)
+            assertTrue(assertIs<GiftCardPhase.Pending>(observer.latest().phase).isRechecking)
+
+            dataSource.checkGate?.complete(Unit)
+            runCurrent()
+            assertIs<GiftCardPhase.Ready>(observer.latest().phase)
+            observer.job.cancel()
+        }
+
+    @Test
+    fun dismissClosesTheCardAndForgetsTheSession() =
         runTest {
             val repository = repository()
-            val handle = repository.parse(LINK).handle
-            val cause = SdkGiftCardException.SyncFailed(null)
-            coEvery { redeemer.check() } throws cause
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
 
-            assertSame(cause, assertFailsWith<SdkGiftCardException.SyncFailed> { repository.check(handle) })
+            repository.dismiss(linkId)
+            repository.dismiss(linkId)
+
+            assertEquals(listOf(GiftCardHandle("fixture-1")), dataSource.closed)
+            observer.job.cancel()
+            val reopened = observe(repository.observeSession(linkId))
+            runCurrent()
+            assertEquals(GiftCardPhase.Failed(GiftCardFailure.LINK_UNAVAILABLE), reopened.latest().phase)
+            reopened.job.cancel()
         }
 
     @Test
-    fun redeemBeforeACheckIsNotChecked() =
+    fun dismissWhileCheckingCancelsTheCheckAndClosesTheCard() =
+        runTest {
+            dataSource.checkGate = CompletableDeferred()
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            repository.dismiss(linkId)
+            dataSource.checkGate?.complete(Unit)
+            runCurrent()
+
+            assertEquals(listOf(GiftCardHandle("fixture-1")), dataSource.closed)
+            assertEquals(GiftCardPhase.Checking, observer.latest().phase)
+            observer.job.cancel()
+        }
+
+    @Test
+    fun dismissBeforeTheLinkIsParsedDropsTheLink() =
         runTest {
             val repository = repository()
-            val handle = repository.parse(LINK).handle
-            coEvery { redeemer.redeem(recipient, any(), any()) } throws SdkGiftCardException.NotChecked()
+            val linkId = store.stash(LINK)
 
-            assertFailsWith<GiftCardException.NotChecked> { repository.redeem(handle, ADDRESS) }
+            repository.observeSession(linkId)
+            repository.dismiss(linkId)
+            runCurrent()
+
+            assertNull(store.take(linkId))
+            assertTrue(dataSource.parsedLinks.isEmpty())
+            assertTrue(dataSource.closed.isEmpty())
+        }
+
+    /**
+     * Nobody observes the session once the redemption ends, so its card is closed then, not before; observing it
+     * again still shows the result, without parsing or checking the card again.
+     */
+    @Test
+    fun aRedemptionIsNotCancelledByItsObserverGoingAwayNorByDismiss() =
+        runTest {
+            dataSource.redeemGate = CompletableDeferred()
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            repository.redeem(linkId) { ADDRESS }
+            runCurrent()
+            assertEquals(GiftCardPhase.Redeeming, observer.latest().phase)
+            observer.job.cancel()
+            repository.dismiss(linkId)
+            runCurrent()
+            assertTrue(dataSource.closed.isEmpty())
+            dataSource.redeemGate?.complete(Unit)
+            runCurrent()
+
+            assertEquals(listOf(GiftCardHandle("fixture-1")), dataSource.closed)
+            val again = observe(repository.observeSession(linkId))
+            runCurrent()
+            assertEquals(GiftCardPhase.Redeemed(dataSource.redemption), again.latest().phase)
+            assertEquals(1, dataSource.parsedLinks.size)
+            assertEquals(1, dataSource.checkCount)
+            again.job.cancel()
         }
 
     @Test
-    fun redeemOfACardInUseIsInUse() =
+    fun aSecondRedeemRequestIsIgnored() =
+        runTest {
+            dataSource.redeemGate = CompletableDeferred()
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            repository.redeem(linkId) { ADDRESS }
+            repository.redeem(linkId) { ADDRESS }
+            runCurrent()
+            dataSource.redeemGate?.complete(Unit)
+            runCurrent()
+
+            assertEquals(listOf(ADDRESS), dataSource.redeemedTo)
+            observer.job.cancel()
+        }
+
+    @Test
+    fun aRedeemedSessionReportsWhatTheWalletReceives() =
+        runTest {
+            dataSource.redemption = GiftCardRedemption(txId = GiftCardSummaryFixture.TX_ID, received = Zatoshi(42))
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            repository.redeem(linkId) { ADDRESS }
+            runCurrent()
+
+            val redeemed = assertIs<GiftCardPhase.Redeemed>(observer.latest().phase)
+            assertEquals(Zatoshi(42), redeemed.redemption.received)
+            repository.dismiss(linkId)
+            assertEquals(listOf(GiftCardHandle("fixture-1")), dataSource.closed)
+            observer.job.cancel()
+        }
+
+    @Test
+    fun aFailedRedemptionIsRetriedThroughAFreshCheck() =
+        runTest {
+            dataSource.redeemError = GiftCardException.SubmitFailed()
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            repository.redeem(linkId) { ADDRESS }
+            runCurrent()
+            assertEquals(GiftCardPhase.Failed(GiftCardFailure.REDEEM_FAILED), observer.latest().phase)
+
+            dataSource.statuses = listOf(GiftCardStatus.Empty)
+            repository.checkAgain(linkId)
+            runCurrent()
+
+            assertEquals(2, dataSource.checkCount)
+            assertEquals(1, dataSource.redeemedTo.size)
+            assertEquals(GiftCardPhase.Empty, observer.latest().phase)
+            observer.job.cancel()
+        }
+
+    @Test
+    fun aRedemptionOfAnUncheckedCardChecksItAgain() =
+        runTest {
+            dataSource.redeemError = GiftCardException.NotChecked()
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            repository.redeem(linkId) { ADDRESS }
+            runCurrent()
+
+            assertEquals(2, dataSource.checkCount)
+            assertIs<GiftCardPhase.Ready>(observer.latest().phase)
+            observer.job.cancel()
+        }
+
+    @Test
+    fun anUnexpectedRedeemFailureIsARetryableRedeemFailure() =
+        runTest {
+            dataSource.redeemError = IllegalStateException("rejected")
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            repository.redeem(linkId) { ADDRESS }
+            runCurrent()
+
+            assertEquals(GiftCardPhase.Failed(GiftCardFailure.REDEEM_FAILED), observer.latest().phase)
+            observer.job.cancel()
+        }
+
+    @Test
+    fun anUnexpectedParseFailureIsARetryableCheckFailure() =
+        runTest {
+            dataSource.parseError = IllegalStateException("boom")
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+            assertEquals(GiftCardPhase.Failed(GiftCardFailure.CHECK_FAILED), observer.latest().phase)
+
+            dataSource.parseError = null
+            repository.checkAgain(linkId)
+            runCurrent()
+
+            assertEquals(listOf(LINK, LINK), dataSource.parsedLinks)
+            assertIs<GiftCardPhase.Ready>(observer.latest().phase)
+            observer.job.cancel()
+        }
+
+    @Test
+    fun anInvalidLinkIsNotRetryable() =
+        runTest {
+            dataSource.parseError = GiftCardException.InvalidLink()
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            repository.checkAgain(linkId)
+            runCurrent()
+
+            assertEquals(GiftCardPhase.Failed(GiftCardFailure.INVALID_LINK), observer.latest().phase)
+            assertEquals(1, dataSource.parsedLinks.size)
+            observer.job.cancel()
+        }
+
+    @Test
+    fun anUnknownLinkIdIsUnavailableWithoutParsing() =
         runTest {
             val repository = repository()
-            val handle = repository.parse(LINK).handle
-            coEvery { redeemer.redeem(recipient, any(), any()) } throws SdkGiftCardException.InUse()
+            val observer = observe(repository.observeSession("missing"))
+            runCurrent()
 
-            assertFailsWith<GiftCardException.InUse> { repository.redeem(handle, ADDRESS) }
+            assertEquals(GiftCardPhase.Failed(GiftCardFailure.LINK_UNAVAILABLE), observer.latest().phase)
+            assertTrue(dataSource.parsedLinks.isEmpty())
+            observer.job.cancel()
         }
 
     @Test
-    fun redeemOfADustCardIsNothingToRedeem() =
+    fun theSweepErasesOrphanedCardWalletsButNotALiveSessionsOne() =
         runTest {
+            val orphan = GiftCardSummaryFixture.storedWallet(alias = "giftcard_orphan")
+            val live = GiftCardSummaryFixture.storedWallet()
+            dataSource.storedWallets = listOf(orphan, live)
             val repository = repository()
-            val handle = repository.parse(LINK).handle
-            coEvery { redeemer.redeem(recipient, any(), any()) } throws SdkGiftCardException.NothingToRedeem()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
 
-            assertFailsWith<GiftCardException.NothingToRedeem> { repository.redeem(handle, ADDRESS) }
+            repository.sweepOrphanedCardWallets()
+
+            assertEquals(listOf(orphan), dataSource.erased)
+            observer.job.cancel()
         }
 
     @Test
-    fun unknownHandleIsRejected() =
+    fun aCheckWaitsForTheSweep() =
         runTest {
+            dataSource.storedWallets = listOf(GiftCardSummaryFixture.storedWallet())
             val repository = repository()
+            repository.sweepOrphanedCardWallets()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
 
-            assertFailsWith<GiftCardException.UnknownHandle> { repository.check(GiftCardHandle("nope")) }
-            assertFailsWith<GiftCardException.UnknownHandle> { repository.redeem(GiftCardHandle("nope"), ADDRESS) }
+            assertEquals(listOf(GiftCardSummaryFixture.storedWallet()), dataSource.erased)
+            assertIs<GiftCardPhase.Ready>(observer.latest().phase)
+            observer.job.cancel()
         }
 
-    @Test
-    fun redeemSendsToTheValidatedAddressAndReturnsTheTxId() =
-        runTest {
-            val repository = repository(this)
-            val handle = repository.parse(LINK).handle
-            coEvery { redeemer.redeem(recipient, any(), any()) } returns
-                GiftCardRedeemer.Redemption(fee = Zatoshi(FEE), results = listOf(success(TX_ID)))
-
-            assertEquals(success(TX_ID).txIdString(), repository.redeem(handle, ADDRESS))
-            assertEquals(1, newRedeemerCalls)
-        }
-
-    @Test
-    fun redeemRecordsTheClaimInTheMainWallet() =
-        runTest {
-            val repository = repository(this)
-            val handle = repository.parse(LINK).handle
-            coEvery { redeemer.redeem(recipient, any(), mainSynchronizer) } returns
-                GiftCardRedeemer.Redemption(
-                    fee = Zatoshi(FEE),
-                    results = listOf(success(TX_ID)),
-                    recordedInDestination = true
-                )
-
-            assertEquals(success(TX_ID).txIdString(), repository.redeem(handle, ADDRESS))
-            coVerify(exactly = 1) { redeemer.redeem(recipient, any(), mainSynchronizer) }
-        }
-
-    @Test
-    fun redeemSucceedsWhenTheMainWalletDidNotRecordTheClaim() =
-        runTest {
-            val repository = repository(this)
-            val handle = repository.parse(LINK).handle
-            coEvery { redeemer.redeem(recipient, any(), mainSynchronizer) } returns
-                GiftCardRedeemer.Redemption(
-                    fee = Zatoshi(FEE),
-                    results = listOf(success(TX_ID)),
-                    recordedInDestination = false
-                )
-
-            assertEquals(success(TX_ID).txIdString(), repository.redeem(handle, ADDRESS))
-            advanceUntilIdle()
-            coVerify(exactly = 0) { redeemer.close() }
-            assertEquals(1, newRedeemerCalls)
-        }
-
-    @Test
-    fun redeemIntoAWalletOnAnotherNetworkIsWrongNetwork() =
-        runTest {
-            // The repository's own supervisor scope: a failed redemption must not cancel the test's scope.
-            val repository = repository()
-            val handle = repository.parse(LINK).handle
-            coEvery { redeemer.redeem(recipient, any(), any()) } throws SdkGiftCardException.NetworkMismatch()
-
-            assertFailsWith<GiftCardException.WrongNetwork> { repository.redeem(handle, ADDRESS) }
-        }
-
-    @Test
-    fun redeemMemoNamesTheGiftCardAndItsMessage() =
-        runTest {
-            assertEquals(MemoContent.fromString("$MEMO_LABEL · $MESSAGE"), redeemMemo(message = MESSAGE))
-        }
-
-    @Test
-    fun redeemMemoNamesTheGiftCardWhenItHasNoMessage() =
-        runTest {
-            assertEquals(MemoContent.fromString(MEMO_LABEL), redeemMemo(message = null))
-        }
-
-    @Test
-    fun redeemMemoCutsALongMessageOnACharacterBoundary() =
-        runTest {
-            // 300 two-byte characters: 600 bytes. After the 13-byte prefix, 499 bytes are left for the message,
-            // which is not a multiple of two, so the cut must step back to a character boundary.
-            val message = "é".repeat(300)
-            assertEquals(600, MemoContent.length(message))
-
-            val memo = redeemMemo(message)
-
-            val text = memo.toStringOrNull()!!
-            assertEquals("$MEMO_LABEL · " + "é".repeat(249), text)
-            assertEquals(511, MemoContent.length(text))
-        }
-
-    /** Parses a card with [message] and redeems it, returning the memo given to the redeemer. */
-    private suspend fun TestScope.redeemMemo(message: String?): MemoContent {
-        coEvery { GiftCard.parse(LINK) } returns card(ZcashNetwork.Mainnet, message = message)
-        val repository = repository(this)
-        val handle = repository.parse(LINK).handle
-        val memo = slot<MemoContent?>()
-        coEvery { redeemer.redeem(recipient, captureNullable(memo), any()) } returns
-            GiftCardRedeemer.Redemption(fee = Zatoshi(FEE), results = listOf(success(TX_ID)))
-
-        repository.redeem(handle, ADDRESS)
-
-        return assertNotNull(memo.captured)
-    }
-
-    @Test
-    fun unsubmittedRedeemFailsAndStartsOverWithAFreshRedeemer() =
-        runTest {
-            val repository = repository(this)
-            val handle = repository.parse(LINK).handle
-            coEvery { redeemer.redeem(recipient, any(), any()) } returns
-                GiftCardRedeemer.Redemption(
-                    fee = Zatoshi(FEE),
-                    results = listOf(TransactionSubmitResult.NotAttempted(TX_ID))
-                )
-
-            assertFailsWith<GiftCardException.SubmitFailed> { repository.redeem(handle, ADDRESS) }
-            advanceUntilIdle()
-
-            coVerify(exactly = 1) { redeemer.close() }
-            assertEquals(2, newRedeemerCalls)
-            coEvery { replacementRedeemer.check() } returns GiftCardRedeemer.Status.Empty
-            assertEquals(GiftCardStatus.Empty, repository.check(handle))
-        }
-
-    @Test
-    fun cleanupClosesTheRedeemerOnceAndForgetsTheHandle() =
-        runTest {
-            val repository = repository(this)
-            val handle = repository.parse(LINK).handle
-
-            repository.cleanup(handle)
-            repository.cleanup(handle)
-            repository.cleanup(GiftCardHandle("nope"))
-            advanceUntilIdle()
-
-            coVerify(exactly = 1) { redeemer.close() }
-            assertFailsWith<GiftCardException.UnknownHandle> { repository.check(handle) }
-        }
-
-    @Test
-    fun parsingAHeldCardAgainClosesTheEarlierRedeemer() =
-        runTest {
-            val repository = repository(this)
-            val first = repository.parse(LINK).handle
-            val second = repository.parse(LINK).handle
-            advanceUntilIdle()
-
-            coVerify(exactly = 1) { redeemer.close() }
-            assertFailsWith<GiftCardException.UnknownHandle> { repository.check(first) }
-            coEvery { replacementRedeemer.check() } returns GiftCardRedeemer.Status.Empty
-            assertEquals(GiftCardStatus.Empty, repository.check(second))
-        }
-
-    @Test
-    fun closedRedeemerIsReportedAsUnknownHandle() =
-        runTest {
-            val repository = repository(this)
-            val handle = repository.parse(LINK).handle
-            coEvery { redeemer.check() } throws SdkGiftCardException.Closed()
-
-            assertFailsWith<GiftCardException.UnknownHandle> { repository.check(handle) }
-        }
-
-    @Test
-    fun noProgressIsReported() =
-        runTest {
-            val repository = repository()
-            val handle = repository.parse(LINK).handle
-            var emitted: Float? = null
-
-            repository.observeCheckProgress(handle).collect { emitted = it }
-
-            assertNull(emitted)
-        }
-
-    private fun repository(scope: TestScope? = null) =
+    private fun TestScope.repository() =
         GiftCardRepositoryImpl(
-            application = application,
-            persistableWalletProvider = persistableWalletProvider,
-            synchronizerProvider = synchronizerProvider,
-            isTorEnabledStorageProvider = isTorEnabledStorageProvider,
-        ).also { repository -> scope?.let { repository.scope = it } }
+            giftCardDataSource = dataSource,
+            giftCardLinkStore = store,
+        ).also { it.scope = backgroundScope }
 
-    private fun wallet(network: ZcashNetwork) =
-        mockk<PersistableWallet> {
-            every { this@mockk.network } returns network
-            every { endpoint } returns ENDPOINT
-        }
-
-    private fun card(
-        network: ZcashNetwork,
-        message: String? = MESSAGE
-    ) = mockk<GiftCard> {
-        every { this@mockk.network } returns network
-        every { id } returns CARD_ID
-        every { origin } returns SdkGiftCardOrigin.LegacyV2
-        every { birthdayHeight } returns BlockHeight.new(BIRTHDAY)
-        every { statedAmount } returns Zatoshi(AMOUNT)
-        every { description } returns message
+    private fun TestScope.observe(flow: Flow<GiftCardSession>): Observer {
+        val observer = Observer()
+        observer.job = launch { flow.collect { observer.values += it } }
+        return observer
     }
 
-    private fun success(txId: FirstClassByteArray) = TransactionSubmitResult.Success(txId)
+    private class Observer {
+        val values = mutableListOf<GiftCardSession>()
+        lateinit var job: Job
+
+        fun latest(): GiftCardSession = assertNotNull(values.lastOrNull())
+    }
+
+    private fun pending() = GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT))
 
     private companion object {
         const val LINK = "https://gift.zodl.com/#v=1&key=zgift1test&height=3100000"
-        const val OTHER_LINK = "https://gift.zodl.com/#v=1&key=zgift1other&height=3100000"
-        const val CARD_ID = "0123456789abcdef0123456789abcdef"
-        const val ALIAS = "giftcard_$CARD_ID"
-        const val OTHER_ALIAS = "giftcard_fedcba9876543210fedcba9876543210"
-        const val ADDRESS = "u1destination"
-        const val BIRTHDAY = 3_100_000L
-        const val AMOUNT = 10_000_000L
-        const val FEE = 10_000L
-        const val MESSAGE = "Welcome to Zcash Summit"
-        const val MEMO_LABEL = "Gift card"
-        val ENDPOINT = LightWalletEndpoint(host = "zec.rocks", port = 443, isSecure = true)
-        val TX_ID = FirstClassByteArray(ByteArray(32) { it.toByte() })
+        const val ADDRESS = "u1orchardonly"
     }
 }

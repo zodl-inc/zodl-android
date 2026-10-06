@@ -8,16 +8,19 @@ import cash.z.ecc.android.sdk.model.FiatCurrency
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.GiftCardException
+import co.electriccoin.zcash.ui.common.model.GiftCardRedemption
 import co.electriccoin.zcash.ui.common.model.GiftCardStatus
+import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.repository.GiftCardLinkStoreImpl
+import co.electriccoin.zcash.ui.common.repository.GiftCardRepositoryImpl
 import co.electriccoin.zcash.ui.common.usecase.GetGiftCardDestinationAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.withStyle
-import co.electriccoin.zcash.ui.fixture.FakeGiftCardRepository
+import co.electriccoin.zcash.ui.fixture.FakeGiftCardDataSource
 import co.electriccoin.zcash.ui.fixture.GiftCardSummaryFixture
 import co.electriccoin.zcash.ui.fixture.ObserveFiatCurrencyResultFixture
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState
@@ -29,6 +32,7 @@ import io.mockk.unmockkAll
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -36,7 +40,6 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -46,15 +49,16 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * The gift card redeem flow against [FakeGiftCardRepository]: each card state maps to its screen, redeeming sends
- * to the selected account's Orchard address, pending cards are re-checked automatically, failures can be retried,
- * and the card is always cleaned up when the screen goes away.
+ * The redeem screen over a real [GiftCardRepositoryImpl] and a [FakeGiftCardDataSource]: each session phase maps to
+ * its screen, intents reach the repository, back ends the session (except while redeeming), and the screen going
+ * away does not cancel the redemption; the card is cleaned up once the session ends with nobody observing it.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RedeemGiftVMTest {
@@ -72,123 +76,226 @@ class RedeemGiftVMTest {
         unmockkAll()
     }
 
+    /** The amount shown is what the user receives, net of the fee, as on the success screen. */
     @Test
-    fun readyCardShowsAmountAndSenderMessage() =
+    fun readyCardShowsAmountSenderMessageAndDestination() =
         runTest(dispatcher) {
-            val vm = startedVm()
+            val vm = Env(this).startedVm()
 
             val state = assertIs<RedeemGiftState.Ready>(vm.state.value)
-            assertEquals(stringRes(Zatoshi(GiftCardSummaryFixture.AMOUNT)), state.amount)
+            assertEquals(stringRes(Zatoshi(GiftCardSummaryFixture.RECEIVED)), state.amount)
+            assertEquals(stringRes(R.string.redeemGift_ready_feeHint), state.feeHint)
             assertEquals(stringRes(GiftCardSummaryFixture.MESSAGE), state.message)
+            assertEquals(stringRes(R.string.redeemGift_title), state.title)
+            assertEquals(stringRes(R.string.redeemGift_ready_title), state.heading)
+            assertEquals(stringRes(R.string.redeemGift_ready_messageLabel), state.messageLabel)
+            assertEquals(
+                stringRes(R.string.redeemGift_ready_destination, stringRes(R.string.accounts_zashi)),
+                state.destination
+            )
             assertNull(state.fiatAmount)
+        }
+
+    @Test
+    fun theDestinationIsUnknownUntilTheSelectedAccountIsButTheFeeHintIsShown() =
+        runTest(dispatcher) {
+            val vm = Env(this, account = null).startedVm()
+
+            val state = assertIs<RedeemGiftState.Ready>(vm.state.value)
+            assertNull(state.destination)
+            assertEquals(stringRes(R.string.redeemGift_ready_feeHint), state.feeHint)
         }
 
     @Test
     fun readyCardWithoutMessageShowsNone() =
         runTest(dispatcher) {
-            val repository = FakeGiftCardRepository(summary = GiftCardSummaryFixture.new(message = " "))
-            val vm = startedVm(repository = repository)
+            val env = Env(this)
+            env.dataSource.summary = GiftCardSummaryFixture.new(message = " ")
 
-            assertNull(assertIs<RedeemGiftState.Ready>(vm.state.value).message)
+            assertNull(assertIs<RedeemGiftState.Ready>(env.startedVm().state.value).message)
         }
 
     @Test
-    fun readyCardShowsFiatWhenAnExchangeRateIsAvailable() =
+    fun readyCardShowsTheFiatValueOfWhatTheUserReceives() =
         runTest(dispatcher) {
-            // The currency symbol comes from android.icu, which is a stub on the JVM.
             mockkObject(FiatCurrency.USD)
             every { FiatCurrency.USD.symbol } returns "$"
-            val vm = startedVm(exchangeRate = ObserveFiatCurrencyResultFixture.new())
+            val env = Env(this, exchangeRate = ObserveFiatCurrencyResultFixture.new())
+            val netFiat = assertNotNull(assertIs<RedeemGiftState.Ready>(env.startedVm().state.value).fiatAmount)
 
-            assertNotNull(assertIs<RedeemGiftState.Ready>(vm.state.value).fiatAmount)
+            val grossEnv = Env(this, exchangeRate = ObserveFiatCurrencyResultFixture.new())
+            grossEnv.dataSource.statuses =
+                listOf(
+                    GiftCardStatus.Ready(
+                        spendable = Zatoshi(GiftCardSummaryFixture.AMOUNT),
+                        redeemable = Zatoshi(GiftCardSummaryFixture.AMOUNT)
+                    )
+                )
+            val grossFiat = assertNotNull(assertIs<RedeemGiftState.Ready>(grossEnv.startedVm().state.value).fiatAmount)
+
+            assertNotEquals(grossFiat, netFiat, "the fiat amount follows the net amount, not the card's gross funds")
         }
 
     @Test
-    fun redeemSendsToTheOrchardAddressAndShowsSuccess() =
+    fun checkingHasACloseThatCancelsTheCheckAndEndsTheSession() =
         runTest(dispatcher) {
-            val repository = FakeGiftCardRepository()
-            val vm = startedVm(repository = repository)
+            val env = Env(this)
+            env.dataSource.checkGate = CompletableDeferred()
+            val vm = env.startedVm()
+
+            val checking = statusOf(vm)
+            assertEquals(stringRes(R.string.redeemGift_checking_title), checking.title)
+            assertTrue(checking.showAppBar)
+
+            checking.onBack()
+            runCurrent()
+
+            assertEquals(1, env.router.backCount)
+            assertEquals(1, env.dataSource.closed.size)
+        }
+
+    @Test
+    fun redeemSendsToTheOrchardAddressAndShowsTheAmountReceived() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.redemption =
+                GiftCardRedemption(
+                    txId = GiftCardSummaryFixture.TX_ID,
+                    received = Zatoshi(GiftCardSummaryFixture.RECEIVED)
+                )
+            val vm = env.startedVm()
 
             assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
-            advanceUntilIdle()
+            runCurrent()
 
-            assertEquals(listOf(ORCHARD_ADDRESS), repository.redeemedTo)
+            assertEquals(listOf(ORCHARD_ADDRESS), env.dataSource.redeemedTo)
             val progress = statusOf(vm)
             assertEquals(TransactionProgressState.Background.SUCCESS, progress.background)
             assertEquals(stringRes(R.string.redeemGift_success_title), progress.title)
+            assertEquals(
+                stringRes(
+                    R.string.redeemGift_success_subtitle,
+                    stringRes(Zatoshi(GiftCardSummaryFixture.RECEIVED))
+                ).withStyle(),
+                progress.subtitle
+            )
         }
 
     @Test
-    fun backIsIgnoredWhileRedeemingAndSuccessCloseGoesHome() =
+    fun anUnknownAmountReceivedShowsTheCopyWithoutAnAmount() =
         runTest(dispatcher) {
-            val repository = FakeGiftCardRepository().apply { redeemGate = CompletableDeferred() }
-            val router = RecordingNavigationRouter()
-            val vm = startedVm(repository = repository, router = router)
+            val env = Env(this)
+            env.dataSource.redemption = GiftCardRedemption(txId = GiftCardSummaryFixture.TX_ID, received = null)
+            val vm = env.startedVm()
 
             assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
-            advanceUntilIdle()
-            assertEquals(stringRes(R.string.redeemGift_redeeming_title), statusOf(vm).title)
-            vm.state.value.onBack()
-            assertEquals(0, router.backCount)
-
-            repository.redeemGate?.complete(Unit)
-            advanceUntilIdle()
-            requireNotNull(statusOf(vm).primaryButton).onClick()
-            assertEquals(1, router.backToRootCount)
-        }
-
-    @Test
-    fun checkProgressIsShownWhileChecking() =
-        runTest(dispatcher) {
-            val repository = FakeGiftCardRepository().apply { checkGate = CompletableDeferred() }
-            val vm = startedVm(repository = repository)
-
-            assertEquals(stringRes(R.string.redeemGift_checking_title), statusOf(vm).title)
-            repository.progress.value = 0.42f
-            advanceUntilIdle()
-            assertEquals(stringRes(R.string.redeemGift_checking_progress, 42).withStyle(), statusOf(vm).subtitle)
-
-            repository.checkGate?.complete(Unit)
-            advanceUntilIdle()
-            assertIs<RedeemGiftState.Ready>(vm.state.value)
-        }
-
-    @Test
-    fun pendingCardIsRecheckedAutomaticallyUntilReady() =
-        runTest(dispatcher) {
-            val repository =
-                FakeGiftCardRepository(
-                    statuses =
-                        listOf(
-                            GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT)),
-                            GiftCardStatus.Ready(Zatoshi(GiftCardSummaryFixture.AMOUNT))
-                        )
-                )
-            val vm = startedVm(repository = repository)
-
-            assertEquals(stringRes(R.string.redeemGift_pending_title), statusOf(vm).title)
-            assertEquals(1, repository.checkCount)
-
-            advanceTimeBy(RedeemGiftVM.PENDING_RETRY_INTERVAL + 1.seconds)
             runCurrent()
 
-            assertEquals(2, repository.checkCount)
+            assertEquals(stringRes(R.string.redeemGift_success_subtitle_noAmount).withStyle(), statusOf(vm).subtitle)
+        }
+
+    @Test
+    fun aDoubleTapOnRedeemRedeemsOnce() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.redeemGate = CompletableDeferred()
+            val vm = env.startedVm()
+
+            val redeem = assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton
+            redeem.onClick()
+            redeem.onClick()
+            runCurrent()
+            env.dataSource.redeemGate?.complete(Unit)
+            runCurrent()
+
+            assertEquals(listOf(ORCHARD_ADDRESS), env.dataSource.redeemedTo)
+        }
+
+    @Test
+    fun backIsIgnoredWhileRedeemingAndSuccessCloseEndsTheSessionAndGoesHome() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.redeemGate = CompletableDeferred()
+            val vm = env.startedVm()
+
+            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
+            runCurrent()
+            assertEquals(stringRes(R.string.redeemGift_redeeming_title), statusOf(vm).title)
+            vm.state.value
+                ?.onBack
+                ?.invoke()
+            assertEquals(0, env.router.backCount)
+            assertTrue(env.dataSource.closed.isEmpty())
+
+            env.dataSource.redeemGate?.complete(Unit)
+            runCurrent()
+            requireNotNull(statusOf(vm).primaryButton).onClick()
+            assertEquals(1, env.router.backToRootCount)
+            assertEquals(1, env.dataSource.closed.size)
+        }
+
+    /**
+     * Redeem tapped and the screen gone in the same moment: the redemption is not cancelled, and once it ends with
+     * nobody observing it the card wallet is closed rather than left syncing until the process dies. Reopening the
+     * screen still shows the result.
+     */
+    @Test
+    fun theRedemptionGoesOnWhenTheScreenGoesAway() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.redeemGate = CompletableDeferred()
+            val vm = env.startedVm()
+
+            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
+            runCurrent()
+            clear(vm)
+            runCurrent()
+            assertTrue(env.dataSource.closed.isEmpty(), "the redemption is not cancelled")
+            env.dataSource.redeemGate?.complete(Unit)
+            runCurrent()
+
+            assertEquals(listOf(ORCHARD_ADDRESS), env.dataSource.redeemedTo)
+            assertEquals(1, env.dataSource.closed.size)
+            val reopened = env.startedVm(linkId = env.linkId)
+            assertEquals(stringRes(R.string.redeemGift_success_title), statusOf(reopened).title)
+        }
+
+    @Test
+    fun clearingTheScreenCleansUpTheCardOnlyAfterTheIdleTimeout() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            clear(env.startedVm())
+            runCurrent()
+            assertTrue(env.dataSource.closed.isEmpty())
+
+            advanceTimeBy(GiftCardRepositoryImpl.IDLE_TIMEOUT + 1.seconds)
+
+            assertEquals(1, env.dataSource.closed.size)
+        }
+
+    @Test
+    fun pendingCardIsRecheckedAutomaticallyWhileShown() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.statuses = listOf(pending(), GiftCardSummaryFixture.readyStatus())
+            val vm = env.startedVm()
+
+            assertEquals(stringRes(R.string.redeemGift_pending_title), statusOf(vm).title)
+            assertEquals(1, env.dataSource.checkCount)
+
+            advanceTimeBy(GiftCardRepositoryImpl.PENDING_RETRY_INTERVAL + 1.seconds)
+            runCurrent()
+
+            assertEquals(2, env.dataSource.checkCount)
             assertIs<RedeemGiftState.Ready>(vm.state.value)
         }
 
     @Test
     fun checkAgainOnAPendingCardShowsProgressOnTheButton() =
         runTest(dispatcher) {
-            val repository =
-                FakeGiftCardRepository(
-                    statuses =
-                        listOf(
-                            GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT)),
-                            GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT)),
-                            GiftCardStatus.Ready(Zatoshi(GiftCardSummaryFixture.AMOUNT))
-                        )
-                )
-            val vm = startedVm(repository = repository)
+            val env = Env(this)
+            env.dataSource.statuses = listOf(pending(), GiftCardSummaryFixture.readyStatus())
+            val vm = env.startedVm()
 
             assertEquals(
                 stringRes(R.string.redeemGift_pending_subtitle, stringRes(Zatoshi(GiftCardSummaryFixture.AMOUNT)))
@@ -198,154 +305,91 @@ class RedeemGiftVMTest {
             val checkAgain = assertNotNull(statusOf(vm).primaryButton)
             assertEquals(stringRes(R.string.redeemGift_checkAgain), checkAgain.text)
 
-            // "Check again" re-checks in place: the pending screen stays, the button shows it is working.
-            repository.checkGate = CompletableDeferred()
+            env.dataSource.checkGate = CompletableDeferred()
             checkAgain.onClick()
             runCurrent()
             assertEquals(stringRes(R.string.redeemGift_pending_title), statusOf(vm).title)
             assertTrue(assertNotNull(statusOf(vm).primaryButton).isLoading)
-            assertEquals(2, repository.checkCount)
 
-            repository.checkGate?.complete(Unit)
+            env.dataSource.checkGate?.complete(Unit)
             runCurrent()
-            assertEquals(stringRes(R.string.redeemGift_pending_title), statusOf(vm).title)
-            assertTrue(!assertNotNull(statusOf(vm).primaryButton).isLoading)
-
-            // The quiet re-check loop resumes after the manual check.
-            advanceTimeBy(RedeemGiftVM.PENDING_RETRY_INTERVAL + 1.seconds)
-            runCurrent()
-            assertEquals(3, repository.checkCount)
             assertIs<RedeemGiftState.Ready>(vm.state.value)
-        }
-
-    @Test
-    fun failingQuietRecheckKeepsThePendingScreen() =
-        runTest(dispatcher) {
-            val repository =
-                FakeGiftCardRepository(
-                    statuses = listOf(GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT)))
-                )
-            val vm = startedVm(repository = repository)
-
-            repository.checkError = IllegalStateException("network")
-            advanceTimeBy(RedeemGiftVM.PENDING_RETRY_INTERVAL + 1.seconds)
-            runCurrent()
-
-            assertEquals(2, repository.checkCount)
-            assertEquals(stringRes(R.string.redeemGift_pending_title), statusOf(vm).title)
-
-            // The card stays pending forever here; stop the re-check loop so the test can finish.
-            clear(vm)
         }
 
     @Test
     fun emptyCardShowsNothingToRedeem() =
         runTest(dispatcher) {
-            val vm = startedVm(repository = FakeGiftCardRepository(statuses = listOf(GiftCardStatus.Empty)))
+            val env = Env(this)
+            env.dataSource.statuses = listOf(GiftCardStatus.Empty)
 
-            assertEquals(stringRes(R.string.redeemGift_empty_title), statusOf(vm).title)
+            assertEquals(stringRes(R.string.redeemGift_empty_title), statusOf(env.startedVm()).title)
         }
 
     @Test
     fun wrongNetworkCardShowsWrongNetwork() =
         runTest(dispatcher) {
-            val vm = startedVm(repository = FakeGiftCardRepository(parseError = GiftCardException.WrongNetwork()))
+            val env = Env(this)
+            env.dataSource.parseError = GiftCardException.WrongNetwork()
 
-            assertEquals(stringRes(R.string.redeemGift_wrongNetwork_title), statusOf(vm).title)
+            assertEquals(stringRes(R.string.redeemGift_wrongNetwork_title), statusOf(env.startedVm()).title)
         }
 
     @Test
     fun invalidLinkShowsInvalidCard() =
         runTest(dispatcher) {
-            val vm = startedVm(repository = FakeGiftCardRepository(parseError = GiftCardException.InvalidLink()))
+            val env = Env(this)
+            env.dataSource.parseError = GiftCardException.InvalidLink()
 
-            assertEquals(stringRes(R.string.redeemGift_invalid_title), statusOf(vm).title)
+            assertEquals(stringRes(R.string.redeemGift_invalid_title), statusOf(env.startedVm()).title)
         }
 
     @Test
-    fun unexpectedParseFailureShowsInvalidCard() =
+    fun unexpectedParseFailureShowsARetryableCheckFailure() =
         runTest(dispatcher) {
-            val vm = startedVm(repository = FakeGiftCardRepository(parseError = IllegalStateException("boom")))
-
-            assertEquals(stringRes(R.string.redeemGift_invalid_title), statusOf(vm).title)
-        }
-
-    @Test
-    fun unavailableSdkShowsNotAvailable() =
-        runTest(dispatcher) {
-            val vm = startedVm(repository = FakeGiftCardRepository(parseError = GiftCardException.NotAvailable()))
-
-            assertEquals(stringRes(R.string.redeemGift_notAvailable_title), statusOf(vm).title)
-        }
-
-    @Test
-    fun unknownLinkIdShowsLinkUnavailableWithoutParsing() =
-        runTest(dispatcher) {
-            val repository = FakeGiftCardRepository()
-            val vm = startedVm(repository = repository, stashLink = false)
-
-            assertEquals(stringRes(R.string.redeemGift_linkUnavailable_title), statusOf(vm).title)
-            assertTrue(repository.parsedLinks.isEmpty())
-        }
-
-    @Test
-    fun linkIsTakenOutOfTheStore() =
-        runTest(dispatcher) {
-            val store = GiftCardLinkStoreImpl()
-            val id = store.stash(LINK)
-            val repository = FakeGiftCardRepository()
-            startedVm(repository = repository, store = store, linkId = id)
-
-            assertEquals(listOf(LINK), repository.parsedLinks)
-            assertNull(store.take(id))
-        }
-
-    @Test
-    fun failedCheckCanBeRetried() =
-        runTest(dispatcher) {
-            val repository = FakeGiftCardRepository(checkError = IllegalStateException("offline"))
-            val vm = startedVm(repository = repository)
+            val env = Env(this)
+            env.dataSource.parseError = IllegalStateException("boom")
+            val vm = env.startedVm()
 
             assertEquals(stringRes(R.string.redeemGift_checkFailed_title), statusOf(vm).title)
 
-            repository.checkError = null
+            env.dataSource.parseError = null
             requireNotNull(statusOf(vm).primaryButton).onClick()
-            advanceUntilIdle()
+            runCurrent()
 
             assertIs<RedeemGiftState.Ready>(vm.state.value)
         }
 
     @Test
-    fun failedRedeemIsRetriedThroughAFreshCheck() =
+    fun unavailableSdkShowsNotAvailable() =
         runTest(dispatcher) {
-            val repository = FakeGiftCardRepository(redeemError = IllegalStateException("rejected"))
-            val vm = startedVm(repository = repository)
+            val env = Env(this)
+            env.dataSource.parseError = GiftCardException.NotAvailable()
 
-            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
-            advanceUntilIdle()
-            assertEquals(stringRes(R.string.redeemGift_failure_title), statusOf(vm).title)
-
-            repository.statuses = listOf(GiftCardStatus.Empty)
-            requireNotNull(statusOf(vm).primaryButton).onClick()
-            advanceUntilIdle()
-
-            assertEquals(2, repository.checkCount)
-            assertEquals(1, repository.redeemedTo.size)
-            assertEquals(stringRes(R.string.redeemGift_empty_title), statusOf(vm).title)
+            assertEquals(stringRes(R.string.redeemGift_notAvailable_title), statusOf(env.startedVm()).title)
         }
 
     @Test
-    fun cardInUseDuringCheckCanBeRetried() =
+    fun unknownLinkIdShowsLinkUnavailableWithoutParsing() =
         runTest(dispatcher) {
-            val repository = FakeGiftCardRepository(checkError = GiftCardException.InUse())
-            val vm = startedVm(repository = repository)
+            val env = Env(this)
+            val vm = env.startedVm(linkId = "missing")
+
+            assertEquals(stringRes(R.string.redeemGift_linkUnavailable_title), statusOf(vm).title)
+            assertTrue(env.dataSource.parsedLinks.isEmpty())
+        }
+
+    @Test
+    fun failedCheckCanBeRetried() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.checkError = IllegalStateException("offline")
+            val vm = env.startedVm()
 
             assertEquals(stringRes(R.string.redeemGift_checkFailed_title), statusOf(vm).title)
-            assertNotNull(statusOf(vm).secondaryButton)
 
-            repository.checkError = null
+            env.dataSource.checkError = null
             requireNotNull(statusOf(vm).primaryButton).onClick()
-            advanceUntilIdle()
+            runCurrent()
 
             assertIs<RedeemGiftState.Ready>(vm.state.value)
         }
@@ -353,81 +397,42 @@ class RedeemGiftVMTest {
     @Test
     fun cardInUseDuringRedeemShowsARetryableFailure() =
         runTest(dispatcher) {
-            val repository = FakeGiftCardRepository(redeemError = GiftCardException.InUse())
-            val vm = startedVm(repository = repository)
+            val env = Env(this)
+            env.dataSource.redeemError = GiftCardException.InUse()
+            val vm = env.startedVm()
 
             assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals(stringRes(R.string.redeemGift_failure_title), statusOf(vm).title)
             assertNotNull(statusOf(vm).primaryButton)
-        }
-
-    @Test
-    fun redeemOfAnUncheckedCardChecksItAgain() =
-        runTest(dispatcher) {
-            val repository = FakeGiftCardRepository(redeemError = GiftCardException.NotChecked())
-            val vm = startedVm(repository = repository)
-
-            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
-            advanceUntilIdle()
-
-            assertEquals(2, repository.checkCount)
-            assertIs<RedeemGiftState.Ready>(vm.state.value)
         }
 
     @Test
     fun redeemOfACardWithNothingAboveTheFeeShowsEmpty() =
         runTest(dispatcher) {
-            val repository = FakeGiftCardRepository(redeemError = GiftCardException.NothingToRedeem())
-            val vm = startedVm(repository = repository)
+            val env = Env(this)
+            env.dataSource.redeemError = GiftCardException.NothingToRedeem()
+            val vm = env.startedVm()
 
             assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals(stringRes(R.string.redeemGift_empty_title), statusOf(vm).title)
         }
 
     @Test
-    fun unsubmittedRedeemShowsFailure() =
+    fun backEndsTheSessionAndLeaves() =
         runTest(dispatcher) {
-            val repository = FakeGiftCardRepository(redeemError = GiftCardException.SubmitFailed())
-            val vm = startedVm(repository = repository)
+            val env = Env(this)
+            val vm = env.startedVm()
 
-            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
-            advanceUntilIdle()
+            vm.state.value
+                ?.onBack
+                ?.invoke()
 
-            assertEquals(stringRes(R.string.redeemGift_failure_title), statusOf(vm).title)
-            assertNotNull(statusOf(vm).primaryButton)
-        }
-
-    @Test
-    fun backLeavesTheFlow() =
-        runTest(dispatcher) {
-            val router = RecordingNavigationRouter()
-            val vm = startedVm(router = router)
-
-            vm.state.value.onBack()
-
-            assertEquals(1, router.backCount)
-        }
-
-    @Test
-    fun cardIsCleanedUpWhenTheScreenGoesAway() =
-        runTest(dispatcher) {
-            val repository = FakeGiftCardRepository()
-            clear(startedVm(repository = repository))
-
-            assertEquals(listOf(GiftCardSummaryFixture.new().handle), repository.cleanedUp)
-        }
-
-    @Test
-    fun nothingToCleanUpWhenTheLinkNeverParsed() =
-        runTest(dispatcher) {
-            val repository = FakeGiftCardRepository(parseError = GiftCardException.InvalidLink())
-            clear(startedVm(repository = repository))
-
-            assertTrue(repository.cleanedUp.isEmpty())
+            assertEquals(1, env.router.backCount)
+            assertEquals(1, env.dataSource.closed.size)
         }
 
     private fun clear(vm: RedeemGiftVM) {
@@ -438,41 +443,50 @@ class RedeemGiftVMTest {
 
     private fun statusOf(vm: RedeemGiftVM) = assertIs<RedeemGiftState.Status>(vm.state.value).progress
 
-    @Suppress("LongParameterList")
-    private fun TestScope.startedVm(
-        repository: FakeGiftCardRepository = FakeGiftCardRepository(),
-        router: RecordingNavigationRouter = RecordingNavigationRouter(),
-        exchangeRate: ExchangeRateState = ExchangeRateState.OptedOut,
-        store: GiftCardLinkStoreImpl = GiftCardLinkStoreImpl(),
-        stashLink: Boolean = true,
-        linkId: String? = null,
-    ): RedeemGiftVM {
-        val id = linkId ?: if (stashLink) store.stash(LINK) else "missing"
-        val exchangeRateRepository =
-            mockk<ExchangeRateRepository> {
-                every { state } returns MutableStateFlow(exchangeRate)
-            }
-        val getSelectedWalletAccount =
-            mockk<GetSelectedWalletAccountUseCase> {
-                every { observe() } returns flowOf(zashiAccount())
-            }
-        val getDestinationAddress =
-            mockk<GetGiftCardDestinationAddressUseCase> {
-                coEvery { this@mockk.invoke() } returns ORCHARD_ADDRESS
-            }
-        val vm =
-            RedeemGiftVM(
-                args = RedeemGiftArgs(id),
-                giftCardLinkStore = store,
-                giftCardRepository = repository,
-                getDestinationAddress = getDestinationAddress,
-                navigationRouter = router,
-                exchangeRateRepository = exchangeRateRepository,
-                getSelectedWalletAccount = getSelectedWalletAccount,
-            )
-        backgroundScope.launch { vm.state.collect { } }
-        runCurrent()
-        return vm
+    private fun pending() = GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT))
+
+    /**
+     * One redeem flow: the link stashed under [linkId], and the repository every view model of this flow shares.
+     */
+    private inner class Env(
+        private val scope: TestScope,
+        private val exchangeRate: ExchangeRateState = ExchangeRateState.OptedOut,
+        private val account: WalletAccount? = zashiAccount(),
+    ) {
+        val dataSource = FakeGiftCardDataSource()
+        val store = GiftCardLinkStoreImpl()
+        val router = RecordingNavigationRouter()
+        val linkId = store.stash(LINK)
+        private val repository =
+            GiftCardRepositoryImpl(dataSource, store).also { it.scope = scope.backgroundScope }
+
+        fun startedVm(linkId: String = this.linkId): RedeemGiftVM {
+            val exchangeRateRepository =
+                mockk<ExchangeRateRepository> {
+                    every { state } returns MutableStateFlow(exchangeRate)
+                }
+            val accounts: Flow<WalletAccount?> = flowOf(account)
+            val getSelectedWalletAccount =
+                mockk<GetSelectedWalletAccountUseCase> {
+                    every { observe() } returns accounts
+                }
+            val getDestinationAddress =
+                mockk<GetGiftCardDestinationAddressUseCase> {
+                    coEvery { this@mockk.invoke() } returns ORCHARD_ADDRESS
+                }
+            val vm =
+                RedeemGiftVM(
+                    args = RedeemGiftArgs(linkId),
+                    giftCardRepository = repository,
+                    getDestinationAddress = getDestinationAddress,
+                    navigationRouter = router,
+                    exchangeRateRepository = exchangeRateRepository,
+                    getSelectedWalletAccount = getSelectedWalletAccount,
+                )
+            scope.backgroundScope.launch { vm.state.collect { } }
+            scope.runCurrent()
+            return vm
+        }
     }
 
     private fun zashiAccount() =

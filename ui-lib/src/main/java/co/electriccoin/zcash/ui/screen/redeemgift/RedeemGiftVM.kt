@@ -10,19 +10,18 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.model.GiftCardException
-import co.electriccoin.zcash.ui.common.model.GiftCardHandle
-import co.electriccoin.zcash.ui.common.model.GiftCardStatus
-import co.electriccoin.zcash.ui.common.model.GiftCardSummary
+import co.electriccoin.zcash.ui.common.model.GiftCardFailure
+import co.electriccoin.zcash.ui.common.model.GiftCardPhase
+import co.electriccoin.zcash.ui.common.model.GiftCardSession
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
-import co.electriccoin.zcash.ui.common.repository.GiftCardLinkStore
 import co.electriccoin.zcash.ui.common.repository.GiftCardRepository
 import co.electriccoin.zcash.ui.common.usecase.GetGiftCardDestinationAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
+import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.TickerLocation
 import co.electriccoin.zcash.ui.design.util.imageRes
@@ -34,249 +33,91 @@ import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressSt
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.ERROR
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.PENDING
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.SUCCESS
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.MathContext
-import kotlin.math.roundToInt
-import kotlin.time.Duration.Companion.seconds
 
 /**
- * Drives the gift card redeem flow: take the link from [GiftCardLinkStore], parse it, check the card on chain,
- * then sweep it into the selected account's Orchard-only address. The card's temporary wallet is cleaned up
- * whenever this screen goes away, whatever state it is in.
+ * The gift card redeem screen. The redemption itself is a session of [GiftCardRepository], which runs it
+ * independently of this screen: this view model only shows the session and forwards the user's intents. Leaving the
+ * screen with back or close ends the session (except while the card is being redeemed, when back does nothing);
+ * the screen merely going away does not.
  */
 @Suppress("LongParameterList")
 class RedeemGiftVM(
     private val args: RedeemGiftArgs,
-    private val giftCardLinkStore: GiftCardLinkStore,
     private val giftCardRepository: GiftCardRepository,
     private val getDestinationAddress: GetGiftCardDestinationAddressUseCase,
     private val navigationRouter: NavigationRouter,
     exchangeRateRepository: ExchangeRateRepository,
     getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
 ) : ViewModel() {
-    private val phase = MutableStateFlow<Phase>(Phase.Checking(progress = null))
-
-    private var summary: GiftCardSummary? = null
-
-    private var checkJob: Job? = null
-
-    private var redeemJob: Job? = null
-
-    val state: StateFlow<RedeemGiftState> =
+    val state: StateFlow<RedeemGiftState?> =
         combine(
-            phase,
+            giftCardRepository.observeSession(args.linkId),
             exchangeRateRepository.state,
             getSelectedWalletAccount.observe().onStart { emit(null) },
-        ) { phase, exchangeRate, account ->
-            createState(phase, exchangeRate, account)
+        ) { session, exchangeRate, account ->
+            createState(session, exchangeRate, account)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
-            initialValue = createState(phase.value, null, null)
+            initialValue = null
         )
 
-    init {
-        viewModelScope.launch { open() }
-    }
+    private fun onRedeemClick() = giftCardRepository.redeem(args.linkId) { getDestinationAddress() }
 
-    @Suppress("TooGenericExceptionCaught")
-    private suspend fun open() {
-        val link = giftCardLinkStore.take(args.linkId)
-        if (link == null) {
-            phase.value = Phase.LinkUnavailable
-            return
-        }
-        val parsed =
-            try {
-                giftCardRepository.parse(link)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                phase.value = e.toPhase()
-                return
-            }
-        summary = parsed
-        startCheck(handle = parsed.handle, showProgress = true)
-    }
-
-    private fun startCheck(
-        handle: GiftCardHandle,
-        showProgress: Boolean,
-        delayFirstAttempt: Boolean = false
-    ) {
-        checkJob?.cancel()
-        checkJob =
-            viewModelScope.launch {
-                var isFirstAttempt = true
-                do {
-                    // Funds were found but are not spendable yet: keep re-checking quietly while the user waits.
-                    if (!isFirstAttempt || delayFirstAttempt) delay(PENDING_RETRY_INTERVAL)
-                    val result = checkOnce(handle, showProgress = showProgress && isFirstAttempt)
-                    phase.value = phaseAfterCheck(result, isQuietRecheck = !isFirstAttempt)
-                    isFirstAttempt = false
-                } while (phase.value is Phase.Pending)
-            }
-    }
-
-    private fun phaseAfterCheck(
-        result: Result<GiftCardStatus>,
-        isQuietRecheck: Boolean
-    ): Phase {
-        result.getOrNull()?.let { return it.toPhase() }
-        val current = phase.value
-        // A quiet re-check of a pending card that fails keeps the pending screen and tries again.
-        return if (isQuietRecheck && current is Phase.Pending) {
-            current.copy(isRechecking = false)
-        } else {
-            result.exceptionOrNull().toCheckFailurePhase()
-        }
-    }
-
-    @Suppress("TooGenericExceptionCaught")
-    private suspend fun checkOnce(
-        handle: GiftCardHandle,
-        showProgress: Boolean
-    ): Result<GiftCardStatus> {
-        if (showProgress) phase.value = Phase.Checking(progress = null)
-        val progressJob =
-            viewModelScope.launch {
-                giftCardRepository.observeCheckProgress(handle).collect { progress ->
-                    phase.update { if (it is Phase.Checking) Phase.Checking(progress) else it }
-                }
-            }
-        return try {
-            Result.success(giftCardRepository.check(handle))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Result.failure(e)
-        } finally {
-            progressJob.cancel()
-        }
-    }
-
-    @Suppress("TooGenericExceptionCaught")
-    private fun onRedeemClick() {
-        val handle = summary?.handle ?: return
-        if (redeemJob?.isActive == true) return
-        checkJob?.cancel()
-        redeemJob =
-            viewModelScope.launch {
-                val amount = (phase.value as? Phase.Ready)?.spendable
-                phase.value = Phase.Redeeming
-                phase.value =
-                    try {
-                        val txId = giftCardRepository.redeem(handle, getDestinationAddress())
-                        Phase.Success(txId = txId, amount = amount)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: GiftCardException.NotChecked) {
-                        // The card's state is unknown, so nothing was sent: check it again, which shows what it
-                        // holds now and offers the redeem again if it can be.
-                        startCheck(handle = handle, showProgress = true)
-                        return@launch
-                    } catch (_: GiftCardException.InUse) {
-                        // Nothing was sent; retrying goes through a fresh check.
-                        Phase.RedeemFailed
-                    } catch (e: GiftCardException) {
-                        e.toPhase()
-                    } catch (_: Exception) {
-                        Phase.RedeemFailed
-                    }
-            }
-    }
-
-    private fun onRetryClick() {
-        val handle = summary?.handle ?: return
-        val current = phase.value
-        if (current is Phase.Pending) {
-            recheckPending(handle, current)
-            return
-        }
-        // A failed redeem is retried through a fresh check, so that a send that did reach the network is shown as an
-        // empty card rather than attempted twice.
-        startCheck(handle = handle, showProgress = true)
-    }
-
-    /**
-     * "Check again" on a pending card: the card's wallet is already synced, so the check is near-instant and
-     * replacing the screen with the progress view would just flicker. Instead the button shows it is working,
-     * and the quiet re-check loop resumes.
-     */
-    private fun recheckPending(
-        handle: GiftCardHandle,
-        current: Phase.Pending
-    ) {
-        if (current.isRechecking) return
-        checkJob?.cancel()
-        checkJob =
-            viewModelScope.launch {
-                phase.value = current.copy(isRechecking = true)
-                val result = checkOnce(handle, showProgress = false)
-                phase.value = phaseAfterCheck(result, isQuietRecheck = true)
-                if (phase.value is Phase.Pending) {
-                    startCheck(handle = handle, showProgress = false, delayFirstAttempt = true)
-                }
-            }
-    }
+    private fun onRetryClick() = giftCardRepository.checkAgain(args.linkId)
 
     private fun onBack() {
-        if (phase.value is Phase.Redeeming) return
+        giftCardRepository.dismiss(args.linkId)
         navigationRouter.back()
     }
 
-    private fun onDoneClick() = navigationRouter.backToRoot()
-
-    override fun onCleared() {
-        summary?.handle?.let { giftCardRepository.cleanup(it) }
-        summary = null
-        super.onCleared()
+    private fun onDoneClick() {
+        giftCardRepository.dismiss(args.linkId)
+        navigationRouter.backToRoot()
     }
 
     @Suppress("CyclomaticComplexMethod", "LongMethod")
     private fun createState(
-        phase: Phase,
+        session: GiftCardSession,
         exchangeRate: ExchangeRateState?,
         account: WalletAccount?
     ): RedeemGiftState =
-        when (phase) {
-            is Phase.Checking -> {
+        when (val phase = session.phase) {
+            GiftCardPhase.Checking -> {
                 status(
                     background = null,
                     image = null,
                     title = stringRes(R.string.redeemGift_checking_title),
-                    subtitle =
-                        phase.progress?.let {
-                            val percent = (it.coerceIn(0f, 1f) * PERCENT).roundToInt()
-                            stringRes(R.string.redeemGift_checking_progress, percent)
-                        } ?: stringRes(R.string.redeemGift_checking_subtitle),
+                    subtitle = stringRes(R.string.redeemGift_checking_subtitle),
                     primaryButton = null,
                     secondaryButton = null,
+                    showAppBar = true,
                 )
             }
 
-            is Phase.Ready -> {
+            is GiftCardPhase.Ready -> {
                 RedeemGiftState.Ready(
-                    amount = stringRes(phase.spendable),
-                    fiatAmount = phase.spendable.toFiat(exchangeRate),
-                    message = summary?.message?.takeIf { it.isNotBlank() }?.let { stringRes(it) },
-                    destination =
-                        stringRes(
-                            R.string.redeemGift_ready_destination,
-                            account?.name ?: stringRes(R.string.accounts_zashi)
-                        ),
+                    title = stringRes(R.string.redeemGift_title),
+                    image = ImageResource.ByDrawable(R.drawable.ic_integrations_gift),
+                    heading = stringRes(R.string.redeemGift_ready_title),
+                    amount = stringRes(phase.redeemable),
+                    fiatAmount = phase.redeemable.toFiat(exchangeRate),
+                    feeHint = stringRes(R.string.redeemGift_ready_feeHint),
+                    messageLabel = stringRes(R.string.redeemGift_ready_messageLabel),
+                    message =
+                        session.summary
+                            ?.message
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let { stringRes(it) },
+                    destination = account?.name?.let { stringRes(R.string.redeemGift_ready_destination, it) },
                     redeemButton =
                         ButtonState(
                             text = stringRes(R.string.redeemGift_redeem),
@@ -288,7 +129,7 @@ class RedeemGiftVM(
                 )
             }
 
-            is Phase.Pending -> {
+            is GiftCardPhase.Pending -> {
                 status(
                     background = PENDING,
                     image = R.drawable.ic_face_star,
@@ -303,7 +144,7 @@ class RedeemGiftVM(
                 )
             }
 
-            Phase.Empty -> {
+            GiftCardPhase.Empty -> {
                 status(
                     background = null,
                     image = R.drawable.ic_cloud_eyes,
@@ -314,34 +155,7 @@ class RedeemGiftVM(
                 )
             }
 
-            Phase.InvalidLink -> {
-                errorStatus(R.string.redeemGift_invalid_title, R.string.redeemGift_invalid_subtitle)
-            }
-
-            Phase.WrongNetwork -> {
-                errorStatus(R.string.redeemGift_wrongNetwork_title, R.string.redeemGift_wrongNetwork_subtitle)
-            }
-
-            Phase.LinkUnavailable -> {
-                errorStatus(R.string.redeemGift_linkUnavailable_title, R.string.redeemGift_linkUnavailable_subtitle)
-            }
-
-            Phase.NotAvailable -> {
-                errorStatus(R.string.redeemGift_notAvailable_title, R.string.redeemGift_notAvailable_subtitle)
-            }
-
-            Phase.CheckFailed -> {
-                status(
-                    background = ERROR,
-                    image = R.drawable.ic_skull,
-                    title = stringRes(R.string.redeemGift_checkFailed_title),
-                    subtitle = stringRes(R.string.redeemGift_checkFailed_subtitle),
-                    primaryButton = retryButton(R.string.redeemGift_retry),
-                    secondaryButton = closeButton(),
-                )
-            }
-
-            Phase.Redeeming -> {
+            GiftCardPhase.Redeeming -> {
                 status(
                     background = null,
                     image = null,
@@ -349,16 +163,18 @@ class RedeemGiftVM(
                     subtitle = stringRes(R.string.redeemGift_redeeming_subtitle),
                     primaryButton = null,
                     secondaryButton = null,
+                    onBack = {},
                 )
             }
 
-            is Phase.Success -> {
+            is GiftCardPhase.Redeemed -> {
                 status(
                     background = SUCCESS,
                     image = R.drawable.ic_fist_punch,
                     title = stringRes(R.string.redeemGift_success_title),
                     subtitle =
-                        phase.amount?.let { stringRes(R.string.redeemGift_success_subtitle, stringRes(it)) }
+                        phase.redemption.received
+                            ?.let { stringRes(R.string.redeemGift_success_subtitle, stringRes(it)) }
                             ?: stringRes(R.string.redeemGift_success_subtitle_noAmount),
                     primaryButton =
                         ButtonState(
@@ -371,7 +187,41 @@ class RedeemGiftVM(
                 )
             }
 
-            Phase.RedeemFailed -> {
+            is GiftCardPhase.Failed -> {
+                failureStatus(phase.failure)
+            }
+        }
+
+    private fun failureStatus(failure: GiftCardFailure): RedeemGiftState =
+        when (failure) {
+            GiftCardFailure.INVALID_LINK -> {
+                errorStatus(R.string.redeemGift_invalid_title, R.string.redeemGift_invalid_subtitle)
+            }
+
+            GiftCardFailure.WRONG_NETWORK -> {
+                errorStatus(R.string.redeemGift_wrongNetwork_title, R.string.redeemGift_wrongNetwork_subtitle)
+            }
+
+            GiftCardFailure.LINK_UNAVAILABLE -> {
+                errorStatus(R.string.redeemGift_linkUnavailable_title, R.string.redeemGift_linkUnavailable_subtitle)
+            }
+
+            GiftCardFailure.NOT_AVAILABLE -> {
+                errorStatus(R.string.redeemGift_notAvailable_title, R.string.redeemGift_notAvailable_subtitle)
+            }
+
+            GiftCardFailure.CHECK_FAILED -> {
+                status(
+                    background = ERROR,
+                    image = R.drawable.ic_skull,
+                    title = stringRes(R.string.redeemGift_checkFailed_title),
+                    subtitle = stringRes(R.string.redeemGift_checkFailed_subtitle),
+                    primaryButton = retryButton(R.string.redeemGift_retry),
+                    secondaryButton = closeButton(),
+                )
+            }
+
+            GiftCardFailure.REDEEM_FAILED -> {
                 status(
                     background = ERROR,
                     image = R.drawable.ic_skull,
@@ -392,6 +242,7 @@ class RedeemGiftVM(
         primaryButton: ButtonState?,
         secondaryButton: ButtonState?,
         onBack: () -> Unit = ::onBack,
+        showAppBar: Boolean = image != null,
     ) = RedeemGiftState.Status(
         TransactionProgressState(
             background = background,
@@ -402,7 +253,7 @@ class RedeemGiftVM(
             primaryButton = primaryButton,
             secondaryButton = secondaryButton,
             onBack = onBack,
-            showAppBar = image != null,
+            showAppBar = showAppBar,
         )
     )
 
@@ -446,73 +297,5 @@ class RedeemGiftVM(
             ticker = data.expectedCurrency.symbol,
             tickerLocation = TickerLocation.BEFORE
         )
-    }
-
-    private fun GiftCardStatus.toPhase(): Phase =
-        when (this) {
-            is GiftCardStatus.Ready -> Phase.Ready(spendable)
-            is GiftCardStatus.Pending -> Phase.Pending(pending)
-            GiftCardStatus.Empty -> Phase.Empty
-        }
-
-    private fun Throwable?.toCheckFailurePhase(): Phase =
-        if (this is GiftCardException) toPhase() else Phase.CheckFailed
-
-    /**
-     * [GiftCardException.InUse] (another redemption of this card still holds its wallet) and
-     * [GiftCardException.NotChecked] both lead to the check-failed screen, whose retry checks the card again.
-     */
-    private fun Throwable.toPhase(): Phase =
-        when (this) {
-            is GiftCardException.WrongNetwork -> Phase.WrongNetwork
-            is GiftCardException.NotAvailable -> Phase.NotAvailable
-            is GiftCardException.UnknownHandle -> Phase.LinkUnavailable
-            is GiftCardException.InvalidLink -> Phase.InvalidLink
-            is GiftCardException.SubmitFailed -> Phase.RedeemFailed
-            is GiftCardException.NothingToRedeem -> Phase.Empty
-            is GiftCardException.InUse -> Phase.CheckFailed
-            is GiftCardException.NotChecked -> Phase.CheckFailed
-            else -> Phase.InvalidLink
-        }
-
-    private sealed interface Phase {
-        data class Checking(
-            val progress: Float?
-        ) : Phase
-
-        data class Ready(
-            val spendable: Zatoshi
-        ) : Phase
-
-        data class Pending(
-            val pending: Zatoshi,
-            val isRechecking: Boolean = false
-        ) : Phase
-
-        data object Empty : Phase
-
-        data object InvalidLink : Phase
-
-        data object WrongNetwork : Phase
-
-        data object LinkUnavailable : Phase
-
-        data object NotAvailable : Phase
-
-        data object CheckFailed : Phase
-
-        data object Redeeming : Phase
-
-        data class Success(
-            val txId: String,
-            val amount: Zatoshi?
-        ) : Phase
-
-        data object RedeemFailed : Phase
-    }
-
-    companion object {
-        val PENDING_RETRY_INTERVAL = 30.seconds
-        private const val PERCENT = 100
     }
 }

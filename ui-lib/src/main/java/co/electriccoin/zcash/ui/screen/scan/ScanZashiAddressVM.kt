@@ -29,12 +29,14 @@ internal class ScanZashiAddressVM(
 
     private var hasBeenScannedSuccessfully = false
 
+    /**
+     * Gift card links are handled first and open the redeem flow: a link carries a spending secret, so it must never
+     * reach the ZIP-321 or address parsers, nor their logging.
+     */
     fun onScanned(result: String) =
         viewModelScope.launch {
             mutex.withLock {
                 if (!hasBeenScannedSuccessfully) {
-                    // Gift card links go first: they must never reach the ZIP-321 or address parsers (and their
-                    // logging), since they carry a spending secret.
                     if (navigateToRedeemGiftCard.isGiftCardLink(result)) {
                         onGiftCardScanned(result)
                         return@withLock
