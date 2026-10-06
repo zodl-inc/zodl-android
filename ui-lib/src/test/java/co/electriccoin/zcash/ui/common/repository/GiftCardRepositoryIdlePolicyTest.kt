@@ -90,22 +90,54 @@ class GiftCardRepositoryIdlePolicyTest {
     @Test
     fun aFinalPhaseClosesTheCardOnceNobodyObservesIt() =
         runTest {
-            dataSource.statuses = listOf(GiftCardStatus.Empty)
+            dataSource.checkError = GiftCardException.NotAvailable()
             val repository = repository()
             val linkId = store.stash(LINK)
             val observer = observe(repository.observeSession(linkId))
             runCurrent()
-            assertTrue(dataSource.closed.isEmpty(), "an observed card stays open, so that it can be checked again")
+            assertEquals(GiftCardPhase.Failed(GiftCardFailure.NOT_AVAILABLE), observer.latest().phase)
+            assertTrue(dataSource.closed.isEmpty(), "an observed card stays open")
 
             observer.job.cancel()
             runCurrent()
 
             assertEquals(listOf(HANDLE), dataSource.closed)
+            val again = observe(repository.observeSession(linkId))
+            runCurrent()
+            assertEquals(GiftCardPhase.Failed(GiftCardFailure.NOT_AVAILABLE), again.latest().phase)
+            again.job.cancel()
         }
 
-    /** Checking a closed card again cannot work: the screen says to open the card again instead of doing nothing. */
+    /**
+     * An empty card can be checked again, so it is not final: unobserved, its card stays open for the idle timeout,
+     * and a screen returning within it checks the held card again.
+     */
     @Test
-    fun checkingAClosedCardAgainAsksToOpenItAgain() =
+    fun anUnobservedEmptyCardCanBeCheckedAgainWithinTheIdleTimeout() =
+        runTest {
+            dataSource.statuses = listOf(GiftCardStatus.Empty, GiftCardSummaryFixture.readyStatus())
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            observe(repository.observeSession(linkId)).job.cancel()
+            runCurrent()
+
+            advanceTimeBy(IDLE - 1.seconds)
+            assertTrue(dataSource.closed.isEmpty())
+            val again = observe(repository.observeSession(linkId))
+            runCurrent()
+            assertEquals(GiftCardPhase.Empty, again.latest().phase)
+            repository.checkAgain(linkId)
+            runCurrent()
+
+            assertEquals(2, dataSource.checkCount)
+            assertIs<GiftCardPhase.Ready>(again.latest().phase)
+            assertTrue(dataSource.closed.isEmpty())
+            again.job.cancel()
+        }
+
+    /** Past the idle timeout an unobserved empty card is closed and says to open it again, not to check it again. */
+    @Test
+    fun anUnobservedEmptyCardPastTheIdleTimeoutAsksToOpenItAgain() =
         runTest {
             dataSource.statuses = listOf(GiftCardStatus.Empty)
             val repository = repository()
@@ -113,14 +145,44 @@ class GiftCardRepositoryIdlePolicyTest {
             observe(repository.observeSession(linkId)).job.cancel()
             runCurrent()
 
+            advanceTimeBy(IDLE + 1.seconds)
+            assertEquals(listOf(HANDLE), dataSource.closed)
+
             val again = observe(repository.observeSession(linkId))
             runCurrent()
-            assertEquals(GiftCardPhase.Empty, again.latest().phase)
+            assertEquals(GiftCardPhase.Failed(GiftCardFailure.LINK_UNAVAILABLE), again.latest().phase)
+            repository.checkAgain(linkId)
+            runCurrent()
+            assertEquals(GiftCardPhase.Failed(GiftCardFailure.LINK_UNAVAILABLE), again.latest().phase)
+            assertEquals(1, dataSource.checkCount)
+            again.job.cancel()
+        }
+
+    /**
+     * A parse that outlasts the idle timeout unobserved and then fails leaves a retryable failure on a closed card.
+     * Checking it again cannot work: the screen says to open the card again instead of doing nothing.
+     */
+    @Test
+    fun checkingAClosedCardAgainAsksToOpenItAgain() =
+        runTest {
+            dataSource.parseError = IllegalStateException("offline")
+            val source = ParseGatedDataSource(dataSource)
+            val repository = repository(source)
+            val linkId = store.stash(LINK)
+            observe(repository.observeSession(linkId)).job.cancel()
+            runCurrent()
+            advanceTimeBy(IDLE + 1.seconds)
+            source.parseGate.complete(Unit)
+            runCurrent()
+
+            val again = observe(repository.observeSession(linkId))
+            runCurrent()
+            assertEquals(CHECK_FAILED, again.latest().phase)
             repository.checkAgain(linkId)
             runCurrent()
 
             assertEquals(GiftCardPhase.Failed(GiftCardFailure.LINK_UNAVAILABLE), again.latest().phase)
-            assertEquals(1, dataSource.checkCount)
+            assertEquals(1, dataSource.parsedLinks.size)
             again.job.cancel()
         }
 

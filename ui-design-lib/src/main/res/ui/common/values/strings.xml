@@ -580,7 +580,7 @@
     <string name="redeemGift_pending_title">Preparing your gift…</string>
     <string name="redeemGift_pending_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> needs a few more confirmations before it can be redeemed. We’ll keep checking while this screen is open.</string>
     <string name="redeemGift_empty_title">Nothing to redeem</string>
-    <string name="redeemGift_empty_subtitle">This gift card has already been redeemed, or it hasn\'t been funded yet.</string>
+    <string name="redeemGift_empty_subtitle">This gift card was already redeemed, or hasn\'t been funded yet. Try again in a few minutes.</string>
     <string name="redeemGift_invalid_title">Invalid gift card</string>
     <string name="redeemGift_invalid_subtitle">This link isn\'t a valid gift card. Check the link and try again.</string>
     <string name="redeemGift_wrongNetwork_title">Wrong network</string>

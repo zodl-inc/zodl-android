@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import cash.z.ecc.android.sdk.model.Account
 import cash.z.ecc.android.sdk.model.Zatoshi
+import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.GiftCardException
 import co.electriccoin.zcash.ui.common.model.GiftCardRedemption
@@ -360,12 +361,77 @@ class RedeemGiftVMTest {
         }
 
     @Test
-    fun emptyCardShowsNothingToRedeem() =
+    fun emptyCardShowsNothingToRedeemWithCheckAgainAboveCloseAndNoAppBar() =
         runTest(dispatcher) {
             val env = Env(this)
             env.dataSource.statuses = listOf(GiftCardStatus.Empty)
+            val vm = env.startedVm()
+            assertTrue(env.dataSource.closed.isEmpty(), "an observed empty card stays open, so it can be checked again")
 
-            assertEquals(stringRes(R.string.redeemGift_empty_title), statusOf(env.startedVm()).title)
+            val empty = statusOf(vm)
+            assertEquals(TransactionProgressState.Background.ERROR, empty.background)
+            assertEquals(imageRes(R.drawable.ic_gift_empty), empty.image)
+            assertEquals(stringRes(R.string.redeemGift_empty_title), empty.title)
+            assertEquals(stringRes(R.string.redeemGift_empty_subtitle).withStyle(), empty.subtitle)
+            assertFalse(empty.showAppBar, "the empty screen has no app bar; back acts as Close")
+            val checkAgain = assertNotNull(empty.secondaryButton)
+            assertEquals(stringRes(R.string.redeemGift_checkAgain), checkAgain.text)
+            assertEquals(ButtonStyle.SECONDARY, checkAgain.style)
+            val close = assertNotNull(empty.primaryButton)
+            assertEquals(stringRes(R.string.general_close), close.text)
+            assertEquals(ButtonStyle.PRIMARY, close.style)
+
+            empty.onBack()
+            runCurrent()
+
+            assertEquals(1, env.router.backCount)
+            assertEquals(1, env.dataSource.closed.size)
+        }
+
+    @Test
+    fun checkAgainOnAnEmptyCardChecksTheCardAgain() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.statuses = listOf(GiftCardStatus.Empty, GiftCardSummaryFixture.readyStatus())
+            val vm = env.startedVm()
+            assertEquals(stringRes(R.string.redeemGift_empty_title), statusOf(vm).title)
+            assertEquals(1, env.dataSource.checkCount)
+
+            assertNotNull(statusOf(vm).secondaryButton).onClick()
+            runCurrent()
+
+            assertEquals(2, env.dataSource.checkCount)
+            assertIs<RedeemGiftState.Ready>(vm.state.value)
+        }
+
+    /**
+     * The empty screen is left in the background long enough for its state to stop being collected, but shorter
+     * than the idle timeout: back on the screen, Check again still checks the card instead of asking to open it again.
+     */
+    @Test
+    fun checkAgainOnAnEmptyCardShownAgainAfterTheAppWasInTheBackground() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.statuses = listOf(GiftCardStatus.Empty, GiftCardSummaryFixture.readyStatus())
+            val vm = env.newVm()
+            val collector = backgroundScope.launch { vm.state.collect { } }
+            runCurrent()
+            assertEquals(stringRes(R.string.redeemGift_empty_title), statusOf(vm).title)
+
+            collector.cancel()
+            advanceTimeBy(ANDROID_STATE_FLOW_TIMEOUT + 1.seconds)
+            assertTrue(env.dataSource.closed.isEmpty())
+            advanceTimeBy(GiftCardRepositoryImpl.IDLE_TIMEOUT - ANDROID_STATE_FLOW_TIMEOUT - 2.seconds)
+            backgroundScope.launch { vm.state.collect { } }
+            runCurrent()
+            assertEquals(stringRes(R.string.redeemGift_empty_title), statusOf(vm).title)
+
+            assertNotNull(statusOf(vm).secondaryButton).onClick()
+            runCurrent()
+
+            assertEquals(2, env.dataSource.checkCount)
+            assertIs<RedeemGiftState.Ready>(vm.state.value)
+            assertTrue(env.dataSource.closed.isEmpty())
         }
 
     @Test

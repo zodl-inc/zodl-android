@@ -127,8 +127,9 @@ internal object GiftCardLinkPrefixes {
  *
  * A session can also lose its screen without a [dismiss]: a back press while a redemption starts, a back stack reset
  * elsewhere, the wallet being deleted. So a session nobody collects (see [MutableStateFlow.subscriptionCount]) closes
- * its card on its own: right away once its phase is final ([GiftCardPhase.Redeemed], [GiftCardPhase.Empty], or a
- * failure that cannot be retried), else once it has gone unobserved for [idleTimeout], unless it is being redeemed.
+ * its card on its own: right away once its phase is final ([GiftCardPhase.Redeemed], or a failure that cannot be
+ * retried), else once it has gone unobserved for [idleTimeout], unless it is being redeemed. [GiftCardPhase.Empty] is
+ * not final, as the card can still be checked again, so a screen that returns within [idleTimeout] can still check it.
  * A redemption, once started, runs to its end whoever observes it, and the card is closed right after it when nobody
  * does. A closed session keeps showing its final phase to a screen that observes it again; an unfinished one shows
  * [GiftCardFailure.LINK_UNAVAILABLE], as its card is gone. A closed session that stays unobserved for another
@@ -531,12 +532,21 @@ class GiftCardRepositoryImpl(
         session.linkIds.forEach { id -> if (links[id]?.value === session) links.remove(id) }
     }
 
-    /** Whether nothing more can happen in this phase without the user starting over. */
+    /**
+     * Whether nothing more can happen in this phase without the user opening the card again. [GiftCardPhase.Empty] is
+     * not final: Check again checks the held card, so its card must stay open as long as an unfinished phase's.
+     */
     private fun GiftCardPhase.isFinal(): Boolean =
         when (this) {
-            is GiftCardPhase.Redeemed, GiftCardPhase.Empty -> true
+            is GiftCardPhase.Redeemed -> true
+
             is GiftCardPhase.Failed -> !failure.isRetryable
-            GiftCardPhase.Checking, is GiftCardPhase.Ready, is GiftCardPhase.Pending, GiftCardPhase.Redeeming -> false
+
+            GiftCardPhase.Checking,
+            is GiftCardPhase.Ready,
+            is GiftCardPhase.Pending,
+            GiftCardPhase.Redeeming,
+            GiftCardPhase.Empty -> false
         }
 
     private fun GiftCardStatus.toPhase(): GiftCardPhase =

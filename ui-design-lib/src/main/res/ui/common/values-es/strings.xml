@@ -545,7 +545,7 @@
     <string name="redeemGift_pending_title">Preparando tu regalo…</string>
     <string name="redeemGift_pending_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> necesita algunas confirmaciones más antes de poder canjearse. Seguiremos verificando mientras esta pantalla esté abierta.</string>
     <string name="redeemGift_empty_title">Nada para canjear</string>
-    <string name="redeemGift_empty_subtitle">Esta tarjeta de regalo ya fue canjeada o todavía no tiene fondos.</string>
+    <string name="redeemGift_empty_subtitle">Esta tarjeta de regalo ya fue canjeada o aún no tiene fondos. Inténtalo de nuevo en unos minutos.</string>
     <string name="redeemGift_invalid_title">Tarjeta de regalo inválida</string>
     <string name="redeemGift_invalid_subtitle">Este enlace no es una tarjeta de regalo válida. Revisa el enlace e inténtalo de nuevo.</string>
     <string name="redeemGift_wrongNetwork_title">Red incorrecta</string>

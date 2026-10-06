@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package co.electriccoin.zcash.ui.screen.redeemgift
 
 import androidx.compose.foundation.Image
@@ -227,6 +229,13 @@ private fun CheckingPreview() =
 private fun PendingPreview() =
     ZcashTheme {
         RedeemGiftView(RedeemGiftState.previewPending)
+    }
+
+@PreviewScreens
+@Composable
+private fun EmptyPreview() =
+    ZcashTheme {
+        RedeemGiftView(RedeemGiftState.previewEmpty)
     }
 
 @PreviewScreens

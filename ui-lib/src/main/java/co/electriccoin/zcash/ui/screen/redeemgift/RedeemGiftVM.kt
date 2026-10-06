@@ -1,12 +1,10 @@
 package co.electriccoin.zcash.ui.screen.redeemgift
 
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.model.GIFT_CARD_MEMO_SEPARATOR
 import co.electriccoin.zcash.ui.common.model.GiftCardFailure
 import co.electriccoin.zcash.ui.common.model.GiftCardPhase
 import co.electriccoin.zcash.ui.common.model.GiftCardSession
@@ -16,16 +14,10 @@ import co.electriccoin.zcash.ui.common.usecase.GetGiftCardDestinationAddressUseC
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
-import co.electriccoin.zcash.ui.design.util.ImageResource
-import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.loadingImageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.design.util.withStyle
-import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.ERROR
-import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.PENDING
-import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.SUCCESS
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
@@ -77,73 +69,34 @@ class RedeemGiftVM(
     ): RedeemGiftState =
         when (val phase = session.phase) {
             GiftCardPhase.Checking -> {
-                status(
-                    background = null,
-                    image = loadingImageRes(),
-                    title = stringRes(R.string.redeemGift_checking_title),
-                    subtitle = stringRes(R.string.redeemGift_checking_subtitle),
-                    primaryButton = null,
-                    secondaryButton = null,
-                )
+                RedeemGiftState.checking(onBack = ::onBack)
             }
 
             is GiftCardPhase.Ready -> {
-                RedeemGiftState.Ready(
-                    title = stringRes(R.string.redeemGift_title),
-                    image = ImageResource.ByDrawable(R.drawable.ic_gift_closed),
-                    heading = stringRes(R.string.redeemGift_ready_title),
-                    amount = RedeemGiftState.amount(phase.redeemable),
-                    messageLabel = stringRes(R.string.redeemGift_ready_messageLabel),
-                    message =
-                        session.summary
-                            ?.message
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { stringRes(R.string.redeemGift_memo) + GIFT_CARD_MEMO_SEPARATOR + it },
-                    disclaimer =
-                        account
-                            ?.name
-                            ?.let { stringRes(R.string.redeemGift_ready_disclaimer, it) }
-                            ?: stringRes(R.string.redeemGift_ready_disclaimer_noWallet),
-                    redeemButton =
-                        ButtonState(
-                            text = stringRes(R.string.redeemGift_redeem),
-                            style = ButtonStyle.PRIMARY,
-                            hapticFeedbackType = HapticFeedbackType.Confirm,
-                            onClick = ::onRedeemClick
-                        ),
+                RedeemGiftState.ready(
+                    redeemable = phase.redeemable,
+                    message = session.summary?.message?.takeIf { it.isNotBlank() },
+                    walletName = account?.name,
+                    onRedeem = ::onRedeemClick,
                     onBack = ::onBack
                 )
             }
 
             is GiftCardPhase.Pending -> {
-                status(
-                    background = PENDING,
-                    image = imageRes(R.drawable.ic_gift_preparing),
-                    title = stringRes(R.string.redeemGift_pending_title),
-                    subtitle = stringRes(R.string.redeemGift_pending_subtitle, stringRes(phase.pending)),
-                    primaryButton = closeButton(ButtonStyle.PRIMARY),
-                    secondaryButton =
-                        retryButton(R.string.redeemGift_checkAgain, ButtonStyle.SECONDARY).copy(
-                            isLoading = phase.isRechecking,
-                            isEnabled = !phase.isRechecking
-                        ),
-                    showAppBar = false,
+                RedeemGiftState.pending(
+                    amount = phase.pending,
+                    isRechecking = phase.isRechecking,
+                    onCheckAgain = ::onRetryClick,
+                    onClose = ::onBack
                 )
             }
 
             GiftCardPhase.Empty -> {
-                status(
-                    background = null,
-                    image = imageRes(R.drawable.ic_cloud_eyes),
-                    title = stringRes(R.string.redeemGift_empty_title),
-                    subtitle = stringRes(R.string.redeemGift_empty_subtitle),
-                    primaryButton = closeButton(ButtonStyle.PRIMARY),
-                    secondaryButton = retryButton(R.string.redeemGift_checkAgain, ButtonStyle.SECONDARY),
-                )
+                RedeemGiftState.empty(onCheckAgain = ::onRetryClick, onClose = ::onBack)
             }
 
             GiftCardPhase.Redeeming -> {
-                status(
+                RedeemGiftState.status(
                     background = null,
                     image = loadingImageRes(),
                     title = stringRes(R.string.redeemGift_redeeming_title),
@@ -156,24 +109,7 @@ class RedeemGiftVM(
             }
 
             is GiftCardPhase.Redeemed -> {
-                status(
-                    background = SUCCESS,
-                    image = imageRes(R.drawable.ic_gift_open),
-                    title = stringRes(R.string.redeemGift_success_title),
-                    subtitle =
-                        phase.redemption.received
-                            ?.let { stringRes(R.string.redeemGift_success_subtitle, stringRes(it)) }
-                            ?: stringRes(R.string.redeemGift_success_subtitle_noAmount),
-                    primaryButton =
-                        ButtonState(
-                            text = stringRes(R.string.general_close),
-                            style = ButtonStyle.PRIMARY,
-                            onClick = ::onDoneClick
-                        ),
-                    secondaryButton = null,
-                    onBack = ::onDoneClick,
-                    showAppBar = false
-                )
+                RedeemGiftState.redeemed(received = phase.redemption.received, onDone = ::onDoneClick)
             }
 
             is GiftCardPhase.Failed -> {
@@ -200,61 +136,38 @@ class RedeemGiftVM(
             }
 
             GiftCardFailure.CHECK_FAILED -> {
-                status(
-                    background = ERROR,
-                    image = imageRes(R.drawable.ic_skull),
-                    title = stringRes(R.string.redeemGift_checkFailed_title),
-                    subtitle = stringRes(R.string.redeemGift_checkFailed_subtitle),
-                    primaryButton = retryButton(R.string.redeemGift_retry),
-                    secondaryButton = closeButton(),
-                )
+                retryableStatus(R.string.redeemGift_checkFailed_title, R.string.redeemGift_checkFailed_subtitle)
             }
 
             GiftCardFailure.REDEEM_FAILED -> {
-                status(
-                    background = ERROR,
-                    image = imageRes(R.drawable.ic_skull),
-                    title = stringRes(R.string.redeemGift_failure_title),
-                    subtitle = stringRes(R.string.redeemGift_failure_subtitle),
-                    primaryButton = retryButton(R.string.redeemGift_retry),
-                    secondaryButton = closeButton(),
-                )
+                retryableStatus(R.string.redeemGift_failure_title, R.string.redeemGift_failure_subtitle)
             }
         }
-
-    private fun status(
-        background: TransactionProgressState.Background?,
-        image: ImageResource,
-        title: StringResource,
-        subtitle: StringResource,
-        primaryButton: ButtonState?,
-        secondaryButton: ButtonState?,
-        onBack: () -> Unit = ::onBack,
-        showAppBar: Boolean = true,
-    ) = RedeemGiftState.Status(
-        TransactionProgressState(
-            background = background,
-            image = image,
-            title = title,
-            subtitle = subtitle.withStyle(),
-            middleButton = null,
-            primaryButton = primaryButton,
-            secondaryButton = secondaryButton,
-            onBack = onBack,
-            showAppBar = showAppBar,
-        )
-    )
 
     private fun errorStatus(
         title: Int,
         subtitle: Int
-    ) = status(
+    ) = RedeemGiftState.status(
         background = ERROR,
         image = imageRes(R.drawable.ic_cloud_eyes),
         title = stringRes(title),
         subtitle = stringRes(subtitle),
         primaryButton = closeButton(ButtonStyle.PRIMARY),
         secondaryButton = null,
+        onBack = ::onBack,
+    )
+
+    private fun retryableStatus(
+        title: Int,
+        subtitle: Int
+    ) = RedeemGiftState.status(
+        background = ERROR,
+        image = imageRes(R.drawable.ic_skull),
+        title = stringRes(title),
+        subtitle = stringRes(subtitle),
+        primaryButton = retryButton(R.string.redeemGift_retry),
+        secondaryButton = closeButton(),
+        onBack = ::onBack,
     )
 
     private fun retryButton(
