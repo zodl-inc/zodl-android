@@ -26,6 +26,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.screen.redeemgift.GiftCardStatusState.Background.EMPTY
 import co.electriccoin.zcash.ui.screen.redeemgift.GiftCardStatusState.Background.PENDING
 import co.electriccoin.zcash.ui.screen.redeemgift.GiftCardStatusState.Background.SUCCESS
@@ -102,7 +103,8 @@ private fun Buttons(state: GiftCardStatusState) {
                     state = state.secondaryButton,
                     defaultSecondaryColors =
                         ZashiButtonDefaults.secondaryColors(
-                            containerColor = ZashiColors.Btns.Secondary.btnSecondaryBgHover
+                            containerColor =
+                                ZashiColors.Btns.Secondary.btnSecondaryBgHover orDark ZashiColors.Surfaces.bgTertiary
                         ),
                     modifier =
                         Modifier
