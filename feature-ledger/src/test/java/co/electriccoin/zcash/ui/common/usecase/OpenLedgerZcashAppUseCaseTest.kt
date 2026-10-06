@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.usecase
 import cash.z.ecc.android.sdk.exception.LedgerException
 import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
+import cash.z.ecc.android.sdk.model.Zip32AccountIndex
 import co.electriccoin.zcash.ui.common.datasource.LedgerDeviceDataSource
 import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepositoryImpl
 import io.mockk.coEvery
@@ -30,7 +31,7 @@ class OpenLedgerZcashAppUseCaseTest {
     fun theSelectedDeviceIsAskedToOpenTheApp() =
         runTest {
             val dataSource = mockk<LedgerDeviceDataSource>(relaxed = true)
-            val repository = LedgerSelectedDeviceRepositoryImpl().apply { set(device) }
+            val repository = LedgerSelectedDeviceRepositoryImpl().apply { set(device, Zip32AccountIndex.new(0)) }
 
             val result = OpenLedgerZcashAppUseCase(dataSource, repository).invoke()
 
@@ -56,7 +57,7 @@ class OpenLedgerZcashAppUseCaseTest {
                 mockk<LedgerDeviceDataSource> {
                     coEvery { openZcashApp(any()) } throws mockk<LedgerException.AppOpenRejected>(relaxed = true)
                 }
-            val repository = LedgerSelectedDeviceRepositoryImpl().apply { set(device) }
+            val repository = LedgerSelectedDeviceRepositoryImpl().apply { set(device, Zip32AccountIndex.new(0)) }
 
             assertFailsWith<LedgerException.AppOpenRejected> {
                 OpenLedgerZcashAppUseCase(dataSource, repository).invoke()

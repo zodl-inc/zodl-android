@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.usecase
 import cash.z.ecc.android.sdk.ledger.LedgerAccountPairing
 import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.model.AccountUuid
+import cash.z.ecc.android.sdk.model.Zip32AccountIndex
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.LedgerDeviceDataSource
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
@@ -12,11 +13,11 @@ import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepository
 
 /**
- * Pairs [device]'s first ZIP 32 account and stashes the result for the birthday screens that
- * follow. Returns the account the wallet already holds for that viewing key instead, if any — the
- * caller then shows the "Account Already Added" sheet rather than importing a duplicate. An account
- * the wallet holds without a Ledger binding gets the new pairing's binding stored instead, so it can
- * be signed for again.
+ * Pairs the ZIP 32 account the user chose on the device and stashes the result for the birthday
+ * screens that follow. Returns the account the wallet already holds for that viewing key instead,
+ * if any — the caller then shows the "Account Already Added" sheet rather than importing a
+ * duplicate. An account the wallet holds without a Ledger binding gets the new pairing's binding
+ * stored instead, so it can be signed for again.
  *
  * When the flow pairs an account again ([LedgerRepairTargetRepository] holds its UUID), the pairing
  * is stored with that account whatever binding it had, since the one it had may be unusable, and a
@@ -31,8 +32,11 @@ class PairLedgerDeviceUseCase(
     private val accountDataSource: AccountDataSource,
     private val ledgerAccountBindingProvider: LedgerAccountBindingProvider,
 ) {
-    suspend operator fun invoke(device: LedgerBluetoothDevice): PairLedgerDeviceResult {
-        val pairing = ledgerDeviceDataSource.pair(device)
+    suspend operator fun invoke(
+        device: LedgerBluetoothDevice,
+        zip32AccountIndex: Zip32AccountIndex,
+    ): PairLedgerDeviceResult {
+        val pairing = ledgerDeviceDataSource.pair(device, zip32AccountIndex)
         val ledgerAccounts = accountDataSource.getAllAccounts().filterIsInstance<LedgerAccount>()
         val existing = ledgerAccounts.firstOrNull { account -> account.sdkAccount.ufvk == pairing.ufvk.encoding }
         val target = ledgerRepairTargetRepository.get()

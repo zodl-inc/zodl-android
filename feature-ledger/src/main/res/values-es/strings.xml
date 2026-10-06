@@ -43,6 +43,10 @@
     <string name="ledger_scan_select_subtitle">Después de tocar Conectar, comprueba que el código de tu teléfono coincida con el de tu Ledger.</string>
     <string name="ledger_scan_select_cta">Conectar</string>
     <string name="ledger_scan_retry_cta">Intentar de nuevo</string>
+    <string name="ledger_scan_advanced_title">Opciones avanzadas</string>
+    <string name="ledger_scan_advanced_message">Déjalo en 0 a menos que hayas usado otro número de cuenta de este Ledger en otra billetera.</string>
+    <string name="ledger_scan_accountIndex_label">Índice de cuenta</string>
+    <string name="ledger_scan_accountIndex_hint">Introduce un número del %1$d al %2$d</string>
 
     <!-- Approve on device -->
     <string name="ledger_handshake_waiting_title">Esperando la aprobación</string>

@@ -20,6 +20,10 @@ data class LedgerDeviceScanState(
     val showDeviceSkeletons: Boolean,
     val devices: List<LedgerDeviceItemState>,
     /**
+     * The card for choosing the Ledger account, under a listed device; null while none is listed.
+     */
+    val advancedOptions: LedgerAdvancedOptionsState?,
+    /**
      * The issue shown over the placeholder rows while no device is listed; it outlives a dismissed
      * [errorSheet].
      */
@@ -46,6 +50,7 @@ data class LedgerDeviceScanState(
                 isScanning = true,
                 showDeviceSkeletons = true,
                 devices = emptyList(),
+                advancedOptions = null,
                 inlineIssue = null,
                 primaryButton =
                     ButtonState(
@@ -71,6 +76,7 @@ data class LedgerDeviceScanState(
                         LedgerDeviceItemState.previewSelected,
                         LedgerDeviceItemState.preview,
                     ),
+                advancedOptions = LedgerAdvancedOptionsState.preview,
                 primaryButton = ButtonState(stringRes("Connect")),
             )
 

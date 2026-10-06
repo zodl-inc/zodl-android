@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.exception.LedgerException
 import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
+import cash.z.ecc.android.sdk.model.Zip32AccountIndex
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.spackle.Twig
@@ -47,8 +48,9 @@ import kotlinx.coroutines.launch
  * Asks the Ledger the scan screen bonded with for its account, over a fresh link, once the user
  * has opened the Zcash app on it. The handshake starts as soon as the screen opens.
  *
- * The device comes from [LedgerSelectedDeviceRepository]; when process death has emptied it, the
- * flow falls back to the wallet root. The transport each attempt opens is closed by the data
+ * The device, and the account the user chose for it on the scan screen, come from
+ * [LedgerSelectedDeviceRepository]; when process death has emptied it, the flow falls back to the
+ * wallet root. The transport each attempt opens is closed by the data
  * source before [PairLedgerDeviceUseCase] returns, and a running attempt is cancelled on back
  * and in [onCleared].
  */
@@ -207,7 +209,8 @@ class LedgerHandshakeVM(
     private fun startHandshake() {
         if (handshakeJob?.isActive == true) return
         val device = ledgerSelectedDeviceRepository.get()
-        if (device == null) {
+        val zip32AccountIndex = ledgerSelectedDeviceRepository.getZip32AccountIndex()
+        if (device == null || zip32AccountIndex == null) {
             navigationRouter.backToRoot()
             return
         }
@@ -219,7 +222,7 @@ class LedgerHandshakeVM(
                 isSheetShown = false,
             )
         }
-        handshakeJob = viewModelScope.launch { handshake(device) }
+        handshakeJob = viewModelScope.launch { handshake(device, zip32AccountIndex) }
     }
 
     /**
@@ -236,9 +239,12 @@ class LedgerHandshakeVM(
      * over the screen the user went back to.
      */
     @Suppress("TooGenericExceptionCaught")
-    private suspend fun handshake(device: LedgerBluetoothDevice) {
+    private suspend fun handshake(
+        device: LedgerBluetoothDevice,
+        zip32AccountIndex: Zip32AccountIndex,
+    ) {
         try {
-            val result = pairLedgerDevice(device)
+            val result = pairLedgerDevice(device, zip32AccountIndex)
             currentCoroutineContext().ensureActive()
             when (result) {
                 is PairLedgerDeviceResult.Paired -> {

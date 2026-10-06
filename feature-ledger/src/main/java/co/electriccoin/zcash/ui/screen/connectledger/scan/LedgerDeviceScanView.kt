@@ -23,7 +23,8 @@ import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerStepLayout
 
 /**
  * Step 2 of the Ledger connect flow: the Figma "Searching for Devices..." frame with its placeholder
- * rows, then "Select Your Ledger" once a device is listed.
+ * rows, then "Select Your Ledger" once a device is listed, with the "Advanced options" card under
+ * the list.
  */
 @Composable
 fun LedgerDeviceScanView(state: LedgerDeviceScanState) {
@@ -73,6 +74,10 @@ fun LedgerDeviceScanView(state: LedgerDeviceScanState) {
                     )
                 }
             }
+        }
+        state.advancedOptions?.let {
+            Spacer(12.dp)
+            LedgerAdvancedOptions(state = it)
         }
     }
 

@@ -644,6 +644,7 @@ class LedgerSignVMTest {
             selectedAccount.complete(
                 mockk {
                     every { sdkAccount.accountUuid } returns AccountUuid.new(ByteArray(16) { it.toByte() })
+                    every { zip32AccountIndex } returns null
                 }
             )
             runCurrent()

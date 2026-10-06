@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.common.provider.LEDGER_SCAN_TIMEOUT
+import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepositoryImpl
 import co.electriccoin.zcash.ui.common.usecase.ConnectLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.design.util.StringResource
@@ -270,7 +271,7 @@ class LedgerDeviceScanVMPageTest {
     private fun TestScope.connectedWithFailure(exception: LedgerException): LedgerDeviceScanVM {
         val connectLedgerDevice =
             mockk<ConnectLedgerDeviceUseCase> {
-                coEvery { this@mockk.invoke(any()) } throws exception
+                coEvery { this@mockk.invoke(any(), any()) } throws exception
             }
         val vm = vm(connectLedgerDevice = connectLedgerDevice)
         collect(vm)
@@ -317,6 +318,7 @@ class LedgerDeviceScanVMPageTest {
         connectLedgerDevice = connectLedgerDevice,
         ledgerPairingRepository = mockk(relaxed = true),
         ledgerSelectedDeviceRepository = mockk(relaxed = true),
+        ledgerRepairTargetRepository = LedgerRepairTargetRepositoryImpl(),
         navigateToError = mockk(relaxed = true),
         navigationRouter = mockk(relaxed = true),
     )

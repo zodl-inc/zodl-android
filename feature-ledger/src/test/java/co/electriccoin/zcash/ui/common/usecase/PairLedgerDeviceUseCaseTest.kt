@@ -40,6 +40,8 @@ import kotlin.test.assertTrue
 class PairLedgerDeviceUseCaseTest {
     private val bindingProvider = mockk<LedgerAccountBindingProvider>(relaxed = true)
 
+    private val firstAccount = Zip32AccountIndex.new(0)
+
     private val device =
         LedgerBluetoothDevice(
             model = LedgerDeviceModel.NANO_X,
@@ -54,7 +56,7 @@ class PairLedgerDeviceUseCaseTest {
             val pairing = pairing(ufvk = "ufvk-new")
             val repository = LedgerPairingRepositoryImpl()
 
-            val result = useCase(pairing, repository, existing = emptyList()).invoke(device)
+            val result = useCase(pairing, repository, existing = emptyList()).invoke(device, firstAccount)
 
             assertTrue(result is PairLedgerDeviceResult.Paired)
             assertSame(pairing, repository.get())
@@ -67,7 +69,7 @@ class PairLedgerDeviceUseCaseTest {
             val alreadyAdded = ledgerAccount(ufvk = "ufvk-known", bound = true)
             val repository = LedgerPairingRepositoryImpl()
 
-            val result = useCase(pairing, repository, existing = listOf(alreadyAdded)).invoke(device)
+            val result = useCase(pairing, repository, existing = listOf(alreadyAdded)).invoke(device, firstAccount)
 
             assertEquals(PairLedgerDeviceResult.AlreadyAdded(alreadyAdded), result)
             assertNull(repository.get())
@@ -81,7 +83,7 @@ class PairLedgerDeviceUseCaseTest {
             val unbound = ledgerAccount(ufvk = "ufvk-known", bound = false)
             val repository = LedgerPairingRepositoryImpl()
 
-            val result = useCase(pairing, repository, existing = listOf(unbound)).invoke(device)
+            val result = useCase(pairing, repository, existing = listOf(unbound)).invoke(device, firstAccount)
 
             assertEquals(PairLedgerDeviceResult.Rebound(unbound), result)
             assertNull(repository.get())
@@ -111,7 +113,7 @@ class PairLedgerDeviceUseCaseTest {
                 )
             val repository = LedgerPairingRepositoryImpl()
 
-            val result = useCase(pairing, repository, existing = listOf(keystone)).invoke(device)
+            val result = useCase(pairing, repository, existing = listOf(keystone)).invoke(device, firstAccount)
 
             assertTrue(result is PairLedgerDeviceResult.Paired)
         }
@@ -123,7 +125,7 @@ class PairLedgerDeviceUseCaseTest {
             val first = ledgerAccount(ufvk = "ufvk-first", bound = true)
             val repository = LedgerPairingRepositoryImpl()
 
-            val result = useCase(pairing, repository, existing = listOf(first)).invoke(device)
+            val result = useCase(pairing, repository, existing = listOf(first)).invoke(device, firstAccount)
 
             assertEquals(PairLedgerDeviceResult.WrongLedger, result)
             assertNull(repository.get())
@@ -139,7 +141,8 @@ class PairLedgerDeviceUseCaseTest {
             val repairTarget = repairTarget(target)
 
             val result =
-                useCase(pairing, repository, existing = listOf(target), repairTarget = repairTarget).invoke(device)
+                useCase(pairing, repository, existing = listOf(target), repairTarget = repairTarget)
+                    .invoke(device, firstAccount)
 
             assertEquals(PairLedgerDeviceResult.Rebound(target), result)
             assertNull(repository.get())
@@ -163,7 +166,7 @@ class PairLedgerDeviceUseCaseTest {
 
             val result =
                 useCase(pairing, repository, existing = listOf(target), repairTarget = repairTarget(target))
-                    .invoke(device)
+                    .invoke(device, firstAccount)
 
             assertEquals(PairLedgerDeviceResult.Rebound(target), result)
             assertNull(repository.get())
@@ -186,12 +189,45 @@ class PairLedgerDeviceUseCaseTest {
                 val repairTarget = repairTarget(target)
 
                 val result =
-                    useCase(pairing(ufvk = "ufvk-other"), repository, existing, repairTarget).invoke(device)
+                    useCase(pairing(ufvk = "ufvk-other"), repository, existing, repairTarget)
+                        .invoke(device, firstAccount)
 
                 assertEquals(PairLedgerDeviceResult.WrongLedger, result, "existing=${existing.size}")
                 assertNull(repository.get())
                 assertEquals(target.sdkAccount.accountUuid, repairTarget.get(), "Try again keeps the target")
             }
+            coVerify(exactly = 0) { bindingProvider.save(any(), any(), any()) }
+        }
+
+    @Test
+    fun theAccountTheUserChoseIsTheOneExported() =
+        runTest {
+            val dataSource = dataSource(pairing(ufvk = "ufvk-new"))
+
+            useCase(dataSource, LedgerPairingRepositoryImpl(), existing = emptyList())
+                .invoke(device, Zip32AccountIndex.new(7))
+
+            coVerify(exactly = 1) { dataSource.pair(device, Zip32AccountIndex.new(7)) }
+        }
+
+    /**
+     * Pairing an account again exports whichever account the user chose; an index whose viewing key
+     * is not the target's is the wrong Ledger, as for any other device.
+     */
+    @Test
+    fun pairingAnAccountAgainExportsTheChosenAccountAndAMismatchIsTheWrongLedger() =
+        runTest {
+            val target = ledgerAccount(ufvk = "ufvk-known", bound = false, zip32AccountIndex = null)
+            val dataSource = dataSource(pairing(ufvk = "ufvk-index-4"))
+            val repository = LedgerPairingRepositoryImpl()
+
+            val result =
+                useCase(dataSource, repository, listOf(target), repairTarget(target))
+                    .invoke(device, Zip32AccountIndex.new(4))
+
+            coVerify(exactly = 1) { dataSource.pair(device, Zip32AccountIndex.new(4)) }
+            assertEquals(PairLedgerDeviceResult.WrongLedger, result)
+            assertNull(repository.get())
             coVerify(exactly = 0) { bindingProvider.save(any(), any(), any()) }
         }
 
@@ -202,7 +238,7 @@ class PairLedgerDeviceUseCaseTest {
             repository.set(pairing(ufvk = "ufvk-stale"))
             val fresh = pairing(ufvk = "ufvk-fresh")
 
-            useCase(fresh, repository, existing = emptyList()).invoke(device)
+            useCase(fresh, repository, existing = emptyList()).invoke(device, firstAccount)
 
             assertSame(fresh, repository.get())
         }
@@ -212,11 +248,15 @@ class PairLedgerDeviceUseCaseTest {
         repository: LedgerPairingRepository,
         existing: List<WalletAccount>,
         repairTarget: LedgerRepairTargetRepository = LedgerRepairTargetRepositoryImpl(),
+    ) = useCase(dataSource(pairing), repository, existing, repairTarget)
+
+    private fun useCase(
+        dataSource: LedgerDeviceDataSource,
+        repository: LedgerPairingRepository,
+        existing: List<WalletAccount>,
+        repairTarget: LedgerRepairTargetRepository = LedgerRepairTargetRepositoryImpl(),
     ) = PairLedgerDeviceUseCase(
-        ledgerDeviceDataSource =
-            mockk<LedgerDeviceDataSource> {
-                coEvery { pair(any(), any()) } returns pairing
-            },
+        ledgerDeviceDataSource = dataSource,
         ledgerPairingRepository = repository,
         ledgerRepairTargetRepository = repairTarget,
         accountDataSource =
@@ -225,6 +265,11 @@ class PairLedgerDeviceUseCaseTest {
             },
         ledgerAccountBindingProvider = bindingProvider,
     )
+
+    private fun dataSource(pairing: LedgerAccountPairing) =
+        mockk<LedgerDeviceDataSource> {
+            coEvery { pair(any(), any()) } returns pairing
+        }
 
     private fun pairing(ufvk: String) =
         mockk<LedgerAccountPairing> {
@@ -237,7 +282,7 @@ class PairLedgerDeviceUseCaseTest {
         }
 
     private fun repairTarget(account: LedgerAccount) =
-        LedgerRepairTargetRepositoryImpl().apply { set(account.sdkAccount.accountUuid) }
+        LedgerRepairTargetRepositoryImpl().apply { set(account.sdkAccount.accountUuid, account.zip32AccountIndex) }
 
     /**
      * Each viewing key gets its own UUID, so accounts with different keys are different accounts.
@@ -251,6 +296,7 @@ class PairLedgerDeviceUseCaseTest {
     private fun ledgerAccount(
         ufvk: String,
         bound: Boolean,
+        zip32AccountIndex: Zip32AccountIndex? = Zip32AccountIndex.new(0L),
     ) =
         LedgerAccount(
             sdkAccount = sdkAccount(ufvk),
@@ -261,7 +307,7 @@ class PairLedgerDeviceUseCaseTest {
             transparentBalance = null,
             isSelected = false,
             deviceIdentity = if (bound) IDENTITY else null,
-            zip32AccountIndex = Zip32AccountIndex.new(0L),
+            zip32AccountIndex = zip32AccountIndex,
         )
 }
 

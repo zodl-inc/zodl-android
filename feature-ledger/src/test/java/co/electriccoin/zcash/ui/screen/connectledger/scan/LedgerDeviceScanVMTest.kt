@@ -8,6 +8,8 @@ import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.provider.LEDGER_SCAN_TIMEOUT
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepository
 import co.electriccoin.zcash.ui.common.usecase.ConnectLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
@@ -76,7 +78,7 @@ class LedgerDeviceScanVMTest {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
             val connectLedgerDevice =
                 mockk<ConnectLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns false
+                    coEvery { this@mockk.invoke(any(), any()) } returns false
                 }
             val vm = vm(navigationRouter = navigationRouter, connectLedgerDevice = connectLedgerDevice)
             collect(vm)
@@ -101,7 +103,7 @@ class LedgerDeviceScanVMTest {
                 .onClick()
             runCurrent()
 
-            coVerify(exactly = 1) { connectLedgerDevice.invoke(device("AA")) }
+            coVerify(exactly = 1) { connectLedgerDevice.invoke(device("AA"), any()) }
             verify(exactly = 1) { navigationRouter.forward(LedgerOpenAppArgs()) }
             verify(exactly = 0) { navigationRouter.forward(LedgerOpenAppArgs(autoOpen = false), LedgerHandshakeArgs) }
         }
@@ -168,7 +170,7 @@ class LedgerDeviceScanVMTest {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
             val connectLedgerDevice =
                 mockk<ConnectLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns true
+                    coEvery { this@mockk.invoke(any(), any()) } returns true
                 }
             val vm = vm(navigationRouter = navigationRouter, connectLedgerDevice = connectLedgerDevice)
             collect(vm)
@@ -223,7 +225,7 @@ class LedgerDeviceScanVMTest {
             val bonded = CompletableDeferred<Boolean>()
             val connectLedgerDevice =
                 mockk<ConnectLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } coAnswers { bonded.await() }
+                    coEvery { this@mockk.invoke(any(), any()) } coAnswers { bonded.await() }
                 }
             val vm = vm(navigationRouter = navigationRouter, connectLedgerDevice = connectLedgerDevice)
             collect(vm)
@@ -487,7 +489,7 @@ class LedgerDeviceScanVMTest {
             val failure = IllegalStateException("boom")
             val connectLedgerDevice =
                 mockk<ConnectLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } throws failure
+                    coEvery { this@mockk.invoke(any(), any()) } throws failure
                 }
             val vm = vm(connectLedgerDevice = connectLedgerDevice, navigateToError = navigateToError)
             collect(vm)
@@ -639,7 +641,7 @@ class LedgerDeviceScanVMTest {
     ): LedgerDeviceScanVM {
         val connectLedgerDevice =
             mockk<ConnectLedgerDeviceUseCase> {
-                coEvery { this@mockk.invoke(any()) } throws exception
+                coEvery { this@mockk.invoke(any(), any()) } throws exception
             }
         val vm =
             vm(
@@ -700,6 +702,7 @@ class LedgerDeviceScanVMTest {
         connectLedgerDevice: ConnectLedgerDeviceUseCase = mockk(relaxed = true),
         ledgerPairingRepository: LedgerPairingRepository = mockk(relaxed = true),
         ledgerSelectedDeviceRepository: LedgerSelectedDeviceRepository = mockk(relaxed = true),
+        ledgerRepairTargetRepository: LedgerRepairTargetRepository = LedgerRepairTargetRepositoryImpl(),
         navigateToError: NavigateToErrorUseCase = mockk(relaxed = true),
         navigationRouter: NavigationRouter = mockk(relaxed = true),
     ) = LedgerDeviceScanVM(
@@ -708,6 +711,7 @@ class LedgerDeviceScanVMTest {
         connectLedgerDevice = connectLedgerDevice,
         ledgerPairingRepository = ledgerPairingRepository,
         ledgerSelectedDeviceRepository = ledgerSelectedDeviceRepository,
+        ledgerRepairTargetRepository = ledgerRepairTargetRepository,
         navigateToError = navigateToError,
         navigationRouter = navigationRouter,
     )

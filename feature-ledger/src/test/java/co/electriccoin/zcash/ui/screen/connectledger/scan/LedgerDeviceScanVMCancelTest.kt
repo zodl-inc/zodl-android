@@ -5,6 +5,7 @@ import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepository
 import co.electriccoin.zcash.ui.common.usecase.ConnectLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
@@ -65,7 +66,7 @@ class LedgerDeviceScanVMCancelTest {
 
     private val connectLedgerDevice =
         mockk<ConnectLedgerDeviceUseCase> {
-            coEvery { this@mockk.invoke(any()) } coAnswers {
+            coEvery { this@mockk.invoke(any(), any()) } coAnswers {
                 val result = withContext(NonCancellable) { bonded.await() }
                 isConnectCancelled = !currentCoroutineContext().isActive
                 result
@@ -148,6 +149,7 @@ class LedgerDeviceScanVMCancelTest {
                 connectLedgerDevice = connectLedgerDevice,
                 ledgerPairingRepository = mockk(relaxed = true),
                 ledgerSelectedDeviceRepository = ledgerSelectedDeviceRepository,
+                ledgerRepairTargetRepository = LedgerRepairTargetRepositoryImpl(),
                 navigateToError = mockk(relaxed = true),
                 navigationRouter = navigationRouter,
             )

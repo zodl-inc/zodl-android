@@ -43,6 +43,10 @@
     <string name="ledger_scan_select_subtitle">After you tap Connect, check that the code on your phone matches the one on your Ledger.</string>
     <string name="ledger_scan_select_cta">Connect</string>
     <string name="ledger_scan_retry_cta">Try again</string>
+    <string name="ledger_scan_advanced_title">Advanced options</string>
+    <string name="ledger_scan_advanced_message">Leave this at 0 unless you used another account number on this Ledger in a different wallet.</string>
+    <string name="ledger_scan_accountIndex_label">Account index</string>
+    <string name="ledger_scan_accountIndex_hint">Enter a number from %1$d to %2$d</string>
 
     <!-- Approve on device -->
     <string name="ledger_handshake_waiting_title">Waiting for approval</string>

@@ -70,7 +70,7 @@ interface LedgerDeviceDataSource {
      */
     suspend fun pair(
         device: LedgerBluetoothDevice,
-        zip32AccountIndex: Zip32AccountIndex = Zip32AccountIndex.new(0)
+        zip32AccountIndex: Zip32AccountIndex
     ): LedgerAccountPairing
 }
 

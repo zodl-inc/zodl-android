@@ -4,6 +4,7 @@ import android.app.Application
 import cash.z.ecc.android.sdk.exception.LedgerException
 import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
+import cash.z.ecc.android.sdk.model.Zip32AccountIndex
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.LedgerPairingTimedOutException
@@ -68,6 +69,8 @@ class LedgerHandshakeVMTest {
             rssi = -40,
         )
 
+    private val account = Zip32AccountIndex.new(3)
+
     @BeforeTest
     fun setUp() {
         Dispatchers.setMain(dispatcher)
@@ -84,13 +87,13 @@ class LedgerHandshakeVMTest {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns PairLedgerDeviceResult.Paired
+                    coEvery { this@mockk.invoke(any(), any()) } returns PairLedgerDeviceResult.Paired
                 }
             val vm = vm(pairLedgerDevice = pairLedgerDevice, navigationRouter = navigationRouter)
             collect(vm)
             runCurrent()
 
-            coVerify(exactly = 1) { pairLedgerDevice.invoke(device) }
+            coVerify(exactly = 1) { pairLedgerDevice.invoke(device, account) }
             verify(exactly = 1) { navigationRouter.replace(HWNewOrActiveArgs(HWWalletEnrollment.Ledger)) }
             verify(exactly = 0) { navigationRouter.forward(HWNewOrActiveArgs(HWWalletEnrollment.Ledger)) }
         }
@@ -101,7 +104,7 @@ class LedgerHandshakeVMTest {
             val pending = CompletableDeferred<PairLedgerDeviceResult>()
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } coAnswers { pending.await() }
+                    coEvery { this@mockk.invoke(any(), any()) } coAnswers { pending.await() }
                 }
             val vm = vm(pairLedgerDevice = pairLedgerDevice)
             collect(vm)
@@ -131,7 +134,7 @@ class LedgerHandshakeVMTest {
             runCurrent()
 
             verify(exactly = 1) { navigationRouter.backToRoot() }
-            coVerify(exactly = 0) { pairLedgerDevice.invoke(any()) }
+            coVerify(exactly = 0) { pairLedgerDevice.invoke(any(), any()) }
         }
 
     /**
@@ -260,7 +263,8 @@ class LedgerHandshakeVMTest {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns PairLedgerDeviceResult.Rebound(mockk(relaxed = true))
+                    coEvery { this@mockk.invoke(any(), any()) } returns
+                        PairLedgerDeviceResult.Rebound(mockk(relaxed = true))
                 }
             val vm = vm(pairLedgerDevice = pairLedgerDevice, navigationRouter = navigationRouter)
             collect(vm)
@@ -277,7 +281,7 @@ class LedgerHandshakeVMTest {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns PairLedgerDeviceResult.WrongLedger
+                    coEvery { this@mockk.invoke(any(), any()) } returns PairLedgerDeviceResult.WrongLedger
                 }
             val vm = vm(pairLedgerDevice = pairLedgerDevice, navigationRouter = navigationRouter)
             collect(vm)
@@ -302,7 +306,7 @@ class LedgerHandshakeVMTest {
             var attempts = 0
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } coAnswers {
+                    coEvery { this@mockk.invoke(any(), any()) } coAnswers {
                         attempts++
                         if (attempts == 1) {
                             throw mockk<LedgerException.WrongApp>(relaxed = true)
@@ -319,7 +323,7 @@ class LedgerHandshakeVMTest {
             assertNotNull(sheet.primary).onClick()
             runCurrent()
 
-            coVerify(exactly = 2) { pairLedgerDevice.invoke(device) }
+            coVerify(exactly = 2) { pairLedgerDevice.invoke(device, any()) }
             verify(exactly = 1) { navigationRouter.replace(HWNewOrActiveArgs(HWWalletEnrollment.Ledger)) }
         }
 
@@ -348,7 +352,7 @@ class LedgerHandshakeVMTest {
         runTest(dispatcher) {
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns
+                    coEvery { this@mockk.invoke(any(), any()) } returns
                         PairLedgerDeviceResult.AlreadyAdded(mockk(relaxed = true))
                 }
             val vm = vm(pairLedgerDevice = pairLedgerDevice)
@@ -378,7 +382,7 @@ class LedgerHandshakeVMTest {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns PairLedgerDeviceResult.AlreadyAdded(existing)
+                    coEvery { this@mockk.invoke(any(), any()) } returns PairLedgerDeviceResult.AlreadyAdded(existing)
                 }
             val vm =
                 vm(
@@ -406,7 +410,7 @@ class LedgerHandshakeVMTest {
             val pending = CompletableDeferred<PairLedgerDeviceResult>()
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } coAnswers { pending.await() }
+                    coEvery { this@mockk.invoke(any(), any()) } coAnswers { pending.await() }
                 }
             val vm = vm(pairLedgerDevice = pairLedgerDevice)
             collect(vm)
@@ -424,7 +428,7 @@ class LedgerHandshakeVMTest {
 
             assertTrue(vm.state.value.isConnecting)
             assertNull(vm.state.value.errorSheet)
-            coVerify(exactly = 2) { pairLedgerDevice.invoke(device) }
+            coVerify(exactly = 2) { pairLedgerDevice.invoke(device, any()) }
         }
 
     @Test
@@ -434,7 +438,7 @@ class LedgerHandshakeVMTest {
             var attempts = 0
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } coAnswers {
+                    coEvery { this@mockk.invoke(any(), any()) } coAnswers {
                         attempts++
                         if (attempts == 1) {
                             throw mockk<LedgerException.UserRejected>(relaxed = true)
@@ -452,7 +456,7 @@ class LedgerHandshakeVMTest {
                 .onClick()
             runCurrent()
 
-            coVerify(exactly = 2) { pairLedgerDevice.invoke(device) }
+            coVerify(exactly = 2) { pairLedgerDevice.invoke(device, any()) }
             assertTrue(vm.state.value.isConnecting)
             assertNull(vm.state.value.errorSheet)
             assertEquals(
@@ -469,7 +473,7 @@ class LedgerHandshakeVMTest {
             val pending = CompletableDeferred<PairLedgerDeviceResult>()
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } coAnswers { pending.await() }
+                    coEvery { this@mockk.invoke(any(), any()) } coAnswers { pending.await() }
                 }
             val vm = vm(pairLedgerDevice = pairLedgerDevice)
             collect(vm)
@@ -478,7 +482,7 @@ class LedgerHandshakeVMTest {
             vm.onPermissionsGranted()
             runCurrent()
 
-            coVerify(exactly = 1) { pairLedgerDevice.invoke(device) }
+            coVerify(exactly = 1) { pairLedgerDevice.invoke(device, any()) }
         }
 
     @Test
@@ -488,11 +492,12 @@ class LedgerHandshakeVMTest {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } coAnswers { pending.await() }
+                    coEvery { this@mockk.invoke(any(), any()) } coAnswers { pending.await() }
                 }
             val ledgerSelectedDeviceRepository =
                 mockk<LedgerSelectedDeviceRepository>(relaxed = true) {
                     every { get() } returnsMany listOf(device, null)
+                    every { getZip32AccountIndex() } returnsMany listOf(account, null)
                 }
             val vm =
                 LedgerHandshakeVM(
@@ -510,7 +515,7 @@ class LedgerHandshakeVMTest {
             runCurrent()
 
             verify(exactly = 0) { navigationRouter.backToRoot() }
-            coVerify(exactly = 1) { pairLedgerDevice.invoke(device) }
+            coVerify(exactly = 1) { pairLedgerDevice.invoke(device, any()) }
             assertTrue(vm.state.value.isConnecting)
         }
 
@@ -520,7 +525,7 @@ class LedgerHandshakeVMTest {
             var attempts = 0
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } coAnswers {
+                    coEvery { this@mockk.invoke(any(), any()) } coAnswers {
                         attempts++
                         if (attempts == 1) {
                             throw mockk<LedgerException.BluetoothDisabled>(relaxed = true)
@@ -546,7 +551,7 @@ class LedgerHandshakeVMTest {
             vm.onBluetoothEnabled()
             runCurrent()
             assertTrue(vm.state.value.isConnecting)
-            coVerify(exactly = 2) { pairLedgerDevice.invoke(device) }
+            coVerify(exactly = 2) { pairLedgerDevice.invoke(device, any()) }
         }
 
     @Suppress("TooGenericExceptionThrown")
@@ -557,7 +562,7 @@ class LedgerHandshakeVMTest {
             val failure = IllegalStateException("boom")
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } throws failure
+                    coEvery { this@mockk.invoke(any(), any()) } throws failure
                 }
             val vm = vm(pairLedgerDevice = pairLedgerDevice, navigateToError = navigateToError)
             collect(vm)
@@ -586,7 +591,7 @@ class LedgerHandshakeVMTest {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } coAnswers {
+                    coEvery { this@mockk.invoke(any(), any()) } coAnswers {
                         try {
                             awaitCancellation()
                         } finally {
@@ -617,7 +622,7 @@ class LedgerHandshakeVMTest {
             val pending = CompletableDeferred<PairLedgerDeviceResult>()
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } coAnswers {
+                    coEvery { this@mockk.invoke(any(), any()) } coAnswers {
                         withContext(NonCancellable) { pending.await() }
                     }
                 }
@@ -642,7 +647,7 @@ class LedgerHandshakeVMTest {
             var isCancelled = false
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } coAnswers {
+                    coEvery { this@mockk.invoke(any(), any()) } coAnswers {
                         try {
                             awaitCancellation()
                         } finally {
@@ -667,7 +672,7 @@ class LedgerHandshakeVMTest {
     ): LedgerHandshakeVM {
         val pairLedgerDevice =
             mockk<PairLedgerDeviceUseCase> {
-                coEvery { this@mockk.invoke(any()) } throws exception
+                coEvery { this@mockk.invoke(any(), any()) } throws exception
             }
         val vm = vm(pairLedgerDevice = pairLedgerDevice, navigationRouter = navigationRouter)
         collect(vm)
@@ -705,6 +710,7 @@ class LedgerHandshakeVMTest {
         ledgerSelectedDeviceRepository =
             mockk<LedgerSelectedDeviceRepository>(relaxed = true) {
                 every { get() } returns selectedDevice
+                every { getZip32AccountIndex() } returns account.takeIf { selectedDevice != null }
             },
         navigateToError = navigateToError,
         navigationRouter = navigationRouter,

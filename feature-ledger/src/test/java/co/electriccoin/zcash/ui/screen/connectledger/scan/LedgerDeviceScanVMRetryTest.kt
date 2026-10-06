@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.common.provider.LEDGER_SCAN_TIMEOUT
+import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepositoryImpl
 import co.electriccoin.zcash.ui.common.usecase.ConnectLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.design.util.StringResource
@@ -66,7 +67,7 @@ class LedgerDeviceScanVMRetryTest {
         runTest(dispatcher) {
             val connectLedgerDevice =
                 mockk<ConnectLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns false
+                    coEvery { this@mockk.invoke(any(), any()) } returns false
                 }
             val vm = vm(connectLedgerDevice = connectLedgerDevice)
             collect(vm)
@@ -105,7 +106,7 @@ class LedgerDeviceScanVMRetryTest {
                 }
             val connectLedgerDevice =
                 mockk<ConnectLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns false
+                    coEvery { this@mockk.invoke(any(), any()) } returns false
                 }
             val vm = vm(observeLedgerDevices = observeLedgerDevices, connectLedgerDevice = connectLedgerDevice)
             collect(vm)
@@ -152,7 +153,7 @@ class LedgerDeviceScanVMRetryTest {
         runTest(dispatcher) {
             val connectLedgerDevice =
                 mockk<ConnectLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } throws
+                    coEvery { this@mockk.invoke(any(), any()) } throws
                         mockk<LedgerException.DeviceRefused>(relaxed = true) {
                             every { statusWord } returns LOCKED_STATUS_WORD
                             every { isTransient } returns true
@@ -188,7 +189,7 @@ class LedgerDeviceScanVMRetryTest {
             primary.onClick()
             runCurrent()
 
-            coVerify(exactly = 2) { connectLedgerDevice.invoke(device("AA")) }
+            coVerify(exactly = 2) { connectLedgerDevice.invoke(device("AA"), any()) }
         }
 
     @Test
@@ -200,7 +201,7 @@ class LedgerDeviceScanVMRetryTest {
                 }
             val connectLedgerDevice =
                 mockk<ConnectLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } throws
+                    coEvery { this@mockk.invoke(any(), any()) } throws
                         mockk<LedgerException.UserRejected>(relaxed = true) { every { isRestartable } returns true }
                 }
             val vm = vm(observeLedgerDevices = observeLedgerDevices, connectLedgerDevice = connectLedgerDevice)
@@ -231,7 +232,7 @@ class LedgerDeviceScanVMRetryTest {
             ).onClick()
             runCurrent()
 
-            coVerify(exactly = 2) { connectLedgerDevice.invoke(device("AA")) }
+            coVerify(exactly = 2) { connectLedgerDevice.invoke(device("AA"), any()) }
             verify(exactly = 1) { observeLedgerDevices.invoke() }
             assertSheetTitle(vm, R.string.ledger_error_importRejected_title)
             assertNull(vm.state.value.inlineIssue)
@@ -285,7 +286,7 @@ class LedgerDeviceScanVMRetryTest {
     private fun TestScope.connectedWithFailure(exception: LedgerException): LedgerDeviceScanVM {
         val connectLedgerDevice =
             mockk<ConnectLedgerDeviceUseCase> {
-                coEvery { this@mockk.invoke(any()) } throws exception
+                coEvery { this@mockk.invoke(any(), any()) } throws exception
             }
         val vm = vm(connectLedgerDevice = connectLedgerDevice)
         collect(vm)
@@ -332,6 +333,7 @@ class LedgerDeviceScanVMRetryTest {
         connectLedgerDevice = connectLedgerDevice,
         ledgerPairingRepository = mockk(relaxed = true),
         ledgerSelectedDeviceRepository = mockk(relaxed = true),
+        ledgerRepairTargetRepository = LedgerRepairTargetRepositoryImpl(),
         navigateToError = mockk(relaxed = true),
         navigationRouter = mockk(relaxed = true),
     )

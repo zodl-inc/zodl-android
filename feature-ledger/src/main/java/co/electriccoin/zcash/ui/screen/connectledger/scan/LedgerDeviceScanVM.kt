@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.exception.LedgerException
 import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
+import cash.z.ecc.android.sdk.model.Zip32AccountIndex
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.NavigationRouter
@@ -15,10 +16,12 @@ import co.electriccoin.zcash.ui.common.model.LedgerIssueKind
 import co.electriccoin.zcash.ui.common.model.LedgerIssueRetry
 import co.electriccoin.zcash.ui.common.provider.LEDGER_SCAN_TIMEOUT
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepository
 import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepository
 import co.electriccoin.zcash.ui.common.usecase.ConnectLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.component.TextFieldState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceItemState
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceRowRole
@@ -52,6 +55,11 @@ import kotlinx.coroutines.launch
  * running connection on back, on denied permissions and in [onCleared], and the transport a
  * connection opens is closed by the data source before [ConnectLedgerDeviceUseCase] returns.
  * Device identifiers are used only as list keys — never logged.
+ *
+ * Under a listed device the user may choose which ZIP 32 account of the Ledger to pair; Connect
+ * waits for a valid one and hands it on with the device. Pairing an account again
+ * ([LedgerRepairTargetRepository] holds it) works the same, starting from the index its binding
+ * stored when there is one; an index whose viewing key is not that account's is the wrong Ledger.
  */
 @Suppress("TooManyFunctions")
 class LedgerDeviceScanVM(
@@ -60,10 +68,22 @@ class LedgerDeviceScanVM(
     private val connectLedgerDevice: ConnectLedgerDeviceUseCase,
     private val ledgerPairingRepository: LedgerPairingRepository,
     private val ledgerSelectedDeviceRepository: LedgerSelectedDeviceRepository,
+    ledgerRepairTargetRepository: LedgerRepairTargetRepository,
     private val navigateToError: NavigateToErrorUseCase,
     private val navigationRouter: NavigationRouter,
 ) : AndroidViewModel(application) {
-    private val internalState = MutableStateFlow(LedgerScanInternalState())
+    /**
+     * The account index starts from the one stored for an account being paired again, read once
+     * since the target does not change while this screen lives, and from the first account
+     * otherwise.
+     */
+    private val internalState =
+        MutableStateFlow(
+            LedgerScanInternalState(
+                accountIndexText =
+                    (ledgerRepairTargetRepository.getZip32AccountIndex()?.index ?: MIN_ACCOUNT_INDEX).toString(),
+            )
+        )
 
     private var scanJob: Job? = null
 
@@ -115,6 +135,7 @@ class LedgerDeviceScanVM(
                         onClick = { onDeviceClick(device.identifier) },
                     )
                 },
+            advancedOptions = createAdvancedOptions(internal, hasDevices),
             inlineIssue = pageIssue?.let { LedgerInlineIssueState(it.inlineIcon, it.inlineTitle, it.inlineMessage) },
             primaryButton = createPrimaryButton(internal, sheets, hasDevices, pageIssue),
             errorSheet = internal.issue?.takeIf { internal.isSheetShown }?.let(sheets::sheet),
@@ -201,7 +222,9 @@ class LedgerDeviceScanVM(
             ButtonState(
                 text = stringRes(R.string.ledger_scan_select_cta),
                 isEnabled =
-                    internal.selectedIdentifier != null && internal.phase != LedgerScanPhase.CONNECTING,
+                    internal.selectedIdentifier != null &&
+                        internal.phase != LedgerScanPhase.CONNECTING &&
+                        selectedAccountIndex(internal) != null,
                 isLoading = internal.phase == LedgerScanPhase.CONNECTING,
                 onClick = ::onConnectClick,
             )
@@ -222,6 +245,44 @@ class LedgerDeviceScanVM(
                 isIconRotating = internal.phase == LedgerScanPhase.SCANNING,
             )
         }
+    }
+
+    private fun createAdvancedOptions(
+        internal: LedgerScanInternalState,
+        hasDevices: Boolean,
+    ): LedgerAdvancedOptionsState? {
+        if (!hasDevices) return null
+        val isValid = parseAccountIndex(internal.accountIndexText) != null
+        return LedgerAdvancedOptionsState(
+            title = stringRes(R.string.ledger_scan_advanced_title),
+            isExpanded = internal.isAdvancedExpanded,
+            message = stringRes(R.string.ledger_scan_advanced_message),
+            accountIndexLabel = stringRes(R.string.ledger_scan_accountIndex_label),
+            accountIndex =
+                TextFieldState(
+                    value = stringRes(internal.accountIndexText),
+                    error = if (isValid) null else stringRes(""),
+                    isEnabled = internal.phase != LedgerScanPhase.CONNECTING,
+                    onValueChange = ::onAccountIndexChange,
+                ),
+            hint = stringRes(R.string.ledger_scan_accountIndex_hint, MIN_ACCOUNT_INDEX, MAX_ACCOUNT_INDEX),
+            onToggle = ::onAdvancedOptionsToggle,
+        )
+    }
+
+    /**
+     * The account the user chose, or null while the input is not a whole number from
+     * [MIN_ACCOUNT_INDEX] to [MAX_ACCOUNT_INDEX].
+     */
+    private fun selectedAccountIndex(internal: LedgerScanInternalState): Zip32AccountIndex? =
+        parseAccountIndex(internal.accountIndexText)?.let { Zip32AccountIndex.new(it) }
+
+    private fun onAccountIndexChange(text: String) {
+        internalState.update { it.copy(accountIndexText = text) }
+    }
+
+    private fun onAdvancedOptionsToggle() {
+        internalState.update { it.copy(isAdvancedExpanded = !it.isAdvancedExpanded) }
     }
 
     private fun issueSheets(internal: LedgerScanInternalState) =
@@ -296,8 +357,9 @@ class LedgerDeviceScanVM(
     }
 
     private fun onConnectClick() {
-        val device = selectedDevice() ?: return
-        if (connectJob?.isActive == true) return
+        val device = selectedDevice()
+        val zip32AccountIndex = selectedAccountIndex(internalState.value)
+        if (device == null || zip32AccountIndex == null || connectJob?.isActive == true) return
         stopScan()
         internalState.update {
             it.copy(
@@ -306,7 +368,7 @@ class LedgerDeviceScanVM(
                 isSheetShown = false,
             )
         }
-        connectJob = viewModelScope.launch { connect(device) }
+        connectJob = viewModelScope.launch { connect(device, zip32AccountIndex) }
     }
 
     private fun selectedDevice(): LedgerBluetoothDevice? {
@@ -332,9 +394,12 @@ class LedgerDeviceScanVM(
      * step over the screen the user went back to.
      */
     @Suppress("TooGenericExceptionCaught")
-    private suspend fun connect(device: LedgerBluetoothDevice) {
+    private suspend fun connect(
+        device: LedgerBluetoothDevice,
+        zip32AccountIndex: Zip32AccountIndex,
+    ) {
         try {
-            val isZcashAppRunning = connectLedgerDevice(device)
+            val isZcashAppRunning = connectLedgerDevice(device, zip32AccountIndex)
             currentCoroutineContext().ensureActive()
             if (isZcashAppRunning) {
                 navigationRouter.forward(LedgerOpenAppArgs(autoOpen = false), LedgerHandshakeArgs)
@@ -501,7 +566,26 @@ private data class LedgerScanInternalState(
     val canRequestPermissionsAgain: Boolean = false,
     val permissionRequestNonce: Int = 0,
     val enableBluetoothRequestNonce: Int = 0,
+    val isAdvancedExpanded: Boolean = false,
+    val accountIndexText: String = MIN_ACCOUNT_INDEX.toString(),
 )
+
+/**
+ * The account index the user typed, when it is a whole number from [MIN_ACCOUNT_INDEX] to
+ * [MAX_ACCOUNT_INDEX]: digits only, so a sign, a space or a separator makes it invalid.
+ */
+private fun parseAccountIndex(text: String): Long? =
+    text
+        .takeIf { it.isNotEmpty() && it.all { char -> char in '0'..'9' } }
+        ?.toLongOrNull()
+        ?.takeIf { it in MIN_ACCOUNT_INDEX..MAX_ACCOUNT_INDEX }
+
+private const val MIN_ACCOUNT_INDEX = 0L
+
+/**
+ * The highest account the Ledger Zcash app derives, pczt_ledger's `MAX_BIP44_ACCOUNT`.
+ */
+private const val MAX_ACCOUNT_INDEX = 100L
 
 private data class LedgerScanPageCopy(
     @get:StringRes val title: Int,
