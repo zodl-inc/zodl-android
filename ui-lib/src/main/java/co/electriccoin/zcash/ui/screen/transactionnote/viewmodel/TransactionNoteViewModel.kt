@@ -99,6 +99,7 @@ internal class TransactionNoteViewModel(
                     isLoading = runningSave == NoteSave.DELETE,
                     hapticFeedbackType = HapticFeedbackType.Confirm
                 ).takeIf { foundNote != null },
+            isSaving = runningSave != null,
         )
     }
 

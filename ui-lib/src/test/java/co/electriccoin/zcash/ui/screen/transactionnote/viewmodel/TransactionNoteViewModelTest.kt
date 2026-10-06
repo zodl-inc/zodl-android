@@ -119,9 +119,12 @@ class TransactionNoteViewModelTest {
 
             assertTrue(requireNotNull(vm.state().negative).isLoading)
             assertFalse(requireNotNull(vm.state().secondaryButton).isLoading)
+            assertTrue(vm.state().isSaving)
 
             saveResult.complete(true)
             advanceUntilIdle()
+
+            assertFalse(vm.state().isSaving)
 
             assertFalse(requireNotNull(vm.state().negative).isLoading)
             requireNotNull(vm.state().negative).onClick()

@@ -14,6 +14,7 @@ import co.electriccoin.zcash.ui.common.model.metadata.SwapsMetadataV3
 import co.electriccoin.zcash.ui.common.provider.MetadataProvider
 import co.electriccoin.zcash.ui.common.provider.MetadataStorageProvider
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
+import co.electriccoin.zcash.ui.common.serialization.UnknownEncryptionVersionException
 import co.electriccoin.zcash.ui.common.serialization.metadata.DecryptionException
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
 import com.google.crypto.tink.InsecureSecretKeyAccess
@@ -730,15 +731,29 @@ class MetadataDataSourceTest {
         }
 
     @Test
+    fun aTruncatedHeaderIsSkippedLikeADecryptionFailure() =
+        runTest {
+            assertSkippedAfterOneRead(IllegalArgumentException("Input is too short"))
+        }
+
+    @Test
+    fun anUnknownEncryptionVersionIsSkippedLikeADecryptionFailure() =
+        runTest {
+            assertSkippedAfterOneRead(UnknownEncryptionVersionException())
+        }
+
+    @Test
     fun anUnexpectedExceptionOnTheCanonicalFileMakesTheReadReadOnlyWithoutSettingItAside() =
         runTest {
             every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
             every { metadataStorageProvider.setAsideUndecodable(canonicalFile) } returns true
             every { metadataProvider.readMetadataFromFile(canonicalFile, key) } throws IllegalStateException()
-            every { metadataProvider.readMetadataFromFile(legacyFile, key) } returns metadata(lastUpdated = 2)
+            every { metadataProvider.readMetadataFromFile(legacyFile, key) } returns
+                metadata(lastUpdated = 2, read = listOf("r1"))
 
-            observe()
+            val result = observe()
 
+            assertEquals(listOf("r1"), result.accountMetadata.read)
             verify(exactly = 0) { metadataStorageProvider.setAsideUndecodable(any()) }
             verify(exactly = 0) { metadataProvider.writeMetadataToFile(any(), any(), any()) }
             verify(exactly = 0) { legacyFile.delete() }
@@ -988,6 +1003,23 @@ class MetadataDataSourceTest {
         every { metadataProvider.readMetadataFromFile(legacyFile, key) } returns
             metadata(lastUpdated = 2, read = listOf("r1"))
         return written
+    }
+
+    /**
+     * A legacy file that fails with [error] is read once and then skipped on the next read of the
+     * same data source, and is never deleted.
+     */
+    private suspend fun TestScope.assertSkippedAfterOneRead(error: Exception) {
+        every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
+        every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns metadata(lastUpdated = 1)
+        every { metadataProvider.readMetadataFromFile(legacyFile, key) } throws error
+        val dataSource = dataSource()
+
+        dataSource.observe(key).first { it != null }
+        dataSource.observe(key).first { it != null }
+
+        verify(exactly = 1) { metadataProvider.readMetadataFromFile(legacyFile, key) }
+        verify(exactly = 0) { legacyFile.delete() }
     }
 
     private suspend fun TestScope.observe(): MetadataV3 = checkNotNull(dataSource().observe(key).first { it != null })

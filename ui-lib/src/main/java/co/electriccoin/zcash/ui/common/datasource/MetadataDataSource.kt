@@ -534,10 +534,10 @@ class MetadataDataSourceImpl(
 
     /**
      * Only a genuine decode failure is [FileRead.Undecodable]: a [DecryptionException], an
-     * [UnknownEncryptionVersionException], or the [IllegalArgumentException] (which covers
-     * kotlinx.serialization's SerializationException) of truncated or garbled content. Any other
-     * exception is [FileRead.Unreadable], so it is never cached and the file is read again next
-     * time.
+     * [UnknownEncryptionVersionException], or the [IllegalArgumentException] of a truncated header.
+     * Serialization errors never get here, because the encryptor turns them into a
+     * [DecryptionException]. Any other exception is [FileRead.Unreadable], so it is never cached and
+     * the file is read again next time.
      */
     private fun classifyReadFailure(error: Throwable, isLastAttempt: Boolean): FileRead? =
         when (error) {
