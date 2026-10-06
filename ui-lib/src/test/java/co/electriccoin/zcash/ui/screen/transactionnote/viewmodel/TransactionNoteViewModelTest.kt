@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.screen.transactionnote.model.TransactionNoteStat
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,6 +34,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class TransactionNoteViewModelTest {
     private lateinit var dispatcher: TestDispatcher
+    private val navigationRouter = mockk<NavigationRouter>(relaxed = true)
     private val saveResult = CompletableDeferred<Boolean>()
     private val createOrUpdate =
         mockk<CreateOrUpdateTransactionNoteUseCase> {
@@ -71,6 +73,22 @@ class TransactionNoteViewModelTest {
             saveResult.complete(true)
             advanceUntilIdle()
             assertFalse(requireNotNull(vm.state().secondaryButton).isLoading)
+        }
+
+    @Test
+    fun backIsIgnoredWhileASaveRuns() =
+        runTest(dispatcher) {
+            val vm = startedVm()
+
+            requireNotNull(vm.state().secondaryButton).onClick()
+            advanceUntilIdle()
+            vm.state().onBack()
+            verify(exactly = 0) { navigationRouter.back() }
+
+            saveResult.complete(true)
+            advanceUntilIdle()
+            vm.state().onBack()
+            verify(exactly = 1) { navigationRouter.back() }
         }
 
     @Test
@@ -115,7 +133,7 @@ class TransactionNoteViewModelTest {
         val vm =
             TransactionNoteViewModel(
                 transactionNote = TransactionNote(TX_ID),
-                navigationRouter = mockk<NavigationRouter>(relaxed = true),
+                navigationRouter = navigationRouter,
                 getTransactionNote =
                     mockk<GetTransactionMetadataUseCase> {
                         coEvery { this@mockk.invoke(TX_ID) } returns

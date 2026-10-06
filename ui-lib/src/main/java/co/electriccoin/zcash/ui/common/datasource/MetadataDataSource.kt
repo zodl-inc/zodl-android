@@ -17,6 +17,8 @@ import co.electriccoin.zcash.ui.common.provider.MetadataProvider
 import co.electriccoin.zcash.ui.common.provider.MetadataStorageProvider
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
 import co.electriccoin.zcash.ui.common.provider.runCatchingRecoverable
+import co.electriccoin.zcash.ui.common.serialization.UnknownEncryptionVersionException
+import co.electriccoin.zcash.ui.common.serialization.metadata.DecryptionException
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -340,9 +342,10 @@ class MetadataDataSourceImpl(
      *
      * The result is read-only, and nothing with data is written and nothing is deleted, when the
      * files cannot be listed, the canonical file cannot be created, the canonical file does not
-     * decode and cannot be set aside, or the canonical file is unreadable: a [SecurityException] on
-     * the first attempt, or another [IOException] after every retry. A missing canonical file may
-     * still be created empty first, since creating it does not depend on the listing.
+     * decode and cannot be set aside, or the canonical file is unreadable: a [SecurityException] or
+     * an unexpected exception on the first attempt, or another [IOException] after every retry. A
+     * missing canonical file may still be created empty first, since creating it does not depend on
+     * the listing.
      */
     private suspend fun readMetadata(key: MetadataKey): MetadataRead =
         withContext(ioDispatcher) {
@@ -484,7 +487,7 @@ class MetadataDataSourceImpl(
      * One read of [file], sized first so an empty file is never decoded. A [NoSuchFileException]
      * is [FileRead.Absent] at once, a [SecurityException] is [FileRead.Unreadable] at once, any
      * other [IOException] returns null to ask for another attempt and is [FileRead.Unreadable] on
-     * the last one, and any other exception is [FileRead.Undecodable]. An [Error] or a
+     * the last one; see [classifyReadFailure] for the rest. An [Error] or a
      * [kotlinx.coroutines.CancellationException] is rethrown. A file found in [undecodableFiles] is
      * [FileRead.Undecodable] and one found in [mergedFiles] is [FileRead.AlreadyMerged], neither
      * decrypted nor logged again.
@@ -529,12 +532,22 @@ class MetadataDataSourceImpl(
 
     private fun fingerprintOf(identifiers: List<String>): String = identifiers.joinToString(separator = ",")
 
+    /**
+     * Only a genuine decode failure is [FileRead.Undecodable]: a [DecryptionException], an
+     * [UnknownEncryptionVersionException], or the [IllegalArgumentException] (which covers
+     * kotlinx.serialization's SerializationException) of truncated or garbled content. Any other
+     * exception is [FileRead.Unreadable], so it is never cached and the file is read again next
+     * time.
+     */
     private fun classifyReadFailure(error: Throwable, isLastAttempt: Boolean): FileRead? =
         when (error) {
             is NoSuchFileException -> FileRead.Absent
             is SecurityException -> FileRead.Unreadable
             is IOException -> if (isLastAttempt) FileRead.Unreadable else null
-            else -> FileRead.Undecodable
+            is DecryptionException -> FileRead.Undecodable
+            is UnknownEncryptionVersionException -> FileRead.Undecodable
+            is IllegalArgumentException -> FileRead.Undecodable
+            else -> FileRead.Unreadable
         }
 
     /**
@@ -705,8 +718,8 @@ private sealed interface FileRead {
     data object Undecodable : FileRead
 
     /**
-     * The file's size or content could not be read: a [SecurityException] on the first attempt,
-     * or another [IOException] after every retry.
+     * The file's size or content could not be read: a [SecurityException] or an unexpected
+     * exception on the first attempt, or another [IOException] after every retry.
      */
     data object Unreadable : FileRead
 }

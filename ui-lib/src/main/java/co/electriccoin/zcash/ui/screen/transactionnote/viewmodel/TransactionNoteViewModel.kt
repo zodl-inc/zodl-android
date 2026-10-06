@@ -141,7 +141,15 @@ internal class TransactionNoteViewModel(
         noteText.update { newValue }
     }
 
-    private fun onBack() = navigationRouter.back()
+    /**
+     * Ignored while a save runs: the save leaves the sheet itself when it returns, so a back or a
+     * dismissal now would make that second back pop the screen underneath. Every dismiss path of
+     * the sheet, back, scrim tap and drag down, ends here.
+     */
+    private fun onBack() {
+        if (runningSave.value != null) return
+        navigationRouter.back()
+    }
 }
 
 private const val MAX_NOTE_LENGTH = 90

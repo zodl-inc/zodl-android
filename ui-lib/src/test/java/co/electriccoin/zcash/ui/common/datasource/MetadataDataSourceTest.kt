@@ -708,6 +708,43 @@ class MetadataDataSourceTest {
         }
 
     @Test
+    fun anUnexpectedExceptionIsRetriedOnTheNextReadWhileADecryptionFailureIsSkipped() =
+        runTest {
+            val setAsideFile = mockk<File>(relaxed = true)
+            every { setAsideFile.path } returns "set-aside"
+            every { legacyFile.path } returns "legacy"
+            every { metadataStorageProvider.getStorageFiles(key) } returns
+                listOf(canonicalFile, setAsideFile, legacyFile)
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns metadata(lastUpdated = 1)
+            every { metadataProvider.readMetadataFromFile(setAsideFile, key) } throws DecryptionException()
+            every { metadataProvider.readMetadataFromFile(legacyFile, key) } throws IllegalStateException()
+            val dataSource = dataSource()
+
+            dataSource.observe(key).first { it != null }
+            dataSource.observe(key).first { it != null }
+
+            verify(exactly = 1) { metadataProvider.readMetadataFromFile(setAsideFile, key) }
+            verify(exactly = 2) { metadataProvider.readMetadataFromFile(legacyFile, key) }
+            verify(exactly = 0) { legacyFile.delete() }
+            verify(exactly = 0) { setAsideFile.delete() }
+        }
+
+    @Test
+    fun anUnexpectedExceptionOnTheCanonicalFileMakesTheReadReadOnlyWithoutSettingItAside() =
+        runTest {
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
+            every { metadataStorageProvider.setAsideUndecodable(canonicalFile) } returns true
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } throws IllegalStateException()
+            every { metadataProvider.readMetadataFromFile(legacyFile, key) } returns metadata(lastUpdated = 2)
+
+            observe()
+
+            verify(exactly = 0) { metadataStorageProvider.setAsideUndecodable(any()) }
+            verify(exactly = 0) { metadataProvider.writeMetadataToFile(any(), any(), any()) }
+            verify(exactly = 0) { legacyFile.delete() }
+        }
+
+    @Test
     fun updatesReportWhetherTheChangeWasSaved() =
         runTest {
             every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile)
