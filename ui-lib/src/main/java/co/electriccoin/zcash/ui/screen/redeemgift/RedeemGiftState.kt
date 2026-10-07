@@ -25,7 +25,7 @@ sealed interface RedeemGiftState {
     val onBack: () -> Unit
 
     /**
-     * Checking, pending, empty, error, redeeming and result screens, all drawn with the transaction progress layout.
+     * The error screens, drawn with the transaction progress layout.
      */
     @Immutable
     data class Status(
@@ -33,6 +33,17 @@ sealed interface RedeemGiftState {
     ) : RedeemGiftState {
         override val onBack: () -> Unit
             get() = progress.onBack
+    }
+
+    /**
+     * The checking, pending, empty, redeeming and redeemed screens, drawn with the gift card status layout.
+     */
+    @Immutable
+    data class CardStatus(
+        val status: GiftCardStatusState
+    ) : RedeemGiftState {
+        override val onBack: () -> Unit
+            get() = status.onBack
     }
 
     /**
@@ -56,6 +67,7 @@ sealed interface RedeemGiftState {
         override val onBack: () -> Unit,
     ) : RedeemGiftState
 
+    @Suppress("TooManyFunctions")
     companion object {
         /**
          * The amount of a [Ready] card: [value] without a ticker, followed by the network's muted [ticker] (ZEC, or TAZ
@@ -86,6 +98,8 @@ sealed interface RedeemGiftState {
 
         val previewEmptyDust: RedeemGiftState =
             empty(isDust = true, isRechecking = false, onCheckAgain = {}, onClose = {})
+
+        val previewRedeeming: RedeemGiftState = redeeming()
 
         val previewSuccess: RedeemGiftState = redeemed(received = Zatoshi(PREVIEW_AMOUNT), onDone = {})
 
@@ -122,8 +136,9 @@ sealed interface RedeemGiftState {
             onBack = onBack
         )
 
+        /** The card is being checked. There is no close button; back leaves with [onBack]. */
         fun checking(onBack: () -> Unit) =
-            status(
+            cardStatus(
                 background = null,
                 image = loadingImageRes(),
                 title = stringRes(R.string.redeemGift_checking_title),
@@ -131,8 +146,18 @@ sealed interface RedeemGiftState {
                 primaryButton = null,
                 secondaryButton = null,
                 onBack = onBack,
-                showAppBar = false,
-                centerContent = true,
+            )
+
+        /** The card is being redeemed. It cannot be left until the redemption ends, so back does nothing. */
+        fun redeeming() =
+            cardStatus(
+                background = null,
+                image = loadingImageRes(),
+                title = stringRes(R.string.redeemGift_redeeming_title),
+                subtitle = stringRes(R.string.redeemGift_redeeming_subtitle),
+                primaryButton = null,
+                secondaryButton = null,
+                onBack = {},
             )
 
         /**
@@ -144,7 +169,7 @@ sealed interface RedeemGiftState {
             onCheckAgain: () -> Unit,
             onClose: () -> Unit,
         ) = checkAgainStatus(
-            background = TransactionProgressState.Background.PENDING,
+            background = GiftCardStatusState.Background.PENDING,
             image = imageRes(R.drawable.ic_gift_preparing),
             title = stringRes(R.string.redeemGift_pending_title),
             subtitle = stringRes(R.string.redeemGift_pending_subtitle, stringRes(amount)),
@@ -164,20 +189,18 @@ sealed interface RedeemGiftState {
             onCheckAgain: () -> Unit,
             onClose: () -> Unit,
         ) = if (isDust) {
-            status(
-                background = TransactionProgressState.Background.ERROR,
+            cardStatus(
+                background = GiftCardStatusState.Background.EMPTY,
                 image = imageRes(R.drawable.ic_gift_empty),
                 title = stringRes(R.string.redeemGift_empty_title),
                 subtitle = stringRes(R.string.redeemGift_empty_subtitle_dust),
                 primaryButton = closeButton(onClose),
                 secondaryButton = null,
                 onBack = onClose,
-                showAppBar = false,
-                centerContent = true,
             )
         } else {
             checkAgainStatus(
-                background = TransactionProgressState.Background.ERROR,
+                background = GiftCardStatusState.Background.EMPTY,
                 image = imageRes(R.drawable.ic_gift_empty),
                 title = stringRes(R.string.redeemGift_empty_title),
                 subtitle = stringRes(R.string.redeemGift_empty_subtitle),
@@ -193,8 +216,8 @@ sealed interface RedeemGiftState {
         fun redeemed(
             received: Zatoshi?,
             onDone: () -> Unit,
-        ) = status(
-            background = TransactionProgressState.Background.SUCCESS,
+        ) = cardStatus(
+            background = GiftCardStatusState.Background.SUCCESS,
             image = imageRes(R.drawable.ic_gift_open),
             title = stringRes(R.string.redeemGift_success_title),
             subtitle =
@@ -209,8 +232,6 @@ sealed interface RedeemGiftState {
                 ),
             secondaryButton = null,
             onBack = onDone,
-            showAppBar = false,
-            centerContent = true,
         )
 
         @Suppress("LongParameterList")
@@ -223,7 +244,6 @@ sealed interface RedeemGiftState {
             secondaryButton: ButtonState?,
             onBack: () -> Unit,
             showAppBar: Boolean = true,
-            centerContent: Boolean = false,
         ): RedeemGiftState =
             Status(
                 TransactionProgressState(
@@ -236,20 +256,41 @@ sealed interface RedeemGiftState {
                     secondaryButton = secondaryButton,
                     onBack = onBack,
                     showAppBar = showAppBar,
-                    centerContent = centerContent,
+                )
+            )
+
+        @Suppress("LongParameterList")
+        private fun cardStatus(
+            background: GiftCardStatusState.Background?,
+            image: ImageResource,
+            title: StringResource,
+            subtitle: StringResource,
+            primaryButton: ButtonState?,
+            secondaryButton: ButtonState?,
+            onBack: () -> Unit,
+        ): RedeemGiftState =
+            CardStatus(
+                GiftCardStatusState(
+                    background = background,
+                    image = image,
+                    title = title,
+                    subtitle = subtitle.withStyle(),
+                    primaryButton = primaryButton,
+                    secondaryButton = secondaryButton,
+                    onBack = onBack,
                 )
             )
 
         @Suppress("LongParameterList")
         private fun checkAgainStatus(
-            background: TransactionProgressState.Background,
+            background: GiftCardStatusState.Background,
             image: ImageResource,
             title: StringResource,
             subtitle: StringResource,
             isRechecking: Boolean,
             onCheckAgain: () -> Unit,
             onClose: () -> Unit,
-        ) = status(
+        ) = cardStatus(
             background = background,
             image = image,
             title = title,
@@ -264,8 +305,6 @@ sealed interface RedeemGiftState {
                     onClick = onCheckAgain
                 ),
             onBack = onClose,
-            showAppBar = false,
-            centerContent = true,
         )
 
         private fun closeButton(onClose: () -> Unit) =

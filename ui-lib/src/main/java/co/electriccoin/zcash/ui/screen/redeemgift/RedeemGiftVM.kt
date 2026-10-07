@@ -15,7 +15,6 @@ import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.imageRes
-import co.electriccoin.zcash.ui.design.util.loadingImageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.ERROR
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
@@ -103,17 +102,7 @@ class RedeemGiftVM(
             }
 
             GiftCardPhase.Redeeming -> {
-                RedeemGiftState.status(
-                    background = null,
-                    image = loadingImageRes(),
-                    title = stringRes(R.string.redeemGift_redeeming_title),
-                    subtitle = stringRes(R.string.redeemGift_redeeming_subtitle),
-                    primaryButton = null,
-                    secondaryButton = null,
-                    onBack = {},
-                    showAppBar = false,
-                    centerContent = true,
-                )
+                RedeemGiftState.redeeming()
             }
 
             is GiftCardPhase.Redeemed -> {

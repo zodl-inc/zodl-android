@@ -22,6 +22,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -447,7 +448,10 @@ class GiftCardRepositoryImplTest {
         GiftCardRepositoryImpl(
             giftCardDataSource = dataSource,
             giftCardLinkStore = store,
-        ).also { it.scope = backgroundScope }
+        ).also {
+            it.scope = backgroundScope
+            it.quietRecheckMinDuration = Duration.ZERO
+        }
 
     private companion object {
         const val LINK = "https://gift.zodl.com/#v=1&key=zgift1test&height=3100000"

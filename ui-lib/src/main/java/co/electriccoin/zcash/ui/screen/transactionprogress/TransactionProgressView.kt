@@ -5,19 +5,13 @@ package co.electriccoin.zcash.ui.screen.transactionprogress
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -30,6 +24,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,6 +47,8 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.ImageResource
+import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.StyledStringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.loadingImageRes
@@ -68,24 +65,14 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 
-/** The room the designs keep free below centered content for the buttons. */
-private val CENTERED_CONTENT_BOTTOM_PADDING = 96.dp
-
 @Composable
 fun TransactionProgressView(state: TransactionProgressState) {
-    // The gift card designs use the blue of the hyper blue family, a little stronger than indigo.
-    val pendingColor =
-        if (state.centerContent) {
-            ZashiColors.Utility.HyperBlue.utilityBlueDark100
-        } else {
-            ZashiColors.Utility.Indigo.utilityIndigo100
-        }
     GradientBgScaffold(
         startColor =
             when (state.background) {
                 null -> ZashiColors.Surfaces.bgPrimary
                 SUCCESS -> ZashiColors.Utility.SuccessGreen.utilitySuccess100
-                PENDING -> pendingColor
+                PENDING -> ZashiColors.Utility.Indigo.utilityIndigo100
                 ERROR -> ZashiColors.Utility.ErrorRed.utilityError100
             },
         endColor = ZashiColors.Surfaces.bgPrimary,
@@ -94,17 +81,7 @@ fun TransactionProgressView(state: TransactionProgressState) {
         content = {
             Content(
                 state = state,
-                modifier =
-                    if (state.centerContent) {
-                        // Centered on the screen, not in what the app bar and the buttons leave: the same place
-                        // on every screen, with room reserved for the buttons below, as in the designs.
-                        Modifier
-                            .padding(horizontal = ZashiDimensions.Spacing.spacing3xl)
-                            .windowInsetsPadding(WindowInsets.statusBars)
-                            .padding(bottom = CENTERED_CONTENT_BOTTOM_PADDING)
-                    } else {
-                        Modifier.scaffoldPadding(it)
-                    }
+                modifier = Modifier.scaffoldPadding(it)
             )
         }
     )
@@ -127,52 +104,27 @@ private fun TopBar(state: TransactionProgressState) {
 
 @Composable
 private fun BottomBar(state: TransactionProgressState) {
-    if (state.centerContent) {
-        // The final designs put the buttons straight on the screen, without the rounded, shadowed sheet.
-        Column {
-            BottomBarButtons(state, isFlat = true)
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingLg))
-            Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
+    OldZashiBottomBar {
+        if (state.secondaryButton != null) {
+            ZashiButton(
+                state = state.secondaryButton,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = ZashiDimensions.Spacing.spacing2xl)
+                        .testTag(TransactionProgressTag.TX_PROGRESS_SECONDARY_BUTTON)
+            )
         }
-    } else {
-        OldZashiBottomBar { BottomBarButtons(state, isFlat = false) }
-    }
-}
-
-@Composable
-private fun ColumnScope.BottomBarButtons(
-    state: TransactionProgressState,
-    isFlat: Boolean
-) {
-    if (state.secondaryButton != null) {
-        ZashiButton(
-            state = state.secondaryButton,
-            // The designs give the secondary button on a flat bar the soft grey of the hover state; the
-            // default secondary background is white and would vanish on the white screen.
-            defaultSecondaryColors =
-                if (isFlat) {
-                    ZashiButtonDefaults.secondaryColors(
-                        containerColor = ZashiColors.Btns.Secondary.btnSecondaryBgHover
-                    )
-                } else {
-                    ZashiButtonDefaults.secondaryColors()
-                },
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = ZashiDimensions.Spacing.spacing2xl)
-                    .testTag(TransactionProgressTag.TX_PROGRESS_SECONDARY_BUTTON)
-        )
-    }
-    if (state.primaryButton != null) {
-        ZashiButton(
-            state = state.primaryButton,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = ZashiDimensions.Spacing.spacing2xl)
-                    .testTag(TransactionProgressTag.TX_PROGRESS_PRIMARY_BUTTON),
-        )
+        if (state.primaryButton != null) {
+            ZashiButton(
+                state = state.primaryButton,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = ZashiDimensions.Spacing.spacing2xl)
+                        .testTag(TransactionProgressTag.TX_PROGRESS_PRIMARY_BUTTON),
+            )
+        }
     }
 }
 
@@ -189,18 +141,14 @@ private fun Content(state: TransactionProgressState, modifier: Modifier = Modifi
                     top.linkTo(parent.top)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
+                    bottom.linkTo(content.top)
 
-                    if (state.centerContent) {
-                        height = Dimension.value(0.dp)
-                    } else {
-                        bottom.linkTo(content.top)
-                        height =
-                            if (state.transactionIds == null) {
-                                Dimension.percent(.45f)
-                            } else {
-                                Dimension.value(12.dp)
-                            }
-                    }
+                    height =
+                        if (state.transactionIds == null) {
+                            Dimension.percent(.45f)
+                        } else {
+                            Dimension.value(12.dp)
+                        }
                 }
         )
 
@@ -209,36 +157,18 @@ private fun Content(state: TransactionProgressState, modifier: Modifier = Modifi
             modifier =
                 Modifier
                     .constrainAs(content) {
-                        if (state.centerContent) {
-                            top.linkTo(parent.top)
-                            bottom.linkTo(parent.bottom)
-                            verticalBias = .5f
-                        } else {
-                            top.linkTo(spaceTop.bottom)
-                        }
+                        top.linkTo(spaceTop.bottom)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
                         width = Dimension.fillToConstraints
                         height = Dimension.wrapContent
                     }
         ) {
-            ImageOrLoading(state.image)
+            TransactionProgressImage(state.image)
             Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing2xl))
-            Text(
-                fontWeight = FontWeight.SemiBold,
-                style = ZashiTypography.header5,
-                text = state.title.getValue(),
-                color = ZashiColors.Text.textPrimary
-            )
+            TransactionProgressTitle(state.title)
             Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingLg))
-            Text(
-                fontWeight = FontWeight.Normal,
-                style = ZashiTypography.textSm,
-                text = state.subtitle.getValue(),
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                color = ZashiColors.Text.textPrimary
-            )
+            TransactionProgressSubtitle(state.subtitle)
 
             if (state.transactionIds != null) {
                 Spacer(32.dp)
@@ -287,8 +217,36 @@ private fun Content(state: TransactionProgressState, modifier: Modifier = Modifi
     }
 }
 
+/** The [title] of a progress screen, in [style]. */
 @Composable
-private fun ImageOrLoading(imageResource: ImageResource) {
+internal fun TransactionProgressTitle(
+    title: StringResource,
+    style: TextStyle = ZashiTypography.header5
+) {
+    Text(
+        fontWeight = FontWeight.SemiBold,
+        style = style,
+        text = title.getValue(),
+        color = ZashiColors.Text.textPrimary
+    )
+}
+
+/** The centered [subtitle] of a progress screen. */
+@Composable
+internal fun TransactionProgressSubtitle(subtitle: StyledStringResource) {
+    Text(
+        fontWeight = FontWeight.Normal,
+        style = ZashiTypography.textSm,
+        text = subtitle.getValue(),
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Center,
+        color = ZashiColors.Text.textPrimary
+    )
+}
+
+/** The image of a progress screen, or the progress animation for [ImageResource.Loading]. */
+@Composable
+internal fun TransactionProgressImage(imageResource: ImageResource) {
     when (imageResource) {
         is ImageResource.ByDrawable -> {
             Image(

@@ -24,6 +24,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -279,6 +280,92 @@ class GiftCardRepositorySessionLifecycleTest {
             advanceTimeBy(2.milliseconds)
             runCurrent()
             assertEquals(GiftCardPhase.Empty(isRechecking = false), observer.latest().phase)
+            observer.job.cancel()
+        }
+
+    /** A check again that takes longer than the minimum is shown as soon as it ends, with no wait added. */
+    @Test
+    fun aSlowQuietRecheckResolvesAsSoonAsItsCheckEnds() =
+        runTest {
+            dataSource.statuses = listOf(GiftCardStatus.Empty, GiftCardStatus.Empty)
+            val repository = repository()
+            repository.quietRecheckMinDuration = 700.milliseconds
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+            val gate = CompletableDeferred<Unit>()
+            dataSource.checkGate = gate
+
+            val start = testScheduler.currentTime
+            repository.checkAgain(linkId)
+            advanceTimeBy(2.seconds)
+            runCurrent()
+            assertEquals(GiftCardPhase.Empty(isRechecking = true), observer.latest().phase)
+
+            gate.complete(Unit)
+            runCurrent()
+
+            assertEquals(GiftCardPhase.Empty(isRechecking = false), observer.latest().phase)
+            assertEquals(2.seconds.inWholeMilliseconds, testScheduler.currentTime - start)
+            observer.job.cancel()
+        }
+
+    /** A check again that ends before the minimum is shown when the minimum is up, counted from its start. */
+    @Test
+    fun aFastQuietRecheckResolvesWhenTheMinimumIsUp() =
+        runTest {
+            dataSource.statuses = listOf(GiftCardStatus.Empty, GiftCardStatus.Empty)
+            val repository = repository()
+            repository.quietRecheckMinDuration = 700.milliseconds
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+            val gate = CompletableDeferred<Unit>()
+            dataSource.checkGate = gate
+
+            repository.checkAgain(linkId)
+            advanceTimeBy(500.milliseconds)
+            gate.complete(Unit)
+            runCurrent()
+            assertEquals(2, dataSource.checkCount)
+            assertEquals(GiftCardPhase.Empty(isRechecking = true), observer.latest().phase)
+
+            advanceTimeBy(199.milliseconds)
+            runCurrent()
+            assertEquals(GiftCardPhase.Empty(isRechecking = true), observer.latest().phase)
+
+            advanceTimeBy(2.milliseconds)
+            runCurrent()
+            assertEquals(GiftCardPhase.Empty(isRechecking = false), observer.latest().phase)
+            observer.job.cancel()
+        }
+
+    /** A dismiss while a finished check again waits out its minimum ends the session; no result lands after it. */
+    @Test
+    fun aDismissDuringTheMinimumOfAQuietRecheckWritesNoPhase() =
+        runTest {
+            dataSource.statuses = listOf(GiftCardStatus.Empty, GiftCardStatus.Empty)
+            val repository = repository()
+            repository.quietRecheckMinDuration = 700.milliseconds
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            repository.checkAgain(linkId)
+            advanceTimeBy(300.milliseconds)
+            runCurrent()
+            assertEquals(2, dataSource.checkCount)
+            assertEquals(GiftCardPhase.Empty(isRechecking = true), observer.latest().phase)
+
+            repository.dismiss(linkId)
+            runCurrent()
+            val seenBeforeTheMinimum = observer.values.size
+            advanceTimeBy(1.seconds)
+            runCurrent()
+
+            assertEquals(seenBeforeTheMinimum, observer.values.size, "no phase is written after the dismiss")
+            assertEquals(GiftCardPhase.Empty(isRechecking = true), observer.latest().phase)
+            assertEquals(1, dataSource.closed.size)
             observer.job.cancel()
         }
 
@@ -553,7 +640,10 @@ class GiftCardRepositorySessionLifecycleTest {
         GiftCardRepositoryImpl(
             giftCardDataSource = source,
             giftCardLinkStore = store,
-        ).also { it.scope = backgroundScope }
+        ).also {
+            it.scope = backgroundScope
+            it.quietRecheckMinDuration = Duration.ZERO
+        }
 
     /**
      * [delegate] with [parse] held until [parseGate] completes and [check] until [checkGate] does, if set. A

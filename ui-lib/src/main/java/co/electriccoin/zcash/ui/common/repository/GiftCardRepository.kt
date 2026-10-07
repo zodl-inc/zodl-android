@@ -159,9 +159,9 @@ class GiftCardRepositoryImpl(
     /**
      * How long a check again the user asked for keeps its progress on screen at least. The card wallet of a live
      * session is already synced, so it answers within milliseconds, and the button would look like it did nothing.
-     * The app sets [QUIET_RECHECK_MIN_DURATION]; it is zero elsewhere, so that tests need not wait for it.
+     * Tests that need no such wait set it to zero.
      */
-    internal var quietRecheckMinDuration: Duration = Duration.ZERO
+    internal var quietRecheckMinDuration: Duration = QUIET_RECHECK_MIN_DURATION
 
     /** Guards [links], [sweepJob] and the mutable fields of every [Session]. */
     private val lock = Any()
@@ -343,7 +343,9 @@ class GiftCardRepositoryImpl(
         }
 
     /**
-     * Checks the card. A quiet check (a re-check of a pending or empty card) keeps that screen when it fails.
+     * Checks the card. A quiet check (a re-check of a pending or empty card) keeps that screen when it fails, and its
+     * result is shown no sooner than [quietRecheckMinDuration] after it started: the minimum runs alongside the check,
+     * so that the check's own time counts towards it.
      */
     private suspend fun check(
         session: Session,
@@ -353,7 +355,6 @@ class GiftCardRepositoryImpl(
         synchronized(lock) { sweepJob }?.join()
         val phase =
             coroutineScope {
-                // The minimum runs alongside the check, so that the check's own time counts towards it.
                 val minimum =
                     if (isQuiet && quietRecheckMinDuration.isPositive()) {
                         launch { delay(quietRecheckMinDuration) }
@@ -651,7 +652,7 @@ class GiftCardRepositoryImpl(
     companion object {
         val PENDING_RETRY_INTERVAL = 30.seconds
 
-        /** How long a check again keeps showing its progress at least, in the app. */
+        /** The default [quietRecheckMinDuration]. */
         val QUIET_RECHECK_MIN_DURATION = 700.milliseconds
 
         /** The default [idleTimeout]. */

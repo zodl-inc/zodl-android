@@ -27,7 +27,6 @@ import co.electriccoin.zcash.ui.design.util.withStyle
 import co.electriccoin.zcash.ui.fixture.FakeGiftCardDataSource
 import co.electriccoin.zcash.ui.fixture.GiftCardSummaryFixture
 import co.electriccoin.zcash.ui.fixture.GiftCardSummaryFixture.pendingStatus
-import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
 import io.mockk.coEvery
 import io.mockk.every
@@ -59,6 +58,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -160,11 +160,9 @@ class RedeemGiftVMTest {
             env.dataSource.checkGate = CompletableDeferred()
             val vm = env.startedVm()
 
-            val checking = statusOf(vm)
+            val checking = cardStatusOf(vm)
             assertEquals(stringRes(R.string.redeemGift_checking_title), checking.title)
             assertEquals(stringRes(R.string.redeemGift_checking_subtitle).withStyle(), checking.subtitle)
-            // The designs show no close button on this screen; back still leaves it.
-            assertFalse(checking.showAppBar)
 
             checking.onBack()
             runCurrent()
@@ -188,10 +186,9 @@ class RedeemGiftVMTest {
             runCurrent()
 
             assertEquals(listOf(ORCHARD_ADDRESS), env.dataSource.redeemedTo)
-            val progress = statusOf(vm)
-            assertEquals(TransactionProgressState.Background.SUCCESS, progress.background)
+            val progress = cardStatusOf(vm)
+            assertEquals(GiftCardStatusState.Background.SUCCESS, progress.background)
             assertEquals(imageRes(R.drawable.ic_gift_open), progress.image)
-            assertFalse(progress.showAppBar, "the success screen has no app bar; back acts as Close")
             assertEquals(stringRes(R.string.redeemGift_success_title), progress.title)
             assertEquals(
                 stringRes(
@@ -212,7 +209,10 @@ class RedeemGiftVMTest {
             assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
             runCurrent()
 
-            assertEquals(stringRes(R.string.redeemGift_success_subtitle_noAmount).withStyle(), statusOf(vm).subtitle)
+            assertEquals(
+                stringRes(R.string.redeemGift_success_subtitle_noAmount).withStyle(),
+                cardStatusOf(vm).subtitle
+            )
         }
 
     @Test
@@ -241,7 +241,7 @@ class RedeemGiftVMTest {
 
             assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
             runCurrent()
-            assertEquals(stringRes(R.string.redeemGift_redeeming_title), statusOf(vm).title)
+            assertEquals(stringRes(R.string.redeemGift_redeeming_title), cardStatusOf(vm).title)
             vm.state.value
                 ?.onBack
                 ?.invoke()
@@ -250,7 +250,7 @@ class RedeemGiftVMTest {
 
             env.dataSource.redeemGate?.complete(Unit)
             runCurrent()
-            requireNotNull(statusOf(vm).primaryButton).onClick()
+            requireNotNull(cardStatusOf(vm).primaryButton).onClick()
             assertEquals(1, env.router.backToRootCount)
             assertEquals(1, env.dataSource.closed.size)
         }
@@ -278,7 +278,7 @@ class RedeemGiftVMTest {
             assertEquals(listOf(ORCHARD_ADDRESS), env.dataSource.redeemedTo)
             assertEquals(1, env.dataSource.closed.size)
             val reopened = env.startedVm(linkId = env.linkId)
-            assertEquals(stringRes(R.string.redeemGift_success_title), statusOf(reopened).title)
+            assertEquals(stringRes(R.string.redeemGift_success_title), cardStatusOf(reopened).title)
         }
 
     @Test
@@ -301,7 +301,7 @@ class RedeemGiftVMTest {
             env.dataSource.statuses = listOf(pendingStatus(), GiftCardSummaryFixture.readyStatus())
             val vm = env.startedVm()
 
-            assertEquals(stringRes(R.string.redeemGift_pending_title), statusOf(vm).title)
+            assertEquals(stringRes(R.string.redeemGift_pending_title), cardStatusOf(vm).title)
             assertEquals(1, env.dataSource.checkCount)
 
             advanceTimeBy(GiftCardRepositoryImpl.PENDING_RETRY_INTERVAL + 1.seconds)
@@ -318,11 +318,10 @@ class RedeemGiftVMTest {
             env.dataSource.statuses = listOf(pendingStatus())
             val vm = env.startedVm()
 
-            val pending = statusOf(vm)
-            assertEquals(TransactionProgressState.Background.PENDING, pending.background)
+            val pending = cardStatusOf(vm)
+            assertEquals(GiftCardStatusState.Background.PENDING, pending.background)
             assertEquals(imageRes(R.drawable.ic_gift_preparing), pending.image)
             assertEquals(stringRes(R.string.redeemGift_pending_title), pending.title)
-            assertFalse(pending.showAppBar, "the pending screen has no app bar; back acts as Close")
             val checkAgain = assertNotNull(pending.secondaryButton)
             assertEquals(stringRes(R.string.redeemGift_checkAgain), checkAgain.text)
             assertEquals(ButtonStyle.SECONDARY, checkAgain.style)
@@ -347,16 +346,16 @@ class RedeemGiftVMTest {
             assertEquals(
                 stringRes(R.string.redeemGift_pending_subtitle, stringRes(Zatoshi(GiftCardSummaryFixture.AMOUNT)))
                     .withStyle(),
-                statusOf(vm).subtitle
+                cardStatusOf(vm).subtitle
             )
-            val checkAgain = assertNotNull(statusOf(vm).secondaryButton)
+            val checkAgain = assertNotNull(cardStatusOf(vm).secondaryButton)
             assertEquals(stringRes(R.string.redeemGift_checkAgain), checkAgain.text)
 
             env.dataSource.checkGate = CompletableDeferred()
             checkAgain.onClick()
             runCurrent()
-            assertEquals(stringRes(R.string.redeemGift_pending_title), statusOf(vm).title)
-            assertTrue(assertNotNull(statusOf(vm).secondaryButton).isLoading)
+            assertEquals(stringRes(R.string.redeemGift_pending_title), cardStatusOf(vm).title)
+            assertTrue(assertNotNull(cardStatusOf(vm).secondaryButton).isLoading)
 
             env.dataSource.checkGate?.complete(Unit)
             runCurrent()
@@ -371,12 +370,11 @@ class RedeemGiftVMTest {
             val vm = env.startedVm()
             assertTrue(env.dataSource.closed.isEmpty(), "an observed empty card stays open, so it can be checked again")
 
-            val empty = statusOf(vm)
-            assertEquals(TransactionProgressState.Background.ERROR, empty.background)
+            val empty = cardStatusOf(vm)
+            assertEquals(GiftCardStatusState.Background.EMPTY, empty.background)
             assertEquals(imageRes(R.drawable.ic_gift_empty), empty.image)
             assertEquals(stringRes(R.string.redeemGift_empty_title), empty.title)
             assertEquals(stringRes(R.string.redeemGift_empty_subtitle).withStyle(), empty.subtitle)
-            assertFalse(empty.showAppBar, "the empty screen has no app bar; back acts as Close")
             val checkAgain = assertNotNull(empty.secondaryButton)
             assertEquals(stringRes(R.string.redeemGift_checkAgain), checkAgain.text)
             assertEquals(ButtonStyle.SECONDARY, checkAgain.style)
@@ -416,10 +414,10 @@ class RedeemGiftVMTest {
             val vm = env.startedVm()
 
             env.dataSource.checkGate = CompletableDeferred()
-            assertNotNull(statusOf(vm).secondaryButton).onClick()
+            assertNotNull(cardStatusOf(vm).secondaryButton).onClick()
             runCurrent()
 
-            val rechecking = statusOf(vm)
+            val rechecking = cardStatusOf(vm)
             assertEquals(stringRes(R.string.redeemGift_empty_title), rechecking.title)
             val checkAgain = assertNotNull(rechecking.secondaryButton)
             assertTrue(checkAgain.isLoading)
@@ -438,10 +436,10 @@ class RedeemGiftVMTest {
             val vm = env.startedVm()
 
             env.dataSource.checkError = GiftCardException.CheckFailed()
-            assertNotNull(statusOf(vm).secondaryButton).onClick()
+            assertNotNull(cardStatusOf(vm).secondaryButton).onClick()
             runCurrent()
 
-            val empty = statusOf(vm)
+            val empty = cardStatusOf(vm)
             assertEquals(stringRes(R.string.redeemGift_empty_title), empty.title)
             assertEquals(stringRes(R.string.redeemGift_empty_subtitle).withStyle(), empty.subtitle)
             val checkAgain = assertNotNull(empty.secondaryButton)
@@ -460,12 +458,11 @@ class RedeemGiftVMTest {
             assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
             runCurrent()
 
-            val dust = statusOf(vm)
-            assertEquals(TransactionProgressState.Background.ERROR, dust.background)
+            val dust = cardStatusOf(vm)
+            assertEquals(GiftCardStatusState.Background.EMPTY, dust.background)
             assertEquals(imageRes(R.drawable.ic_gift_empty), dust.image)
             assertEquals(stringRes(R.string.redeemGift_empty_title), dust.title)
             assertEquals(stringRes(R.string.redeemGift_empty_subtitle_dust).withStyle(), dust.subtitle)
-            assertFalse(dust.showAppBar)
             assertNull(dust.secondaryButton, "retrying cannot help a dust card, so there is no Check again")
             val close = assertNotNull(dust.primaryButton)
             assertEquals(stringRes(R.string.general_close), close.text)
@@ -484,10 +481,10 @@ class RedeemGiftVMTest {
             val env = Env(this)
             env.dataSource.statuses = listOf(GiftCardStatus.Empty, GiftCardSummaryFixture.readyStatus())
             val vm = env.startedVm()
-            assertEquals(stringRes(R.string.redeemGift_empty_title), statusOf(vm).title)
+            assertEquals(stringRes(R.string.redeemGift_empty_title), cardStatusOf(vm).title)
             assertEquals(1, env.dataSource.checkCount)
 
-            assertNotNull(statusOf(vm).secondaryButton).onClick()
+            assertNotNull(cardStatusOf(vm).secondaryButton).onClick()
             runCurrent()
 
             assertEquals(2, env.dataSource.checkCount)
@@ -506,7 +503,7 @@ class RedeemGiftVMTest {
             val vm = env.newVm()
             val collector = backgroundScope.launch { vm.state.collect { } }
             runCurrent()
-            assertEquals(stringRes(R.string.redeemGift_empty_title), statusOf(vm).title)
+            assertEquals(stringRes(R.string.redeemGift_empty_title), cardStatusOf(vm).title)
 
             collector.cancel()
             advanceTimeBy(ANDROID_STATE_FLOW_TIMEOUT + 1.seconds)
@@ -514,9 +511,9 @@ class RedeemGiftVMTest {
             advanceTimeBy(GiftCardRepositoryImpl.IDLE_TIMEOUT - ANDROID_STATE_FLOW_TIMEOUT - 2.seconds)
             backgroundScope.launch { vm.state.collect { } }
             runCurrent()
-            assertEquals(stringRes(R.string.redeemGift_empty_title), statusOf(vm).title)
+            assertEquals(stringRes(R.string.redeemGift_empty_title), cardStatusOf(vm).title)
 
-            assertNotNull(statusOf(vm).secondaryButton).onClick()
+            assertNotNull(cardStatusOf(vm).secondaryButton).onClick()
             runCurrent()
 
             assertEquals(2, env.dataSource.checkCount)
@@ -617,7 +614,7 @@ class RedeemGiftVMTest {
             assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
             runCurrent()
 
-            assertEquals(stringRes(R.string.redeemGift_empty_title), statusOf(vm).title)
+            assertEquals(stringRes(R.string.redeemGift_empty_title), cardStatusOf(vm).title)
         }
 
     @Test
@@ -642,6 +639,8 @@ class RedeemGiftVMTest {
 
     private fun statusOf(vm: RedeemGiftVM) = assertIs<RedeemGiftState.Status>(vm.state.value).progress
 
+    private fun cardStatusOf(vm: RedeemGiftVM) = assertIs<RedeemGiftState.CardStatus>(vm.state.value).status
+
     /**
      * One redeem flow: the link stashed under [linkId], and the repository every view model of this flow shares.
      */
@@ -654,7 +653,10 @@ class RedeemGiftVMTest {
         val router = RecordingNavigationRouter()
         val linkId = store.stash(LINK)
         private val repository =
-            GiftCardRepositoryImpl(dataSource, store).also { it.scope = scope.backgroundScope }
+            GiftCardRepositoryImpl(dataSource, store).also {
+                it.scope = scope.backgroundScope
+                it.quietRecheckMinDuration = Duration.ZERO
+            }
 
         fun startedVm(linkId: String = this.linkId): RedeemGiftVM {
             val vm = newVm(linkId)

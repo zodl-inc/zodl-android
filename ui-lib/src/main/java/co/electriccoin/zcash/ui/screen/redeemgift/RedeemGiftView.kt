@@ -50,6 +50,7 @@ import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressVi
 fun RedeemGiftView(state: RedeemGiftState) {
     when (state) {
         is RedeemGiftState.Status -> TransactionProgressView(state.progress)
+        is RedeemGiftState.CardStatus -> GiftCardStatusView(state.status)
         is RedeemGiftState.Ready -> ReadyView(state)
     }
 }
@@ -243,6 +244,13 @@ private fun EmptyPreview() =
 private fun EmptyDustPreview() =
     ZcashTheme {
         RedeemGiftView(RedeemGiftState.previewEmptyDust)
+    }
+
+@PreviewScreens
+@Composable
+private fun RedeemingPreview() =
+    ZcashTheme {
+        RedeemGiftView(RedeemGiftState.previewRedeeming)
     }
 
 @PreviewScreens

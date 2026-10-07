@@ -24,6 +24,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -401,6 +402,7 @@ class GiftCardRepositoryIdlePolicyTest {
         ).also {
             it.scope = backgroundScope
             it.idleTimeout = IDLE
+            it.quietRecheckMinDuration = Duration.ZERO
         }
 
     /** Thrown by the data source while the caller is not cancelled. */
