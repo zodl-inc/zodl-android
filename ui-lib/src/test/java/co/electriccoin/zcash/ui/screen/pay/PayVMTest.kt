@@ -68,19 +68,87 @@ class PayVMTest {
     }
 
     @Test
-    fun assetPickerResultRecomputesFiatExactlyOnce() =
+    fun assetPickerResultPreservesFiatAndRecomputesAmountExactlyOnce() =
         runTest {
             val asset = SwapAssetTestFixture.asset(tokenTicker = "eth", chainTicker = "eth")
-            val sentinelFiat = NumberTextFieldInnerState.fromAmount(BigDecimal("123"))
-            val harness = harness(assetResult = asset, fiatRecompute = sentinelFiat)
+            val typedFiat = NumberTextFieldInnerState.fromAmount(BigDecimal("123"))
+            val recomputedAmount = NumberTextFieldInnerState.fromAmount(BigDecimal("0.5"))
+            val harness = harness(assetResult = asset, amountRecompute = recomputedAmount)
             harness.collectState(this)
+            harness.onTextFieldChange(NumberTextFieldInnerState(), typedFiat)
 
             harness.onSwapAssetPickerClick()
 
             assertEquals("eth", harness.capturedState.asset?.tokenTicker)
-            assertEquals(sentinelFiat, harness.capturedState.fiatAmount)
+            assertEquals(typedFiat, harness.capturedState.fiatAmount)
+            assertEquals(recomputedAmount, harness.capturedState.amount)
             // Recompute happens once for the single asset change — proves there is no feedback loop.
-            verify(exactly = 1) { harness.mapper.createFiatAmountInnerState(any(), any(), asset) }
+            verify(exactly = 1) { harness.mapper.createAmountInnerState(typedFiat, any(), asset) }
+        }
+
+    @Test
+    fun livePricePreservesTypedFiatAndRecomputesTokenAmount() =
+        runTest {
+            val cachedAsset = SwapAssetTestFixture.asset(tokenTicker = "eth", chainTicker = "eth", usdPrice = null)
+            val liveAsset =
+                SwapAssetTestFixture.asset(
+                    tokenTicker = "eth",
+                    chainTicker = "eth",
+                    usdPrice = BigDecimal("2")
+                )
+            val typedFiat = NumberTextFieldInnerState.fromAmount(BigDecimal("50"))
+            val recomputedAmount = NumberTextFieldInnerState.fromAmount(BigDecimal("25"))
+            val cachedAssets = SwapAssetsData(data = listOf(cachedAsset), isLoading = true)
+            val harness =
+                harness(
+                    preselect = cachedAsset,
+                    assets = cachedAssets,
+                    amountRecompute = recomputedAmount
+                )
+            harness.collectState(this)
+            harness.onTextFieldChange(NumberTextFieldInnerState(), typedFiat)
+
+            harness.repositoryAssets.value = SwapAssetsData(data = listOf(liveAsset), isLoading = false)
+
+            assertEquals(typedFiat, harness.capturedState.fiatAmount)
+            assertEquals(recomputedAmount, harness.capturedState.amount)
+            assertEquals(liveAsset, harness.capturedState.asset)
+            verify(exactly = 1) {
+                harness.mapper.createAmountInnerState(typedFiat, any(), liveAsset)
+            }
+        }
+
+    @Test
+    fun periodicPriceUpdatePreservesTypedValues() =
+        runTest {
+            val selectedAsset =
+                SwapAssetTestFixture.asset(
+                    tokenTicker = "eth",
+                    chainTicker = "eth",
+                    usdPrice = BigDecimal("2")
+                )
+            val refreshedAsset =
+                SwapAssetTestFixture.asset(
+                    tokenTicker = "eth",
+                    chainTicker = "eth",
+                    usdPrice = BigDecimal("3")
+                )
+            val typedAmount = NumberTextFieldInnerState.fromAmount(BigDecimal("25"))
+            val typedFiat = NumberTextFieldInnerState.fromAmount(BigDecimal("50"))
+            val harness =
+                harness(
+                    preselect = selectedAsset,
+                    assets = SwapAssetsData(data = listOf(selectedAsset))
+                )
+            harness.collectState(this)
+            harness.onTextFieldChange(typedAmount, typedFiat)
+
+            harness.repositoryAssets.value =
+                SwapAssetsData(data = listOf(refreshedAsset), isLoading = false)
+
+            assertEquals(typedAmount, harness.capturedState.amount)
+            assertEquals(typedFiat, harness.capturedState.fiatAmount)
+            assertEquals(refreshedAsset, harness.capturedState.asset)
         }
 
     @Test
@@ -327,6 +395,7 @@ class PayVMTest {
         slippageResult: BigDecimal? = null,
         assetResult: SwapAsset? = null,
         fiatRecompute: NumberTextFieldInnerState = NumberTextFieldInnerState(),
+        amountRecompute: NumberTextFieldInnerState = NumberTextFieldInnerState(),
         recipient: EnhancedABContact? = null,
         scanResult: ScanResult? = null,
         assets: SwapAssetsData = SwapAssetTestFixture.assetsData(),
@@ -372,6 +441,12 @@ class PayVMTest {
         val mapper =
             mockk<ExactOutputVMMapper> {
                 every { createFiatAmountInnerState(any(), any(), any()) } returns fiatRecompute
+                every { createAmountInnerState(any(), any(), any()) } returns amountRecompute
+            }
+        val repositoryAssets = MutableStateFlow(assets)
+        val swapRepository =
+            mockk<SwapRepository>(relaxed = true) {
+                every { this@mockk.assets } returns repositoryAssets
             }
 
         val harness =
@@ -383,7 +458,8 @@ class PayVMTest {
                 mapper = mapper,
                 cancelSwap = cancelSwap,
                 navigateToSwapQuoteIfAvailable = navigateToSwapQuoteIfAvailable,
-                navigationRouter = navigationRouter
+                navigationRouter = navigationRouter,
+                repositoryAssets = repositoryAssets
             )
 
         // The VM exposes its callbacks only through ExactOutputVMMapper.createState; capture the
@@ -397,6 +473,7 @@ class PayVMTest {
             harness.onSlippageClick = callbacks.onSlippageClick
             harness.onRequestSwapQuoteClick = callbacks.onRequestSwapQuoteClick
             harness.onAddressChange = callbacks.onAddressChange
+            harness.onTextFieldChange = callbacks.onTextFieldChange
             harness.onQrCodeScannerClick = callbacks.onQrCodeScannerClick
             harness.onAddressBookClick = callbacks.onAddressBookClick
             mockk()
@@ -406,7 +483,7 @@ class PayVMTest {
             PayVM(
                 getCuratedSwapAssetsUseCase = getSwapAssets,
                 getSelectedWalletAccount = getSelectedWalletAccount,
-                swapRepository = mockk<SwapRepository>(relaxed = true),
+                swapRepository = swapRepository,
                 cancelSwap = cancelSwap,
                 navigationRouter = navigationRouter,
                 requestSwapQuote = requestSwapQuote,
@@ -432,6 +509,7 @@ class PayVMTest {
         val cancelSwap: CancelSwapUseCase,
         val navigateToSwapQuoteIfAvailable: NavigateToSwapQuoteIfAvailableUseCase,
         val navigationRouter: NavigationRouter,
+        val repositoryAssets: MutableStateFlow<SwapAssetsData>,
     ) {
         lateinit var vm: PayVM
         lateinit var capturedState: InternalState
@@ -440,6 +518,7 @@ class PayVMTest {
         var onSwapAssetPickerClick: () -> Unit = {}
         var onAddressBookClick: () -> Unit = {}
         var onAddressChange: (String) -> Unit = {}
+        var onTextFieldChange: (NumberTextFieldInnerState, NumberTextFieldInnerState) -> Unit = { _, _ -> }
         var onQrCodeScannerClick: () -> Unit = {}
         var onRequestSwapQuoteClick: (BigDecimal, BigDecimal?, String) -> Unit = { _, _, _ -> }
 

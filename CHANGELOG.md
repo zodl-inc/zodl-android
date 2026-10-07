@@ -14,6 +14,11 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   such as the ones on the home screen messages and the activity header, keep their smaller size and layout height,
   and still grow for wrapped text. Stacked or adjacent buttons are 8 dp apart, and the space between a button and
   any other content is 4 dp larger than before, so the visible gap stays as it was.
+- Swap and Pay now restore asset and network choices immediately while current prices load in the background (MOB-1923).
+
+### Fixed:
+
+- [MOB-1032] TEX payments remain pending while a retryable second transaction is still being broadcast instead of showing a failure after the first transaction succeeds.
 
 ## [3.15.0 (2852)] - 2026-09-28
 
