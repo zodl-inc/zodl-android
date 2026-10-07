@@ -185,7 +185,7 @@ fun MigrationBatteryView(state: MigrationBatteryState) {
                         color = ZashiColors.Utility.WarningYellow.utilityOrange700,
                     )
                 }
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(28.dp))
                 ZashiButton(
                     state = ButtonState(text = stringRes(DesignR.string.migration_common_skip), onClick = state.onSkip),
                     modifier = Modifier.fillMaxWidth(),
@@ -195,7 +195,7 @@ fun MigrationBatteryView(state: MigrationBatteryState) {
                             borderColor = ZashiColors.Utility.WarningYellow.utilityOrange300,
                         ),
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(8.dp))
                 ZashiButton(
                     state =
                         ButtonState(

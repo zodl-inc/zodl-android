@@ -93,13 +93,13 @@ fun ShieldFundsInfoView(
         }
         Spacer(24.dp)
         ZashiCheckbox(state = innerState.checkbox)
-        Spacer(24.dp)
+        Spacer(28.dp)
         ZashiButton(
             state = innerState.secondaryButton,
             modifier = Modifier.fillMaxWidth(),
             defaultPrimaryColors = ZashiButtonDefaults.secondaryColors(),
         )
-        Spacer(4.dp)
+        Spacer(8.dp)
         ZashiButton(state = innerState.primaryButton, modifier = Modifier.fillMaxWidth())
     }
 }

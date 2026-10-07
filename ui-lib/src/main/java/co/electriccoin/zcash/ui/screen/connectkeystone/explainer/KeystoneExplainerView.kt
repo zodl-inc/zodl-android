@@ -114,7 +114,7 @@ fun KeystoneExplainerView(
                         style = ZashiTypography.textSm,
                     )
                 }
-                Spacer(32.dp)
+                Spacer(36.dp)
                 ZashiButton(
                     state =
                         ButtonState(

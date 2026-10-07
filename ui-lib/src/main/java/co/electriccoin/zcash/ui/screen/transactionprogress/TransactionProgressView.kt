@@ -115,6 +115,9 @@ private fun BottomBar(state: TransactionProgressState) {
                         .testTag(TransactionProgressTag.TX_PROGRESS_SECONDARY_BUTTON)
             )
         }
+        if (state.secondaryButton != null && state.primaryButton != null) {
+            Spacer(8.dp)
+        }
         if (state.primaryButton != null) {
             ZashiButton(
                 state = state.primaryButton,
@@ -209,7 +212,10 @@ private fun Content(state: TransactionProgressState, modifier: Modifier = Modifi
             if (state.middleButton != null) {
                 ZashiButton(
                     state = state.middleButton,
-                    modifier = Modifier.wrapContentWidth(),
+                    modifier =
+                        Modifier
+                            .padding(top = ZashiDimensions.Spacing.spacingXs)
+                            .wrapContentWidth(),
                     defaultPrimaryColors = ZashiButtonDefaults.tertiaryColors()
                 )
             }
