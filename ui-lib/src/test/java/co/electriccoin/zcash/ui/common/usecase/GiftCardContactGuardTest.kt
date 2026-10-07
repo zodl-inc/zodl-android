@@ -7,7 +7,6 @@ import co.electriccoin.zcash.ui.common.model.AddressBookContact
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.AddressBookRepository
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
-import co.electriccoin.zcash.ui.common.repository.GiftCardContactNotAllowedException
 import co.electriccoin.zcash.ui.common.repository.GiftCardSecretFixture
 import io.mockk.Called
 import io.mockk.coEvery
@@ -19,8 +18,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
 import kotlin.time.Instant
 
 /**
@@ -81,11 +78,11 @@ class GiftCardContactGuardTest {
         val save = SaveABContactUseCase(addressBookRepository, navigationRouter)
 
         GiftCardSecretFixture.all.forEach { (name, link) ->
-            val exception =
-                assertFailsWith<GiftCardContactNotAllowedException>(name) {
-                    save(name = "Card", address = link, chain = null)
-                }
-            assertDoesNotLeak(exception, link)
+            assertEquals(
+                ABContactSaveResult.GiftCardLinkRefused,
+                save(name = "Card", address = link, chain = null),
+                name
+            )
         }
         verify(exactly = 0) { addressBookRepository.saveContact(any(), any(), any()) }
         verify { navigationRouter wasNot Called }
@@ -96,11 +93,11 @@ class GiftCardContactGuardTest {
         val update = UpdateABContactUseCase(addressBookRepository, navigationRouter)
 
         GiftCardSecretFixture.all.forEach { (name, link) ->
-            val exception =
-                assertFailsWith<GiftCardContactNotAllowedException>(name) {
-                    update(contact = existing, name = "Card", address = link, chain = "btc")
-                }
-            assertDoesNotLeak(exception, link)
+            assertEquals(
+                ABContactSaveResult.GiftCardLinkRefused,
+                update(contact = existing, name = "Card", address = link, chain = "btc"),
+                name
+            )
         }
         verify(exactly = 0) { addressBookRepository.updateContact(any(), any(), any(), any()) }
         verify { navigationRouter wasNot Called }
@@ -108,27 +105,22 @@ class GiftCardContactGuardTest {
 
     @Test
     fun ordinaryAddressesAreSavedAndUpdatedAsBefore() {
-        SaveABContactUseCase(addressBookRepository, navigationRouter)(name = "A", address = "u1new", chain = null)
-        UpdateABContactUseCase(addressBookRepository, navigationRouter)(
-            contact = existing,
-            name = "B",
-            address = "bc1qordinary",
-            chain = "btc"
+        assertEquals(
+            ABContactSaveResult.Saved,
+            SaveABContactUseCase(addressBookRepository, navigationRouter)(name = "A", address = "u1new", chain = null)
+        )
+        assertEquals(
+            ABContactSaveResult.Saved,
+            UpdateABContactUseCase(addressBookRepository, navigationRouter)(
+                contact = existing,
+                name = "B",
+                address = "bc1qordinary",
+                chain = "btc"
+            )
         )
 
         verify(exactly = 1) { addressBookRepository.saveContact("A", "u1new", null) }
         verify(exactly = 1) { addressBookRepository.updateContact(existing, "B", "bc1qordinary", "btc") }
         verify(exactly = 2) { navigationRouter.back() }
-    }
-
-    private fun assertDoesNotLeak(
-        exception: Exception,
-        link: String
-    ) {
-        listOf(exception.message.orEmpty(), exception.toString()).forEach { text ->
-            assertFalse(text.contains(link), "exception text repeats the address")
-            assertFalse(text.contains(GiftCardSecretFixture.SECRET), "exception text repeats the card secret")
-            assertFalse(text.contains("gift.zodl.com", ignoreCase = true), "exception text repeats the link")
-        }
     }
 }

@@ -9,6 +9,7 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapBlockchain
 import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
+import co.electriccoin.zcash.ui.common.usecase.ABContactSaveResult
 import co.electriccoin.zcash.ui.common.usecase.ContactAddressValidationResult
 import co.electriccoin.zcash.ui.common.usecase.DeleteABContactUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetABContactByIdUseCase
@@ -56,6 +57,12 @@ class UpdateGenericABContactVM(
     private val isUpdatingContact = MutableStateFlow(false)
     private val isDeletingContact = MutableStateFlow(false)
     private val isLoadingContact = MutableStateFlow(true)
+
+    /**
+     * The address the save use case last refused as a gift card link, shown with that error until it is edited: the
+     * screen's own validation of a pasted link can still be running when Save is tapped.
+     */
+    private val refusedAddress = MutableStateFlow<String?>(null)
 
     private val _dialogState = MutableStateFlow<ErrorState?>(null)
     val dialogState = _dialogState.asStateFlow()
@@ -131,10 +138,10 @@ class UpdateGenericABContactVM(
         }
 
     private val addressState =
-        combine(contactAddress, addressValidation) { address, contactAddressError ->
+        combine(contactAddress, addressValidation, refusedAddress) { address, contactAddressError, refused ->
             TextFieldState(
                 value = stringRes(address),
-                error = contactAddressError,
+                error = if (address == refused) stringRes(R.string.contact_error_giftCardLink) else contactAddressError,
                 onValueChange = ::onAddressChange
             )
         }
@@ -275,12 +282,15 @@ class UpdateGenericABContactVM(
             if (isDeletingContact.value || isUpdatingContact.value || selectedBlockchain == null) return@launch
             originalContact.value?.let { original ->
                 isUpdatingContact.update { true }
-                updateContact(
-                    contact = original,
-                    name = contactName.value,
-                    address = contactAddress.value,
-                    chain = selectedBlockchain.takeIf { it != zcashBlockchain }?.chainTicker
-                )
+                val address = contactAddress.value
+                val result =
+                    updateContact(
+                        contact = original,
+                        name = contactName.value,
+                        address = address,
+                        chain = selectedBlockchain.takeIf { it != zcashBlockchain }?.chainTicker
+                    )
+                if (result == ABContactSaveResult.GiftCardLinkRefused) refusedAddress.update { address }
                 isUpdatingContact.update { false }
             }
         }

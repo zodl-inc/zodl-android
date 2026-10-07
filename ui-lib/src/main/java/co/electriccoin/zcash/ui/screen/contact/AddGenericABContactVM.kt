@@ -8,6 +8,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapBlockchain
 import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
+import co.electriccoin.zcash.ui.common.usecase.ABContactSaveResult
 import co.electriccoin.zcash.ui.common.usecase.ContactAddressValidationResult
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectSwapBlockchainUseCase
 import co.electriccoin.zcash.ui.common.usecase.SaveABContactUseCase
@@ -47,6 +48,12 @@ class AddGenericABContactVM(
     private val contactName = MutableStateFlow("")
     private val selectedBlockchain = MutableStateFlow<SwapBlockchain?>(null)
     private val isSavingContact = MutableStateFlow(false)
+
+    /**
+     * The address the save use case last refused as a gift card link, shown with that error until it is edited: the
+     * screen's own validation of a pasted link can still be running when Save is tapped.
+     */
+    private val refusedAddress = MutableStateFlow<String?>(null)
 
     private val addressZashiValidation =
         contactAddress
@@ -124,10 +131,10 @@ class AddGenericABContactVM(
             }
 
     private val addressState =
-        combine(contactAddress, addressValidation) { address, contactAddressError ->
+        combine(contactAddress, addressValidation, refusedAddress) { address, contactAddressError, refused ->
             TextFieldState(
                 value = stringRes(address),
-                error = contactAddressError,
+                error = if (address == refused) stringRes(R.string.contact_error_giftCardLink) else contactAddressError,
                 onValueChange = ::onAddressChange
             )
         }
@@ -224,11 +231,14 @@ class AddGenericABContactVM(
         viewModelScope.launch {
             if (isSavingContact.value) return@launch
             isSavingContact.update { true }
-            saveABContact(
-                name = contactName.value,
-                address = contactAddress.value,
-                chain = selectedBlockchain.value?.takeIf { it != zcashBlockchain }?.chainTicker
-            )
+            val address = contactAddress.value
+            val result =
+                saveABContact(
+                    name = contactName.value,
+                    address = address,
+                    chain = selectedBlockchain.value?.takeIf { it != zcashBlockchain }?.chainTicker
+                )
+            if (result == ABContactSaveResult.GiftCardLinkRefused) refusedAddress.update { address }
             isSavingContact.update { false }
         }
 }

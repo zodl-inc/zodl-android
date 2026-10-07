@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.usecase.ABContactSaveResult
 import co.electriccoin.zcash.ui.common.usecase.ContactAddressValidationResult
 import co.electriccoin.zcash.ui.common.usecase.SaveABContactUseCase
 import co.electriccoin.zcash.ui.common.usecase.ValidateContactNameResult
@@ -34,6 +35,12 @@ class AddZashiABContactVM(
     private val contactAddress = MutableStateFlow(args.address.orEmpty())
     private val contactName = MutableStateFlow("")
     private val isSavingContact = MutableStateFlow(false)
+
+    /**
+     * The address the save use case last refused as a gift card link, shown with that error until it is edited: the
+     * screen's own validation of a pasted link can still be running when Save is tapped.
+     */
+    private val refusedAddress = MutableStateFlow<String?>(null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val contactAddressError =
@@ -67,10 +74,10 @@ class AddZashiABContactVM(
             )
 
     private val contactAddressState =
-        combine(contactAddress, contactAddressError) { address, contactAddressError ->
+        combine(contactAddress, contactAddressError, refusedAddress) { address, contactAddressError, refused ->
             TextFieldState(
                 value = stringRes(address),
-                error = contactAddressError,
+                error = if (address == refused) stringRes(R.string.contact_error_giftCardLink) else contactAddressError,
                 onValueChange = { newValue ->
                     contactAddress.update { newValue }
                 }
@@ -154,11 +161,14 @@ class AddZashiABContactVM(
         viewModelScope.launch {
             if (isSavingContact.value) return@launch
             isSavingContact.update { true }
-            saveContact(
-                name = contactName.value,
-                address = contactAddress.value,
-                chain = null
-            )
+            val address = contactAddress.value
+            val result =
+                saveContact(
+                    name = contactName.value,
+                    address = address,
+                    chain = null
+                )
+            if (result == ABContactSaveResult.GiftCardLinkRefused) refusedAddress.update { address }
             isSavingContact.update { false }
         }
 }
