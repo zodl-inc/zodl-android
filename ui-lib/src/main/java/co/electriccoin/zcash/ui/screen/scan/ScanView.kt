@@ -15,26 +15,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -66,7 +61,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -78,12 +72,9 @@ import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.SmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.TopAppBarBackNavigation
-import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
-import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
-import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.screen.scan.util.QrCodeAnalyzerImpl
 import co.electriccoin.zcash.ui.screen.scankeystone.view.CAMERA_TRANSLUCENT_BORDER
 import co.electriccoin.zcash.ui.screen.scankeystone.view.FramePosition
@@ -110,7 +101,10 @@ fun ScanView(
     onImageScan: (ImageToQrCodeResult) -> Unit,
     onOpenSettings: () -> Unit,
     onScanStateChange: (ScanScreenState) -> Unit,
-    validationResult: ScanValidationState
+    validationResult: ScanValidationState,
+    onPaste: (() -> Unit)? = null,
+    invalidQrText: String? = null,
+    infoText: String? = null,
 ) = ZcashTheme(appearanceMode = AppearanceMode.DARK) {
     // forces dark theme for this screen
     val permissionState =
@@ -157,6 +151,9 @@ fun ScanView(
                 onOpenSettings = onOpenSettings,
                 onBack = onBack,
                 onScanStateChange = onScanStateChange,
+                onPaste = onPaste,
+                invalidQrText = invalidQrText,
+                infoText = infoText,
                 permissionState = permissionState,
                 scanState = scanState,
                 setScanState = setScanState,
@@ -178,89 +175,6 @@ fun ScanView(
                 showBack = scanState != ScanScreenState.Scanning,
             )
         }
-    }
-}
-
-@Composable
-fun ScanBottomItems(
-    validationResult: ScanValidationState,
-    scanState: ScanScreenState,
-    onOpenSettings: () -> Unit,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier) {
-        var failureText: String? = null
-
-        failureText =
-            when (validationResult) {
-                ScanValidationState.INVALID -> stringResource(id = R.string.scan_invalidQR)
-                ScanValidationState.INVALID_IMAGE -> stringResource(id = R.string.scan_invalidImage)
-                ScanValidationState.SEVERAL_CODES_FOUND -> stringResource(id = R.string.scan_severalCodesFound)
-                else -> null
-            }
-
-        // Check permission request result, if any
-        failureText =
-            when (scanState) {
-                ScanScreenState.Permission -> {
-                    stringResource(
-                        id = R.string.scan_cameraSettings,
-                        stringResource(id = R.string.app_name)
-                    )
-                }
-
-                ScanScreenState.Failed -> {
-                    stringResource(id = R.string.scan_state_failed)
-                }
-
-                ScanScreenState.Scanning -> {
-                    failureText
-                }
-            }
-
-        if (failureText != null) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Image(painter = painterResource(R.drawable.ic_scan_info), contentDescription = failureText)
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = failureText,
-                    style = ZashiTypography.textXs,
-                    color = ZashiColors.Text.textPrimary,
-                    fontWeight = FontWeight.Medium,
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .testTag(ScanTag.FAILED_TEXT_STATE)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        when (scanState) {
-            ScanScreenState.Scanning, ScanScreenState.Failed -> {
-                ZashiButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onBack,
-                    text = stringResource(id = co.electriccoin.zcash.ui.design.R.string.general_cancel)
-                )
-            }
-
-            ScanScreenState.Permission -> {
-                ZashiButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onOpenSettings,
-                    text = stringResource(id = R.string.scan_openSettings)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
     }
 }
 
@@ -299,6 +213,9 @@ private fun ScanMainContent(
     onOpenSettings: () -> Unit,
     onBack: () -> Unit,
     onScanStateChange: (ScanScreenState) -> Unit,
+    onPaste: (() -> Unit)?,
+    invalidQrText: String?,
+    infoText: String?,
     permissionState: PermissionState,
     scanState: ScanScreenState,
     setScanState: (ScanScreenState) -> Unit,
@@ -528,6 +445,9 @@ private fun ScanMainContent(
                 onBack = onBack,
                 onOpenSettings = onOpenSettings,
                 scanState = scanState,
+                onPaste = onPaste,
+                invalidQrText = invalidQrText,
+                infoText = infoText,
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -700,6 +620,10 @@ fun ScanCameraView(
 
 // Using callbackFlow because QrCodeAnalyzer has a non-suspending callback which makes
 // a basic flow builder not work here.
+
+/**
+ * Scanned codes are logged by length only, never by content: a scanned gift card link carries a spending secret.
+ */
 @Composable
 fun ImageAnalysis.qrCodeFlow(framePosition: FramePosition): Flow<String> {
     val context = LocalContext.current
@@ -711,7 +635,7 @@ fun ImageAnalysis.qrCodeFlow(framePosition: FramePosition): Flow<String> {
                 QrCodeAnalyzerImpl(
                     framePosition = framePosition,
                     onQrCodeScanned = { result ->
-                        Twig.debug { "Scan result onQrCodeScanned: $result" }
+                        Twig.debug { "Scan result onQrCodeScanned: ${result.length} chars" }
                         // Note that these callbacks aren't tied to the Compose lifecycle, so they could occur
                         // after the view goes away.  Collection needs to occur within the Compose lifecycle
                         // to make this not be a problem.

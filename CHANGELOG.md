@@ -7,6 +7,22 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Added:
+
+- Redeem gift cards: scan a gift card QR code or paste its link from the new Redeem Gift Card item in the Home
+  menu or from any address scanner, and the card's funds are swept into the selected account. Opening a
+  `gift.zodl.com` link from another app only opens the in-app gift card scanner, which asks for the card to be
+  scanned with Zodl; the link itself is never redeemed. The redeem screen shows the amount the wallet will
+  receive, net of the network fee, and the sender's message, waits for pending funds, and reports cards that are
+  already redeemed, invalid or for another network; after a redemption it shows the amount received. The
+  redemption runs on its own and is not interrupted by leaving the screen; a card nobody is looking at any more
+  is closed and its temporary wallet erased, as are all cards when the wallet is reset. A card is checked and
+  redeemed over Tor when Tor is turned on for the wallet, and a card holding no more than the network fee is shown
+  as having nothing to redeem.
+  The pasted link and the card's QR code are kept out of screenshots and the recent apps list, a pasted link is
+  cleared from the clipboard (also below Android 9), and links are refused wherever an address is expected, in swaps
+  and contacts, also when disguised with invisible characters, encodings or compatibility forms.
+
 ### Changed:
 
 - Buttons are now drawn 48 dp tall by default instead of 40 dp, matching the design system. This changes their

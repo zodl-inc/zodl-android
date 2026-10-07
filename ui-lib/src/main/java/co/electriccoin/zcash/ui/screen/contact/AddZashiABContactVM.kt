@@ -35,6 +35,8 @@ class AddZashiABContactVM(
     private val contactName = MutableStateFlow("")
     private val isSavingContact = MutableStateFlow(false)
 
+    private val refusedGiftCardLink = RefusedGiftCardLinkAddress()
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private val contactAddressError =
         contactAddress
@@ -51,6 +53,10 @@ class AddZashiABContactVM(
                             stringRes(R.string.contact_address_error_not_unique)
                         }
 
+                        ContactAddressValidationResult.GiftCardLink -> {
+                            stringRes(R.string.contact_error_giftCardLink)
+                        }
+
                         ContactAddressValidationResult.Valid -> {
                             null
                         }
@@ -63,7 +69,7 @@ class AddZashiABContactVM(
             )
 
     private val contactAddressState =
-        combine(contactAddress, contactAddressError) { address, contactAddressError ->
+        refusedGiftCardLink.withAddressError(contactAddress, contactAddressError) { address, contactAddressError ->
             TextFieldState(
                 value = stringRes(address),
                 error = contactAddressError,
@@ -150,11 +156,14 @@ class AddZashiABContactVM(
         viewModelScope.launch {
             if (isSavingContact.value) return@launch
             isSavingContact.update { true }
-            saveContact(
-                name = contactName.value,
-                address = contactAddress.value,
-                chain = null
-            )
+            val address = contactAddress.value
+            val result =
+                saveContact(
+                    name = contactName.value,
+                    address = address,
+                    chain = null
+                )
+            refusedGiftCardLink.onSaveResult(address, result)
             isSavingContact.update { false }
         }
 }
