@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.usecase.ABContactSaveResult
 import co.electriccoin.zcash.ui.common.usecase.ContactAddressValidationResult
 import co.electriccoin.zcash.ui.common.usecase.SaveABContactUseCase
 import co.electriccoin.zcash.ui.common.usecase.ValidateContactNameResult
@@ -36,11 +35,7 @@ class AddZashiABContactVM(
     private val contactName = MutableStateFlow("")
     private val isSavingContact = MutableStateFlow(false)
 
-    /**
-     * The address the save use case last refused as a gift card link, shown with that error until it is edited: the
-     * screen's own validation of a pasted link can still be running when Save is tapped.
-     */
-    private val refusedAddress = MutableStateFlow<String?>(null)
+    private val refusedGiftCardLink = RefusedGiftCardLinkAddress()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val contactAddressError =
@@ -74,10 +69,10 @@ class AddZashiABContactVM(
             )
 
     private val contactAddressState =
-        combine(contactAddress, contactAddressError, refusedAddress) { address, contactAddressError, refused ->
+        refusedGiftCardLink.withAddressError(contactAddress, contactAddressError) { address, contactAddressError ->
             TextFieldState(
                 value = stringRes(address),
-                error = if (address == refused) stringRes(R.string.contact_error_giftCardLink) else contactAddressError,
+                error = contactAddressError,
                 onValueChange = { newValue ->
                     contactAddress.update { newValue }
                 }
@@ -168,7 +163,7 @@ class AddZashiABContactVM(
                     address = address,
                     chain = null
                 )
-            if (result == ABContactSaveResult.GiftCardLinkRefused) refusedAddress.update { address }
+            refusedGiftCardLink.onSaveResult(address, result)
             isSavingContact.update { false }
         }
 }

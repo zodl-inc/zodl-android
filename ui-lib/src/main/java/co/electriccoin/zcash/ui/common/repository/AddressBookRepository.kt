@@ -75,7 +75,7 @@ class GiftCardContactNotAllowedException : IllegalArgumentException("A gift card
 /**
  * Throws [GiftCardContactNotAllowedException] when [address] is, or may contain, a gift card link or key.
  */
-internal fun requireNoGiftCardSecret(address: String) {
+private fun requireNoGiftCardSecret(address: String) {
     if (GiftCardSecretDetector.mayContainGiftCardSecret(address)) throw GiftCardContactNotAllowedException()
 }
 

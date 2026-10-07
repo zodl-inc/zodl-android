@@ -7,7 +7,6 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapBlockchain
-import co.electriccoin.zcash.ui.common.usecase.ABContactSaveResult
 import co.electriccoin.zcash.ui.common.usecase.ContactAddressValidationResult
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectSwapBlockchainUseCase
 import co.electriccoin.zcash.ui.common.usecase.SaveABContactUseCase
@@ -19,6 +18,7 @@ import co.electriccoin.zcash.ui.design.component.PickerState
 import co.electriccoin.zcash.ui.design.component.TextFieldState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.contact.ABContactState
+import co.electriccoin.zcash.ui.screen.contact.RefusedGiftCardLinkAddress
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -43,11 +43,7 @@ class AddSwapABContactVM(
     private val selectedBlockchain = MutableStateFlow<SwapBlockchain?>(null)
     private val isSavingContact = MutableStateFlow(false)
 
-    /**
-     * The address the save use case last refused as a gift card link, shown with that error until it is edited: the
-     * screen's own validation of a pasted link can still be running when Save is tapped.
-     */
-    private val refusedAddress = MutableStateFlow<String?>(null)
+    private val refusedGiftCardLink = RefusedGiftCardLinkAddress()
 
     private val blockChainPickerState =
         selectedBlockchain
@@ -91,10 +87,10 @@ class AddSwapABContactVM(
         )
 
     private val contactAddressState =
-        combine(contactAddress, contactAddressError, refusedAddress) { address, contactAddressError, refused ->
+        refusedGiftCardLink.withAddressError(contactAddress, contactAddressError) { address, contactAddressError ->
             TextFieldState(
                 value = stringRes(address),
-                error = if (address == refused) stringRes(R.string.contact_error_giftCardLink) else contactAddressError,
+                error = contactAddressError,
                 onValueChange = ::onAddressChange
             )
         }
@@ -204,7 +200,7 @@ class AddSwapABContactVM(
                     address = address,
                     chain = selectedBlockchain.value?.chainTicker
                 )
-            if (result == ABContactSaveResult.GiftCardLinkRefused) refusedAddress.update { address }
+            refusedGiftCardLink.onSaveResult(address, result)
             isSavingContact.update { false }
         }
 }

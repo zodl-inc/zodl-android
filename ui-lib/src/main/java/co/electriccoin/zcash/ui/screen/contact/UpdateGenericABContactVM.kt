@@ -9,7 +9,6 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapBlockchain
 import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
-import co.electriccoin.zcash.ui.common.usecase.ABContactSaveResult
 import co.electriccoin.zcash.ui.common.usecase.ContactAddressValidationResult
 import co.electriccoin.zcash.ui.common.usecase.DeleteABContactUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetABContactByIdUseCase
@@ -58,11 +57,7 @@ class UpdateGenericABContactVM(
     private val isDeletingContact = MutableStateFlow(false)
     private val isLoadingContact = MutableStateFlow(true)
 
-    /**
-     * The address the save use case last refused as a gift card link, shown with that error until it is edited: the
-     * screen's own validation of a pasted link can still be running when Save is tapped.
-     */
-    private val refusedAddress = MutableStateFlow<String?>(null)
+    private val refusedGiftCardLink = RefusedGiftCardLinkAddress()
 
     private val _dialogState = MutableStateFlow<ErrorState?>(null)
     val dialogState = _dialogState.asStateFlow()
@@ -138,10 +133,10 @@ class UpdateGenericABContactVM(
         }
 
     private val addressState =
-        combine(contactAddress, addressValidation, refusedAddress) { address, contactAddressError, refused ->
+        refusedGiftCardLink.withAddressError(contactAddress, addressValidation) { address, contactAddressError ->
             TextFieldState(
                 value = stringRes(address),
-                error = if (address == refused) stringRes(R.string.contact_error_giftCardLink) else contactAddressError,
+                error = contactAddressError,
                 onValueChange = ::onAddressChange
             )
         }
@@ -290,7 +285,7 @@ class UpdateGenericABContactVM(
                         address = address,
                         chain = selectedBlockchain.takeIf { it != zcashBlockchain }?.chainTicker
                     )
-                if (result == ABContactSaveResult.GiftCardLinkRefused) refusedAddress.update { address }
+                refusedGiftCardLink.onSaveResult(address, result)
                 isUpdatingContact.update { false }
             }
         }
