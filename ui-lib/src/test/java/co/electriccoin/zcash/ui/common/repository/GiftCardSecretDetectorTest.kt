@@ -41,6 +41,31 @@ class GiftCardSecretDetectorTest {
     }
 
     @Test
+    fun theCapOnLayersOfPercentEncodingRefusesTheNinthButNotTheEighth() {
+        fun layers(count: Int) = (2..count).fold("%41") { current, _ -> current.replace("%", "%25") }
+
+        assertFalse(GiftCardSecretDetector.mayContainGiftCardSecret(layers(8)), layers(8))
+        assertTrue(GiftCardSecretDetector.mayContainGiftCardSecret(layers(9)), layers(9))
+    }
+
+    @Test
+    fun aMarkerUnderManyLayersOfPercentEncodingIsRefused() {
+        val layered = (2..9).fold("%67ift.zodl.com") { current, _ -> current.replace("%", "%25") }
+
+        assertTrue(GiftCardSecretDetector.mayContainGiftCardSecret(layered), layered)
+    }
+
+    @Test
+    fun randomLookingTextDoesNotTrigger() {
+        val random = java.util.Random(1)
+        val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        repeat(2_000) {
+            val text = CharArray(64) { alphabet[random.nextInt(alphabet.length)] }.concatToString()
+            assertFalse(GiftCardSecretDetector.mayContainGiftCardSecret(text), text)
+        }
+    }
+
+    @Test
     fun theRoutingPrefixCheckIsUnchanged() {
         assertTrue(GiftCardLinkPrefixes.matches(GiftCardSecretFixture.LINK))
         assertFalse(GiftCardLinkPrefixes.matches("Your gift: ${GiftCardSecretFixture.LINK}"))

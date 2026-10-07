@@ -7,54 +7,83 @@ import java.text.Normalizer
  * The last line of defence that keeps gift card secrets away from places that send or store an address: swap and pay
  * requests, and contacts. Unlike [GiftCardLinkPrefixes], which routes text that starts with a gift card link to the
  * redeem flow, this check looks anywhere in the text and sees through the ways a link can be disguised on its way in:
- * text around it (a whole pasted message), invisible or format characters (zero-width spaces, a byte order mark, bidi
- * controls, soft hyphens), whitespace inside it, compatibility forms such as full-width letters, another scheme or no
- * scheme at all, and percent-encoding, even repeated.
+ * text around it (a whole pasted message), any invisible, control or combining character (zero-width spaces, tag
+ * characters, fillers, a byte order mark, bidi controls, soft hyphens), whitespace and punctuation inside it,
+ * compatibility forms such as full-width letters, another scheme or no scheme at all, and percent-encoding, even
+ * repeated.
+ *
+ * It reduces the text to its ASCII letters and digits, in lower case, and looks for the host names and key prefixes in
+ * that. Text that still changes in decoding round [MAX_DECODE_ROUNDS] + 1 is refused.
+ *
+ * It does not see through homoglyphs that have no compatibility mapping (a Cyrillic letter that merely looks Latin),
+ * nor through other encodings such as HTML entities or base64; the secret itself, the `zgift1...` key, is still
+ * caught by its prefix.
  *
  * False positives are acceptable: no real swap or Zcash address contains a gift card host or a gift card key's
  * human-readable part, so text that does is refused rather than risk sending a spending secret off the device.
  */
 internal object GiftCardSecretDetector {
-    /** What any gift card link or key contains, compared ignoring case. */
+    /** What any gift card link or key contains, reduced like the text: lower case letters and digits only. */
     private val MARKERS =
         listOf(
-            "gift.zodl.com",
-            "link.vizor.cash/payment-links",
+            "giftzodlcom",
+            "linkvizorcashpaymentlinks",
+            "paymentlinksopen",
             "zgift1",
             "zgifttest1",
+            "zgiftregtest1",
         )
 
-    /** How many rounds of percent-decoding are undone at most. */
-    private const val MAX_DECODE_ROUNDS = 5
+    /** How many rounds of percent-decoding are undone at most before the text is refused. */
+    private const val MAX_DECODE_ROUNDS = 8
 
     private const val HEX_RADIX = 16
 
     private const val PERCENT_ESCAPE_LENGTH = 3
 
+    private const val FIRST_PRINTABLE_ASCII = 0x21
+
+    private const val LAST_PRINTABLE_ASCII = 0x7E
+
+    private const val CASE_OFFSET = 'a' - 'A'
+
     /**
      * Whether [text] contains, or may contain, a gift card link or a gift card key anywhere in it.
      */
-    fun mayContainGiftCardSecret(text: String): Boolean =
-        decodings(text).any { decoded -> MARKERS.any { decoded.contains(it, ignoreCase = true) } }
+    fun mayContainGiftCardSecret(text: String): Boolean {
+        val rounds =
+            generateSequence(text.printableAscii()) { previous ->
+                previous.percentDecoded().printableAscii().takeIf { it != previous }
+            }.take(MAX_DECODE_ROUNDS + 2).toList()
+        // The text still changes in the round after the last one that is looked at: more layers of encoding than
+        // anything real has.
+        val isStillChanging = rounds.size > MAX_DECODE_ROUNDS + 1
+        return isStillChanging ||
+            rounds.any { round ->
+                val reduced = round.lettersAndDigitsInLowerCase()
+                MARKERS.any { it in reduced }
+            }
+    }
 
     /**
-     * [text] in canonical form, then each further round of percent-decoding it, up to [MAX_DECODE_ROUNDS] rounds or
-     * until a round changes nothing.
+     * The printable ASCII characters of the text in compatibility-decomposed form (NFKD, which folds e.g. full-width
+     * letters into ASCII and splits a letter from its combining marks). Everything else goes: whitespace, control,
+     * format, tag and filler characters, marks and every other non-ASCII character.
      */
-    private fun decodings(text: String): Sequence<String> =
-        generateSequence(text.canonical()) { current ->
-            current.percentDecoded().canonical().takeIf { it != current }
-        }.take(MAX_DECODE_ROUNDS + 1)
-
-    /**
-     * The text in compatibility-normalized form (NFKC, which folds e.g. full-width letters into ASCII), without format
-     * characters (Unicode category Cf: zero-width spaces and joiners, the byte order mark, bidi controls, soft
-     * hyphens, word joiners and invisible operators) and without whitespace.
-     */
-    private fun String.canonical(): String =
+    private fun String.printableAscii(): String =
         Normalizer
-            .normalize(this, Normalizer.Form.NFKC)
-            .filterNot { Character.getType(it) == Character.FORMAT.toInt() || it.isWhitespace() }
+            .normalize(this, Normalizer.Form.NFKD)
+            .filter { it.code in FIRST_PRINTABLE_ASCII..LAST_PRINTABLE_ASCII }
+
+    private fun String.lettersAndDigitsInLowerCase(): String =
+        buildString(length) {
+            for (char in this@lettersAndDigitsInLowerCase) {
+                when (char) {
+                    in 'a'..'z', in '0'..'9' -> append(char)
+                    in 'A'..'Z' -> append(char + CASE_OFFSET)
+                }
+            }
+        }
 
     /**
      * One round of percent-decoding as UTF-8. A `%` not followed by two hex digits is kept as it is, and bytes that

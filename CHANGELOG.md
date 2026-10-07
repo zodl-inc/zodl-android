@@ -19,6 +19,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   is closed and its temporary wallet erased, as are all cards when the wallet is reset. A card is checked and
   redeemed over Tor when Tor is turned on for the wallet, and a card holding no more than the network fee is shown
   as having nothing to redeem.
+  The pasted link and the card's QR code are kept out of screenshots and the recent apps list, a pasted link is
+  cleared from the clipboard (also below Android 9), and links are refused wherever an address is expected, in swaps
+  and contacts, also when disguised with invisible characters, encodings or compatibility forms.
 
 ## [3.15.0 (2852)] - 2026-09-28
 

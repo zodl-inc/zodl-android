@@ -44,6 +44,17 @@ object GiftCardSecretFixture {
             "double percent-encoded" to "https%253A%252F%252Fgift%252Ezodl%252Ecom%252F%2523key%253D$SECRET",
             "percent-encoded zero-width space inside the host" to "https://gift.%E2%80%8Bzodl.com/#key=$SECRET",
             "percent-encoded vizor" to "https%3A%2F%2Flink.vizor.cash%2Fpayment-links%2Fopen%23v1%3D$SECRET",
+            "tag character inside the host" to "https://gift.\uDB40\uDC41zodl.com/#key=$SECRET",
+            "hangul filler inside the host" to "https://gift.\u3164zodl.com/#key=$SECRET",
+            "braille blank inside the host" to "https://gift.\u2800zodl.com/#key=$SECRET",
+            "combining grapheme joiner inside the host" to "https://gift.\u034Fzodl.com/#key=$SECRET",
+            "variation selector inside the host" to "https://gift.zodl\uFE0F.com/#key=$SECRET",
+            "combining mark on a letter of the host" to "https://gi\u0301ft.zodl.com/#key=$SECRET",
+            "NUL inside the host" to "https://gift.\u0000zodl.com/#key=$SECRET",
+            "DEL inside the host" to "https://gift.\u007Fzodl.com/#key=$SECRET",
+            "percent-encoded NUL inside the host" to "https://gift.%00zodl.com/#key=$SECRET",
+            "legacy payload on another host" to "https://example.com/payment-links/open#v3=$SECRET",
+            "eight layers of percent-encoding" to "https%252525252525253A//gift.zodl.com/#key=$SECRET",
         )
 
     /** Bare gift card keys, as they could be pasted without the link around them. */
@@ -53,6 +64,9 @@ object GiftCardSecretFixture {
             "testnet key" to "zgifttest1qqsyqcyq5rqwzqfsqqsyqcyq5rqwzqf",
             "upper-case key" to "ZGIFT1QQSYQCYQ5RQWZQFSQQSYQCYQ5RQWZQF",
             "key inside text" to "key: zgift1qqsyqcyq5rqwzqf, thanks",
+            "regtest key" to "zgiftregtest1qqsyqcyq5rqwzqfsqqsyqcyq5rqwzqf",
+            "key split by a tag character" to "zgift\uDB40\uDC411qqsyqcyq5rqwzqf",
+            "key with punctuation" to "z-g-i-f-t-1qqsyqcyq5rqwzqf",
         )
 
     /** Everything that must be refused. */

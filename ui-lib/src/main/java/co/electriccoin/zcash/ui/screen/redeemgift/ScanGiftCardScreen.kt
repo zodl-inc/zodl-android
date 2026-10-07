@@ -9,6 +9,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.compose.SecureScreen
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.screen.scan.ScanView
 import co.electriccoin.zcash.ui.util.SettingsUtil
@@ -19,6 +20,8 @@ import org.koin.core.parameter.parametersOf
 
 @Composable
 fun ScanGiftCardScreen(args: ScanGiftCardArgs) {
+    // The camera preview shows the card's QR code, which is a spending secret.
+    SecureScreen()
     val vm = koinViewModel<ScanGiftCardVM> { parametersOf(args) }
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current

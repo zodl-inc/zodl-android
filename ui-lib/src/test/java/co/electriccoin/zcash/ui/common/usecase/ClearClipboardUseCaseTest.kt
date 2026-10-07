@@ -1,12 +1,13 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import co.electriccoin.zcash.spackle.AndroidApiVersion
-import io.mockk.Called
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import io.mockk.verify
 import kotlin.test.AfterTest
@@ -15,7 +16,7 @@ import kotlin.test.Test
 
 /**
  * [ClearClipboardUseCase] clears the primary clip where the platform can, never fails the paste that asked for it,
- * and leaves the clipboard alone below Android 9, which has no API to clear it.
+ * and overwrites it with an empty clip below Android 9, which has no API to clear it.
  */
 class ClearClipboardUseCaseTest {
     private val clipboard = mockk<ClipboardManager>(relaxUnitFun = true)
@@ -53,12 +54,15 @@ class ClearClipboardUseCaseTest {
     }
 
     @Test
-    fun belowAndroid9TheClipboardIsLeftAlone() {
+    fun belowAndroid9TheClipIsReplacedByAnEmptyOne() {
         every { AndroidApiVersion.isAtLeastP } returns false
-        val untouched = mockk<Context>()
+        val empty = mockk<ClipData>()
+        mockkStatic(ClipData::class)
+        every { ClipData.newPlainText("", "") } returns empty
 
-        ClearClipboardUseCase(untouched)()
+        ClearClipboardUseCase(context)()
 
-        verify { untouched wasNot Called }
+        verify(exactly = 1) { clipboard.setPrimaryClip(empty) }
+        verify(exactly = 0) { clipboard.clearPrimaryClip() }
     }
 }

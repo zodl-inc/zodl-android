@@ -4,11 +4,14 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import co.electriccoin.zcash.ui.common.compose.SecureScreen
 import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun PasteGiftCardLinkScreen() {
+    // The pasted link is a spending secret: keep it out of screenshots, screen recordings and the recents thumbnail.
+    SecureScreen()
     val vm = koinViewModel<PasteGiftCardLinkVM>()
     val state by vm.state.collectAsStateWithLifecycle()
     BackHandler { state.onBack() }
