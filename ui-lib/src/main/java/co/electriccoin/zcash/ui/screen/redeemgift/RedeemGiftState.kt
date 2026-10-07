@@ -146,6 +146,7 @@ sealed interface RedeemGiftState {
                 primaryButton = null,
                 secondaryButton = null,
                 onBack = onBack,
+                isWaiting = true,
             )
 
         /** The card is being redeemed. It cannot be left until the redemption ends, so back does nothing. */
@@ -158,6 +159,7 @@ sealed interface RedeemGiftState {
                 primaryButton = null,
                 secondaryButton = null,
                 onBack = {},
+                isWaiting = true,
             )
 
         /**
@@ -176,6 +178,7 @@ sealed interface RedeemGiftState {
             isRechecking = isRechecking,
             onCheckAgain = onCheckAgain,
             onClose = onClose,
+            isWaiting = true,
         )
 
         /**
@@ -268,6 +271,7 @@ sealed interface RedeemGiftState {
             primaryButton: ButtonState?,
             secondaryButton: ButtonState?,
             onBack: () -> Unit,
+            isWaiting: Boolean = false,
         ): RedeemGiftState =
             CardStatus(
                 GiftCardStatusState(
@@ -278,6 +282,7 @@ sealed interface RedeemGiftState {
                     primaryButton = primaryButton,
                     secondaryButton = secondaryButton,
                     onBack = onBack,
+                    isWaiting = isWaiting,
                 )
             )
 
@@ -290,6 +295,7 @@ sealed interface RedeemGiftState {
             isRechecking: Boolean,
             onCheckAgain: () -> Unit,
             onClose: () -> Unit,
+            isWaiting: Boolean = false,
         ) = cardStatus(
             background = background,
             image = image,
@@ -305,6 +311,7 @@ sealed interface RedeemGiftState {
                     onClick = onCheckAgain
                 ),
             onBack = onClose,
+            isWaiting = isWaiting,
         )
 
         private fun closeButton(onClose: () -> Unit) =

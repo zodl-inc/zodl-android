@@ -12,6 +12,8 @@ import co.electriccoin.zcash.ui.design.util.StyledStringResource
  *
  * @param background the tint of the gradient behind the content; `null` keeps the plain background.
  * @param secondaryButton shown above [primaryButton].
+ * @param isWaiting whether the screen waits for the card or for the redemption, so the device must not lock or dim
+ * its screen meanwhile.
  */
 @Immutable
 data class GiftCardStatusState(
@@ -22,6 +24,7 @@ data class GiftCardStatusState(
     val primaryButton: ButtonState?,
     val secondaryButton: ButtonState?,
     val onBack: () -> Unit,
+    val isWaiting: Boolean = false,
 ) {
     enum class Background { PENDING, EMPTY, SUCCESS }
 }

@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
+import co.electriccoin.zcash.ui.common.compose.DisableScreenTimeout
 import co.electriccoin.zcash.ui.design.component.GradientBgScaffold
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
@@ -39,6 +40,7 @@ private val CONTENT_BOTTOM_RESERVE = 96.dp
 
 @Composable
 fun GiftCardStatusView(state: GiftCardStatusState) {
+    if (state.isWaiting) DisableScreenTimeout()
     GradientBgScaffold(
         startColor =
             when (state.background) {
