@@ -2,6 +2,8 @@
     <string name="amount_with_fiat_currency_symbol" formatted="true"><xliff:g example="$" id="fiat_currency_symbol">%1$s</xliff:g><xliff:g example="123" id="amount">%2$s</xliff:g></string>
     <string name="general_hideBalancesMost">-----</string>
     <string name="general_back">Back</string>
+    <string name="general_max">Max</string>
+    <string name="general_maxFailed">Unable to get the max amount.</string>
     <string name="triple_dots">…</string>
     <string name="seed_recovery_reveal">Reveal recovery phrase</string>
     <string name="general_masked_seed_word">•••••</string>
