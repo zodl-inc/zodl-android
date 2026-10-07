@@ -7,6 +7,42 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.16.0 (2958)] - 2026-10-07
+
+### Added:
+
+- We added gift cards. Go to More → Redeem Gift Card, scan the QR code or paste the link, and the ZEC goes straight into your wallet.
+- You can also redeem gift cards created in other wallets.
+
+### Added:
+
+- Redeem gift cards: scan a gift card QR code or paste its link from the new Redeem Gift Card item in the Home
+  menu or from any address scanner, and the card's funds are swept into the selected account. Opening a
+  `gift.zodl.com` link from another app only opens the in-app gift card scanner, which asks for the card to be
+  scanned with Zodl; the link itself is never redeemed. The redeem screen shows the amount the wallet will
+  receive, net of the network fee, and the sender's message, waits for pending funds, and reports cards that are
+  already redeemed, invalid or for another network; after a redemption it shows the amount received. The
+  redemption runs on its own and is not interrupted by leaving the screen; a card nobody is looking at any more
+  is closed and its temporary wallet erased, as are all cards when the wallet is reset. A card is checked and
+  redeemed over Tor when Tor is turned on for the wallet, and a card holding no more than the network fee is shown
+  as having nothing to redeem.
+  The pasted link and the card's QR code are kept out of screenshots and the recent apps list, a pasted link is
+  cleared from the clipboard (also below Android 9), and links are refused wherever an address is expected, in swaps
+  and contacts, also when disguised with invisible characters, encodings or compatibility forms.
+
+### Changed:
+
+- Buttons are now drawn 48 dp tall by default instead of 40 dp, matching the design system. This changes their
+  visible size, not just a minimum: the old 40 dp button already took a 48 dp slot in the layout. Compact buttons,
+  such as the ones on the home screen messages and the activity header, keep their smaller size and layout height,
+  and still grow for wrapped text. Stacked or adjacent buttons are 8 dp apart, and the space between a button and
+  any other content is 4 dp larger than before, so the visible gap stays as it was.
+- Swap and Pay now restore asset and network choices immediately while current prices load in the background (MOB-1923).
+
+### Fixed:
+
+- [MOB-1032] TEX payments remain pending while a retryable second transaction is still being broadcast instead of showing a failure after the first transaction succeeds.
+
 ## [3.15.0 (2852)] - 2026-09-28
 
 ### Added:
@@ -14,6 +50,13 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Export Viewing Key in Advanced Settings: share the selected account's Incoming or Full Viewing Key
   as a QR code or key string, revealed behind biometrics and behind a consent sheet for the Full key.
   The chooser carries the logo and name of the selected wallet, Zodl or Keystone.
+
+### Changed:
+
+- The background behind bottom sheets built on the Zashi screen and in-screen sheet wrappers now darkens
+  gradually as the sheet opens, closes or is dragged, instead of fading on a timer, and no longer flashes dark
+  for a moment when a sheet opens.
+- The currency, swap asset and slippage sheets no longer close when dragged down.
 
 ## [3.14.0 (2738)] - 2026-09-16
 

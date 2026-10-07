@@ -151,7 +151,7 @@ private fun SeedRecoveryMainContent(
 
         BDSecret(modifier = Modifier.fillMaxWidth(), state = state.birthday)
 
-        Spacer(24.dp)
+        Spacer(28.dp)
 
         Spacer(1f)
 

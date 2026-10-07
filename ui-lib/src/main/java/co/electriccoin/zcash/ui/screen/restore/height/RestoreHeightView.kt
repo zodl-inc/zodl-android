@@ -132,7 +132,7 @@ private fun Content(
             color = ZashiColors.Text.textTertiary
         )
         Spacer(Modifier.weight(1f))
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
 
         ZashiButton(
             state.estimate,
@@ -140,7 +140,7 @@ private fun Content(
             defaultPrimaryColors = ZashiButtonDefaults.secondaryColors()
         )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
 
         ZashiButton(
             state.restore,

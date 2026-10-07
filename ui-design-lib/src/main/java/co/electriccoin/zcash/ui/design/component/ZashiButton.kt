@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -15,8 +16,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -30,6 +33,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.ButtonStyle.DESTRUCTIVE1
@@ -53,6 +57,7 @@ fun ZashiButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    minHeight: Dp = ZashiButtonDefaults.MIN_HEIGHT,
     @DrawableRes icon: Int? = null,
     @DrawableRes trailingIcon: Int? = null,
     hapticFeedbackType: HapticFeedbackType? = null,
@@ -80,6 +85,7 @@ fun ZashiButton(
     ZashiButton(
         state = state,
         modifier = modifier,
+        minHeight = minHeight,
         style = style,
         shape = shape,
         contentPadding = contentPadding,
@@ -93,6 +99,7 @@ fun ZashiButton(
 fun ZashiButton(
     state: ButtonState,
     modifier: Modifier = Modifier,
+    minHeight: Dp = ZashiButtonDefaults.MIN_HEIGHT,
     style: TextStyle = ZashiButtonDefaults.style,
     shape: Shape = ZashiButtonDefaults.shape,
     contentPadding: PaddingValues = ZashiButtonDefaults.contentPadding,
@@ -169,25 +176,39 @@ fun ZashiButton(
 
     val interactionSource = remember { MutableInteractionSource() }
 
-    Button(
-        onClick =
-            if (state.hapticFeedbackType != null) {
-                {
-                    runCatching { haptic.performHapticFeedback(state.hapticFeedbackType) }
-                    state.onClick()
+    val minimumInteractiveSize = LocalMinimumInteractiveComponentSize.current
+
+    CompositionLocalProvider(
+        LocalMinimumInteractiveComponentSize provides
+            if (minHeight < ZashiButtonDefaults.MIN_HEIGHT) Dp.Unspecified else minimumInteractiveSize
+    ) {
+        Button(
+            onClick =
+                if (state.hapticFeedbackType != null) {
+                    {
+                        runCatching { haptic.performHapticFeedback(state.hapticFeedbackType) }
+                        state.onClick()
+                    }
+                } else {
+                    state.onClick
+                },
+            modifier =
+                modifier
+                    .heightIn(min = minHeight)
+                    .pressMorph(interactionSource),
+            interactionSource = interactionSource,
+            shape = shape,
+            contentPadding = contentPadding,
+            enabled = state.isEnabled,
+            colors = actualColors.toButtonColors(),
+            border = borderColor.takeIf { it != Color.Unspecified }?.let { BorderStroke(1.dp, it) },
+            content = {
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides minimumInteractiveSize) {
+                    content(scope)
                 }
-            } else {
-                state.onClick
-            },
-        modifier = modifier.pressMorph(interactionSource),
-        interactionSource = interactionSource,
-        shape = shape,
-        contentPadding = contentPadding,
-        enabled = state.isEnabled,
-        colors = actualColors.toButtonColors(),
-        border = borderColor.takeIf { it != Color.Unspecified }?.let { BorderStroke(1.dp, it) },
-        content = { content(scope) }
-    )
+            }
+        )
+    }
 }
 
 interface ZashiButtonScope {
@@ -225,6 +246,17 @@ object ZashiButtonDefaults {
         get() = RoundedCornerShape(12.dp)
 
     const val IS_LIGHT_THRESHOLD = 0.5f
+
+    /**
+     * Default `minHeight` of [ZashiButton], the design system's standard button height. Compact buttons pass a
+     * smaller `minHeight` instead of fixing their height, so wrapped text can still grow them.
+     *
+     * A button with a `minHeight` below this value turns off Material's 48 dp minimum interactive layout size, so
+     * it lays out at its compact height instead of reserving a 48 dp slot around a smaller pill. Its touch target
+     * still reaches 48 dp, because Compose expands the hit area of any pointer input node smaller than the
+     * platform's minimum touch target size.
+     */
+    val MIN_HEIGHT = 48.dp
 
     @Composable
     fun primaryColors(

@@ -439,6 +439,8 @@
     <string name="integrations_near_swap">Haz swap de %s con NEAR Intents</string>
     <string name="integrations_near_swap_message">Haz swap de %s con otras criptomonedas.</string>
     <string name="integrations_coinbase_subtitle_disabled">Coinbase Onramp está temporalmente no disponible.</string>
+    <string name="integrations_redeemGift">Canjear tarjeta de regalo</string>
+    <string name="integrations_redeemGift_subtitle">Escanea o pega una tarjeta de regalo de Zcash para sumar sus fondos a tu billetera.</string>
 
     <!-- ===== keep_open ===== -->
     <string name="restoreInfo_title">¡Mantén Zodl abierto!</string>
@@ -520,6 +522,51 @@
     <string name="receive_help_transparent_desc3">Para proteger tu privacidad, Zodl te guiará para proteger cualquier %s transparente que recibas con un solo clic.</string>
     <string name="receive_info_transparent_bullet_4">No podrás gastar tus %s transparentes hasta que los protejas.</string>
 
+    <!-- ===== redeem_gift ===== -->
+    <string name="redeemGift_title">Canjear tarjeta de regalo</string>
+    <string name="redeemGift_scan_invalid">Esta no es una tarjeta de regalo válida. Escanea el código QR de la tarjeta o copia su enlace e inténtalo de nuevo.</string>
+    <string name="redeemGift_scan_externalLink">Parece que abriste una tarjeta de regalo desde otra aplicación. Para mayor seguridad y protección, escanea el código QR de la tarjeta de regalo con Zodl.</string>
+    <string name="redeemGift_paste_title">Pega el enlace de tu tarjeta de regalo</string>
+    <string name="redeemGift_paste_subtitle">Pega el enlace que vino con tu tarjeta de regalo de Zcash. Verás el monto antes de canjearla.</string>
+    <string name="redeemGift_paste_label">Enlace de la tarjeta de regalo</string>
+    <string name="redeemGift_paste_placeholder">Pega el enlace aquí</string>
+    <string name="redeemGift_paste_paste">Pegar</string>
+    <string name="redeemGift_paste_clear">Borrar</string>
+    <string name="redeemGift_paste_invalid">Este enlace no es una tarjeta de regalo válida. Revísalo e inténtalo de nuevo.</string>
+    <string name="redeemGift_paste_continue">Continuar</string>
+    <string name="redeemGift_checking_title">Buscando tu regalo…</string>
+    <string name="redeemGift_checking_subtitle">Verificando tu tarjeta de regalo. Esto puede tardar un momento.</string>
+    <string name="redeemGift_ready_title">¡Recibiste un regalo!</string>
+    <string name="redeemGift_ready_messageLabel">Mensaje de quien la envía</string>
+    <string name="redeemGift_ready_disclaimer">Los fondos se enviarán a tu billetera <xliff:g id="wallet" example="Zodl">%1$s</xliff:g>. La comisión de red ya está descontada del monto mostrado.</string>
+    <string name="redeemGift_ready_disclaimer_noWallet">La comisión de red ya está descontada del monto mostrado.</string>
+    <string name="redeemGift_memo">Tarjeta de regalo</string>
+    <string name="redeemGift_redeem">Canjear</string>
+    <string name="redeemGift_pending_title">Preparando tu regalo…</string>
+    <string name="redeemGift_pending_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> necesita algunas confirmaciones más antes de poder canjearse. Seguiremos verificando mientras esta pantalla esté abierta.</string>
+    <string name="redeemGift_empty_title">Nada para canjear</string>
+    <string name="redeemGift_empty_subtitle">Esta tarjeta de regalo ya fue canjeada o aún no tiene fondos. Inténtalo de nuevo en unos minutos.</string>
+    <string name="redeemGift_empty_subtitle_dust">Esta tarjeta de regalo tiene muy poco para cubrir la comisión de red, así que no hay nada que canjear.</string>
+    <string name="redeemGift_invalid_title">Tarjeta de regalo inválida</string>
+    <string name="redeemGift_invalid_subtitle">Este enlace no es una tarjeta de regalo válida. Revisa el enlace e inténtalo de nuevo.</string>
+    <string name="redeemGift_wrongNetwork_title">Red incorrecta</string>
+    <string name="redeemGift_wrongNetwork_subtitle">Esta tarjeta de regalo fue creada para una red de Zcash distinta a la de esta billetera.</string>
+    <string name="redeemGift_linkUnavailable_title">Abre la tarjeta de regalo de nuevo</string>
+    <string name="redeemGift_linkUnavailable_subtitle">El enlace de la tarjeta de regalo ya no está disponible. Escanea su código QR o abre su enlace de nuevo.</string>
+    <string name="redeemGift_notAvailable_title">Todavía no disponible</string>
+    <string name="redeemGift_notAvailable_subtitle">Canjear tarjetas de regalo no está disponible en esta versión de la app.</string>
+    <string name="redeemGift_checkFailed_title">No pudimos verificar tu regalo</string>
+    <string name="redeemGift_checkFailed_subtitle">Algo salió mal al verificar la tarjeta de regalo. Revisa tu conexión e inténtalo de nuevo.</string>
+    <string name="redeemGift_redeeming_title">Canjeando tu regalo…</string>
+    <string name="redeemGift_redeeming_subtitle">Enviando los fondos de la tarjeta de regalo a tu billetera.</string>
+    <string name="redeemGift_success_title">¡Regalo canjeado!</string>
+    <string name="redeemGift_success_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> está en camino a tu billetera.\nAparecerá en tu actividad en breve.</string>
+    <string name="redeemGift_success_subtitle_noAmount">Tu regalo está en camino a tu billetera.\nAparecerá en tu actividad en breve.</string>
+    <string name="redeemGift_failure_title">Canje no confirmado</string>
+    <string name="redeemGift_failure_subtitle">No pudimos confirmar el canje. Toca Intentar de nuevo para comprobar el estado actual de la tarjeta.</string>
+    <string name="redeemGift_retry">Intentar de nuevo</string>
+    <string name="redeemGift_checkAgain">Verificar de nuevo</string>
+
     <!-- ===== request ===== -->
     <string name="zecKeyboard_invalid">Este monto de transacción no es válido</string>
     <string name="general_next">Siguiente</string>
@@ -582,6 +629,7 @@
     <string name="scan_invalidImage">Esta imagen no contiene una dirección Zcash válida.</string>
     <string name="scan_severalCodesFound">Esta imagen contiene varias direcciones Zcash válidas.</string>
     <string name="scan_torch_content_description">Alternar linterna de la cámara</string>
+    <string name="scan_pasteLink">Pegar enlace</string>
     <string name="gallery_content_description">Galería</string>
     <string name="deeplinkWarning_screenTitle">¡Hola!</string>
     <string name="deeplinkWarning_title">Parece que utilizaste una aplicación de terceros para escanear un pago.</string>
@@ -771,6 +819,8 @@
     <string name="swap_cancel_positive">No cancelar</string>
     <string name="swap_quote_error_too_low_try_at_least">El monto es muy bajo para el puente, intenta al menos %s</string>
     <string name="swap_quote_error_too_low_try_higher">El monto es muy bajo para el puente, intenta con un monto mayor.</string>
+    <string name="swap_error_giftCardLink">Los enlaces de tarjetas de regalo no se pueden usar como direcciones de intercambio. Usa Canjear tarjeta de regalo.</string>
+    <string name="contact_error_giftCardLink">Los enlaces de tarjetas de regalo no se pueden guardar como contactos. Usa Canjear tarjeta de regalo.</string>
     <string name="swap_quoteUnavailable">Intentamos, pero no pudimos obtener una cotización para un pago con tus parámetros. Puedes ajustar el slippage o intentarlo más tarde.</string>
     <string name="swap_quoteUnavailableSwap">Intentamos, pero no pudimos obtener una cotización para un swap con tus parámetros. Puedes ajustar el slippage o intentarlo más tarde.</string>
     <string name="swapAndPay_quoteUnavailable">Cotización no disponible</string>

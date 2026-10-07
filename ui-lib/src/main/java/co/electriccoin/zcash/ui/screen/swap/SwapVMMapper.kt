@@ -11,6 +11,7 @@ import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_FROM_ZEC
 import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_INTO_ZEC
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
+import co.electriccoin.zcash.ui.common.repository.GiftCardSecretDetector.mayContainGiftCardSecret
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.design.component.AssetCardState
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -445,6 +446,9 @@ internal class SwapVMMapper {
         }
 
         val amount = textField.textField.innerState.amount
+        val isWaitingForPrices =
+            state.swapAssets.isLoading &&
+                (state.swapAsset?.usdPrice == null || state.swapAssets.zecAsset?.usdPrice == null)
         return ButtonState(
             text =
                 when {
@@ -456,7 +460,7 @@ internal class SwapVMMapper {
                         stringRes(co.electriccoin.zcash.ui.design.R.string.disconnectHWWallet_tryAgain)
                     }
 
-                    state.swapAssets.isLoading && state.swapAssets.data == null -> {
+                    isWaitingForPrices -> {
                         stringRes(co.electriccoin.zcash.ui.design.R.string.general_loading)
                     }
 
@@ -488,17 +492,20 @@ internal class SwapVMMapper {
                     else -> {
                         state.swapAssets.data != null &&
                             state.swapAsset != null &&
+                            state.swapAsset.usdPrice != null &&
+                            state.swapAssets.zecAsset?.usdPrice != null &&
                             !textField.isError &&
                             amount != null &&
                             amount > BigDecimal(0) &&
                             (state.addressText.isNotBlank() || state.selectedContact != null) &&
+                            !mayContainGiftCardSecret(state.selectedContact?.address ?: state.addressText) &&
                             !state.isRequestingQuote
                     }
                 },
             isLoading =
                 state.isEphemeralAddressLocked ||
                     state.isRequestingQuote ||
-                    (state.swapAssets.isLoading && state.swapAssets.data == null)
+                    isWaitingForPrices
         )
     }
 
@@ -510,6 +517,7 @@ internal class SwapVMMapper {
                 when {
                     text.isEmpty() -> null
                     text.isBlank() -> stringRes("")
+                    mayContainGiftCardSecret(text) -> stringRes(R.string.swap_error_giftCardLink)
                     else -> null
                 },
             value = stringRes(text),

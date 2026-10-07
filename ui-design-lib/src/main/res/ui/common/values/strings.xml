@@ -474,6 +474,8 @@
     <string name="integrations_near_swap">Swap %s with NEAR Intents</string>
     <string name="integrations_near_swap_message">Swap %s with other cryptocurrencies.</string>
     <string name="integrations_coinbase_subtitle_disabled">Coinbase Onramp is temporarily unavailable.</string>
+    <string name="integrations_redeemGift">Redeem Gift Card</string>
+    <string name="integrations_redeemGift_subtitle">Scan or paste a Zcash gift card to add its funds to your wallet.</string>
 
     <!-- ===== keep_open ===== -->
     <string name="restoreInfo_title">Keep Zodl open!</string>
@@ -554,6 +556,52 @@
     <string name="receive_help_transparent_desc3">To protect your privacy, Zodl will guide you to shield any transparent %s you receive with just one click.</string>
     <string name="receive_info_transparent_bullet_4">You won\'t be able to spend your transparent %s until you shield it.</string>
 
+    <!-- ===== redeem_gift ===== -->
+    <string name="redeemGift_title">Redeem Gift Card</string>
+    <string name="redeemGift_scan_invalid">This isn\'t a valid gift card. Scan the gift card\'s QR code or copy its link and try again.</string>
+    <string name="redeemGift_scan_externalLink">Looks like you opened a gift card from another app. For better safety and security, scan the gift card\'s QR code with Zodl.</string>
+    <string name="redeemGift_paste_title">Paste your gift card link</string>
+    <string name="redeemGift_paste_subtitle">Paste the link that came with your Zcash gift card. You will see the amount before you redeem it.</string>
+    <string name="redeemGift_paste_label">Gift card link</string>
+    <string name="redeemGift_paste_placeholder">Paste link here</string>
+    <string name="redeemGift_paste_paste">Paste</string>
+    <string name="redeemGift_paste_clear">Clear</string>
+    <string name="redeemGift_paste_invalid">This link is not a valid gift card. Check it and try again.</string>
+    <string name="redeemGift_paste_continue">Continue</string>
+    <string name="redeemGift_checking_title">Looking for your gift…</string>
+    <string name="redeemGift_checking_subtitle">Checking your gift card. This can take a moment.</string>
+    <string name="redeemGift_ready_title">You received a gift!</string>
+    <string name="redeemGift_ready_messageLabel">Message from the sender</string>
+    <string name="redeemGift_ready_disclaimer">The funds will be sent to your <xliff:g id="wallet" example="Zodl">%1$s</xliff:g> wallet. The network fee is already deducted from the amount shown.</string>
+    <string name="redeemGift_ready_disclaimer_noWallet">The network fee is already deducted from the amount shown.</string>
+    <!-- The memo on the redeem transaction; followed by " · " and the card's message when it has one -->
+    <string name="redeemGift_memo">Gift Card</string>
+    <string name="redeemGift_redeem">Redeem</string>
+    <string name="redeemGift_pending_title">Preparing your gift…</string>
+    <string name="redeemGift_pending_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> needs a few more confirmations before it can be redeemed. We\'ll keep checking while this screen is open.</string>
+    <string name="redeemGift_empty_title">Nothing to redeem</string>
+    <string name="redeemGift_empty_subtitle">This gift card was already redeemed, or hasn\'t been funded yet. Try again in a few minutes.</string>
+    <string name="redeemGift_empty_subtitle_dust">This gift card holds too little to cover the network fee, so there\'s nothing to redeem.</string>
+    <string name="redeemGift_invalid_title">Invalid gift card</string>
+    <string name="redeemGift_invalid_subtitle">This link isn\'t a valid gift card. Check the link and try again.</string>
+    <string name="redeemGift_wrongNetwork_title">Wrong network</string>
+    <string name="redeemGift_wrongNetwork_subtitle">This gift card was made for a different Zcash network than this wallet.</string>
+    <string name="redeemGift_linkUnavailable_title">Open the gift card again</string>
+    <string name="redeemGift_linkUnavailable_subtitle">The gift card link is no longer available. Scan its QR code or open its link again.</string>
+    <string name="redeemGift_notAvailable_title">Not available yet</string>
+    <string name="redeemGift_notAvailable_subtitle">Redeeming gift cards isn\'t available in this version of the app.</string>
+    <string name="redeemGift_checkFailed_title">Couldn\'t check your gift</string>
+    <string name="redeemGift_checkFailed_subtitle">Something went wrong while checking the gift card. Check your connection and try again.</string>
+    <string name="redeemGift_redeeming_title">Redeeming your gift…</string>
+    <string name="redeemGift_redeeming_subtitle">Sending the gift card\'s funds to your wallet.</string>
+    <string name="redeemGift_success_title">Gift redeemed!</string>
+    <string name="redeemGift_success_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> is on its way to your wallet.\nIt will show up in your activity shortly.</string>
+    <string name="redeemGift_success_subtitle_noAmount">Your gift is on its way to your wallet.\nIt will show up in your activity shortly.</string>
+    <string name="redeemGift_failure_title">Redemption not confirmed</string>
+    <string name="redeemGift_failure_subtitle">We couldn\'t confirm redemption. Tap Try again to check the card\'s current status.</string>
+    <string name="redeemGift_retry">Try again</string>
+    <string name="redeemGift_checkAgain">Check again</string>
+
     <!-- ===== request ===== -->
     <string name="zecKeyboard_invalid">This transaction amount is invalid</string>
     <string name="requestZec_summary_shareQR">Share QR Code</string>
@@ -621,6 +669,7 @@
     <string name="scan_invalidImage">This image doesn`t contain a valid Zcash address.</string>
     <string name="scan_severalCodesFound">This image contains several valid Zcash addresses.</string>
     <string name="scan_torch_content_description">Camera torch toggle</string>
+    <string name="scan_pasteLink">Paste link</string>
     <string name="gallery_content_description">Gallery</string>
     <string name="deeplinkWarning_screenTitle">Hello!</string>
     <string name="deeplinkWarning_title">Looks like you used a third-party app to scan for payment.</string>
@@ -839,6 +888,8 @@
     <string name="swap_cancel_positive">Don\’t cancel</string>
     <string name="swap_quote_error_too_low_try_at_least">Amount is too low for bridge, try at least %s</string>
     <string name="swap_quote_error_too_low_try_higher">Amount is too low for bridge, try higher amount.</string>
+    <string name="swap_error_giftCardLink">Gift card links can\'t be used as swap addresses. Use Redeem Gift Card instead.</string>
+    <string name="contact_error_giftCardLink">Gift card links can\'t be saved as contacts. Use Redeem Gift Card instead.</string>
     <string name="swap_quoteUnavailable">We tried but couldn\’t get a quote for a payment with your parameters. You can try to adjust the slippage or try again later.</string>
     <string name="swap_quoteUnavailableSwap">We tried but couldn\’t get a quote for a swap with your parameters. You can try to adjust the slippage or try again later.</string>
     <string name="swapAndPay_quoteUnavailable">Quote Unavailable</string>

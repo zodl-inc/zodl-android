@@ -54,6 +54,7 @@ fun SwapSlippageView(state: SwapSlippageState?) {
     ZashiScreenModalBottomSheet(
         state = state,
         dragHandle = null,
+        sheetGesturesEnabled = false,
         content = { innerState, _ ->
             val hazeState = rememberZashiFrostState()
             TransparentBgScaffold(
@@ -107,7 +108,7 @@ fun SwapSlippageView(state: SwapSlippageState?) {
                         innerState.warning?.let {
                             ZashiDisclaimer(state = it)
                         }
-                        Spacer(24.dp)
+                        Spacer(28.dp)
                         ZashiButton(
                             modifier = Modifier.fillMaxWidth(),
                             state = innerState.primary

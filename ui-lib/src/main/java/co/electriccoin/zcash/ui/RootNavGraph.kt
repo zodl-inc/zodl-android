@@ -11,6 +11,8 @@ import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
 import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProvider
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.IsOledEnabledStorageProvider
+import co.electriccoin.zcash.ui.common.repository.GiftCardLinkStore
+import co.electriccoin.zcash.ui.common.usecase.NavigateToRedeemGiftCardUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.SecretState
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
 import co.electriccoin.zcash.ui.design.LocalKeyboardManager
@@ -21,10 +23,18 @@ import co.electriccoin.zcash.ui.design.animation.ScreenAnimation.popExitTransiti
 import co.electriccoin.zcash.ui.design.util.LocalNavController
 import co.electriccoin.zcash.ui.screen.flexa.FlexaViewModel
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
+/**
+ * Also opens the gift card scanner for a gift card link that arrived from outside the app. Such a link can arrive
+ * before there is a wallet, or before the wallet graph is shown (cold start, onboarding); MainActivity only records
+ * that one arrived (the link itself is discarded), and the scanner opens once the wallet graph is up, so the user
+ * scans the card with the app.
+ */
 @Composable
 fun RootNavGraph(
     secretState: SecretState,
@@ -38,6 +48,8 @@ fun RootNavGraph(
     val appearanceModeStorageProvider = koinInject<AppearanceModeStorageProvider>()
     val isOledEnabledStorageProvider = koinInject<IsOledEnabledStorageProvider>()
     val migrationAppHooks = koinInject<MigrationAppHooks>()
+    val giftCardLinkStore = koinInject<GiftCardLinkStore>()
+    val navigateToRedeemGiftCard = koinInject<NavigateToRedeemGiftCardUseCase>()
     val navController = LocalNavController.current
     val activity = LocalActivity.current
     val navigator: Navigator =
@@ -117,6 +129,16 @@ fun RootNavGraph(
                     inclusive = true
                 }
             }
+        }
+    }
+
+    LaunchedEffect(secretState, navController) {
+        if (secretState != SecretState.READY) return@LaunchedEffect
+        navController.currentBackStackEntryFlow.first {
+            it.destination.parent?.route == MainAppGraph::class.qualifiedName
+        }
+        giftCardLinkStore.isInAppScanRequested.filter { it }.collect {
+            navigateToRedeemGiftCard.openRequestedInAppScan()
         }
     }
 }
