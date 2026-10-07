@@ -92,7 +92,7 @@ fun CommonErrorScreen(
                 color = ZashiColors.Text.textTertiary,
                 style = ZashiTypography.textSm,
             )
-            Spacer(24.dp)
+            Spacer(28.dp)
             ZashiButton(
                 state = state.buttonState,
                 defaultPrimaryColors = ZashiButtonDefaults.tertiaryColors()

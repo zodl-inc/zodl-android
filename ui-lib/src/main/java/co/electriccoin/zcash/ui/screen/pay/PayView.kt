@@ -167,10 +167,12 @@ internal fun PayView(
                 Spacer(12.dp)
                 if (state.errorFooter != null) {
                     SwapErrorFooter(state.errorFooter)
-                    Spacer(32.dp)
+                    Spacer(36.dp)
                 } else if (state.infoFooter != null) {
                     ZashiInfoText(text = state.infoFooter.getValue())
-                    Spacer(24.dp)
+                    Spacer(28.dp)
+                } else {
+                    Spacer(4.dp)
                 }
                 if (state.primaryButton != null) {
                     ZashiButton(

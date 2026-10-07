@@ -25,6 +25,11 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Changed:
 
+- Buttons are now drawn 48 dp tall by default instead of 40 dp, matching the design system. This changes their
+  visible size, not just a minimum: the old 40 dp button already took a 48 dp slot in the layout. Compact buttons,
+  such as the ones on the home screen messages and the activity header, keep their smaller size and layout height,
+  and still grow for wrapped text. Stacked or adjacent buttons are 8 dp apart, and the space between a button and
+  any other content is 4 dp larger than before, so the visible gap stays as it was.
 - Swap and Pay now restore asset and network choices immediately while current prices load in the background (MOB-1923).
 
 ### Fixed:

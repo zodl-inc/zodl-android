@@ -3,7 +3,6 @@ package co.electriccoin.zcash.ui.screen.transactiondetail.infoitems
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -71,7 +70,8 @@ fun TransactionDetailButtonHeader(
     modifier: Modifier = Modifier
 ) {
     ZashiButton(
-        modifier = modifier.height(36.dp),
+        modifier = modifier,
+        minHeight = 36.dp,
         onClick = state.onClick,
         text =
             if (state.isExpanded) {

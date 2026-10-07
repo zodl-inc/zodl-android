@@ -42,7 +42,7 @@ fun ScanBottomItems(
             infoText = infoText
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
         if (onPaste != null) {
             ZashiButton(
@@ -54,7 +54,7 @@ fun ScanBottomItems(
                 text = stringResource(id = R.string.scan_pasteLink),
                 colors = ZashiButtonDefaults.secondaryColors()
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         when (scanState) {
@@ -75,7 +75,7 @@ fun ScanBottomItems(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
     }
 }

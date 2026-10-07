@@ -159,7 +159,7 @@ private fun Content(
         )
         Spacer(Modifier.weight(1f))
         state.nextButton?.let {
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(28.dp))
             ZashiButton(
                 state = state.nextButton,
                 modifier = Modifier.fillMaxWidth(),

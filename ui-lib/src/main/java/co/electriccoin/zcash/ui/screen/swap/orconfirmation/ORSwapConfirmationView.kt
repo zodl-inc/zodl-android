@@ -142,7 +142,7 @@ fun ORSwapConfirmationView(state: ORSwapConfirmationState) {
                     style = ZashiTypography.textSm,
                     color = ZashiColors.Text.textPrimary
                 )
-                Spacer(20.dp)
+                Spacer(24.dp)
                 ZashiButton(
                     modifier = Modifier.fillMaxWidth(),
                     state = state.primaryButton

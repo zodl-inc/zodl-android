@@ -108,7 +108,7 @@ private fun Content(
                     }
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(36.dp))
 
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),

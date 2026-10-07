@@ -249,7 +249,9 @@ fun ScanBottomItems(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(28.dp))
+        } else {
+            Spacer(modifier = Modifier.height(4.dp))
         }
 
         when (scanState) {
@@ -270,7 +272,7 @@ fun ScanBottomItems(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
     }
 }

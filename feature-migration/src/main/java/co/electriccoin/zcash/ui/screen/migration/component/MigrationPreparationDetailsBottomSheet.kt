@@ -133,7 +133,7 @@ fun MigrationPreparationDetailsBottomSheet(details: MigrationPreparationDetails?
                         color = ZashiColors.Text.textPrimary,
                     )
                 }
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(28.dp))
                 ZashiButton(
                     state =
                         ButtonState(

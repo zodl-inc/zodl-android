@@ -90,7 +90,7 @@ fun MigrationTorFailureView(
                     title = stringRes(DesignR.string.migration_common_whatAreTheRisks).getValue(),
                     body = stringRes(DesignR.string.migrationTorFailure_riskBody).getValue(),
                 )
-                Spacer(32.dp)
+                Spacer(36.dp)
                 ZashiButton(
                     state =
                         ButtonState(

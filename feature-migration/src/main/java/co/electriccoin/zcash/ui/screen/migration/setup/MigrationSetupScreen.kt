@@ -167,7 +167,7 @@ fun MigrationSetupView(state: MigrationSetupState) {
                         )
                     }
                 }
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(24.dp))
                 ZashiButton(
                     state =
                         ButtonState(

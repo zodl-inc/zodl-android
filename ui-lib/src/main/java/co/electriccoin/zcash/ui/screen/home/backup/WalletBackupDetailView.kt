@@ -161,7 +161,7 @@ private fun Content(
                 fontWeight = FontWeight.Medium
             )
         }
-        Spacer(24.dp)
+        Spacer(28.dp)
         ZashiButton(
             state =
                 ButtonState(
