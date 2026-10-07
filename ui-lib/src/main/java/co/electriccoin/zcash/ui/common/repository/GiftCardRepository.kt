@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -456,6 +457,9 @@ class GiftCardRepositoryImpl(
                 withTimeout(TO_ADDRESS_TIMEOUT) { toAddress() }.let { address ->
                     GiftCardPhase.Redeemed(giftCardDataSource.redeem(handle, address))
                 }
+            } catch (_: TimeoutCancellationException) {
+                Twig.error { "The destination address of a gift card redemption did not arrive in time" }
+                GiftCardPhase.Failed(GiftCardFailure.REDEEM_FAILED)
             } catch (_: CancellationException) {
                 currentCoroutineContext().ensureActive()
                 Twig.error { "Redeeming a gift card was cancelled from within" }
@@ -495,10 +499,7 @@ class GiftCardRepositoryImpl(
         for (wallet in stored) {
             val isLive =
                 synchronized(lock) {
-                    links.values.any {
-                        (!it.value.isClosed || it.value.redeemJob?.isActive == true) &&
-                            it.value.walletAlias == wallet.alias
-                    }
+                    links.values.any { !it.value.isClosed && it.value.walletAlias == wallet.alias }
                 }
             if (isLive) continue
             try {

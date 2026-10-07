@@ -13,7 +13,11 @@ import java.text.Normalizer
  * repeated.
  *
  * It reduces the text to its ASCII letters and digits, in lower case, and looks for the host names and key prefixes in
- * that. Text that is still changing after [MAX_DECODE_ROUNDS] rounds of percent-decoding is refused.
+ * that. Text that still changes in decoding round [MAX_DECODE_ROUNDS] + 1 is refused.
+ *
+ * It does not see through homoglyphs that have no compatibility mapping (a Cyrillic letter that merely looks Latin),
+ * nor through other encodings such as HTML entities or base64; the secret itself, the `zgift1...` key, is still
+ * caught by its prefix.
  *
  * False positives are acceptable: no real swap or Zcash address contains a gift card host or a gift card key's
  * human-readable part, so text that does is refused rather than risk sending a spending secret off the device.
@@ -50,9 +54,10 @@ internal object GiftCardSecretDetector {
         val rounds =
             generateSequence(text.printableAscii()) { previous ->
                 previous.percentDecoded().printableAscii().takeIf { it != previous }
-            }.take(MAX_DECODE_ROUNDS + 1).toList()
-        // Still changing after the last round: more layers of encoding than anything real has.
-        val isStillChanging = rounds.size > MAX_DECODE_ROUNDS
+            }.take(MAX_DECODE_ROUNDS + 2).toList()
+        // The text still changes in the round after the last one that is looked at: more layers of encoding than
+        // anything real has.
+        val isStillChanging = rounds.size > MAX_DECODE_ROUNDS + 1
         return isStillChanging ||
             rounds.any { round ->
                 val reduced = round.lettersAndDigitsInLowerCase()

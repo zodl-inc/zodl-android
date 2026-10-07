@@ -21,7 +21,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   as having nothing to redeem.
   The pasted link and the card's QR code are kept out of screenshots and the recent apps list, a pasted link is
   cleared from the clipboard (also below Android 9), and links are refused wherever an address is expected, in swaps
-  and contacts, however they are disguised.
+  and contacts, also when disguised with invisible characters, encodings or compatibility forms.
 
 ## [3.15.0 (2852)] - 2026-09-28
 

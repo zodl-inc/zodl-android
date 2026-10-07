@@ -13,6 +13,7 @@ import co.electriccoin.zcash.ui.fixture.GiftCardSummaryFixture
 import co.electriccoin.zcash.ui.fixture.GiftCardSummaryFixture.pendingStatus
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -160,6 +161,28 @@ class GiftCardRepositorySessionLifecycleTest {
             dataSource.redeemGate?.complete(Unit)
             runCurrent()
             assertIs<GiftCardPhase.Redeemed>(observer.latest().phase)
+            observer.job.cancel()
+        }
+
+    @Test
+    fun aRedeemWhoseDestinationAddressNeverArrivesFailsAfterThirtySeconds() =
+        runTest {
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            repository.redeem(linkId) { awaitCancellation() }
+            runCurrent()
+            assertEquals(GiftCardPhase.Redeeming, observer.latest().phase)
+            advanceTimeBy(29.seconds)
+            runCurrent()
+            assertEquals(GiftCardPhase.Redeeming, observer.latest().phase)
+            advanceTimeBy(2.seconds)
+            runCurrent()
+
+            assertEquals(GiftCardPhase.Failed(GiftCardFailure.REDEEM_FAILED), observer.latest().phase)
+            assertTrue(dataSource.redeemedTo.isEmpty(), "the card was never touched")
             observer.job.cancel()
         }
 
