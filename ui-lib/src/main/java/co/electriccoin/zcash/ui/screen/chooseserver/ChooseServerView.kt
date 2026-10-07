@@ -301,8 +301,7 @@ fun ChooseServerBottomBar(
             modifier =
                 Modifier
                     .padding(horizontal = 24.dp)
-                    .fillMaxWidth()
-                    .height(48.dp),
+                    .fillMaxWidth(),
             content = { scope ->
                 if (saveButtonState.isLoading) {
                     scope.Loading()

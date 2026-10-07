@@ -2,7 +2,6 @@ package co.electriccoin.zcash.ui.screen.transactionhistory.widget
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,7 +45,7 @@ fun ActivityWidgetHeader(state: TransactionHistoryWidgetHeaderState, modifier: M
                     ),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                 shape = CircleShape,
-                modifier = Modifier.height(32.dp)
+                minHeight = 32.dp
             )
         } else {
             VerticalSpacer(32.dp)

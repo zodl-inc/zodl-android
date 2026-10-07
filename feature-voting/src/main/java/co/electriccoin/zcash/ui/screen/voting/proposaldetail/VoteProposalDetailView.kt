@@ -95,7 +95,7 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
                 ) {
                     if (state.forumUrl != null) {
                         ForumLinkRow(onClick = state.onForumClick)
-                        VerticalSpacer(16.dp)
+                        VerticalSpacer(20.dp)
                     }
                     NavigationButtons(state = state)
                 }

@@ -42,7 +42,7 @@ fun MigrationFailureBottomSheet(state: MigrationTransferFailureState?) {
                 style = ZashiTypography.textSm,
                 color = ZashiColors.Text.textTertiary,
             )
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(28.dp))
             val onRetry = state.onRetry
             if (onRetry != null) {
                 ZashiButton(

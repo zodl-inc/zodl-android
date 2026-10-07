@@ -239,7 +239,7 @@ fun ScanBottomItems(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
         when (scanState) {
             ScanScreenState.Scanning, ScanScreenState.Failed -> {
@@ -259,7 +259,7 @@ fun ScanBottomItems(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
     }
 }
