@@ -375,32 +375,39 @@ internal fun List<TransactionSubmitResult>.toSubmitResult(): SubmitResult {
             null
         }
 
-    val (errCode, errDesc) =
-        failures
-            .firstOrNull { !it.grpcError }
-            ?.let { it.code to it.description } ?: (0 to "")
+    val firstNonGrpcFailure = failures.firstOrNull { !it.grpcError }
 
-    return when (successCount) {
-        0 -> {
-            if (failures.size == size && failures.all { it.grpcError }) {
-                SubmitResult.GrpcFailure(
-                    txIds = txIds,
-                    description = grpcFailureDescription,
-                    reason = grpcFailureReason
-                )
-            } else if (hasNotAttempted && failures.none { !it.grpcError }) {
-                SubmitResult.Partial(txIds = txIds, statuses = map { it.statusDescription() })
-            } else {
-                SubmitResult.Failure(txIds = txIds, code = errCode, description = errDesc)
-            }
-        }
-
-        txIds.size -> {
+    return when {
+        successCount == txIds.size -> {
             SubmitResult.Success(txIds = txIds)
         }
 
-        else -> {
+        hasNotAttempted -> {
+            // The SDK can only retry a transaction after submit() registered an endpoint for it.
+            // Keeping an untouched leg pending would promise a retry that cannot happen.
             SubmitResult.Partial(txIds = txIds, statuses = map { it.statusDescription() })
+        }
+
+        firstNonGrpcFailure != null && successCount == 0 && failures.all { !it.grpcError } -> {
+            SubmitResult.Failure(
+                txIds = txIds,
+                code = firstNonGrpcFailure.code,
+                description = firstNonGrpcFailure.description
+            )
+        }
+
+        else -> {
+            // Every non-accepted transaction was attempted, so its SDK retry plan remains active.
+            // This includes server rejections: reporting a terminal partial failure would invite a
+            // manual retry while background resubmission can still broadcast the same transaction.
+            firstNonGrpcFailure?.let { failure ->
+                Twig.warn { "Transaction submission remains pending after rejected code: ${failure.code}" }
+            }
+            SubmitResult.GrpcFailure(
+                txIds = txIds,
+                description = grpcFailureDescription,
+                reason = grpcFailureReason
+            )
         }
     }
 }

@@ -21,8 +21,10 @@ import co.electriccoin.zcash.ui.common.model.isZCashAsset
 import co.electriccoin.zcash.ui.common.model.near.requireMatchingAsset
 import co.electriccoin.zcash.ui.common.model.near.requireQuoteMatchesUserAmount
 import co.electriccoin.zcash.ui.common.model.swapQuoteMismatchSignal
+import co.electriccoin.zcash.ui.common.provider.SwapAssetCacheProvider
 import io.ktor.client.plugins.ResponseException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -108,14 +110,20 @@ data class SwapAssetsData(
     val zecAsset: SwapAsset? = null,
     val isLoading: Boolean = false,
     val error: Exception? = null,
-)
+) {
+    val hasUsableLivePrices: Boolean
+        get() =
+            data?.any { asset -> asset.usdPrice?.let { it > BigDecimal.ZERO } == true } == true &&
+                zecAsset?.usdPrice?.let { it > BigDecimal.ZERO } == true
+}
 
 /** Thrown by [SwapRepository.checkSwapStatus] when the supported-asset list could not be loaded. */
 class SwapAssetsUnavailableException : Exception("Swap assets are unavailable")
 
 @Suppress("TooManyFunctions")
 class SwapRepositoryImpl(
-    private val swapDataSource: SwapDataSource
+    private val swapDataSource: SwapDataSource,
+    private val swapAssetCacheProvider: SwapAssetCacheProvider,
 ) : SwapRepository {
     /**
      * Scope the background refresh/quote jobs run on. A test seam: unit tests replace it with a
@@ -129,24 +137,76 @@ class SwapRepositoryImpl(
 
     override val quote = MutableStateFlow<SwapQuoteData?>(null)
 
-    private var refreshJob: Job? = null
+    private var refreshSession: AssetsRefreshSession? = null
 
     private var requestQuoteJob: Job? = null
 
     override fun requestRefreshAssets() {
-        refreshJob?.cancel()
-        refreshJob =
-            scope.launch {
-                while (true) {
-                    refreshAssetsInternal()
-                    delay(30.seconds)
-                }
-            }
+        getOrStartRefreshAssetsSession(keepRefreshing = true)
     }
 
     override suspend fun requestRefreshAssetsOnce() {
-        scope.launch { refreshAssetsInternal() }.join()
+        while (true) {
+            val session = getOrStartRefreshAssetsSession(keepRefreshing = false)
+            session.firstRefresh.join()
+            if (!session.firstRefresh.isCancelled) return
+        }
     }
+
+    /**
+     * Both public refresh entry points share this job. Besides avoiding duplicate catalog calls,
+     * hydrating here ensures an on-demand refresh can expose cached metadata just like navigation.
+     */
+    private fun getOrStartRefreshAssetsSession(keepRefreshing: Boolean): AssetsRefreshSession =
+        synchronized(this) {
+            val activeSession = refreshSession?.takeIf { it.job?.isActive == true }
+            if (activeSession != null && !activeSession.firstRefresh.isCompleted) {
+                activeSession.keepRefreshing = activeSession.keepRefreshing || keepRefreshing
+                return@synchronized activeSession
+            }
+
+            // A completed first refresh means the periodic job is sleeping. A user-driven refresh
+            // must fetch immediately instead of waiting for the next 30-second tick.
+            val shouldKeepRefreshing = keepRefreshing || activeSession?.keepRefreshing == true
+            activeSession?.job?.cancel()
+
+            AssetsRefreshSession(keepRefreshing = shouldKeepRefreshing).also { session ->
+                refreshSession = session
+                val job =
+                    scope
+                        .launch {
+                            hydrateAssetsFromCache()
+                            do {
+                                refreshAssetsInternal()
+                                session.firstRefresh.complete(Unit)
+                                val continueRefreshing =
+                                    synchronized(this@SwapRepositoryImpl) {
+                                        if (refreshSession === session && session.keepRefreshing) {
+                                            true
+                                        } else {
+                                            if (refreshSession === session) refreshSession = null
+                                            false
+                                        }
+                                    }
+                                if (!continueRefreshing) break
+                                delay(ASSET_REFRESH_INTERVAL)
+                            } while (true)
+                        }.also { launchedJob ->
+                            // launch may be cancelled before its body is dispatched, so cleanup cannot
+                            // rely on a finally block inside the coroutine.
+                            launchedJob.invokeOnCompletion {
+                                if (!session.firstRefresh.isCompleted) session.firstRefresh.cancel()
+                            }
+                        }
+                session.job = job
+            }
+        }
+
+    private class AssetsRefreshSession(
+        val firstRefresh: CompletableDeferred<Unit> = CompletableDeferred(),
+        var keepRefreshing: Boolean,
+        var job: Job? = null,
+    )
 
     @Suppress("TooGenericExceptionCaught")
     private suspend fun refreshAssetsInternal() {
@@ -162,11 +222,21 @@ class SwapRepositoryImpl(
                     }
                 }.toList()
 
-        assets.update { it.copy(isLoading = true) }
+        assets.update { it.copy(isLoading = true, error = null) }
         try {
             val tokens = swapDataSource.getSupportedTokens()
             val filtered = filterSwapAssets(tokens)
             val zecAsset = findZecSwapAsset(tokens)
+            try {
+                // Persist only assets that the live path can actually offer. Prices themselves are
+                // stripped by the cache provider, but a cached selection will still exist in the
+                // next live catalog instead of becoming a permanently disabled orphan.
+                swapAssetCacheProvider.store(tokens.filter { it.isZCashAsset || it in filtered })
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                GlobalCrashReporter.reportCaughtException(e)
+            }
             assets.update {
                 it.copy(
                     data = filtered,
@@ -175,13 +245,31 @@ class SwapRepositoryImpl(
                     isLoading = false
                 )
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             assets.update { assets ->
                 assets.copy(
                     isLoading = false,
-                    error = e.takeIf { assets.data == null }
+                    // Cached metadata deliberately has no prices. Without an error here the CTA is
+                    // disabled, loading has stopped, and there is no way for the user to retry.
+                    error = e.takeUnless { assets.hasUsableLivePrices }
                 )
             }
+        }
+    }
+
+    private suspend fun hydrateAssetsFromCache() {
+        if (assets.value.data != null) return
+        val cachedAssets = swapAssetCacheProvider.get()
+        if (cachedAssets.isEmpty()) return
+        assets.update {
+            it.copy(
+                data = cachedAssets.filterNot(SwapAsset::isZCashAsset),
+                zecAsset = cachedAssets.find(SwapAsset::isZCashAsset),
+                error = null,
+                isLoading = true,
+            )
         }
     }
 
@@ -432,11 +520,13 @@ class SwapRepositoryImpl(
     }
 
     override fun clear() {
-        if (assets.value.data == null) {
-            assets.update { SwapAssetsData() } // delete the error if no data found
+        synchronized(this) {
+            refreshSession?.job?.cancel()
+            refreshSession = null
         }
-        refreshJob?.cancel()
-        refreshJob = null
+        assets.update {
+            if (it.data == null) SwapAssetsData() else it.copy(isLoading = false, error = null)
+        }
         clearQuote()
     }
 
@@ -448,6 +538,8 @@ class SwapRepositoryImpl(
 }
 
 val DEFAULT_SLIPPAGE = BigDecimal("2")
+
+private val ASSET_REFRESH_INTERVAL = 30.seconds
 
 /**
  * Asserts the quote's ZEC-side asset matches `expected` — an independent snapshot of the repository's

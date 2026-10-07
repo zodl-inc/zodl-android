@@ -23,6 +23,14 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   cleared from the clipboard (also below Android 9), and links are refused wherever an address is expected, in swaps
   and contacts, also when disguised with invisible characters, encodings or compatibility forms.
 
+### Changed:
+
+- Swap and Pay now restore asset and network choices immediately while current prices load in the background (MOB-1923).
+
+### Fixed:
+
+- [MOB-1032] TEX payments remain pending while a retryable second transaction is still being broadcast instead of showing a failure after the first transaction succeeds.
+
 ## [3.15.0 (2852)] - 2026-09-28
 
 ### Added:

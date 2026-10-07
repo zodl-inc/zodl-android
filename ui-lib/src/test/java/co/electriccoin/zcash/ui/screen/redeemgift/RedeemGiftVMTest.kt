@@ -64,7 +64,8 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * The redeem screen over a real [GiftCardRepositoryImpl] and a [FakeGiftCardDataSource]: each session phase maps to
  * its screen, intents reach the repository, back ends the session (except while redeeming), and the screen going
- * away does not cancel the redemption; the card is cleaned up once the session ends with nobody observing it.
+ * away does not cancel the redemption; the card is cleaned up once the session ends with nobody observing it. The view
+ * model observes the session for its whole lifetime, so the UI no longer collecting its state does not close the card.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RedeemGiftVMTest {
@@ -519,6 +520,99 @@ class RedeemGiftVMTest {
             assertEquals(2, env.dataSource.checkCount)
             assertIs<RedeemGiftState.Ready>(vm.state.value)
             assertTrue(env.dataSource.closed.isEmpty())
+        }
+
+    /**
+     * The phone locked with a pending card on screen: the UI stops collecting, but the view model lives on with the
+     * screen on the back stack, so the card stays open past the idle timeout and keeps being checked again.
+     */
+    @Test
+    fun aPendingCardStaysOpenAndIsRecheckedWhileTheViewModelLivesWithoutTheUi() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.statuses = listOf(pendingStatus())
+            val vm = env.newVm()
+            val collector = backgroundScope.launch { vm.state.collect { } }
+            runCurrent()
+            assertEquals(stringRes(R.string.redeemGift_pending_title), cardStatusOf(vm).title)
+            assertEquals(1, env.dataSource.checkCount)
+
+            collector.cancel()
+            advanceTimeBy(GiftCardRepositoryImpl.IDLE_TIMEOUT * 2)
+            runCurrent()
+
+            assertTrue(env.dataSource.closed.isEmpty(), "the card of a living view model is not closed")
+            val rechecks = (GiftCardRepositoryImpl.IDLE_TIMEOUT * 2 / GiftCardRepositoryImpl.PENDING_RETRY_INTERVAL)
+            assertTrue(env.dataSource.checkCount >= rechecks.toInt(), "re-checks go on: ${env.dataSource.checkCount}")
+            backgroundScope.launch { vm.state.collect { } }
+            runCurrent()
+            assertEquals(stringRes(R.string.redeemGift_pending_title), cardStatusOf(vm).title)
+            assertTrue(env.dataSource.closed.isEmpty())
+        }
+
+    /** Once the view model is cleared, the repository's idle policy closes an unfinished card after the timeout. */
+    @Test
+    fun aPendingCardClosesAfterTheIdleTimeoutOnceTheViewModelIsCleared() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.statuses = listOf(pendingStatus())
+            val vm = env.newVm()
+            runCurrent()
+            assertEquals(1, env.dataSource.checkCount)
+
+            clear(vm)
+            runCurrent()
+            advanceTimeBy(GiftCardRepositoryImpl.IDLE_TIMEOUT - 1.seconds)
+            assertTrue(env.dataSource.closed.isEmpty())
+            assertEquals(1, env.dataSource.checkCount, "a session nobody observes is not checked again")
+
+            advanceTimeBy(2.seconds)
+
+            assertEquals(1, env.dataSource.closed.size)
+        }
+
+    /** A final phase has nothing left to wait for: clearing the view model closes the card at once. */
+    @Test
+    fun aRedeemedCardClosesAtOnceWhenTheViewModelIsCleared() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            val vm = env.newVm()
+            val collector = backgroundScope.launch { vm.state.collect { } }
+            runCurrent()
+            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
+            runCurrent()
+            assertEquals(stringRes(R.string.redeemGift_success_title), cardStatusOf(vm).title)
+
+            collector.cancel()
+            advanceTimeBy(GiftCardRepositoryImpl.IDLE_TIMEOUT * 2)
+            assertTrue(env.dataSource.closed.isEmpty(), "a redeemed card stays open while its view model lives")
+
+            clear(vm)
+            runCurrent()
+
+            assertEquals(1, env.dataSource.closed.size)
+        }
+
+    /** Back from a pending card the UI stopped collecting for a while still ends the session at once. */
+    @Test
+    fun backAfterTheUiStoppedCollectingEndsTheSessionAtOnce() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.statuses = listOf(pendingStatus())
+            val vm = env.newVm()
+            val collector = backgroundScope.launch { vm.state.collect { } }
+            runCurrent()
+            collector.cancel()
+            advanceTimeBy(GiftCardRepositoryImpl.IDLE_TIMEOUT * 2)
+            backgroundScope.launch { vm.state.collect { } }
+            runCurrent()
+            assertTrue(env.dataSource.closed.isEmpty())
+
+            cardStatusOf(vm).onBack()
+            runCurrent()
+
+            assertEquals(1, env.router.backCount)
+            assertEquals(1, env.dataSource.closed.size)
         }
 
     @Test
