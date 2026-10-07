@@ -18,10 +18,12 @@ import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.ERROR
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 
 /**
@@ -29,6 +31,11 @@ import kotlinx.coroutines.flow.stateIn
  * independently of this screen: this view model only shows the session and forwards the user's intents. Leaving the
  * screen with back or close ends the session (except while the card is being redeemed, when back does nothing);
  * the screen merely going away does not.
+ *
+ * The session counts as observed for as long as this view model lives, not only while the screen is visible: the
+ * phone being locked or the app going to the background with the screen still on the back stack keeps the card open,
+ * and a pending card keeps being checked again in the background meanwhile. Only once the view model is cleared
+ * (the screen left, or the back stack reset) does the repository's idle policy take over.
  */
 class RedeemGiftVM(
     private val args: RedeemGiftArgs,
@@ -37,9 +44,19 @@ class RedeemGiftVM(
     private val navigationRouter: NavigationRouter,
     getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
 ) : ViewModel() {
+    /**
+     * The session, collected eagerly in [viewModelScope] so that it stays observed for this view model's whole
+     * lifetime, independently of whether the UI collects [state]. Its collection ends with [viewModelScope] when the
+     * view model is cleared.
+     */
+    private val session: SharedFlow<GiftCardSession> =
+        giftCardRepository
+            .observeSession(args.linkId)
+            .shareIn(scope = viewModelScope, started = SharingStarted.Eagerly, replay = 1)
+
     val state: StateFlow<RedeemGiftState?> =
         combine(
-            giftCardRepository.observeSession(args.linkId),
+            session,
             getSelectedWalletAccount.observe(),
         ) { session, account ->
             createState(session, account)

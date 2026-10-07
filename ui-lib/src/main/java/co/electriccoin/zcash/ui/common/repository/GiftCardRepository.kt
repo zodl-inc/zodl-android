@@ -64,7 +64,8 @@ interface GiftCardRepository {
      * the card checked. Later calls, while the session is alive, observe the same session.
      *
      * While the card is [GiftCardPhase.Pending] it is checked again periodically, but only while this flow is
-     * collected. A session nobody collects closes its card wallet on its own, see [GiftCardRepositoryImpl].
+     * collected. A session nobody collects closes its card wallet on its own, see [GiftCardRepositoryImpl]. The redeem
+     * screen's view model collects it for the view model's whole lifetime, not only while the screen is visible.
      */
     fun observeSession(linkId: String): Flow<GiftCardSession>
 
@@ -132,17 +133,21 @@ internal object GiftCardLinkPrefixes {
  * card wallet on disk until the session closes it; closing the card in the data source erases the card wallet and
  * wipes the card's key. [dismiss] closes the card and forgets the session at once.
  *
- * A session can also lose its screen without a [dismiss]: a back press while a redemption starts, a back stack reset
- * elsewhere, the wallet being deleted. So a session nobody collects (see [MutableStateFlow.subscriptionCount]) closes
- * its card on its own: right away once its phase is final ([GiftCardPhase.Redeemed], or a failure that cannot be
- * retried, or a dust [GiftCardPhase.Empty]), else once it has gone unobserved for [idleTimeout], unless it is being
- * redeemed. Any other [GiftCardPhase.Empty] is not final, as the card can still be checked again, so a screen that
- * returns within [idleTimeout] can still check it. A redemption, once started, runs to its end whoever observes it,
- * and the card is closed right after it when nobody does. A closed session keeps showing its final phase to a screen
- * that observes it again; an unfinished one shows [GiftCardFailure.LINK_UNAVAILABLE], as its card is gone. A closed
- * session that stays unobserved for another [idleTimeout] is forgotten.
+ * A session is observed for as long as the redeem screen's view model lives, which collects it whether or not the
+ * screen is visible: a screen left on the back stack, with the phone locked or the app in the background, keeps its
+ * session observed. A session can also lose its screen without a [dismiss]: a back press while a redemption starts, a
+ * back stack reset elsewhere, the wallet being deleted. So a session nobody collects (see
+ * [MutableStateFlow.subscriptionCount]) closes its card on its own: right away once its phase is final
+ * ([GiftCardPhase.Redeemed], or a failure that cannot be retried, or a dust [GiftCardPhase.Empty]), else once it has
+ * gone unobserved for [idleTimeout], unless it is being redeemed. Any other [GiftCardPhase.Empty] is not final, as the
+ * card can still be checked again, so a screen that returns within [idleTimeout] can still check it. A redemption, once
+ * started, runs to its end whoever observes it, and the card is closed right after it when nobody does. A closed
+ * session keeps showing its final phase to a screen that observes it again; an unfinished one shows
+ * [GiftCardFailure.LINK_UNAVAILABLE], as its card is gone. A closed session that stays unobserved for another
+ * [idleTimeout] is forgotten.
  *
- * The re-checks of a pending card run only while someone collects the session.
+ * The re-checks of a pending card run only while someone collects the session, so also while its redeem screen
+ * stays on the back stack with the app in the background.
  *
  * Two sessions never hold the same card: a link whose card ([ParsedGiftCard.walletAlias]) already has a live session
  * joins it, and its own parse is discarded.
