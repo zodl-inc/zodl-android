@@ -81,12 +81,12 @@ private fun BottomSheetContent(
                 color = ZashiColors.Text.textTertiary,
                 textAlign = TextAlign.Center
             )
-            Spacer(32.dp)
+            Spacer(36.dp)
             ZashiButton(
                 state = state.switchToUsdButton,
                 modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(12.dp)
+            Spacer(8.dp)
             ZashiButton(
                 state = state.continueInZecButton,
                 modifier = Modifier.fillMaxWidth(),

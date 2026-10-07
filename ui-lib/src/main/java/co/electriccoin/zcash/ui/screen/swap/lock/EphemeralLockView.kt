@@ -119,7 +119,7 @@ private fun Content(
                 descriptionFontWeight = FontWeight.Medium,
                 descriptionColor = ZashiColors.Text.textPrimary
             )
-            Spacer(32.dp)
+            Spacer(36.dp)
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
                 state = state.secondaryButton,

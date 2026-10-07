@@ -135,7 +135,7 @@ private fun Error(
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textTertiary
         )
-        Spacer(32.dp)
+        Spacer(36.dp)
         ZashiButton(
             state = state.negativeButton,
             modifier = Modifier.fillMaxWidth(),
@@ -206,7 +206,7 @@ private fun Success(
                     text = state.infoText.getValue()
                 )
             }
-            Spacer(24.dp)
+            Spacer(28.dp)
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
                 state = state.primaryButton

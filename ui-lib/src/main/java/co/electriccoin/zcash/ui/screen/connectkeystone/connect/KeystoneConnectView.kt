@@ -89,7 +89,7 @@ fun ConnectKeystoneView(state: KeystoneConnectState) {
                 HeaderSection()
                 Spacer(Modifier.height(24.dp))
                 HowToConnectSection()
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(28.dp))
                 Spacer(Modifier.weight(1f))
                 BottomSection(state)
             }

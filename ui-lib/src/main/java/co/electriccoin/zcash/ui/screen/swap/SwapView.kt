@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -157,12 +158,14 @@ internal fun SwapView(
                 Spacer(1f)
                 if (state.errorFooter != null) {
                     SwapErrorFooter(state.errorFooter)
-                    Spacer(32.dp)
+                    Spacer(36.dp)
                 } else if (state.infoFooter != null) {
                     ZashiInfoText(
                         text = state.infoFooter.getValue()
                     )
-                    Spacer(24.dp)
+                    Spacer(28.dp)
+                } else {
+                    Spacer(4.dp)
                 }
                 if (state.primaryButton != null) {
                     ZashiButton(
@@ -217,7 +220,7 @@ fun SwapErrorFooter(errorFooter: SwapErrorFooterState) {
 @Composable
 fun SlippageButton(state: ButtonState, modifier: Modifier = Modifier) {
     Row(
-        modifier = modifier,
+        modifier = modifier.heightIn(min = 48.dp),
         verticalAlignment = CenterVertically
     ) {
         Text(

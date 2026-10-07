@@ -61,7 +61,7 @@ fun SignKeystoneTransactionBottomSheet(
                 style = ZashiTypography.textSm,
                 color = ZashiColors.Text.textTertiary,
             )
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(36.dp))
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
                 state = it.positiveButton

@@ -221,7 +221,10 @@ private fun Content(state: TransactionProgressState, modifier: Modifier = Modifi
             if (state.middleButton != null) {
                 ZashiButton(
                     state = state.middleButton,
-                    modifier = Modifier.wrapContentWidth(),
+                    modifier =
+                        Modifier
+                            .padding(top = ZashiDimensions.Spacing.spacingXs)
+                            .wrapContentWidth(),
                     defaultPrimaryColors = ZashiButtonDefaults.tertiaryColors()
                 )
             }

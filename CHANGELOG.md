@@ -7,6 +7,14 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Changed:
+
+- Buttons are now drawn 48 dp tall by default instead of 40 dp, matching the design system. This changes their
+  visible size, not just a minimum: the old 40 dp button already took a 48 dp slot in the layout. Compact buttons,
+  such as the ones on the home screen messages and the activity header, keep their smaller size and layout height,
+  and still grow for wrapped text. Stacked or adjacent buttons are 8 dp apart, and the space between a button and
+  any other content is 4 dp larger than before, so the visible gap stays as it was.
+
 ## [3.15.0 (2852)] - 2026-09-28
 
 ### Added:
@@ -21,11 +29,6 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   gradually as the sheet opens, closes or is dragged, instead of fading on a timer, and no longer flashes dark
   for a moment when a sheet opens.
 - The currency, swap asset and slippage sheets no longer close when dragged down.
-
-### Changed:
-
-- Buttons are now at least 48 dp tall by default, matching the design system. Compact buttons set a smaller
-  `minHeight` instead of a fixed height, so they still grow for wrapped text, and stacked buttons keep an 8 dp gap.
 
 ## [3.14.0 (2738)] - 2026-09-16
 

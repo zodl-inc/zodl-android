@@ -96,7 +96,7 @@ private fun Content(
             color = ZashiColors.Text.textTertiary,
             textAlign = TextAlign.Start
         )
-        Spacer(32.dp)
+        Spacer(36.dp)
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
             state = state.reportIssueButton

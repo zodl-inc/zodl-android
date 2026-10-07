@@ -20,6 +20,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ZashiButton
@@ -131,7 +132,7 @@ private fun ExportPrivateDataContent(
             text = stringRes(R.string.privateDataConsent_confirmation),
         )
 
-        Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingLarge))
+        Spacer(modifier = Modifier.height(28.dp))
 
         ZashiButton(
             onClick = onConfirm,

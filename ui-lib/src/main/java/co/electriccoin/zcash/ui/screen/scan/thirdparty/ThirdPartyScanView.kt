@@ -109,7 +109,7 @@ private fun Content(
             color = ZashiColors.Text.textPrimary,
         )
         Spacer(1f)
-        Spacer(14.dp)
+        Spacer(18.dp)
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
             onClick = state.onScanClick,

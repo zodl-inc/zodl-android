@@ -97,7 +97,7 @@ private fun Content(
             )
             Spacer(24.dp)
             Switch(state.checkbox)
-            Spacer(32.dp)
+            Spacer(36.dp)
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
                 defaultPrimaryColors = ZashiButtonDefaults.tertiaryColors(),
