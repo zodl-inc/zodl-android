@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.datasource
 
 import android.app.Application
 import cash.z.ecc.android.sdk.GiftCardRedeemer
+import cash.z.ecc.android.sdk.GiftCardRedeemers
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.FirstClassByteArray
@@ -51,7 +52,8 @@ import cash.z.ecc.android.sdk.model.GiftCardOrigin as SdkGiftCardOrigin
 
 /**
  * [GiftCardDataSourceImpl] against a mocked SDK: link errors and statuses map to the app's types, the card wallet
- * uses the main wallet's network, endpoint and Tor setting, redemptions are recorded in the main wallet, redeemers
+ * is created, listed and erased through the engine-backed [GiftCardRedeemers] and uses the main wallet's network,
+ * endpoint and Tor setting, redemptions are recorded in the main wallet, redeemers
  * are closed exactly once and the card's key is wiped when it is closed.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -85,14 +87,13 @@ class GiftCardDataSourceImplTest {
     @BeforeTest
     fun setUp() {
         mockkObject(GiftCard.Companion)
-        mockkObject(GiftCardRedeemer.Companion)
+        mockkObject(GiftCardRedeemers)
         mockkObject(RecipientAddress.Companion)
-        mockkObject(Synchronizer.Companion)
 
         coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(ZcashNetwork.Mainnet)
         coEvery { GiftCard.parse(LINK) } returns parsedCard
         coEvery { isTorEnabledStorageProvider.get() } returns true
-        every { GiftCardRedeemer.new(any(), any(), any(), any(), any(), any()) } answers {
+        every { GiftCardRedeemers.new(any(), any(), any(), any(), any(), any()) } answers {
             listOf(redeemer, replacementRedeemer)[newRedeemerCalls++]
         }
         listOf(redeemer, replacementRedeemer).forEach {
@@ -119,7 +120,7 @@ class GiftCardDataSourceImplTest {
             assertEquals(Zatoshi(AMOUNT), summary.statedAmount)
             assertEquals(MESSAGE, summary.message)
             verify(exactly = 1) {
-                GiftCardRedeemer.new(
+                GiftCardRedeemers.new(
                     context = any(),
                     card = any(),
                     network = ZcashNetwork.Mainnet,
@@ -135,7 +136,9 @@ class GiftCardDataSourceImplTest {
         runTest {
             dataSource().parse(LINK)
 
-            verify(exactly = 1) { GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = true, alias = any()) }
+            verify(exactly = 1) {
+                GiftCardRedeemers.new(any(), any(), any(), any(), isTorEnabled = true, alias = any())
+            }
         }
 
     @Test
@@ -146,7 +149,7 @@ class GiftCardDataSourceImplTest {
             dataSource().parse(LINK)
 
             verify(exactly = 1) {
-                GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = false, alias = any())
+                GiftCardRedeemers.new(any(), any(), any(), any(), isTorEnabled = false, alias = any())
             }
         }
 
@@ -158,7 +161,7 @@ class GiftCardDataSourceImplTest {
             dataSource().parse(LINK)
 
             verify(exactly = 1) {
-                GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = false, alias = any())
+                GiftCardRedeemers.new(any(), any(), any(), any(), isTorEnabled = false, alias = any())
             }
         }
 
@@ -175,7 +178,9 @@ class GiftCardDataSourceImplTest {
 
             assertFailsWith<GiftCardException.SubmitFailed> { dataSource.redeem(handle, ADDRESS) }
 
-            verify(exactly = 2) { GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = true, alias = any()) }
+            verify(exactly = 2) {
+                GiftCardRedeemers.new(any(), any(), any(), any(), isTorEnabled = true, alias = any())
+            }
         }
 
     @Test
@@ -593,9 +598,9 @@ class GiftCardDataSourceImplTest {
     @Test
     fun storedCardWalletsAreListedOnEveryNetworkAndErasedByAlias() =
         runTest {
-            coEvery { GiftCardRedeemer.storedAliases(any(), ZcashNetwork.Mainnet) } returns setOf(ALIAS)
-            coEvery { GiftCardRedeemer.storedAliases(any(), ZcashNetwork.Testnet) } returns setOf(OTHER_ALIAS)
-            coEvery { Synchronizer.eraseAlias(any(), any(), any()) } returns true
+            coEvery { GiftCardRedeemers.storedAliases(any(), ZcashNetwork.Mainnet) } returns setOf(ALIAS)
+            coEvery { GiftCardRedeemers.storedAliases(any(), ZcashNetwork.Testnet) } returns setOf(OTHER_ALIAS)
+            coEvery { GiftCardRedeemers.erase(any(), any(), any()) } returns true
             val dataSource = dataSource()
 
             val stored = dataSource.findStoredCardWallets()
@@ -608,7 +613,7 @@ class GiftCardDataSourceImplTest {
                 stored
             )
             dataSource.eraseCardWallet(stored.first())
-            coVerify(exactly = 1) { Synchronizer.eraseAlias(any(), ZcashNetwork.Mainnet, ALIAS) }
+            coVerify(exactly = 1) { GiftCardRedeemers.erase(any(), ZcashNetwork.Mainnet, ALIAS) }
         }
 
     @Test
@@ -646,7 +651,7 @@ class GiftCardDataSourceImplTest {
     fun aCardTheRedeemerRefusesForItsNetworkIsWrongNetworkAndNotHeld() =
         runTest {
             val cause = SdkGiftCardException.NetworkMismatch()
-            every { GiftCardRedeemer.new(any(), any(), any(), any(), any(), any()) } throws cause
+            every { GiftCardRedeemers.new(any(), any(), any(), any(), any(), any()) } throws cause
 
             val e = assertFailsWith<GiftCardException.WrongNetwork> { dataSource().parse(LINK) }
 

@@ -2,7 +2,7 @@ package co.electriccoin.zcash.ui.common.datasource
 
 import android.app.Application
 import cash.z.ecc.android.sdk.GiftCardRedeemer
-import cash.z.ecc.android.sdk.Synchronizer
+import cash.z.ecc.android.sdk.GiftCardRedeemers
 import cash.z.ecc.android.sdk.model.GiftCard
 import cash.z.ecc.android.sdk.model.GiftCardLinkError
 import cash.z.ecc.android.sdk.model.MemoContent
@@ -115,11 +115,11 @@ data class StoredCardWallet(
 
 /**
  * SDK-backed implementation: a [GiftCardRedeemer] per parsed card, which runs the card's temporary wallet beside
- * the main one. The card wallet syncs from, and submits to, the lightwalletd endpoint the main synchronizer is
- * using, which is the one stored in the [PersistableWalletProvider]'s wallet (the main synchronizer is rebuilt
- * from that same wallet whenever it changes). It also connects the way the main synchronizer does: over Tor
- * exactly when the user's Tor setting ([IsTorEnabledStorageProvider]) is on, so the server never sees the user's IP
- * address next to the card's birthday and claim when the user chose Tor.
+ * the main one, on the same sync engine ([GiftCardRedeemers]). The card wallet syncs from, and submits to, the
+ * lightwalletd endpoint the main synchronizer is using, which is the one stored in the [PersistableWalletProvider]'s
+ * wallet (the main synchronizer is rebuilt from that same wallet whenever it changes). It also connects the way the
+ * main synchronizer does: over Tor exactly when the user's Tor setting ([IsTorEnabledStorageProvider]) is on, so the
+ * server never sees the user's IP address next to the card's birthday and claim when the user chose Tor.
  *
  * The redemption is also recorded in the main synchronizer as a trusted transaction (ZIP 315), so the wallet shows
  * the claimed funds at once and can spend them after 3 confirmations rather than 10. Failing to record it does not
@@ -262,11 +262,11 @@ class GiftCardDataSourceImpl(
 
     override suspend fun findStoredCardWallets(): List<StoredCardWallet> =
         listOf(ZcashNetwork.Mainnet, ZcashNetwork.Testnet).flatMap { network ->
-            GiftCardRedeemer.storedAliases(application, network).map { StoredCardWallet(network, it) }
+            GiftCardRedeemers.storedAliases(application, network).map { StoredCardWallet(network, it) }
         }
 
     override suspend fun eraseCardWallet(wallet: StoredCardWallet) {
-        Synchronizer.eraseAlias(application, wallet.network, wallet.alias)
+        GiftCardRedeemers.erase(application, wallet.network, wallet.alias)
     }
 
     private fun held(handle: GiftCardHandle): HeldCard =
@@ -283,7 +283,7 @@ class GiftCardDataSourceImpl(
     ): GiftCardRedeemer {
         val isTorEnabled = isTorEnabledStorageProvider.get() == true
         return try {
-            GiftCardRedeemer.new(
+            GiftCardRedeemers.new(
                 context = application,
                 card = card,
                 network = network,
