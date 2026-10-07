@@ -198,7 +198,7 @@ private fun ImmediateReviewContent(
             Spacer(Modifier.height(24.dp))
             ImmediateDetailsCard(amount = state.totalAmount, fee = state.fee)
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
         ZashiButton(
             state =
                 ButtonState(
@@ -380,7 +380,7 @@ private fun PrivacyReviewContent(
                 )
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
         ZashiButton(
             state =
                 ButtonState(

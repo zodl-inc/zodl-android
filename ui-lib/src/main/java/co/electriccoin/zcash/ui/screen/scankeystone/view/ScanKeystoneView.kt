@@ -249,7 +249,9 @@ fun ScanBottomItems(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(28.dp))
+        } else {
+            Spacer(modifier = Modifier.height(4.dp))
         }
 
         when (scanState) {
@@ -270,7 +272,7 @@ fun ScanBottomItems(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
     }
 }
@@ -743,7 +745,7 @@ fun ImageAnalysis.qrCodeFlow(framePosition: FramePosition): Flow<String> {
                 QrCodeAnalyzerImpl(
                     framePosition = framePosition,
                     onQrCodeScanned = { result ->
-                        Twig.debug { "Scan result onQrCodeScanned: $result" }
+                        Twig.debug { "Scan result onQrCodeScanned: ${result.length} chars" }
                         // Note that these callbacks aren't tied to the Compose lifecycle, so they could occur
                         // after the view goes away.  Collection needs to occur within the Compose lifecycle
                         // to make this not be a problem.

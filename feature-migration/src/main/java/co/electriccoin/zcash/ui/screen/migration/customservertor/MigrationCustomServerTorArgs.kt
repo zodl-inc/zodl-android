@@ -94,7 +94,7 @@ fun MigrationCustomServerTorView(
                     title = stringRes(DesignR.string.migration_common_whatAreTheRisks).getValue(),
                     body = innerState.riskBody.getValue(),
                 )
-                Spacer(32.dp)
+                Spacer(36.dp)
                 ZashiButton(
                     state =
                         ButtonState(

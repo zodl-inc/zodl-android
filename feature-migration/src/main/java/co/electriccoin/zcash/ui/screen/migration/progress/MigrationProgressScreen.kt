@@ -180,7 +180,7 @@ fun MigrationProgressView(state: MigrationProgressState) {
             // pass sends silently while this screen is open — the screen is a pure live status
             // view now. The only button is "Got it" on completion; genuine attention states
             // (expired / unprovable anchor) surface via the home banner → reschedule flow.
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(28.dp))
 
             if (state.isComplete) {
                 state.onDone?.let { done ->

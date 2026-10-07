@@ -205,7 +205,7 @@ private fun RequestBottomBar(
                             .padding(horizontal = 24.dp)
                 )
 
-                Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingTiny))
+                Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingSmall))
 
                 ZashiButton(
                     colors = ZashiButtonDefaults.secondaryColors(),

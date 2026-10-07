@@ -223,7 +223,7 @@ private fun QrCodeBottomBar(
             modifier = buttonModifier
         )
 
-        Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingTiny))
+        Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingSmall))
 
         ZashiButton(
             text = stringResource(id = R.string.addressDetails_copyAddress),

@@ -86,7 +86,7 @@ fun PollEndedBottomSheet(
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
 
-            VerticalSpacer(24.dp)
+            VerticalSpacer(28.dp)
 
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
@@ -98,7 +98,7 @@ fun PollEndedBottomSheet(
                     )
             )
 
-            VerticalSpacer(12.dp)
+            VerticalSpacer(8.dp)
 
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),

@@ -11,6 +11,7 @@ import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.FastestServersResult
 import cash.z.ecc.android.sdk.model.ObserveFiatCurrencyResult
+import cash.z.ecc.android.sdk.model.OvkPolicy
 import cash.z.ecc.android.sdk.model.Pczt
 import cash.z.ecc.android.sdk.model.PercentDecimal
 import cash.z.ecc.android.sdk.model.Proposal
@@ -115,7 +116,8 @@ internal class MockSynchronizer(
 
     override suspend fun createProposedTransactions(
         proposal: Proposal,
-        usk: UnifiedSpendingKey
+        usk: UnifiedSpendingKey,
+        ovkPolicy: OvkPolicy
     ): Flow<TransactionSubmitResult> {
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} yet.")
     }

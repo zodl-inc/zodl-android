@@ -184,7 +184,7 @@ fun CrashReportingOptInFooter(
             )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),

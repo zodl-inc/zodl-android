@@ -106,7 +106,7 @@ private fun Content(
                     color = ZashiColors.Text.textTertiary,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(16.dp)
+                Spacer(20.dp)
                 ZashiButton(
                     modifier = Modifier.fillMaxWidth(),
                     state = state.change,
@@ -117,7 +117,7 @@ private fun Content(
                 )
             }
         }
-        Spacer(20.dp)
+        Spacer(24.dp)
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
             state = state.confirm,

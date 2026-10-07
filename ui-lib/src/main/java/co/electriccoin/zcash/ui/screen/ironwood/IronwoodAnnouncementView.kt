@@ -119,7 +119,7 @@ private fun Content(
 
         GuideParagraph(onGuideClick = state.onGuideClick)
 
-        Spacer(24.dp)
+        Spacer(28.dp)
         Spacer(1f)
 
         ZashiButton(

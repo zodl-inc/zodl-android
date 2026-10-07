@@ -77,6 +77,7 @@ fun ExchangeRateOptInView(state: ExchangeRateOptInState) {
                     fontWeight = FontWeight.SemiBold
                 )
             }
+            Spacer(modifier = Modifier.height(4.dp))
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
                 text = stringResource(R.string.currencyConversion_enable),

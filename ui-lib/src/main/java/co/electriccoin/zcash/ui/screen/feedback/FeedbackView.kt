@@ -183,7 +183,7 @@ private fun SupportMainContent(
             },
         )
 
-        Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingLg))
+        Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
 
         Spacer(
             modifier = Modifier.weight(1f)

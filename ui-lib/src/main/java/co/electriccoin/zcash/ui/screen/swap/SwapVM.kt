@@ -133,7 +133,26 @@ internal class SwapVM(
     init {
         viewModelScope.launch {
             val asset = getPreselectedSwapAsset()
-            internalState.update { if (it.swapAsset == null) it.copy(swapAsset = asset) else it }
+            val currentAssets = swapRepository.assets.value
+            val resolvedAsset =
+                currentAssets.data?.firstOrNull { it.assetId == asset.assetId }
+                    ?: asset.takeUnless { currentAssets.data != null && !currentAssets.isLoading }
+            internalState.update { if (it.swapAsset == null) it.copy(swapAsset = resolvedAsset) else it }
+        }
+        viewModelScope.launch {
+            swapRepository.assets.collect { assets ->
+                val catalog = assets.data ?: return@collect
+                internalState.update { state ->
+                    val selected = state.swapAsset ?: return@update state
+                    val refreshed = catalog.firstOrNull { it.assetId == selected.assetId }
+                    when {
+                        refreshed == selected -> state
+                        refreshed != null -> state.copy(swapAsset = refreshed)
+                        !assets.isLoading -> state.copy(swapAsset = null)
+                        else -> state
+                    }
+                }
+            }
         }
     }
 

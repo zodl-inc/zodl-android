@@ -69,7 +69,7 @@ fun DebugDBView(state: DebugDBState) {
                     state = state.execute,
                 )
 
-                Spacer(8.dp)
+                Spacer(12.dp)
                 Text(
                     "Query:",
                     color = ZashiColors.Text.textTertiary,

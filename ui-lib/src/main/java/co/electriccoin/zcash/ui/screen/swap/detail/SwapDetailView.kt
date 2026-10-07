@@ -205,6 +205,7 @@ private fun BottomBar(
                 style = ZashiTypography.textXs,
                 color = ZashiColors.Text.textTertiary
             )
+            Spacer(4.dp)
         }
 
         state.primaryButton?.let {

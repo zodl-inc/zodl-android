@@ -74,9 +74,9 @@ fun EphemeralHotfixView(
         if (innerState.info != null) {
             Spacer(24.dp)
             ZashiInfoText(text = innerState.info.getValue())
-            Spacer(24.dp)
+            Spacer(28.dp)
         } else {
-            Spacer(32.dp)
+            Spacer(36.dp)
         }
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),

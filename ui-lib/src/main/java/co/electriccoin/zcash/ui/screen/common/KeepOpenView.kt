@@ -120,7 +120,7 @@ private fun Content(
                 )
         )
 
-        VerticalSpacer(14.dp)
+        VerticalSpacer(18.dp)
 
         ZashiButton(
             state = state.button,

@@ -107,13 +107,13 @@ private fun Content(
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center
         )
-        VerticalSpacer(12.dp)
+        VerticalSpacer(16.dp)
         ZashiButton(
             modifier = Modifier.align(Alignment.CenterHorizontally),
             state = state.copy,
             defaultPrimaryColors = ZashiButtonDefaults.tertiaryColors()
         )
-        VerticalSpacer(24.dp)
+        VerticalSpacer(28.dp)
         Spacer(1f)
         ZashiButton(
             state = state.restore,

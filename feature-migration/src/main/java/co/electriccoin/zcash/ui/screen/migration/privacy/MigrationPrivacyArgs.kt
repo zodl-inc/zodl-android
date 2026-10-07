@@ -105,7 +105,7 @@ fun MigrationPrivacyView(
                 )
                 Spacer(32.dp)
                 TorToggleCard(innerState.checkbox)
-                Spacer(32.dp)
+                Spacer(36.dp)
                 ZashiButton(
                     state =
                         ButtonState(

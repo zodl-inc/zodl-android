@@ -23,6 +23,7 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneArgs
 import co.electriccoin.zcash.ui.screen.flexa.Flexa
 import co.electriccoin.zcash.ui.screen.more.MoreArgs
+import co.electriccoin.zcash.ui.screen.redeemgift.ScanGiftCardArgs
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
@@ -96,6 +97,12 @@ class IntegrationsVM(
                     onClick = ::onConnectKeystoneClick
                 ).takeIf { keystoneStatus != UNAVAILABLE },
                 ListItemState(
+                    title = stringRes(R.string.integrations_redeemGift),
+                    subtitle = stringRes(R.string.integrations_redeemGift_subtitle),
+                    bigIcon = imageRes(R.drawable.ic_integrations_gift),
+                    onClick = ::onRedeemGiftClick
+                ),
+                ListItemState(
                     title =
                         stringRes(co.electriccoin.zcash.ui.design.R.string.general_more) +
                             stringRes("..."),
@@ -112,4 +119,6 @@ class IntegrationsVM(
     private fun onFlexaClicked() = navigationRouter.replace(Flexa)
 
     private fun onMoreClick() = navigationRouter.forward(MoreArgs)
+
+    private fun onRedeemGiftClick() = navigationRouter.replace(ScanGiftCardArgs())
 }

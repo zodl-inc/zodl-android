@@ -77,7 +77,7 @@ internal fun ThemeSettingsView(state: ThemeSettingsState) {
                     state = state.saveButton,
                     defaultPrimaryColors = ZashiButtonDefaults.primaryColors(),
                 )
-                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
+                Spacer(modifier = Modifier.height(28.dp))
                 Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
             }
         }

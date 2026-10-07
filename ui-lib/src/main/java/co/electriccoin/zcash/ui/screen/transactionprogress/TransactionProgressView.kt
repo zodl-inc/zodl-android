@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +47,8 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.ImageResource
+import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.StyledStringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.loadingImageRes
@@ -112,6 +115,9 @@ private fun BottomBar(state: TransactionProgressState) {
                         .testTag(TransactionProgressTag.TX_PROGRESS_SECONDARY_BUTTON)
             )
         }
+        if (state.secondaryButton != null && state.primaryButton != null) {
+            Spacer(8.dp)
+        }
         if (state.primaryButton != null) {
             ZashiButton(
                 state = state.primaryButton,
@@ -161,23 +167,11 @@ private fun Content(state: TransactionProgressState, modifier: Modifier = Modifi
                         height = Dimension.wrapContent
                     }
         ) {
-            ImageOrLoading(state.image)
+            TransactionProgressImage(state.image)
             Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing2xl))
-            Text(
-                fontWeight = FontWeight.SemiBold,
-                style = ZashiTypography.header5,
-                text = state.title.getValue(),
-                color = ZashiColors.Text.textPrimary
-            )
+            TransactionProgressTitle(state.title)
             Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingLg))
-            Text(
-                fontWeight = FontWeight.Normal,
-                style = ZashiTypography.textSm,
-                text = state.subtitle.getValue(),
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                color = ZashiColors.Text.textPrimary
-            )
+            TransactionProgressSubtitle(state.subtitle)
 
             if (state.transactionIds != null) {
                 Spacer(32.dp)
@@ -218,7 +212,10 @@ private fun Content(state: TransactionProgressState, modifier: Modifier = Modifi
             if (state.middleButton != null) {
                 ZashiButton(
                     state = state.middleButton,
-                    modifier = Modifier.wrapContentWidth(),
+                    modifier =
+                        Modifier
+                            .padding(top = ZashiDimensions.Spacing.spacingXs)
+                            .wrapContentWidth(),
                     defaultPrimaryColors = ZashiButtonDefaults.tertiaryColors()
                 )
             }
@@ -226,8 +223,36 @@ private fun Content(state: TransactionProgressState, modifier: Modifier = Modifi
     }
 }
 
+/** The [title] of a progress screen, in [style]. */
 @Composable
-private fun ImageOrLoading(imageResource: ImageResource) {
+internal fun TransactionProgressTitle(
+    title: StringResource,
+    style: TextStyle = ZashiTypography.header5
+) {
+    Text(
+        fontWeight = FontWeight.SemiBold,
+        style = style,
+        text = title.getValue(),
+        color = ZashiColors.Text.textPrimary
+    )
+}
+
+/** The centered [subtitle] of a progress screen. */
+@Composable
+internal fun TransactionProgressSubtitle(subtitle: StyledStringResource) {
+    Text(
+        fontWeight = FontWeight.Normal,
+        style = ZashiTypography.textSm,
+        text = subtitle.getValue(),
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Center,
+        color = ZashiColors.Text.textPrimary
+    )
+}
+
+/** The image of a progress screen, or the progress animation for [ImageResource.Loading]. */
+@Composable
+internal fun TransactionProgressImage(imageResource: ImageResource) {
     when (imageResource) {
         is ImageResource.ByDrawable -> {
             Image(

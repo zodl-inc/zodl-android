@@ -5,6 +5,7 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
+import co.electriccoin.zcash.ui.common.repository.GiftCardSecretDetector.mayContainGiftCardSecret
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.design.component.AssetCardState
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -130,6 +131,33 @@ internal class ExactOutputVMMapper {
                 ),
             amount = fiat,
             lastValidAmount = fiat ?: fiatInnerState.lastValidAmount
+        )
+    }
+
+    /** Recomputes the token amount from user-entered fiat when a cached asset gains a live price. */
+    fun createAmountInnerState(
+        fiatInnerState: NumberTextFieldInnerState,
+        amountInnerState: NumberTextFieldInnerState,
+        asset: SwapAsset?
+    ): NumberTextFieldInnerState {
+        val fiat = fiatInnerState.amount
+        val amount =
+            if (fiat == null || asset?.usdPrice == null) {
+                null
+            } else {
+                fiat.divide(asset.usdPrice, MathContext.DECIMAL128)
+            }
+        return amountInnerState.copy(
+            innerTextFieldState =
+                amountInnerState.innerTextFieldState.copy(
+                    value =
+                        amount
+                            ?.let { stringResByDynamicNumber(it, includeGroupingSeparator = false) }
+                            ?: stringRes(""),
+                    selection = TextSelection.End
+                ),
+            amount = amount,
+            lastValidAmount = amount ?: amountInnerState.lastValidAmount
         )
     }
 
@@ -310,6 +338,9 @@ internal class ExactOutputVMMapper {
         }
 
         val amount = textField.innerState.amount
+        val isWaitingForPrices =
+            state.swapAssets.isLoading &&
+                (state.asset?.usdPrice == null || state.swapAssets.zecAsset?.usdPrice == null)
         return ButtonState(
             text =
                 when {
@@ -321,7 +352,7 @@ internal class ExactOutputVMMapper {
                         stringRes(co.electriccoin.zcash.ui.design.R.string.disconnectHWWallet_tryAgain)
                     }
 
-                    state.swapAssets.isLoading && state.swapAssets.data == null -> {
+                    isWaitingForPrices -> {
                         stringRes(co.electriccoin.zcash.ui.design.R.string.general_loading)
                     }
 
@@ -353,17 +384,20 @@ internal class ExactOutputVMMapper {
                     else -> {
                         state.swapAssets.data != null &&
                             state.asset != null &&
+                            state.asset.usdPrice != null &&
+                            state.swapAssets.zecAsset?.usdPrice != null &&
                             !textField.isError &&
                             amount != null &&
                             amount > BigDecimal(0) &&
                             (state.address.isNotBlank() || state.selectedABContact != null) &&
+                            !mayContainGiftCardSecret(state.selectedABContact?.address ?: state.address) &&
                             !state.isRequestingQuote
                     }
                 },
             isLoading =
                 state.isEphemeralAddressLocked ||
                     state.isRequestingQuote ||
-                    (state.swapAssets.isLoading && state.swapAssets.data == null),
+                    isWaitingForPrices,
         )
     }
 
@@ -377,6 +411,7 @@ internal class ExactOutputVMMapper {
                 when {
                     text.isEmpty() -> null
                     text.isBlank() -> stringRes("")
+                    mayContainGiftCardSecret(text) -> stringRes(R.string.swap_error_giftCardLink)
                     else -> null
                 },
             value = stringRes(text),

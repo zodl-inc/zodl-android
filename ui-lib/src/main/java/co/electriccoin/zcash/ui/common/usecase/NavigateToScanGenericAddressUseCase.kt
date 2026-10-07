@@ -26,6 +26,14 @@ class NavigateToScanGenericAddressUseCase(
         navigationRouter.back()
     }
 
+    /**
+     * Resolves the pending scan as cancelled without navigating, for a scan that opened a different flow instead
+     * (e.g. a gift card link), which takes care of navigation itself.
+     */
+    suspend fun onScanRedirected(args: ScanGenericAddressArgs) {
+        pipeline.emit(ScanAddressPipelineResult.Cancelled(args))
+    }
+
     suspend fun onScanned(
         address: String,
         amount: BigDecimal?,

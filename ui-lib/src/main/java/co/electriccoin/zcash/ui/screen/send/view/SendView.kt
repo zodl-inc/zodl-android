@@ -76,7 +76,6 @@ import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
-import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.RobotoMonoFontFamily
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
@@ -316,7 +315,7 @@ private fun SendForm(
                 Modifier.weight(1f)
         )
 
-        Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
+        Spacer(modifier = Modifier.height(28.dp))
 
         SendButton(
             amountState = amountState,

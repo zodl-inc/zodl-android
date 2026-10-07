@@ -224,14 +224,14 @@ private fun BottomSection(
                 state = state.secondaryButton,
                 defaultPrimaryColors = ZashiButtonDefaults.secondaryColors()
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
         }
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
             state = state.negativeButton,
             defaultPrimaryColors = ZashiButtonDefaults.destructive1Colors()
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
             state = state.positiveButton

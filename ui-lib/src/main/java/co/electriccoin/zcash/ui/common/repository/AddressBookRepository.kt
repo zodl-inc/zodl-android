@@ -33,12 +33,24 @@ import kotlin.time.Duration.Companion.seconds
 interface AddressBookRepository {
     val contacts: Flow<List<EnhancedABContact>?>
 
+    /**
+     * Saves a new contact.
+     *
+     * @throws GiftCardContactNotAllowedException when [address] is, or may contain, a gift card link or key; nothing
+     * is saved then
+     */
     fun saveContact(
         name: String,
         address: String,
         chain: String?,
     )
 
+    /**
+     * Replaces [contact] with the given values.
+     *
+     * @throws GiftCardContactNotAllowedException when [address] is, or may contain, a gift card link or key; nothing
+     * is saved then
+     */
     fun updateContact(
         contact: EnhancedABContact,
         name: String,
@@ -51,6 +63,20 @@ interface AddressBookRepository {
     fun observeContactByAddress(address: String): Flow<EnhancedABContact?>
 
     fun delete()
+}
+
+/**
+ * A contact's address was, or may have contained, a gift card link or key. Such a link carries the card's spending
+ * key, so it is never saved as a contact: from there it would be sent to a swap provider, or leave the device with the
+ * address book's backup. The message deliberately names neither the link nor the address.
+ */
+class GiftCardContactNotAllowedException : IllegalArgumentException("A gift card link cannot be saved as a contact")
+
+/**
+ * Throws [GiftCardContactNotAllowedException] when [address] is, or may contain, a gift card link or key.
+ */
+private fun requireNoGiftCardSecret(address: String) {
+    if (GiftCardSecretDetector.mayContainGiftCardSecret(address)) throw GiftCardContactNotAllowedException()
 }
 
 data class EnhancedABContact(
@@ -106,14 +132,17 @@ class AddressBookRepositoryImpl(
         name: String,
         address: String,
         chain: String?,
-    ) = updateAB {
-        Twig.info { "Address Book: saving a contact" }
-        addressBookDataSource.saveContact(
-            name = name,
-            address = address,
-            chain = chain,
-            key = it
-        )
+    ) {
+        requireNoGiftCardSecret(address)
+        updateAB {
+            Twig.info { "Address Book: saving a contact" }
+            addressBookDataSource.saveContact(
+                name = name,
+                address = address,
+                chain = chain,
+                key = it
+            )
+        }
     }
 
     override fun updateContact(
@@ -121,14 +150,17 @@ class AddressBookRepositoryImpl(
         name: String,
         address: String,
         chain: String?,
-    ) = updateAB {
-        addressBookDataSource.updateContact(
-            contact = contact.contact,
-            name = name,
-            address = address,
-            chain = chain,
-            key = it
-        )
+    ) {
+        requireNoGiftCardSecret(address)
+        updateAB {
+            addressBookDataSource.updateContact(
+                contact = contact.contact,
+                name = name,
+                address = address,
+                chain = chain,
+                key = it
+            )
+        }
     }
 
     override fun deleteContact(contact: EnhancedABContact) =

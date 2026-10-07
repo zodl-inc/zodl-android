@@ -107,7 +107,7 @@ private fun Content(
 
         Spacer(Modifier.weight(1f))
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
 
         state.secondaryButton?.let { secondary ->
             ZashiButton(
@@ -118,7 +118,7 @@ private fun Content(
                         .then(state.secondaryButtonTestTag?.let { Modifier.testTag(it) } ?: Modifier),
                 defaultPrimaryColors = ZashiButtonDefaults.secondaryColors(),
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
         }
 
         ZashiButton(

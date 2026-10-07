@@ -14,6 +14,16 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.15.0 (2852)] - 2026-09-28
+
+### Añadido:
+
+- Añadimos la exportación de claves de visualización en Configuración Avanzada, con opciones de código QR y texto de la clave.
+
+### Cambiado:
+
+- Actualizamos Coinholder Polling para admitir el protocolo de votación más reciente.
+
 ## [3.14.0 (2738)] - 2026-09-16
 
 ### Añadido:

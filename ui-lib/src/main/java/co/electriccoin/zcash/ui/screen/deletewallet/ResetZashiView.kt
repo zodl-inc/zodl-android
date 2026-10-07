@@ -128,7 +128,7 @@ private fun ResetZashiContent(
         Spacer(24.dp)
         Spacer(1f)
         CheckboxCard(state.checkboxState)
-        Spacer(28.dp)
+        Spacer(32.dp)
         ZashiButton(
             state = state.buttonState,
             modifier = Modifier.fillMaxWidth()

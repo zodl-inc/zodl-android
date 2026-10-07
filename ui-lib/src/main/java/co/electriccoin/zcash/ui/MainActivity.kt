@@ -31,6 +31,7 @@ import co.electriccoin.zcash.ui.common.compose.BindCompLocalProvider
 import co.electriccoin.zcash.ui.common.compose.DisableScreenTimeout
 import co.electriccoin.zcash.ui.common.extension.setContentCompat
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
+import co.electriccoin.zcash.ui.common.usecase.HandleExternalLinkUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationUIState
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
@@ -46,7 +47,6 @@ import co.electriccoin.zcash.ui.screen.authentication.RETRY_TRIGGER_DELAY
 import co.electriccoin.zcash.ui.screen.authentication.WrapAuthentication
 import co.electriccoin.zcash.ui.screen.authentication.view.AnimationConstants
 import co.electriccoin.zcash.ui.screen.authentication.view.WelcomeAnimationAutostart
-import co.electriccoin.zcash.ui.screen.scan.thirdparty.ThirdPartyScan
 import co.electriccoin.zcash.ui.screen.theme.ThemeVM
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
 import co.electriccoin.zcash.work.WorkIds
@@ -79,8 +79,8 @@ class MainActivity : FragmentActivity() {
 
     val configurationOverrideFlow = MutableStateFlow<ConfigurationOverride?>(null)
 
-    private val navigationRouter: NavigationRouter by inject()
     private val migrationAppHooks: MigrationAppHooks by inject()
+    private val handleExternalLink: HandleExternalLinkUseCase by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,19 +94,33 @@ class MainActivity : FragmentActivity() {
 
         monitorForBackgroundSync()
 
-        if (intent.data != null) {
-            navigationRouter.forward(ThirdPartyScan)
-        }
+        handleViewIntent(intent, isRecreated = savedInstanceState != null)
         handleMigrationIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
-        if (intent.data != null) {
-            navigationRouter.forward(ThirdPartyScan)
-        }
+        handleViewIntent(intent, isRecreated = false)
         handleMigrationIntent(intent)
+    }
+
+    /**
+     * Links from outside the app are never used as they are: `zcash:` URIs go to the third party scan screen and gift
+     * card app links to the gift card scanner, both asking the user to scan the code with the app instead. A gift
+     * card link is then dropped from the intent: it is not trusted, and it carries a spending secret that must not
+     * stay around in the activity's intent.
+     */
+    private fun handleViewIntent(
+        intent: Intent,
+        isRecreated: Boolean
+    ) {
+        val data = intent.data ?: return
+        val isFromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
+        val isGiftCardLink = handleExternalLink(host = data.host, isRedelivery = isRecreated || isFromHistory)
+        if (isGiftCardLink) {
+            intent.data = null
+        }
     }
 
     private fun handleMigrationIntent(intent: Intent): Boolean = migrationAppHooks.handleIntent(intent, lifecycleScope)

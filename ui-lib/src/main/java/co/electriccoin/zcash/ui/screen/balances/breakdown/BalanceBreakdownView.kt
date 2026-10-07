@@ -103,7 +103,7 @@ private fun BottomSheetContent(
                     }
                 }
             }
-            Spacer(32.dp)
+            Spacer(36.dp)
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
                 state = state.positive

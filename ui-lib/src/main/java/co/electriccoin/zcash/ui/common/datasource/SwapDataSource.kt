@@ -11,7 +11,13 @@ interface SwapDataSource {
     @Throws(ResponseException::class)
     suspend fun getSupportedTokens(): List<SwapAsset>
 
-    @Throws(ResponseException::class, QuoteLowAmountException::class)
+    /**
+     * Requests a quote from the swap provider.
+     *
+     * Throws [GiftCardAddressNotAllowedException], before anything is sent to the provider, when [refundAddress] or
+     * [destinationAddress] is a gift card link.
+     */
+    @Throws(ResponseException::class, QuoteLowAmountException::class, GiftCardAddressNotAllowedException::class)
     suspend fun requestQuote(
         swapMode: SwapMode,
         amount: BigDecimal,
@@ -35,6 +41,12 @@ class QuoteLowAmountException(
     val amount: BigDecimal?,
     val amountFormatted: BigDecimal?
 ) : Exception()
+
+/**
+ * A gift card link was given as a swap's recipient or refund address. The link carries the card's spending key in its
+ * fragment, so it must never reach a swap provider. The message deliberately names neither the link nor any address.
+ */
+class GiftCardAddressNotAllowedException : Exception("A gift card link cannot be used as a swap address")
 
 class AssetNotFoundException(
     tokenId: String

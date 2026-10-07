@@ -210,6 +210,7 @@ private fun BottomBar(
                 style = ZashiTypography.textXs,
                 color = ZashiColors.Text.textTertiary
             )
+            Spacer(4.dp)
         }
 
         Row(
@@ -223,7 +224,7 @@ private fun BottomBar(
                 )
             }
             if (state.secondaryButton != null && state.primaryButton != null) {
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(8.dp))
             }
             state.primaryButton?.let {
                 ZashiButton(
@@ -266,7 +267,7 @@ fun TransactionErrorFooter(errorFooter: ErrorFooter) {
             color = ZashiColors.Text.textError,
             textAlign = TextAlign.Center
         )
-        Spacer(32.dp)
+        Spacer(36.dp)
     }
 }
 

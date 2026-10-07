@@ -14,6 +14,16 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.15.0 (2852)] - 2026-09-28
+
+### Added:
+
+- We added viewing key export in Advanced Settings, with QR code and key text options.
+
+### Changed:
+
+- We updated Coinholder Polling to support the latest voting protocol.
+
 ## [3.14.0 (2738)] - 2026-09-16
 
 ### Added:

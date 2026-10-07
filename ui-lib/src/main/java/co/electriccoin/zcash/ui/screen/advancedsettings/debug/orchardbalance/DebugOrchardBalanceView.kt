@@ -84,7 +84,7 @@ fun DebugOrchardBalanceView(state: DebugOrchardBalanceState) {
                     },
                     singleLine = true,
                 )
-                Spacer(16.dp)
+                Spacer(20.dp)
                 ZashiButton(
                     modifier = Modifier.fillMaxWidth(),
                     state = state.setBalance,

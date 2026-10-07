@@ -165,7 +165,27 @@ internal class PayVM(
     init {
         viewModelScope.launch {
             val asset = getPreselectedSwapAsset()
-            internalState.update { if (it.asset == null) it.withAsset(asset) else it }
+            val currentAssets = swapRepository.assets.value
+            val resolvedAsset =
+                currentAssets.data?.firstOrNull { it.assetId == asset.assetId }
+                    ?: asset.takeUnless { currentAssets.data != null && !currentAssets.isLoading }
+            internalState.update { if (it.asset == null) it.withAsset(resolvedAsset) else it }
+        }
+        viewModelScope.launch {
+            swapRepository.assets.collect { assets ->
+                val catalog = assets.data ?: return@collect
+                internalState.update { state ->
+                    val selected = state.asset ?: return@update state
+                    val refreshed = catalog.firstOrNull { it.assetId == selected.assetId }
+                    when {
+                        refreshed == selected -> state
+                        refreshed != null && selected.usdPrice != null -> state.copy(asset = refreshed)
+                        refreshed != null -> state.withAsset(refreshed)
+                        !assets.isLoading -> state.withAsset(null)
+                        else -> state
+                    }
+                }
+            }
         }
     }
 
@@ -298,15 +318,27 @@ internal class PayVM(
      * observer feeding back into this same flow.
      */
     private fun InternalStateImpl.withAsset(asset: SwapAsset?): InternalStateImpl =
-        copy(
-            asset = asset,
-            fiatAmount =
-                exactOutputVMMapper.createFiatAmountInnerState(
-                    amountInnerState = amount,
-                    fiatInnerState = fiatAmount,
-                    asset = asset
-                )
-        )
+        if (amount.amount == null && fiatAmount.amount != null && asset?.usdPrice != null) {
+            copy(
+                asset = asset,
+                amount =
+                    exactOutputVMMapper.createAmountInnerState(
+                        fiatInnerState = fiatAmount,
+                        amountInnerState = amount,
+                        asset = asset
+                    )
+            )
+        } else {
+            copy(
+                asset = asset,
+                fiatAmount =
+                    exactOutputVMMapper.createFiatAmountInnerState(
+                        amountInnerState = amount,
+                        fiatInnerState = fiatAmount,
+                        asset = asset
+                    )
+            )
+        }
 }
 
 internal interface InternalState {

@@ -1,0 +1,5 @@
+Añadido:
+- Añadimos la exportación de claves de visualización en Configuración Avanzada, con opciones de código QR y texto de la clave.
+
+Cambiado:
+- Actualizamos Coinholder Polling para admitir el protocolo de votación más reciente.

@@ -65,6 +65,7 @@ fun TorOptInView(state: TorOptInState) {
                     fontWeight = FontWeight.SemiBold
                 )
             }
+            Spacer(4.dp)
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
                 text = stringResource(R.string.torSetup_learn_btnIn),

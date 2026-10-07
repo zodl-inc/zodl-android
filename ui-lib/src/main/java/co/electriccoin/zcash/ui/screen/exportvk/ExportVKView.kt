@@ -79,7 +79,7 @@ internal fun ExportVKView(state: ExportVKState) {
                     state = state.continueButton,
                     defaultPrimaryColors = ZashiButtonDefaults.primaryColors(),
                 )
-                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
+                Spacer(modifier = Modifier.height(28.dp))
                 Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
             }
         }

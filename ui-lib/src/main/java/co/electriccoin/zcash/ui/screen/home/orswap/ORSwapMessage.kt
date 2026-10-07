@@ -2,7 +2,6 @@ package co.electriccoin.zcash.ui.screen.home.orswap
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,7 +52,7 @@ fun ORSwapMessage(
         },
         end = {
             ZashiButton(
-                modifier = Modifier.height(36.dp),
+                minHeight = 36.dp,
                 state =
                     ButtonState(
                         onClick = state.onButtonClick,

@@ -132,7 +132,7 @@ private fun Content(
             )
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
 
         ZashiButton(
             state.next,

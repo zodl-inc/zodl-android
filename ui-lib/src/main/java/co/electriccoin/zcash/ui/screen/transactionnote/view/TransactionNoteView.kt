@@ -122,7 +122,7 @@ private fun BottomSheetContent(
                 style = ZashiTypography.textSm,
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Row(
                 modifier =

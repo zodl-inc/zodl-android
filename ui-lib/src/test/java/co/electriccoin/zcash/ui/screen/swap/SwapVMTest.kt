@@ -383,7 +383,11 @@ class SwapVMTest {
                     preselect = SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc"),
                     assets =
                         SwapAssetTestFixture.assetsData(
-                            data = listOf(SwapAssetTestFixture.asset(tokenTicker = "eth", chainTicker = "eth"))
+                            data =
+                                listOf(
+                                    SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc"),
+                                    SwapAssetTestFixture.asset(tokenTicker = "eth", chainTicker = "eth")
+                                )
                         ),
                     recipient = contactOnChain("eth")
                 )

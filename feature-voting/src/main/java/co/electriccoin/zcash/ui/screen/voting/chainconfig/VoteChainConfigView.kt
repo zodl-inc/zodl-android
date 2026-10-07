@@ -342,10 +342,7 @@ private fun BottomActions(
         AddCustomSourceButton(state)
         ZashiButton(
             state = state.saveChangesButton,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
@@ -353,10 +350,7 @@ private fun BottomActions(
 @Composable
 private fun AddCustomSourceButton(state: VoteChainConfigState) {
     ZashiButton(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(48.dp),
+        modifier = Modifier.fillMaxWidth(),
         state =
             ButtonState(
                 text = stringRes(R.string.coinVote_configSettings_addCustomSource),
@@ -501,18 +495,12 @@ private fun EditorSheet(
                     state.deleteButton?.let { deleteButton ->
                         ZashiButton(
                             state = deleteButton,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                     ZashiButton(
                         state = state.saveButton,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
