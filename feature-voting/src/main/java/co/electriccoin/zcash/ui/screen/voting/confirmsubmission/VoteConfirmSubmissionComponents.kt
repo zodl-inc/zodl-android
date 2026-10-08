@@ -245,9 +245,9 @@ private fun VoteSubmissionProgressCard(
                         .fillMaxWidth()
                         .padding(
                             start = 8.dp,
-                            top = 2.dp,
+                            top = 6.dp,
                             end = 8.dp,
-                            bottom = 4.dp
+                            bottom = 8.dp
                         ),
                 state = ctaButton,
             )

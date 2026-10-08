@@ -105,7 +105,7 @@ fun AdvancedSettings(
                 Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
                 Spacer(modifier = Modifier.weight(1f))
                 Info()
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 ZashiButton(
                     modifier =
                         Modifier

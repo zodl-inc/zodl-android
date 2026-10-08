@@ -102,7 +102,7 @@ fun SyncErrorContent(
                     state = disableTorButton
                 )
             }
-            Spacer(28.dp)
+            Spacer(32.dp)
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
                 state = state.support

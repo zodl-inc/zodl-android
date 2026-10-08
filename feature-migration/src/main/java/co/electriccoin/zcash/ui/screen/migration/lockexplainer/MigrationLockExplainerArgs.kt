@@ -108,7 +108,7 @@ fun MigrationLockExplainerView(
                         withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) { append(bullet3Bold) }
                     }
                 )
-                Spacer(32.dp)
+                Spacer(36.dp)
                 ZashiButton(
                     state =
                         ButtonState(

@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.design.component.PickerState
 import co.electriccoin.zcash.ui.design.component.TextFieldState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.contact.ABContactState
+import co.electriccoin.zcash.ui.screen.contact.RefusedGiftCardLinkAddress
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -41,6 +42,8 @@ class AddSwapABContactVM(
     private val contactName = MutableStateFlow("")
     private val selectedBlockchain = MutableStateFlow<SwapBlockchain?>(null)
     private val isSavingContact = MutableStateFlow(false)
+
+    private val refusedGiftCardLink = RefusedGiftCardLinkAddress()
 
     private val blockChainPickerState =
         selectedBlockchain
@@ -68,6 +71,10 @@ class AddSwapABContactVM(
                         stringRes(R.string.contact_chain_address_error_not_unique)
                     }
 
+                    ContactAddressValidationResult.GiftCardLink -> {
+                        stringRes(R.string.contact_error_giftCardLink)
+                    }
+
                     ContactAddressValidationResult.Valid -> {
                         null
                     }
@@ -80,7 +87,7 @@ class AddSwapABContactVM(
         )
 
     private val contactAddressState =
-        combine(contactAddress, contactAddressError) { address, contactAddressError ->
+        refusedGiftCardLink.withAddressError(contactAddress, contactAddressError) { address, contactAddressError ->
             TextFieldState(
                 value = stringRes(address),
                 error = contactAddressError,
@@ -186,11 +193,14 @@ class AddSwapABContactVM(
         viewModelScope.launch {
             if (isSavingContact.value) return@launch
             isSavingContact.update { true }
-            saveABContact(
-                name = contactName.value,
-                address = contactAddress.value,
-                chain = selectedBlockchain.value?.chainTicker
-            )
+            val address = contactAddress.value
+            val result =
+                saveABContact(
+                    name = contactName.value,
+                    address = address,
+                    chain = selectedBlockchain.value?.chainTicker
+                )
+            refusedGiftCardLink.onSaveResult(address, result)
             isSavingContact.update { false }
         }
 }

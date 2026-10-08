@@ -71,10 +71,12 @@ fun WalletBackupInfoView(
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textMd,
         )
-        Spacer(32.dp)
-        innerState.checkboxState?.let {
-            ZashiCheckbox(state = it)
-            Spacer(12.dp)
+        if (innerState.checkboxState != null) {
+            Spacer(32.dp)
+            ZashiCheckbox(state = innerState.checkboxState)
+            Spacer(16.dp)
+        } else {
+            Spacer(36.dp)
         }
         ZashiButton(
             state = innerState.secondaryButton,
@@ -83,7 +85,7 @@ fun WalletBackupInfoView(
                     .fillMaxWidth(),
             defaultPrimaryColors = ZashiButtonDefaults.secondaryColors(),
         )
-        Spacer(4.dp)
+        Spacer(8.dp)
         ZashiButton(
             state = innerState.primaryButton,
             modifier =

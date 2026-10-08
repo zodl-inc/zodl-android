@@ -149,7 +149,7 @@ private fun OnboardingMainContent(
             colors = ZashiButtonDefaults.tertiaryColors()
         )
 
-        Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingLg))
+        Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
 
         ZashiButton(
             onClick = onCreateWallet,
