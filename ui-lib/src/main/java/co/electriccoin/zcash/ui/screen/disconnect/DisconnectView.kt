@@ -128,7 +128,7 @@ private fun Content(
         // Currently connected card
         ConnectedCard(state = state)
 
-        Spacer(20.dp)
+        Spacer(24.dp)
 
         // Disconnect button
         ZashiButton(

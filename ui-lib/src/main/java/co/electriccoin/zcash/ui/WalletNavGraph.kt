@@ -136,6 +136,12 @@ import co.electriccoin.zcash.ui.screen.receive.info.ShieldedAddressInfoArgs
 import co.electriccoin.zcash.ui.screen.receive.info.ShieldedAddressInfoScreen
 import co.electriccoin.zcash.ui.screen.receive.info.TransparentAddressInfoArgs
 import co.electriccoin.zcash.ui.screen.receive.info.TransparentAddressInfoScreen
+import co.electriccoin.zcash.ui.screen.redeemgift.RedeemGiftArgs
+import co.electriccoin.zcash.ui.screen.redeemgift.RedeemGiftScreen
+import co.electriccoin.zcash.ui.screen.redeemgift.ScanGiftCardArgs
+import co.electriccoin.zcash.ui.screen.redeemgift.ScanGiftCardScreen
+import co.electriccoin.zcash.ui.screen.redeemgift.paste.PasteGiftCardLinkArgs
+import co.electriccoin.zcash.ui.screen.redeemgift.paste.PasteGiftCardLinkScreen
 import co.electriccoin.zcash.ui.screen.request.RequestArgs
 import co.electriccoin.zcash.ui.screen.request.RequestScreen
 import co.electriccoin.zcash.ui.screen.restore.info.AndroidSeedInfo
@@ -334,6 +340,9 @@ fun NavGraphBuilder.walletNavGraph(
         dialogComposable<BalanceBreakdownArgs> { BalanceBreakdownScreen() }
         composable<CrashReportOptIn> { AndroidCrashReportOptIn() }
         composable<ThirdPartyScan> { AndroidThirdPartyScan() }
+        composable<ScanGiftCardArgs> { ScanGiftCardScreen(it.toRoute()) }
+        composable<PasteGiftCardLinkArgs> { PasteGiftCardLinkScreen() }
+        composable<RedeemGiftArgs> { RedeemGiftScreen(it.toRoute()) }
         dialogComposable<SwapAssetPickerArgs> { SwapAssetPickerScreen(it.toRoute()) }
         dialogComposable<SwapBlockchainPickerArgs> { SwapBlockchainPickerScreen(it.toRoute()) }
         dialogComposable<CurrencyConversionPickerArgs> { CurrencyConversionPickerScreen(it.toRoute()) }

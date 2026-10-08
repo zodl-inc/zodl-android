@@ -193,7 +193,7 @@ fun MigrationCompleteView(state: MigrationCompleteState) {
                     state.isDustLocked -> {
                         Spacer(Modifier.height(20.dp))
                         LockedDisclaimer(dustAmount = state.remainingDust.getValue())
-                        Spacer(Modifier.height(20.dp))
+                        Spacer(Modifier.height(24.dp))
                         ZashiButton(
                             state =
                                 ButtonState(
@@ -218,7 +218,7 @@ fun MigrationCompleteView(state: MigrationCompleteState) {
                                     state.remainingDust.getValue()
                                 ).getValue(),
                         )
-                        Spacer(Modifier.height(20.dp))
+                        Spacer(Modifier.height(24.dp))
                         ZashiButton(
                             state =
                                 ButtonState(

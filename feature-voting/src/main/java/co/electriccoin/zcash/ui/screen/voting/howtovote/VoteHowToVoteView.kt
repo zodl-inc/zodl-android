@@ -134,14 +134,14 @@ private fun Content(
                     modifier = Modifier.weight(1f)
                 )
             }
-            Spacer(ZashiDimensions.Spacing.spacingXl)
+            Spacer(ZashiDimensions.Spacing.spacing2xl)
         }
 
         ZashiButton(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(bottom = ZashiDimensions.Spacing.spacingMd),
+                    .padding(bottom = ZashiDimensions.Spacing.spacingLg),
             state = state.continueButton
         )
     }

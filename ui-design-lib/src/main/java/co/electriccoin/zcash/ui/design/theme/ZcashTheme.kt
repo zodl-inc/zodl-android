@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.design.theme
 
 import android.graphics.Color
 import android.view.ContextThemeWrapper
+import android.view.Window
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.LocalActivity
@@ -15,9 +16,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RippleConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -44,6 +47,7 @@ import co.electriccoin.zcash.ui.design.theme.internal.PrimaryTypography
 import co.electriccoin.zcash.ui.design.theme.internal.Typography
 import co.electriccoin.zcash.ui.design.theme.typography.LocalZashiTypography
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypographyInternal
+import java.util.WeakHashMap
 
 /**
  * Commonly used top level app theme definition
@@ -69,9 +73,11 @@ fun ZcashTheme(
     val useOledDark = useDarkMode && isOledEnabled
     val (baseColors, extendedColors, zashiColors) = themePalettes(useDarkMode, useOledDark)
 
-    ZcashSystemBarTheme(useDarkMode, useOledDark)
+    val systemBarOwner = remember { SystemBarOwner() }
+    ZcashSystemBarTheme(systemBarOwner, useDarkMode, useOledDark)
 
     CompositionLocalProvider(
+        LocalSystemBarOwner provides systemBarOwner,
         LocalExtendedColors provides extendedColors,
         LocalZashiColors provides zashiColors,
         LocalZashiTypography provides ZashiTypographyInternal,
@@ -166,27 +172,108 @@ private fun themePalettes(
     else -> Triple(LightColorPalette, LightExtendedColorPalette, LightZashiColorsInternal)
 }
 
+/** What a [ZcashTheme] asked the system bars to look like. */
+private data class SystemBarAppearance(
+    val useDarkMode: Boolean,
+    val useOledDark: Boolean
+)
+
+/**
+ * One [ZcashTheme]'s claim on the system bars: the [appearance] it applies while [isActive], and the [parent] claim of
+ * the theme it is nested in. Used on the main thread only, by [ZcashSystemBarTheme].
+ */
+private class SystemBarOwner {
+    var appearance: SystemBarAppearance? = null
+    var parent: SystemBarOwner? = null
+    var isActive: Boolean = false
+
+    /** The closest enclosing claim that is still active, `null` when none is. */
+    fun activeAncestor(): SystemBarOwner? {
+        var candidate = parent
+        while (candidate != null && !candidate.isActive) candidate = candidate.parent
+        return candidate
+    }
+}
+
+/** The system bar claim of the enclosing [ZcashTheme], `null` for the outermost one. */
+private val LocalSystemBarOwner = staticCompositionLocalOf<SystemBarOwner?> { null }
+
+/**
+ * The claim that applied the system bar style of each window last. Used on the main thread only, by
+ * [ZcashSystemBarTheme].
+ */
+private object SystemBarOwnership {
+    private val owners = WeakHashMap<Window, SystemBarOwner>()
+
+    operator fun get(window: Window): SystemBarOwner? = owners[window]
+
+    operator fun set(
+        window: Window,
+        owner: SystemBarOwner?
+    ) {
+        if (owner == null) owners.remove(window) else owners[window] = owner
+    }
+}
+
+/**
+ * Applies the system bar style of this theme. A theme nested in another one with a different appearance (for example
+ * a screen that forces the dark one over a light app) gives the enclosing theme's style back when it leaves the
+ * composition. Without that, the bars keep the nested style on the screens that follow, because their own theme has
+ * not changed and so never applies its style again - e.g. white status bar icons on a light screen.
+ *
+ * The style is given back only while this theme still owns the bars of its window. A screen that leaves while another
+ * one has already applied its own style (a dark screen followed by another dark screen: the old one is disposed after
+ * the transition, when the new one has applied) must not undo it. Ownership goes back to the closest enclosing theme
+ * still in the composition, so that themes nested several levels deep that leave together end with the style of the
+ * theme that stays.
+ */
 @Composable
 private fun ZcashSystemBarTheme(
+    owner: SystemBarOwner,
     useDarkMode: Boolean,
     useOledDark: Boolean
 ) {
     val activity = LocalActivity.current
-    LaunchedEffect(useDarkMode, useOledDark) {
+    val enclosing by rememberUpdatedState(LocalSystemBarOwner.current)
+    DisposableEffect(activity, useDarkMode, useOledDark) {
+        val appearance = SystemBarAppearance(useDarkMode, useOledDark)
+        owner.appearance = appearance
+        owner.parent = enclosing
+        owner.isActive = true
         if (activity is ComponentActivity) {
-            if (useDarkMode) {
-                activity.enableEdgeToEdge(
-                    statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-                    navigationBarStyle =
-                        SystemBarStyle.dark(if (useOledDark) DefaultOledScrim else DefaultDarkScrim)
-                )
-            } else {
-                activity.enableEdgeToEdge(
-                    statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
-                    navigationBarStyle = SystemBarStyle.light(DefaultLightScrim, DefaultDarkScrim)
-                )
+            SystemBarOwnership[activity.window] = owner
+            activity.applySystemBars(useDarkMode, useOledDark)
+        }
+        onDispose {
+            owner.isActive = false
+            owner.parent = enclosing
+            if (activity is ComponentActivity && SystemBarOwnership[activity.window] === owner) {
+                val restored = owner.activeAncestor()
+                SystemBarOwnership[activity.window] = restored
+                val restoredAppearance = restored?.appearance
+                if (restoredAppearance != null && restoredAppearance != appearance) {
+                    activity.applySystemBars(restoredAppearance.useDarkMode, restoredAppearance.useOledDark)
+                }
             }
         }
+    }
+}
+
+private fun ComponentActivity.applySystemBars(
+    useDarkMode: Boolean,
+    useOledDark: Boolean
+) {
+    if (useDarkMode) {
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle =
+                SystemBarStyle.dark(if (useOledDark) DefaultOledScrim else DefaultDarkScrim)
+        )
+    } else {
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(DefaultLightScrim, DefaultDarkScrim)
+        )
     }
 }
 

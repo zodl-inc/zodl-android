@@ -84,14 +84,15 @@ class IntegrationsVMTest {
         }
 
     @Test
-    fun theSheetListsFlexaAndMoreButNoHardwareWalletEntry() =
+    fun theSheetListsFlexaGiftCardAndMoreButNoHardwareWalletEntry() =
         runTest {
             val vm = vm(zashi())
             collect(vm)
 
             val items = assertNotNull(vm.state.value).items
-            assertEquals(2, items.size)
-            assertEquals(R.string.settings_flexa, items.first().title.resourceId())
+            assertEquals(3, items.size)
+            assertEquals(R.string.settings_flexa, items[0].title.resourceId())
+            assertEquals(R.string.integrations_redeemGift, items[1].title.resourceId())
         }
 
     private fun vm(selectedAccount: WalletAccount) =

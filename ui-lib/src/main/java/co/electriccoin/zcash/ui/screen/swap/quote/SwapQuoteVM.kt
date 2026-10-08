@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.datasource.GiftCardAddressNotAllowedException
 import co.electriccoin.zcash.ui.common.datasource.QuoteLowAmountException
 import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
@@ -98,6 +99,10 @@ internal class SwapQuoteVM(
     private fun createErrorState(quote: SwapQuoteData.Error): SwapQuoteState.Error {
         val message =
             when (quote.exception) {
+                is GiftCardAddressNotAllowedException -> {
+                    stringRes(R.string.swap_error_giftCardLink)
+                }
+
                 is QuoteLowAmountException if quote.exception.amountFormatted != null -> {
                     stringRes(
                         R.string.swap_quote_error_too_low_try_at_least,

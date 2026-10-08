@@ -55,6 +55,9 @@ import co.electriccoin.zcash.ui.screen.more.MoreVM
 import co.electriccoin.zcash.ui.screen.pay.PayVM
 import co.electriccoin.zcash.ui.screen.qrcode.QrCodeVM
 import co.electriccoin.zcash.ui.screen.receive.ReceiveVM
+import co.electriccoin.zcash.ui.screen.redeemgift.RedeemGiftVM
+import co.electriccoin.zcash.ui.screen.redeemgift.ScanGiftCardVM
+import co.electriccoin.zcash.ui.screen.redeemgift.paste.PasteGiftCardLinkVM
 import co.electriccoin.zcash.ui.screen.request.viewmodel.RequestVM
 import co.electriccoin.zcash.ui.screen.restore.date.RestoreDateVM
 import co.electriccoin.zcash.ui.screen.restore.estimation.RestoreEstimationVM
@@ -184,6 +187,9 @@ val viewModelModule =
         viewModelOf(::PayVM)
         viewModelOf(::SwapQuoteVM)
         viewModelOf(::ScanGenericAddressVM)
+        viewModelOf(::ScanGiftCardVM)
+        viewModelOf(::PasteGiftCardLinkVM)
+        viewModelOf(::RedeemGiftVM)
         viewModelOf(::SelectSwapABRecipientVM)
         viewModelOf(::SwapBlockchainPickerVM)
         viewModelOf(::CurrencyConversionPickerVM)

@@ -57,6 +57,8 @@ class UpdateGenericABContactVM(
     private val isDeletingContact = MutableStateFlow(false)
     private val isLoadingContact = MutableStateFlow(true)
 
+    private val refusedGiftCardLink = RefusedGiftCardLinkAddress()
+
     private val _dialogState = MutableStateFlow<ErrorState?>(null)
     val dialogState = _dialogState.asStateFlow()
 
@@ -98,10 +100,10 @@ class UpdateGenericABContactVM(
             blockchain
             ->
             val validation =
-                if (blockchain == null || blockchain == zcashBlockchain) {
-                    zashiValidation
-                } else {
-                    swapValidation
+                when {
+                    swapValidation == ContactAddressValidationResult.GiftCardLink -> swapValidation
+                    blockchain == null || blockchain == zcashBlockchain -> zashiValidation
+                    else -> swapValidation
                 }
             when (validation) {
                 ContactAddressValidationResult.Invalid -> {
@@ -116,6 +118,10 @@ class UpdateGenericABContactVM(
                     }
                 }
 
+                ContactAddressValidationResult.GiftCardLink -> {
+                    stringRes(R.string.contact_error_giftCardLink)
+                }
+
                 ContactAddressValidationResult.Valid -> {
                     null
                 }
@@ -127,7 +133,7 @@ class UpdateGenericABContactVM(
         }
 
     private val addressState =
-        combine(contactAddress, addressValidation) { address, contactAddressError ->
+        refusedGiftCardLink.withAddressError(contactAddress, addressValidation) { address, contactAddressError ->
             TextFieldState(
                 value = stringRes(address),
                 error = contactAddressError,
@@ -271,12 +277,15 @@ class UpdateGenericABContactVM(
             if (isDeletingContact.value || isUpdatingContact.value || selectedBlockchain == null) return@launch
             originalContact.value?.let { original ->
                 isUpdatingContact.update { true }
-                updateContact(
-                    contact = original,
-                    name = contactName.value,
-                    address = contactAddress.value,
-                    chain = selectedBlockchain.takeIf { it != zcashBlockchain }?.chainTicker
-                )
+                val address = contactAddress.value
+                val result =
+                    updateContact(
+                        contact = original,
+                        name = contactName.value,
+                        address = address,
+                        chain = selectedBlockchain.takeIf { it != zcashBlockchain }?.chainTicker
+                    )
+                refusedGiftCardLink.onSaveResult(address, result)
                 isUpdatingContact.update { false }
             }
         }

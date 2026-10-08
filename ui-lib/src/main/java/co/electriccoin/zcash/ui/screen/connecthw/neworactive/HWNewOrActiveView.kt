@@ -85,7 +85,7 @@ fun HWNewOrActiveView(state: HWNewOrActiveState) {
                     color = ZashiColors.Text.textTertiary,
                 )
                 Spacer(Modifier.weight(1f))
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(28.dp))
                 ZashiButton(
                     state = state.activeDevice,
                     modifier =
@@ -94,7 +94,7 @@ fun HWNewOrActiveView(state: HWNewOrActiveState) {
                             .testTag(state.activeDeviceTestTag),
                     defaultPrimaryColors = ZashiButtonDefaults.secondaryColors(),
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(8.dp))
                 ZashiButton(
                     state = state.newDevice,
                     modifier =

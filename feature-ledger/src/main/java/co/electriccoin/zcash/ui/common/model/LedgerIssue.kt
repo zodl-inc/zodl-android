@@ -418,10 +418,12 @@ private fun unknownIssue(kind: LedgerIssueKind) =
     ).copy(inlineMessage = stringRes(R.string.ledger_error_unknown_inlineMessage))
 
 /**
- * The SDK raises [LedgerException.DeviceMismatch] only while signing; pairing reads the device once
- * and cannot, so enrollment reads the exception as a failure nothing more specific describes. A
- * Ledger that pairs an account again with another viewing key is [LedgerIssue.wrongDevice], which
- * the handshake shows without an exception.
+ * While signing, [LedgerException.DeviceMismatch] means the device is not the one the account is
+ * paired with. During enrollment the SDK raises it when the key exported for ZIP 32 account 0 does
+ * not belong to the device that answered the identity read; there is no paired device to name yet,
+ * so enrollment reads the exception as a failure nothing more specific describes. A Ledger that pairs
+ * an account again with another viewing key is [LedgerIssue.wrongDevice], which the handshake shows
+ * without an exception.
  */
 private fun wrongDevice(context: LedgerIssueContext) =
     when (context) {

@@ -110,7 +110,7 @@ private fun ConfirmationContent(
             color = ZashiColors.Text.textTertiary,
             textAlign = TextAlign.Center
         )
-        Spacer(32.dp)
+        Spacer(if (isUnverifiedPollWarning) 32.dp else 36.dp)
         actions.forEachIndexed { index, action ->
             ConfirmationButton(
                 state = action,

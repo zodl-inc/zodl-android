@@ -13,6 +13,7 @@ import co.electriccoin.zcash.ui.common.repository.BiometricRequest
 import co.electriccoin.zcash.ui.common.repository.BiometricsCancelledException
 import co.electriccoin.zcash.ui.common.repository.BiometricsFailureException
 import co.electriccoin.zcash.ui.common.repository.FlexaRepository
+import co.electriccoin.zcash.ui.common.repository.GiftCardRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -32,6 +33,7 @@ class ResetZashiUseCase(
     private val addressBookRepository: AddressBookRepository,
     private val metadataRepository: MetadataRepository,
     private val migrationAppHooks: MigrationAppHooks,
+    private val giftCardRepository: GiftCardRepository,
 ) {
     @Suppress("TooGenericExceptionCaught", "ThrowsCount")
     suspend operator fun invoke(keepFiles: Boolean) {
@@ -42,6 +44,7 @@ class ResetZashiUseCase(
             // 2026-07-30). Cancel while the accounts are still resolvable.
             migrationAppHooks.cancelMigrationWork()
             flexaRepository.disconnect()
+            giftCardRepository.closeAllSessions()
             deleteLocalFiles(keepFiles)
             closeSynchronizer()
             clearSDK()

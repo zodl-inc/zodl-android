@@ -29,6 +29,7 @@ import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import co.electriccoin.zcash.ui.common.repository.WalletSnapshotRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveKeepScreenOnSyncSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSeedMismatchUseCase
+import co.electriccoin.zcash.ui.common.usecase.SweepOrphanedGiftCardWalletsUseCase
 import co.electriccoin.zcash.voting.di.featureVotingModule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -52,6 +53,7 @@ class ZcashApplication : CoroutineApplication() {
     private val migrationNotifier: MigrationNotifier by inject()
     private val observeSeedMismatch: ObserveSeedMismatchUseCase by inject()
     private val observeKeepScreenOnSyncSession: ObserveKeepScreenOnSyncSessionUseCase by inject()
+    private val sweepOrphanedGiftCardWallets: SweepOrphanedGiftCardWalletsUseCase by inject()
 
     override fun onCreate() {
         super.onCreate()
@@ -100,6 +102,7 @@ class ZcashApplication : CoroutineApplication() {
         walletRepository.init()
         applicationScope.launch { observeSeedMismatch() }
         applicationScope.launch { observeKeepScreenOnSyncSession() }
+        applicationScope.launch { sweepOrphanedGiftCardWallets() }
     }
 
     /**
