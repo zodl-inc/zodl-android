@@ -1,0 +1,3 @@
+Añadido:
+- Añadimos las tarjetas de regalo. Ve a Más → Canjear tarjeta de regalo, escanea el código QR o pega el enlace, y el ZEC llega directo a tu billetera.
+- También puedes canjear tarjetas de regalo creadas en otras billeteras.

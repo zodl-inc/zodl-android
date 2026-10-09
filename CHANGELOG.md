@@ -7,6 +7,13 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.16.0 (2958)] - 2026-10-07
+
+### Added:
+
+- We added gift cards. Go to More → Redeem Gift Card, scan the QR code or paste the link, and the ZEC goes straight into your wallet.
+- You can also redeem gift cards created in other wallets.
+
 ### Added:
 
 - Redeem gift cards: scan a gift card QR code or paste its link from the new Redeem Gift Card item in the Home
