@@ -1,5 +1,8 @@
 package co.electriccoin.zcash.ui.screen.connectledger.scan
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,8 +49,9 @@ import co.electriccoin.zcash.ui.design.R as DesignR
 
 /**
  * The Figma "Advanced options" card of step 2: a header that expands and collapses the card, then
- * the explanation and the account index field with its label and hint. The header announces
- * whether the card is open through the expand and collapse accessibility actions.
+ * the explanation and the account index field with its label and hint. The body opens and closes
+ * the way the rows of the transaction details do, growing down from the header. The header
+ * announces whether the card is open through the expand and collapse accessibility actions.
  */
 @Composable
 internal fun LedgerAdvancedOptions(
@@ -100,7 +104,11 @@ internal fun LedgerAdvancedOptions(
                 tint = ZashiColors.Text.textPrimary,
             )
         }
-        if (state.isExpanded) {
+        AnimatedVisibility(
+            visible = state.isExpanded,
+            enter = expandVertically(expandFrom = Alignment.Top),
+            exit = shrinkVertically(shrinkTowards = Alignment.Top),
+        ) {
             Column(
                 modifier =
                     Modifier
