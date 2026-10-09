@@ -9,6 +9,45 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Added:
 
+- You can now connect a Ledger hardware wallet over Bluetooth: pair a Ledger account, then see it
+  in the new Wallets & Hardware picker, on Home and on Receive. Sending, shielding, swapping,
+  paying and ZIP-321 payments from a Ledger account now sign on the device over Bluetooth, and tax
+  export saves a Ledger account's history as `Ledger_Transaction_History_<year>.csv`; voting and
+  migration do not yet. The connect flow opens with an overview of what it will ask, then goes
+  through four numbered steps: turn on and unlock the Ledger, pick it and confirm the Bluetooth
+  pairing code, open the Zcash app, and approve the account export. It explains what to do when
+  Bluetooth is off, the Zcash app on the Ledger is out of date or needs a restart, or the
+  connection fails, and can turn Bluetooth on for you. It tells a failed pairing apart from a
+  Ledger that disconnected during setup, and stops waiting for the device after five minutes. A
+  Ledger account whose pairing is missing or unusable can be paired again from the signing sheet
+  with Pair Ledger; a different Ledger there shows Wrong Ledger instead of adding a second Ledger
+  account. After the wrong Ledger the signing sheet asks you to pick the device instead of
+  reconnecting to the same one.
+
+### Changed:
+
+- Disconnect Hardware Wallet in Advanced Settings now shows only while a Keystone or Ledger account
+  is selected, and disconnects that account; it used to show whenever the wallet held a Keystone
+  account, whichever account was selected.
+- The integrations sheet no longer lists Connect Keystone; hardware wallets, Keystone or Ledger, are
+  connected from the accounts sheet.
+
+### Fixed:
+
+- Choosing to keep the screen on while Zodl syncs now works after connecting a Ledger or a Keystone,
+  and the screen stays on until that sync has finished after a restore or a resync as well.
+- Notes, bookmarks and swap history of Keystone accounts no longer disappear after a re-import or
+  when stored data can't be read.
+
+## [3.16.0 (2958)] - 2026-10-07
+
+### Added:
+
+- We added gift cards. Go to More → Redeem Gift Card, scan the QR code or paste the link, and the ZEC goes straight into your wallet.
+- You can also redeem gift cards created in other wallets.
+
+### Added:
+
 - Redeem gift cards: scan a gift card QR code or paste its link from the new Redeem Gift Card item in the Home
   menu or from any address scanner, and the card's funds are swept into the selected account. Opening a
   `gift.zodl.com` link from another app only opens the in-app gift card scanner, which asks for the card to be
@@ -43,35 +82,6 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Export Viewing Key in Advanced Settings: share the selected account's Incoming or Full Viewing Key
   as a QR code or key string, revealed behind biometrics and behind a consent sheet for the Full key.
   The chooser carries the logo and name of the selected wallet, Zodl or Keystone.
-- You can now connect a Ledger hardware wallet over Bluetooth: pair a Ledger account, then see it
-  in the new Wallets & Hardware picker, on Home and on Receive. Sending, shielding, swapping,
-  paying and ZIP-321 payments from a Ledger account now sign on the device over Bluetooth, and tax
-  export saves a Ledger account's history as `Ledger_Transaction_History_<year>.csv`; voting and
-  migration do not yet. The connect flow opens with an overview of what it will ask, then goes
-  through four numbered steps: turn on and unlock the Ledger, pick it and confirm the Bluetooth
-  pairing code, open the Zcash app, and approve the account export. It explains what to do when
-  Bluetooth is off, the Zcash app on the Ledger is out of date or needs a restart, or the
-  connection fails, and can turn Bluetooth on for you. It tells a failed pairing apart from a
-  Ledger that disconnected during setup, and stops waiting for the device after five minutes. A
-  Ledger account whose pairing is missing or unusable can be paired again from the signing sheet
-  with Pair Ledger; a different Ledger there shows Wrong Ledger instead of adding a second Ledger
-  account. After the wrong Ledger the signing sheet asks you to pick the device instead of
-  reconnecting to the same one.
-
-### Changed:
-
-- Disconnect Hardware Wallet in Advanced Settings now shows only while a Keystone or Ledger account
-  is selected, and disconnects that account; it used to show whenever the wallet held a Keystone
-  account, whichever account was selected.
-- The integrations sheet no longer lists Connect Keystone; hardware wallets, Keystone or Ledger, are
-  connected from the accounts sheet.
-
-### Fixed:
-
-- Choosing to keep the screen on while Zodl syncs now works after connecting a Ledger or a Keystone,
-  and the screen stays on until that sync has finished after a restore or a resync as well.
-- Notes, bookmarks and swap history of Keystone accounts no longer disappear after a re-import or
-  when stored data can't be read.
 
 ### Changed:
 
@@ -79,11 +89,6 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   gradually as the sheet opens, closes or is dragged, instead of fading on a timer, and no longer flashes dark
   for a moment when a sheet opens.
 - The currency, swap asset and slippage sheets no longer close when dragged down.
-
-### Changed:
-
-- Buttons are now at least 48 dp tall by default, matching the design system. Compact buttons set a smaller
-  `minHeight` instead of a fixed height, so they still grow for wrapped text, and stacked buttons keep an 8 dp gap.
 
 ## [3.14.0 (2738)] - 2026-09-16
 

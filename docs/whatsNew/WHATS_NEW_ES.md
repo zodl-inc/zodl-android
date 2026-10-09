@@ -14,6 +14,13 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.16.0 (2958)] - 2026-10-07
+
+### Añadido:
+
+- Añadimos las tarjetas de regalo. Ve a Más → Canjear tarjeta de regalo, escanea el código QR o pega el enlace, y el ZEC llega directo a tu billetera.
+- También puedes canjear tarjetas de regalo creadas en otras billeteras.
+
 ## [3.15.0 (2852)] - 2026-09-28
 
 ### Añadido:
