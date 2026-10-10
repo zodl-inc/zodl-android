@@ -7,6 +7,16 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.17.0 (3149)] - 2026-10-10
+
+### Added:
+
+- We added support for Ledger hardware wallets. Connect your Ledger to receive ZEC and to send it with approval on your device. You can choose which Ledger account to connect; one account can be connected at a time.
+
+### Changed:
+
+- We updated our cryptography library for faster performance.
+
 ### Added:
 
 - You can now connect a Ledger hardware wallet over Bluetooth: pair a Ledger account, then see it
