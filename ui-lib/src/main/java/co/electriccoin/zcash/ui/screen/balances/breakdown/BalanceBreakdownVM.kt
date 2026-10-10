@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import java.math.BigDecimal
 import java.math.MathContext
@@ -31,7 +32,7 @@ class BalanceBreakdownVM(
 ) : ViewModel() {
     val state: StateFlow<BalanceBreakdownState?> =
         combine(
-            getBalancePools.observe(),
+            getBalancePools.observe().filterNotNull(),
             exchangeRateRepository.state,
         ) { pools, exchangeRate ->
             createState(pools, exchangeRate)

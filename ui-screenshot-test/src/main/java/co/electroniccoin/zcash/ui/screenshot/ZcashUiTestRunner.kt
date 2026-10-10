@@ -11,6 +11,7 @@ import co.electriccoin.zcash.di.providerModule
 import co.electriccoin.zcash.di.repositoryModule
 import co.electriccoin.zcash.di.useCaseModule
 import co.electriccoin.zcash.di.viewModelModule
+import co.electriccoin.zcash.ledger.di.featureLedgerModule
 import co.electriccoin.zcash.migration.di.featureMigrationModule
 import co.electriccoin.zcash.test.ZcashUiTestRunner
 import co.electriccoin.zcash.voting.di.featureVotingModule
@@ -43,7 +44,8 @@ class ZcashUiTestApplication : Application() {
                 mapperModule,
                 viewModelModule,
                 featureMigrationModule,
-                featureVotingModule
+                featureVotingModule,
+                featureLedgerModule
             )
         }
     }

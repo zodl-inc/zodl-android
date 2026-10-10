@@ -36,11 +36,15 @@ import co.electriccoin.zcash.ui.common.provider.IsSwapRefundWarningDismissedStor
 import co.electriccoin.zcash.ui.common.provider.IsSwapRefundWarningDismissedStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.KeepScreenOnSyncSessionProvider
+import co.electriccoin.zcash.ui.common.provider.KeepScreenOnSyncSessionProviderImpl
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProviderImpl
 import co.electriccoin.zcash.ui.common.provider.KtorNearApiProvider
 import co.electriccoin.zcash.ui.common.provider.LastNetworkActivityStorageProvider
 import co.electriccoin.zcash.ui.common.provider.LastNetworkActivityStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.LedgerAccountBindingProvider
+import co.electriccoin.zcash.ui.common.provider.LedgerAccountBindingProviderImpl
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.NearApiProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -128,10 +132,12 @@ val providerModule =
         singleOf(::SimpleSwapAssetProviderImpl) bind SimpleSwapAssetProvider::class
         singleOf(::SwapAssetCacheProviderImpl) bind SwapAssetCacheProvider::class
         factoryOf(::IsKeepScreenOnDuringRestoreProviderImpl) bind IsKeepScreenOnDuringRestoreProvider::class
+        factoryOf(::KeepScreenOnSyncSessionProviderImpl) bind KeepScreenOnSyncSessionProvider::class
         singleOf(::EphemeralAddressStorageProviderImpl) bind EphemeralAddressStorageProvider::class
         singleOf(::CMCApiProviderImpl) bind CMCApiProvider::class
         factoryOf(::KeystoneSDKProviderImpl) bind KeystoneSDKProvider::class
         singleOf(::LastNetworkActivityStorageProviderImpl) bind LastNetworkActivityStorageProvider::class
+        singleOf(::LedgerAccountBindingProviderImpl) bind LedgerAccountBindingProvider::class
         factoryOf(::IsBackgroundExecutionAvailableProvider)
         singleOf(::SdkEncryptedPreferenceRecoveryProviderImpl) bind SdkEncryptedPreferenceRecoveryProvider::class
     }

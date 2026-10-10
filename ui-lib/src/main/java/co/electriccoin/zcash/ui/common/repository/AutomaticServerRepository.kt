@@ -6,6 +6,7 @@ import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.datasource.resolveIsEndpointCustom
 import co.electriccoin.zcash.ui.common.datasource.resolveIsServerSelectionAutomatic
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
@@ -53,6 +54,7 @@ class AutomaticServerRepositoryImpl(
     private val walletRepository: WalletRepository,
     private val zashiProposalRepository: ZashiProposalRepository,
     private val keystoneProposalRepository: KeystoneProposalRepository,
+    private val ledgerProposalPipeline: LedgerProposalPipeline,
     private val applicationStateProvider: ApplicationStateProvider,
     private val synchronizerProvider: SynchronizerProvider,
     private val persistableWalletProvider: PersistableWalletProvider,
@@ -67,7 +69,9 @@ class AutomaticServerRepositoryImpl(
             zashiProposalRepository.transactionProposal.value != null ||
                 zashiProposalRepository.submitState.value != null ||
                 keystoneProposalRepository.transactionProposal.value != null ||
-                keystoneProposalRepository.submitState.value != null
+                keystoneProposalRepository.submitState.value != null ||
+                ledgerProposalPipeline.transactionProposal.value != null ||
+                ledgerProposalPipeline.submitState.value != null
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val walletBalances =

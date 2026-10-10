@@ -3,7 +3,7 @@ package co.electriccoin.zcash.ui.common.serialization.addressbook
 import cash.z.ecc.android.sdk.model.SeedPhrase
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.android.sdk.tool.DerivationTool
-import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.serialization.ADDRESS_BOOK_ENCRYPTION_KEY_SIZE
 import co.electriccoin.zcash.ui.common.serialization.ADDRESS_BOOK_FILE_IDENTIFIER_SIZE
 import co.electriccoin.zcash.ui.common.serialization.ADDRESS_BOOK_SALT_SIZE
@@ -68,7 +68,7 @@ class AddressBookKey(
         suspend fun derive(
             seedPhrase: SeedPhrase,
             network: ZcashNetwork,
-            account: WalletAccount
+            account: ZashiAccount
         ): AddressBookKey {
             val key =
                 DerivationTool.getInstance().deriveArbitraryAccountKey(

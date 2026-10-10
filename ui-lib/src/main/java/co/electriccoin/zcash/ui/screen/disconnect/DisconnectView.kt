@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.disconnect
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -30,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
-import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiBulletText
 import co.electriccoin.zcash.ui.design.component.ZashiButton
@@ -47,7 +47,6 @@ import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
-import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
 fun DisconnectView(state: DisconnectState) {
@@ -140,12 +139,14 @@ private fun Content(
 }
 
 @Composable
-private fun KeystoneConnectedIcon() {
+private fun ConnectedIcon(
+    @DrawableRes icon: Int
+) {
     Box(
         modifier = Modifier.size(40.dp)
     ) {
         Image(
-            painter = painterResource(id = co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone),
+            painter = painterResource(id = icon),
             contentDescription = null,
             modifier = Modifier.fillMaxSize()
         )
@@ -185,7 +186,7 @@ private fun ConnectedCard(state: DisconnectState) {
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 16.dp)
                 ) {
-                    KeystoneConnectedIcon()
+                    ConnectedIcon(state.icon)
                     Spacer(16.dp)
                     Column {
                         Text(
@@ -256,29 +257,5 @@ private fun AppBar(
 @Composable
 private fun DisconnectPreview() =
     ZcashTheme {
-        DisconnectView(
-            state =
-                DisconnectState(
-                    header = stringRes(R.string.disconnectHWWallet_title),
-                    title = stringRes(R.string.deleteKeystoneTitle),
-                    subtitle = stringRes(R.string.deleteKeystoneDesc),
-                    warningTitle = stringRes(R.string.disconnectHWWallet_mayInclude),
-                    warningItems =
-                        listOf(
-                            stringRes(R.string.disconnectHWWallet_bullet1),
-                            stringRes(R.string.disconnectHWWallet_bullet2),
-                            stringRes(R.string.disconnectHWWallet_bullet3),
-                        ),
-                    connectedTitle = stringRes(R.string.keystoneHW),
-                    connectedStatus = stringRes(R.string.currentlyConnected),
-                    infoText = stringRes(R.string.connectedHWInfo),
-                    disconnectButton =
-                        co.electriccoin.zcash.ui.design.component.ButtonState(
-                            stringRes(R.string.disconnectHWWallet_title),
-                            style = ButtonStyle.DESTRUCTIVE1
-                        ) {},
-                    confirmationDialog = null,
-                    onBack = {}
-                )
-        )
+        DisconnectView(state = DisconnectState.preview)
     }

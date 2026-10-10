@@ -85,12 +85,14 @@ private fun AccountSwitch(state: AccountSwitchState?) {
         when (state?.accountType) {
             AccountType.ZASHI -> painterResource(R.drawable.ic_item_zashi)
             AccountType.KEYSTONE -> painterResource(R.drawable.ic_item_keystone)
+            AccountType.LEDGER -> painterResource(R.drawable.ic_item_ledger)
             null -> null
         }
     val text =
         when (state?.accountType) {
             AccountType.ZASHI -> stringResource(co.electriccoin.zcash.ui.R.string.accounts_zashi)
             AccountType.KEYSTONE -> stringResource(co.electriccoin.zcash.ui.R.string.accounts_keystone)
+            AccountType.LEDGER -> stringResource(co.electriccoin.zcash.ui.R.string.accounts_ledger)
             null -> null
         }
 

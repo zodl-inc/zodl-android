@@ -7,6 +7,7 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
@@ -67,6 +68,7 @@ class QrCodeVM(
                         qrCodeType =
                             when (account) {
                                 is KeystoneAccount -> QrCodeType.KEYSTONE
+                                is LedgerAccount -> QrCodeType.LEDGER
                                 is ZashiAccount -> QrCodeType.ZASHI
                             }
                     )

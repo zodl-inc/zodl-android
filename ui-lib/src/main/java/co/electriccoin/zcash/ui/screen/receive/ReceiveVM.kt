@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.NavigationTargets
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
@@ -16,7 +17,7 @@ import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByAddress
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.DEFAULT
-import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.KEYSTONE
+import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.HW_WALLET
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.ZASHI
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressType.Sapling
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressType.Transparent
@@ -85,6 +86,7 @@ class ReceiveVM(
         icon =
             when (account) {
                 is KeystoneAccount -> co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone
+                is LedgerAccount -> co.electriccoin.zcash.ui.design.R.drawable.ic_item_ledger
                 is ZashiAccount -> R.drawable.ic_zec_round_full
             },
         title =
@@ -94,6 +96,14 @@ class ReceiveVM(
                         stringRes(R.string.accounts_keystone_shieldedAddress)
                     } else {
                         stringRes(R.string.accounts_keystone_transparentAddress)
+                    }
+                }
+
+                is LedgerAccount -> {
+                    if (type == Unified) {
+                        stringRes(R.string.accounts_ledger_shieldedAddress)
+                    } else {
+                        stringRes(R.string.accounts_ledger_transparentAddress)
                     }
                 }
 
@@ -118,7 +128,9 @@ class ReceiveVM(
         isExpanded = isExpanded,
         colorMode =
             when (account) {
-                is KeystoneAccount -> if (type == Unified) KEYSTONE else DEFAULT
+                is KeystoneAccount,
+                is LedgerAccount -> if (type == Unified) HW_WALLET else DEFAULT
+
                 is ZashiAccount -> if (type == Unified) ZASHI else DEFAULT
             },
         infoIconButton =
@@ -128,6 +140,7 @@ class ReceiveVM(
                     Unified -> {
                         when (account) {
                             is KeystoneAccount -> R.drawable.ic_receive_ks_shielded_info
+                            is LedgerAccount -> R.drawable.ic_receive_ks_shielded_info
                             is ZashiAccount -> R.drawable.ic_receive_zashi_shielded_info
                         }
                     }

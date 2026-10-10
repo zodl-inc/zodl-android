@@ -93,10 +93,8 @@
     <string name="about_privacyPolicy">Privacy Policy</string>
 
     <!-- ===== account_list ===== -->
-    <string name="keystone_drawer_title">Wallets &amp; Hardware</string>
-    <string name="keystone_drawer_banner_title">Keystone Hardware Wallet</string>
-    <string name="keystone_drawer_banner_desc">Get 5%% off airgapped hardware wallet. Promo code "Zodl".</string>
-    <string name="keystone_connect">Connect Hardware Wallet</string>
+    <string name="hwWallet_drawer_title">Wallets &amp; Hardware</string>
+    <string name="hwWallet_connect">Connect Hardware Wallet</string>
 
     <!-- ===== add_contact ===== -->
     <string name="addressBook_addNewContact">Add New Contact</string>
@@ -136,6 +134,7 @@
     <string name="keystoneHW">Keystone Hardware</string>
     <string name="currentlyConnected">Currently connected</string>
     <string name="connectedHWInfo">If you disconnect now, your Keystone will no longer be paired with your Zodl wallet.</string>
+    <string name="connectedHWInfo_ledger">If you disconnect now, your Ledger will no longer be paired with your Zodl wallet.</string>
     <string name="deleteWallet_sheet_title">Are you sure?</string>
     <string name="disconnectHWWallet_sheetDesc">Disconnecting the hardware wallet cannot be undone.</string>
     <string name="disconnectHWWallet_failureTitle">Disconnect Failed</string>
@@ -467,8 +466,6 @@
     <string name="settings_flexa">Pay with Flexa</string>
     <string name="settings_flexaDesc">Spend ZEC at thousands of retail locations.</string>
     <string name="integrations_flexa_biometric_message">Authenticate yourself to pay with Flexa</string>
-    <string name="settings_keystone">Connect Keystone</string>
-    <string name="settings_keystoneDesc">Connect airgapped hardware wallet to store shielded ZEC.</string>
     <string name="integrations_disabled_info_flexa">Switch from Keystone to Zodl to use Flexa.</string>
     <string name="integrations_dialog_more_options">More Options</string>
     <string name="integrations_near_swap">Swap %s with NEAR Intents</string>
@@ -485,6 +482,7 @@
     <string name="keepZodlOpenInstructionsHWWallet">Zodl is scanning the blockchain to retrieve your transactions. Older wallets can take hours to complete syncing. Follow these steps to prevent interruption:</string>
     <string name="keepZodlOpenSubtitleHWWallet">Your wallet is being synced.</string>
     <string name="keep_open_keystone_warning">Your Zodl funds cannot be spent until your Keystone wallet is synced.</string>
+    <string name="keep_open_hw_wallet_warning">You can\'t spend from this wallet until syncing is complete.</string>
     <string name="keepScreenOnSyncing">Keep screen on while syncing</string>
     <string name="keepZodlOpenInstructionsResyncing">Zodl is scanning the blockchain to retrieve your transactions. Older wallets can take hours to resync. Follow these steps to prevent interruption:</string>
     <string name="keepZodlOpenSubtitleResync">Your wallet is being resynced.</string>
@@ -903,7 +901,6 @@
     <string name="swapAndPay_totalFees">Total fees</string>
     <string name="swapAndPay_maxSlippage">Max slippage %s</string>
     <string name="swapAndPay_totalAmount">Total Amount</string>
-    <string name="swapAndPay_quote_zashi">Zodl</string>
     <string name="swapAndPay_swapQuoteSlippageWarn">You could receive up to %s less based on the %s slippage you set.</string>
     <string name="swapAndPay_getQuote">Get a quote</string>
     <string name="swapAndPay_custom">Custom</string>
@@ -948,6 +945,7 @@
     <!-- ===== tex_unsupported ===== -->
     <string name="texKeystone_title">Unsupported Address Type</string>
     <string name="texKeystone_warn1">Keystone doesn\'t currently support transfers to Binance TEX addresses.</string>
+    <string name="texLedger_warn1">Ledger doesn\'t currently support transfers to Binance TEX addresses.</string>
     <string name="texKeystone_warn2">Please use the steps below to complete your transaction.</string>
     <string name="texKeystone_workaround">Workaround Steps</string>
     <string name="tex_unsupported_step_1_badge">Step 1</string>

@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.WalletAccount
@@ -68,6 +69,10 @@ class ObserveTransactionSubmitStateUseCaseTest {
     ) = ObserveTransactionSubmitStateUseCase(
         keystoneProposalRepository =
             mockk<KeystoneProposalRepository> { every { submitState } returns MutableStateFlow(keystone) },
+        ledgerProposalPipeline =
+            mockk<LedgerProposalPipeline> {
+                every { submitState } returns MutableStateFlow<SubmitProposalState?>(null)
+            },
         zashiProposalRepository =
             mockk<ZashiProposalRepository> { every { submitState } returns MutableStateFlow(zashi) },
         accountDataSource =

@@ -14,7 +14,7 @@ class SaveORSwapUseCase(
     private val navigationRouter: NavigationRouter,
     // private val ephemeralAddressRepository: EphemeralAddressRepository,
 ) {
-    operator fun invoke() {
+    suspend operator fun invoke() {
         val quote = (swapRepository.quote.value as? SwapQuoteData.Success)?.quote
         if (quote != null) {
             metadataRepository.markTxAsSwap(

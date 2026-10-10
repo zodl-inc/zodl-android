@@ -3,10 +3,12 @@ package co.electriccoin.zcash.ui.screen.swap.quote
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.GiftCardAddressNotAllowedException
 import co.electriccoin.zcash.ui.common.model.SwapMode
+import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.repository.SwapQuoteData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.util.stringRes
 import io.mockk.every
 import io.mockk.mockk
@@ -63,6 +65,10 @@ class SwapQuoteVMGiftCardLinkTest {
             }
         return SwapQuoteVM(
             observeProposal = mockk<ObserveProposalUseCase> { every { observeNullable() } returns flowOf(null) },
+            observeSelectedWalletAccount =
+                mockk<ObserveSelectedWalletAccountUseCase> {
+                    every { require() } returns flowOf(mockk<WalletAccount>(relaxed = true))
+                },
             applicationStateProvider =
                 mockk<ApplicationStateProvider> { every { observeOnForeground() } returns emptyFlow() },
             swapRepository = swapRepository,
