@@ -3,7 +3,7 @@ package co.electriccoin.zcash.ui.common.usecase
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
-import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.HWWalletAccount
 import co.electriccoin.zcash.ui.common.model.toStorageKeyId
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.BiometricRequest
@@ -19,31 +19,27 @@ class DisconnectUseCase(
 ) {
     private val logger = loggableNot("DisconnectUseCase")
 
+    /**
+     * A disconnected hardware account must take its scheduled migration work with it — otherwise
+     * the lanes zombie-retry for an account that no longer exists. Deleting the account also drops
+     * a Ledger account's stored binding, and the software wallet is selected afterwards so the app
+     * is never left pointing at an account that is gone.
+     */
     @Suppress("TooGenericExceptionCaught")
-    suspend operator fun invoke(keystoneAccount: KeystoneAccount) =
+    suspend operator fun invoke(hwAccount: HWWalletAccount) =
         withContext(Dispatchers.IO) {
             biometricRepository.requestBiometrics(
                 BiometricRequest(message = stringRes(R.string.disconnect_hardware_wallet_biometric_message))
             )
 
-            // A disconnected Keystone account must take its scheduled migration work with it —
-            // otherwise the lanes zombie-retry for an account that no longer exists.
-            migrationAppHooks.cancelMigrationWork(keystoneAccount.sdkAccount.accountUuid.toStorageKeyId())
+            migrationAppHooks.cancelMigrationWork(hwAccount.sdkAccount.accountUuid.toStorageKeyId())
 
-            logger("deleteAccount $keystoneAccount")
-            // Delete the hardware wallet account
-            accountDataSource.deleteAccount(keystoneAccount)
+            logger("deleteAccount $hwAccount")
+            accountDataSource.deleteAccount(hwAccount)
 
             logger("deleteAccount success")
 
-            // Explicitly select Zashi account after disconnecting Keystone
             val zashiAccount = accountDataSource.getZashiAccount()
             accountDataSource.selectAccount(zashiAccount)
         }
-
-    suspend fun getKeystoneAccount(): KeystoneAccount? =
-        accountDataSource
-            .getAllAccounts()
-            .filterIsInstance<KeystoneAccount>()
-            .firstOrNull()
 }

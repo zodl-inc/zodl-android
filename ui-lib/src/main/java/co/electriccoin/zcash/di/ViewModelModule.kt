@@ -15,12 +15,13 @@ import co.electriccoin.zcash.ui.screen.advancedsettings.debug.orchardbalance.Deb
 import co.electriccoin.zcash.ui.screen.balances.BalanceWidgetVM
 import co.electriccoin.zcash.ui.screen.balances.breakdown.BalanceBreakdownVM
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceVM
+import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletVM
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerVM
+import co.electriccoin.zcash.ui.screen.connecthw.date.HWDateVM
+import co.electriccoin.zcash.ui.screen.connecthw.estimation.HWEstimationVM
+import co.electriccoin.zcash.ui.screen.connecthw.height.HWHeightVM
+import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveVM
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.KeystoneConnectVM
-import co.electriccoin.zcash.ui.screen.connectkeystone.date.KeystoneDateVM
-import co.electriccoin.zcash.ui.screen.connectkeystone.estimation.KeystoneEstimationVM
-import co.electriccoin.zcash.ui.screen.connectkeystone.height.KeystoneHeightVM
-import co.electriccoin.zcash.ui.screen.connectkeystone.neworactive.KeystoneNewOrActiveVM
 import co.electriccoin.zcash.ui.screen.contact.AddGenericABContactVM
 import co.electriccoin.zcash.ui.screen.contact.AddZashiABContactVM
 import co.electriccoin.zcash.ui.screen.contact.UpdateGenericABContactVM
@@ -214,9 +215,10 @@ val viewModelModule =
         viewModelOf(::ResetZashiVM)
         viewModelOf(::DisconnectVM)
         viewModelOf(::KeystoneConnectVM)
-        viewModelOf(::KeystoneNewOrActiveVM)
-        viewModelOf(::KeystoneDateVM)
-        viewModelOf(::KeystoneEstimationVM)
-        viewModelOf(::KeystoneHeightVM)
+        viewModelOf(::HWNewOrActiveVM)
+        viewModelOf(::HWDateVM)
+        viewModelOf(::HWEstimationVM)
+        viewModelOf(::HWHeightVM)
+        viewModelOf(::ChooseHWWalletVM)
         viewModelOf(::KeepOpenVM)
     }

@@ -241,6 +241,7 @@ dependencies {
     implementation(projects.preferenceImplAndroidLib)
     implementation(projects.spackleAndroidLib)
     implementation(projects.uiLib)
+    implementation(projects.featureLedger)
     implementation(projects.featureMigration)
     implementation(projects.featureVoting)
 

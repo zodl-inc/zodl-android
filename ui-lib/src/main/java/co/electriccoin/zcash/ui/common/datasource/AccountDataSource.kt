@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.datasource
 
 import android.content.Context
 import cash.z.ecc.android.sdk.Synchronizer
+import cash.z.ecc.android.sdk.ledger.LedgerAccountPairing
 import cash.z.ecc.android.sdk.model.Account
 import cash.z.ecc.android.sdk.model.AccountBalance
 import cash.z.ecc.android.sdk.model.AccountImportSetup
@@ -13,8 +14,11 @@ import cash.z.ecc.android.sdk.model.UnifiedFullViewingKey
 import cash.z.ecc.android.sdk.model.Zip32AccountIndex
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccountBindingData
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.provider.LedgerAccountBindingProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -25,6 +29,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedSendChannelException
@@ -75,6 +80,15 @@ interface AccountDataSource {
         birthday: BlockHeight? = null
     ): Account
 
+    /**
+     * Imports the account a Ledger device just exported and persists its binding next to it, so a
+     * later signing session knows which device and ZIP 32 account to sign with.
+     */
+    suspend fun importLedgerAccount(
+        pairing: LedgerAccountPairing,
+        birthday: BlockHeight? = null
+    ): Account
+
     suspend fun requestNextShieldedAddress(): String
 
     suspend fun deleteAccount(account: WalletAccount)
@@ -85,6 +99,7 @@ class AccountDataSourceImpl(
     private val synchronizerProvider: SynchronizerProvider,
     private val selectedAccountUUIDProvider: SelectedAccountUUIDProvider,
     private val persistableWalletProvider: PersistableWalletProvider,
+    private val ledgerAccountBindingProvider: LedgerAccountBindingProvider,
     private val context: Context,
 ) : AccountDataSource {
     private val log = loggableNot("AccountDataSource")
@@ -110,41 +125,30 @@ class AccountDataSourceImpl(
                         allSdkAccounts
                             .map { sdkAccount ->
                                 combine(
-                                    observeAccountBalance(synchronizer, sdkAccount),
-                                    observeUnifiedAddress(synchronizer, sdkAccount),
-                                    observeTransparentAddress(synchronizer, sdkAccount),
-                                    observeSaplingAddress(synchronizer, sdkAccount),
-                                    observeIsSelected(sdkAccount, allSdkAccounts),
-                                ) {
-                                    balance,
-                                    unifiedAddress,
-                                    transparentAddress,
-                                    saplingAddress,
-                                    isSelected,
-                                    ->
-                                    if (isKeystoneAccount(sdkAccount)) {
-                                        KeystoneAccount(
-                                            sdkAccount = sdkAccount,
+                                    combine(
+                                        observeAccountBalance(synchronizer, sdkAccount),
+                                        observeUnifiedAddress(synchronizer, sdkAccount),
+                                        observeTransparentAddress(synchronizer, sdkAccount),
+                                        observeSaplingAddress(synchronizer, sdkAccount),
+                                        observeIsSelected(sdkAccount, allSdkAccounts),
+                                    ) {
+                                        balance,
+                                        unifiedAddress,
+                                        transparentAddress,
+                                        saplingAddress,
+                                        isSelected,
+                                        ->
+                                        AccountSnapshot(
+                                            balance = balance,
                                             unifiedAddress = unifiedAddress,
                                             transparentAddress = transparentAddress,
-                                            orchardBalance = balance?.orchard,
-                                            ironwoodBalance = balance?.ironwood,
-                                            transparentBalance = balance?.unshielded,
+                                            saplingAddress = saplingAddress,
                                             isSelected = isSelected,
                                         )
-                                    } else {
-                                        ZashiAccount(
-                                            sdkAccount = sdkAccount,
-                                            unifiedAddress = unifiedAddress,
-                                            transparentAddress = transparentAddress,
-                                            saplingAddress = saplingAddress!!,
-                                            orchardBalance = balance?.orchard,
-                                            saplingBalance = balance?.sapling,
-                                            ironwoodBalance = balance?.ironwood,
-                                            transparentBalance = balance?.unshielded,
-                                            isSelected = isSelected,
-                                        )
-                                    }
+                                    },
+                                    observeLedgerBinding(sdkAccount),
+                                ) { snapshot, ledgerBinding ->
+                                    createWalletAccount(sdkAccount, snapshot, ledgerBinding)
                                 }
                             }.combineToFlow()
                     }
@@ -207,6 +211,43 @@ class AccountDataSourceImpl(
                 )
         }
 
+    /**
+     * A Ledger account with no binding can never sign, so the import and the binding write are
+     * all-or-nothing: if the binding cannot be stored, the just-imported account is deleted again
+     * before the failure propagates, cancellation included, so the rollback runs non-cancellable.
+     * It is best-effort — a failure to undo must not replace the exception that says what actually
+     * went wrong.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    override suspend fun importLedgerAccount(
+        pairing: LedgerAccountPairing,
+        birthday: BlockHeight?
+    ): Account =
+        withContext(Dispatchers.IO) {
+            val synchronizer = synchronizerProvider.getSynchronizer()
+            val created =
+                synchronizer.importAccountByUfvk(
+                    pairing.accountImportSetup(
+                        accountName = context.getString(R.string.accounts_ledger),
+                        birthday = birthday,
+                    )
+                )
+            try {
+                ledgerAccountBindingProvider.save(
+                    accountUuid = created.accountUuid,
+                    deviceIdentityEncoding = pairing.binding.deviceIdentity.encoding,
+                    zip32AccountIndex = pairing.binding.zip32AccountIndex.index,
+                )
+            } catch (e: Exception) {
+                withContext(NonCancellable) {
+                    runCatching { synchronizer.deleteAccount(created.accountUuid) }
+                        .onFailure { log("failed to roll back the Ledger account import", it) }
+                }
+                throw e
+            }
+            created
+        }
+
     @Suppress("TooGenericExceptionCaught")
     override suspend fun requestNextShieldedAddress(): String {
         var result: String? = null
@@ -233,6 +274,12 @@ class AccountDataSourceImpl(
         }
     }
 
+    /**
+     * Clearing a Ledger account's stored binding happens after the deletion has already succeeded,
+     * and only best-effort: the account is gone by then, so reporting a failure would tell the user
+     * to retry something that cannot be retried. An orphaned binding is keyed by an account UUID
+     * that no longer resolves.
+     */
     @Suppress("TooGenericExceptionCaught")
     override suspend fun deleteAccount(account: WalletAccount) =
         withContext(Dispatchers.IO) {
@@ -250,15 +297,83 @@ class AccountDataSourceImpl(
                 // Re-throw as specific exception
                 throw AccountDeletionException("Failed to delete account: ${e.message}", e)
             }
+            if (account is LedgerAccount) {
+                runCatching { ledgerAccountBindingProvider.clear(account.sdkAccount.accountUuid) }
+                    .onFailure { log("failed to clear the Ledger binding of a deleted account", it) }
+            }
         }
 
     private fun isKeystoneAccount(sdkAccount: Account) = sdkAccount.keySource?.lowercase() == KEYSTONE_KEYSOURCE
+
+    private fun isLedgerAccount(sdkAccount: Account) =
+        sdkAccount.keySource?.lowercase() == Account.LEDGER_KEY_SOURCE
+
+    private fun isHWAccount(sdkAccount: Account) =
+        isKeystoneAccount(sdkAccount) || isLedgerAccount(sdkAccount)
+
+    /**
+     * A Ledger account with no stored binding still displays and receives; it just cannot derive
+     * anything, which is why its index stays null rather than being guessed as zero.
+     */
+    private fun createWalletAccount(
+        sdkAccount: Account,
+        snapshot: AccountSnapshot,
+        ledgerBinding: LedgerAccountBindingData?
+    ): WalletAccount =
+        when {
+            isLedgerAccount(sdkAccount) -> {
+                LedgerAccount(
+                    sdkAccount = sdkAccount,
+                    unifiedAddress = snapshot.unifiedAddress,
+                    transparentAddress = snapshot.transparentAddress,
+                    orchardBalance = snapshot.balance?.orchard,
+                    ironwoodBalance = snapshot.balance?.ironwood,
+                    transparentBalance = snapshot.balance?.unshielded,
+                    isSelected = snapshot.isSelected,
+                    deviceIdentity = ledgerBinding?.deviceIdentityEncoding,
+                    zip32AccountIndex = ledgerBinding?.zip32AccountIndex,
+                )
+            }
+
+            isKeystoneAccount(sdkAccount) -> {
+                KeystoneAccount(
+                    sdkAccount = sdkAccount,
+                    unifiedAddress = snapshot.unifiedAddress,
+                    transparentAddress = snapshot.transparentAddress,
+                    orchardBalance = snapshot.balance?.orchard,
+                    ironwoodBalance = snapshot.balance?.ironwood,
+                    transparentBalance = snapshot.balance?.unshielded,
+                    isSelected = snapshot.isSelected,
+                )
+            }
+
+            else -> {
+                ZashiAccount(
+                    sdkAccount = sdkAccount,
+                    unifiedAddress = snapshot.unifiedAddress,
+                    transparentAddress = snapshot.transparentAddress,
+                    saplingAddress = snapshot.saplingAddress!!,
+                    orchardBalance = snapshot.balance?.orchard,
+                    saplingBalance = snapshot.balance?.sapling,
+                    ironwoodBalance = snapshot.balance?.ironwood,
+                    transparentBalance = snapshot.balance?.unshielded,
+                    isSelected = snapshot.isSelected,
+                )
+            }
+        }
+
+    private fun observeLedgerBinding(sdkAccount: Account): Flow<LedgerAccountBindingData?> =
+        if (isLedgerAccount(sdkAccount)) {
+            ledgerAccountBindingProvider.observe(sdkAccount.accountUuid)
+        } else {
+            flowOf(null)
+        }
 
     private fun observeIsSelected(sdkAccount: Account, allAccounts: List<Account>) =
         selectedAccountUUIDProvider
             .uuid
             .map { uuid ->
-                if (isKeystoneAccount(sdkAccount)) {
+                if (isHWAccount(sdkAccount)) {
                     sdkAccount.accountUuid == uuid || allAccounts.size == 1
                 } else {
                     uuid == null || sdkAccount.accountUuid == uuid || allAccounts.size == 1
@@ -271,7 +386,7 @@ class AccountDataSourceImpl(
             log("deriving unified address for ${sdkAccount.accountUuid}")
 
             val addressRequest =
-                if (isKeystoneAccount(sdkAccount)) {
+                if (isHWAccount(sdkAccount)) {
                     UnifiedAddressRequest.Orchard
                 } else {
                     UnifiedAddressRequest.shielded
@@ -338,7 +453,7 @@ class AccountDataSourceImpl(
         }
 
     private fun observeSaplingAddress(synchronizer: Synchronizer, sdkAccount: Account): Flow<String?> =
-        if (isKeystoneAccount(sdkAccount)) {
+        if (isHWAccount(sdkAccount)) {
             flowOf(null)
         } else {
             flow {
@@ -353,6 +468,18 @@ class AccountDataSourceImpl(
 private data class AddressRequest(
     val accountUuid: AccountUuid,
     val responseChannel: Channel<String>
+)
+
+/**
+ * Everything one account's per-field flows contribute, bundled so the Ledger binding can be
+ * combined in as a sixth source (kotlinx's typed [combine] tops out at five).
+ */
+private data class AccountSnapshot(
+    val balance: AccountBalance?,
+    val unifiedAddress: String,
+    val transparentAddress: String,
+    val saplingAddress: String?,
+    val isSelected: Boolean,
 )
 
 private const val RETRY_DELAY = 3L

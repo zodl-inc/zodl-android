@@ -13,26 +13,36 @@ import com.google.crypto.tink.subtle.Hkdf
 import com.google.crypto.tink.util.SecretBytes
 
 /**
- * The long-term key that can decrypt an account's encrypted address book.
+ * The long-term key that can decrypt an account's encrypted metadata: notes, bookmarks, read
+ * memos and swaps.
  */
 class MetadataKey(
     val bytes: List<SecretBytes>
 ) {
     /**
-     * Derives the filename that this key is able to decrypt.
+     * Derives the filename that the canonical (first) key is able to decrypt.
+     */
+    fun fileIdentifier(): String = fileIdentifiers().first()
+
+    /**
+     * Derives the filename each entry of [bytes] is able to decrypt, in the same preference
+     * order as [bytes]. Data found under a non-canonical (non-first) entry's identifier should
+     * be migrated to [fileIdentifier].
      */
     @OptIn(ExperimentalStdlibApi::class)
-    fun fileIdentifier(): String {
+    fun fileIdentifiers(): List<String> {
         val access = InsecureSecretKeyAccess.get()
-        val fileIdentifier =
-            Hkdf.computeHkdf(
-                "HMACSHA256",
-                bytes.first().toByteArray(access),
-                null,
-                "file_identifier".toByteArray(),
-                METADATA_FILE_IDENTIFIER_SIZE
-            )
-        return "zashi-metadata-" + fileIdentifier.toHexString()
+        return bytes.map { secretBytes ->
+            val fileIdentifier =
+                Hkdf.computeHkdf(
+                    "HMACSHA256",
+                    secretBytes.toByteArray(access),
+                    null,
+                    "file_identifier".toByteArray(),
+                    METADATA_FILE_IDENTIFIER_SIZE
+                )
+            "zashi-metadata-" + fileIdentifier.toHexString()
+        }
     }
 
     fun deriveEncryptionKey(salt: ByteArray): ChaCha20Poly1305Key =

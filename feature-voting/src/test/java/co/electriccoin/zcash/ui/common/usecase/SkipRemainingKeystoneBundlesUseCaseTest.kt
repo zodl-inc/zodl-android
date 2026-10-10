@@ -4,6 +4,7 @@ import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.fixture.AccountFixture
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
+import cash.z.ecc.android.sdk.ledger.LedgerAccountPairing
 import cash.z.ecc.android.sdk.model.Account
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.Zatoshi
@@ -210,6 +211,11 @@ private class FakeAccountDataSource(
         index: Long,
         birthday: BlockHeight?
     ): Account = unsupported()
+
+    override suspend fun importLedgerAccount(
+        pairing: LedgerAccountPairing,
+        birthday: BlockHeight?
+    ): cash.z.ecc.android.sdk.model.Account = error("unsupported")
 
     override suspend fun requestNextShieldedAddress(): String = unsupported()
 

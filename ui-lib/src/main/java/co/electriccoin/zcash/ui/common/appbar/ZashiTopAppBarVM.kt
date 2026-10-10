@@ -9,7 +9,9 @@ import co.electriccoin.zcash.preference.model.entry.BooleanPreferenceDefault
 import co.electriccoin.zcash.ui.BuildConfig
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.DistributionDimension
+import co.electriccoin.zcash.ui.common.model.HWWalletAccount
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
@@ -65,10 +67,10 @@ class ZashiTopAppBarVM(
                     AccountSwitchState(
                         onAccountTypeClick = ::onAccountTypeClicked,
                         accountType =
-                            if (current is KeystoneAccount) {
-                                ZashiMainTopAppBarState.AccountType.KEYSTONE
-                            } else {
-                                ZashiMainTopAppBarState.AccountType.ZASHI
+                            when (current) {
+                                is KeystoneAccount -> ZashiMainTopAppBarState.AccountType.KEYSTONE
+                                is LedgerAccount -> ZashiMainTopAppBarState.AccountType.LEDGER
+                                else -> ZashiMainTopAppBarState.AccountType.ZASHI
                             },
                     )
                 },
@@ -105,8 +107,8 @@ class ZashiTopAppBarVM(
         viewModelScope.launch {
             if (getVersionInfo().distribution == DistributionDimension.FOSS) {
                 val isFlexaAvailable = configurationRepository.isFlexaAvailable()
-                val isKSConnected = accounts.orEmpty().any { it is KeystoneAccount }
-                if (!isFlexaAvailable && isKSConnected) {
+                val isHWWalletConnected = accounts.orEmpty().any { it is HWWalletAccount }
+                if (!isFlexaAvailable && isHWWalletConnected) {
                     navigationRouter.forward(MoreArgs)
                 } else {
                     navigationRouter.forward(IntegrationsArgs)

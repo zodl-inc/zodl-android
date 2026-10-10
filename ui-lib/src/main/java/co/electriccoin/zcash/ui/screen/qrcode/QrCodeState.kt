@@ -30,5 +30,6 @@ sealed class QrCodeState {
 
 enum class QrCodeType {
     ZASHI,
-    KEYSTONE
+    KEYSTONE,
+    LEDGER
 }

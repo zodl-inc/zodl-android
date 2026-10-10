@@ -6,6 +6,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.common.repository.ReceiveTransaction
@@ -49,6 +50,7 @@ class ExportTaxUseCase(
                     context.cacheDir,
                     when (accountDataSource.getSelectedAccount()) {
                         is KeystoneAccount -> "Keystone_Transaction_History_$previousYear.csv"
+                        is LedgerAccount -> "Ledger_Transaction_History_$previousYear.csv"
                         is ZashiAccount -> "Zodl_Transaction_History_$previousYear.csv"
                     }
                 )

@@ -3,7 +3,10 @@ package co.electriccoin.zcash.ui.common.usecase
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.MessageAvailabilityDataSource
+import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
@@ -11,6 +14,7 @@ import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionArgs
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -19,6 +23,8 @@ import kotlinx.coroutines.launch
 
 class ShieldFundsUseCase(
     private val keystoneProposalRepository: KeystoneProposalRepository,
+    private val ledgerProposalPipeline: LedgerProposalPipeline,
+    private val ledgerNavigator: LedgerNavigator,
     private val zashiProposalRepository: ZashiProposalRepository,
     private val navigationRouter: NavigationRouter,
     private val accountDataSource: AccountDataSource,
@@ -38,6 +44,10 @@ class ShieldFundsUseCase(
                 when (accountDataSource.getSelectedAccount()) {
                     is KeystoneAccount -> {
                         createKeystoneShieldProposal()
+                    }
+
+                    is LedgerAccount -> {
+                        createLedgerShieldProposal()
                     }
 
                     is ZashiAccount -> {
@@ -81,6 +91,25 @@ class ShieldFundsUseCase(
             navigationRouter.forward(SignKeystoneTransactionArgs)
         } catch (e: Exception) {
             keystoneProposalRepository.clear()
+            navigateToError(ErrorArgs.ShieldingGeneralError(e))
+        }
+    }
+
+    /**
+     * A cancelled shield drops its half-made proposal, as nothing but the sign sheet would hold it,
+     * and propagates the cancellation instead of reporting it as a shielding error.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun createLedgerShieldProposal() {
+        try {
+            ledgerProposalPipeline.createShieldProposal()
+            ledgerProposalPipeline.createPCZTFromProposal()
+            ledgerNavigator.forwardToSign()
+        } catch (e: CancellationException) {
+            ledgerProposalPipeline.clear()
+            throw e
+        } catch (e: Exception) {
+            ledgerProposalPipeline.clear()
             navigateToError(ErrorArgs.ShieldingGeneralError(e))
         }
     }

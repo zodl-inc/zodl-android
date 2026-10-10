@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<resources>
+
+    <!-- Ledger connect steps -->
+    <string name="ledger_flow_title">Connect Your Ledger</string>
+    <string name="ledger_flow_step">Step %1$d of %2$d</string>
+    <string name="ledger_intro_message">Pair your Ledger with Zodl over Bluetooth in 4 quick steps.</string>
+    <string name="ledger_intro_step1_title">Turn on and unlock</string>
+    <string name="ledger_intro_step1_message">Enter your PIN and stay on the home screen.</string>
+    <string name="ledger_intro_step2_title">Select your Ledger</string>
+    <string name="ledger_intro_step2_message">Choose it from the list, then check that the pairing codes match.</string>
+    <string name="ledger_intro_step3_title">Open the Zcash app</string>
+    <string name="ledger_intro_step3_message">Zodl asks your Ledger to open it. Confirm on the device.</string>
+    <string name="ledger_intro_step4_title">Approve on your Ledger</string>
+    <string name="ledger_intro_step4_message">Allow Zodl to view your Zcash account.</string>
+    <string name="ledger_intro_callout_title">Keep It Close</string>
+    <string name="ledger_intro_callout_message">Keep your Ledger near your phone until setup is done.</string>
+    <string name="ledger_intro_cta">Get Started</string>
+    <string name="ledger_connect_turnOn_title">Turn On and Unlock</string>
+    <string name="ledger_connect_turnOn_message">Turn on your Ledger and enter your PIN.</string>
+    <string name="ledger_connect_turnOn_check1">Your Ledger is unlocked and on its home screen</string>
+    <string name="ledger_connect_turnOn_check2">Bluetooth is on for your phone</string>
+    <string name="ledger_connect_turnOn_check3">Your Ledger is near your phone</string>
+    <string name="ledger_connect_turnOn_callout_title">Don’t Open the Zcash App Yet</string>
+    <string name="ledger_connect_turnOn_callout_message">Pairing works best from the home screen. Zodl opens the Zcash app for you in step 3.</string>
+    <string name="ledger_connect_continue">Continue</string>
+    <string name="ledger_openApp_title">Open the Zcash App</string>
+    <string name="ledger_openApp_message">Confirm on your Ledger to open the Zcash app.</string>
+    <string name="ledger_openApp_check1">Confirm “Open Zcash” on your Ledger</string>
+    <string name="ledger_openApp_check2">Keep the Zcash app open until setup is done</string>
+    <string name="ledger_openApp_callout_title">Don’t Have the Zcash App?</string>
+    <string name="ledger_openApp_callout_message">Install it from My Ledger in Ledger Wallet, then come back.</string>
+    <string name="ledger_handshake_title">Approve on Your Ledger</string>
+    <string name="ledger_handshake_message">Your Ledger will ask to share your Zcash account with Zodl. Check the request and approve it.</string>
+    <string name="ledger_handshake_callout_title">Your Recovery Phrase Stays Safe</string>
+    <string name="ledger_handshake_callout_message">Zodl only gets what it needs to show your balance and prepare payments. Every payment still needs your approval on your Ledger.</string>
+
+    <!-- Device scan and selection -->
+    <string name="ledger_scan_searching_title">Searching for Devices...</string>
+    <string name="ledger_scan_searching_subtitle">Make sure your Ledger is unlocked and Bluetooth is enabled.</string>
+    <string name="ledger_scan_searching_cta">Searching</string>
+    <string name="ledger_scan_select_title">Select Your Ledger</string>
+    <string name="ledger_scan_select_subtitle">After you tap Connect, check that the code on your phone matches the one on your Ledger.</string>
+    <string name="ledger_scan_select_cta">Connect</string>
+    <string name="ledger_scan_retry_cta">Try again</string>
+    <string name="ledger_scan_advanced_title">Advanced options</string>
+    <string name="ledger_scan_advanced_message">Leave this at 0 unless you used another account number on this Ledger in a different wallet.</string>
+    <string name="ledger_scan_accountIndex_label">Account index</string>
+    <string name="ledger_scan_accountIndex_hint">Enter a number from %1$d to %2$d</string>
+
+    <!-- Approve on device -->
+    <string name="ledger_handshake_waiting_title">Waiting for approval</string>
+    <string name="ledger_handshake_waiting_subtitle">Check your Ledger screen.</string>
+    <string name="ledger_handshake_retry">Retry</string>
+
+    <!-- Error sheets -->
+    <string name="ledger_error_tryAgain">Try again</string>
+    <string name="ledger_error_noDevices_title">No Devices Found</string>
+    <string name="ledger_error_noDevices_inlineTitle">No devices found</string>
+    <string name="ledger_error_noDevices_message">We couldn\'t find any Ledger devices nearby. Make sure your Ledger hardware is unlocked and Bluetooth is turned on.</string>
+    <string name="ledger_error_locked_title">Unlock Your Ledger</string>
+    <string name="ledger_error_locked_message">Unlock your Ledger and open the Zcash app on the device to continue.</string>
+    <string name="ledger_error_locked_enrollment_message">Unlock your Ledger to continue.</string>
+    <string name="ledger_error_pairingFailed_title">Pairing Failed</string>
+    <string name="ledger_error_pairingFailed_message">We couldn\'t pair with your Ledger. Try again from your device settings.</string>
+    <string name="ledger_error_importRejected_title">Import Rejected</string>
+    <string name="ledger_error_importRejected_message">You declined the request on your Ledger. Approve the account export on your device to continue.</string>
+    <string name="ledger_error_disconnected_title">Ledger Disconnected</string>
+    <string name="ledger_error_disconnected_message">Your Ledger disconnected during setup. Check the connection and try again.</string>
+    <string name="ledger_error_unavailable_title">Bluetooth Unavailable</string>
+    <string name="ledger_error_unavailable_message">This device can’t use Bluetooth, so it can’t connect to a Ledger device.</string>
+    <string name="ledger_error_unavailable_inlineTitle">Bluetooth unavailable on your device</string>
+    <string name="ledger_error_unavailable_cta">Close</string>
+    <string name="ledger_error_permissions_title">Bluetooth Access Required</string>
+    <string name="ledger_error_permissions_message">Zodl needs Bluetooth access to connect to your Ledger. Turn on Bluetooth in Settings to continue.</string>
+    <string name="ledger_error_permissions_inlineTitle">Zodl needs Bluetooth access to connect to your Ledger.</string>
+    <string name="ledger_error_permissions_inlineMessage">Turn on Bluetooth in Settings to continue.</string>
+    <string name="ledger_error_permissions_cta">Open System Settings</string>
+    <string name="ledger_error_alreadyAdded_title">Account Already Added</string>
+    <string name="ledger_error_alreadyAdded_message">This account is already connected to Zodl.</string>
+    <string name="ledger_error_alreadyAdded_primary">Go to Account</string>
+    <string name="ledger_error_alreadyAdded_secondary">Cancel</string>
+    <string name="ledger_error_bluetoothOff_title">Bluetooth Off</string>
+    <string name="ledger_error_bluetoothOff_inlineTitle">Bluetooth is off on your device</string>
+    <string name="ledger_error_bluetoothOff_message">Turn on Bluetooth in Settings to connect to your Ledger.</string>
+    <string name="ledger_error_appTooOld_title">Update the Zcash App</string>
+    <string name="ledger_error_appTooOld_message">The Zcash app on your Ledger is out of date. Update it to version %1$s or newer with Ledger Live, then try again.</string>
+    <string name="ledger_error_appNotInstalled_title">Install the Zcash App</string>
+    <string name="ledger_error_appNotInstalled_message">The Zcash app isn\'t installed on your Ledger. Install it with Ledger Live, then try again.</string>
+    <string name="ledger_error_openAppRejected_title">Open the Zcash App</string>
+    <string name="ledger_error_openAppRejected_message">You declined opening the Zcash app on your Ledger. Try again and confirm it on the device.</string>
+    <string name="ledger_error_restartApp_title">Restart the Zcash App</string>
+    <string name="ledger_error_restartApp_message">Close and reopen the Zcash app on your Ledger, then try again.</string>
+    <string name="ledger_error_unknown_title">Something Went Wrong</string>
+    <string name="ledger_error_unknown_message">Zodl couldn’t connect to your Ledger. Make sure it’s unlocked and nearby, then try again.</string>
+    <string name="ledger_error_unknown_inlineMessage">Zodl couldn’t connect to your Ledger.\nMake sure it’s unlocked and nearby, then try again.</string>
+
+    <!-- Signing sheet -->
+    <string name="ledger_sign_title">Confirm Transaction</string>
+    <string name="ledger_sign_body_beforeReview">Keep your Ledger unlocked and nearby.</string>
+    <string name="ledger_sign_body_review">Confirm the transaction on your Ledger device.</string>
+    <string name="ledger_sign_scanning">Looking for your Ledger</string>
+    <string name="ledger_sign_select_title">Choose your Ledger</string>
+    <string name="ledger_sign_connecting">Connecting to your Ledger</string>
+    <string name="ledger_sign_openingApp">Open the Zcash app on your Ledger</string>
+    <string name="ledger_sign_preparing">Preparing your transaction</string>
+    <string name="ledger_sign_streaming">Sending the details to your Ledger</string>
+    <string name="ledger_sign_awaitingReview">Check and approve on your Ledger</string>
+    <string name="ledger_sign_signing">Signing your transaction</string>
+
+    <!-- Signing error sheets -->
+    <string name="ledger_sign_error_rejected_title">Transaction Rejected</string>
+    <string name="ledger_sign_error_rejected_message">You rejected the transaction on your Ledger. Try again to review it on your device.</string>
+    <string name="ledger_sign_error_openAppRejected_title">Zcash App Not Opened</string>
+    <string name="ledger_sign_error_openAppRejected_message">You declined opening the Zcash app on your Ledger. Try again and confirm “Open Zcash” on your device.</string>
+    <string name="ledger_sign_error_disconnected_message">Your Ledger disconnected before the transaction was signed. Check the connection and try again.</string>
+    <string name="ledger_sign_error_wrongDevice_title">Wrong Ledger</string>
+    <string name="ledger_sign_error_wrongDevice_message">This isn\'t the Ledger this account was connected with. Connect that Ledger and try again.</string>
+    <string name="ledger_sign_error_notSignable_title">Can\'t Sign This Transaction</string>
+    <string name="ledger_sign_error_notSignable_message">Your Ledger can\'t sign this transaction. Nothing was sent.</string>
+    <string name="ledger_sign_error_unbound_title">Ledger Not Paired</string>
+    <string name="ledger_sign_error_unbound_message">This account isn\'t paired with a Ledger on this phone. Pair your Ledger to sign this transaction.</string>
+    <string name="ledger_sign_error_unbound_cta">Pair Ledger</string>
+    <string name="ledger_sign_cancel">Cancel Transaction</string>
+
+    <!-- New or active device -->
+
+    <!-- Connected -->
+    <string name="ledger_connected_title">Connected!</string>
+    <string name="ledger_connected_message">Your Ledger is connected and ready to use.</string>
+    <string name="ledger_connected_cta">Close</string>
+
+</resources>

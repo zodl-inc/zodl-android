@@ -11,6 +11,8 @@ import cash.z.ecc.android.sdk.model.voting.VotingRoundDriveProgressListener
 import cash.z.ecc.android.sdk.model.voting.VotingRoundQuiescence
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionProgress
@@ -89,6 +91,9 @@ class SubmitVotesUseCase(
             }
 
             val selectedAccount = getSelectedWalletAccount()
+            if (selectedAccount is LedgerAccount) {
+                throw LedgerOperationUnsupportedException()
+            }
             val accountUuidString = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
 
             // Review-screen entry can start a background precompute job

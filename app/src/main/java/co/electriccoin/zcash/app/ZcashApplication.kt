@@ -14,6 +14,7 @@ import co.electriccoin.zcash.di.providerModule
 import co.electriccoin.zcash.di.repositoryModule
 import co.electriccoin.zcash.di.useCaseModule
 import co.electriccoin.zcash.di.viewModelModule
+import co.electriccoin.zcash.ledger.di.featureLedgerModule
 import co.electriccoin.zcash.migration.di.featureMigrationModule
 import co.electriccoin.zcash.spackle.StrictModeCompat
 import co.electriccoin.zcash.spackle.Twig
@@ -26,6 +27,7 @@ import co.electriccoin.zcash.ui.common.repository.FlexaRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import co.electriccoin.zcash.ui.common.repository.WalletSnapshotRepository
+import co.electriccoin.zcash.ui.common.usecase.ObserveKeepScreenOnSyncSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSeedMismatchUseCase
 import co.electriccoin.zcash.ui.common.usecase.SweepOrphanedGiftCardWalletsUseCase
 import co.electriccoin.zcash.voting.di.featureVotingModule
@@ -50,6 +52,7 @@ class ZcashApplication : CoroutineApplication() {
     private val automaticServerRepository: AutomaticServerRepository by inject()
     private val migrationNotifier: MigrationNotifier by inject()
     private val observeSeedMismatch: ObserveSeedMismatchUseCase by inject()
+    private val observeKeepScreenOnSyncSession: ObserveKeepScreenOnSyncSessionUseCase by inject()
     private val sweepOrphanedGiftCardWallets: SweepOrphanedGiftCardWalletsUseCase by inject()
 
     override fun onCreate() {
@@ -81,7 +84,8 @@ class ZcashApplication : CoroutineApplication() {
                 mapperModule,
                 viewModelModule,
                 featureMigrationModule,
-                featureVotingModule
+                featureVotingModule,
+                featureLedgerModule
             )
         }
 
@@ -97,6 +101,7 @@ class ZcashApplication : CoroutineApplication() {
         automaticServerRepository.init()
         walletRepository.init()
         applicationScope.launch { observeSeedMismatch() }
+        applicationScope.launch { observeKeepScreenOnSyncSession() }
         applicationScope.launch { sweepOrphanedGiftCardWallets() }
     }
 

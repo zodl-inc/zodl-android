@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
 import androidx.navigation.toRoute
+import co.electriccoin.zcash.ui.common.ledger.LedgerNavContributor
 import co.electriccoin.zcash.ui.common.migration.MigrationNavContributor
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
 import co.electriccoin.zcash.ui.common.voting.VotingNavContributor
@@ -34,22 +35,25 @@ import co.electriccoin.zcash.ui.screen.balances.breakdown.BalanceBreakdownArgs
 import co.electriccoin.zcash.ui.screen.balances.breakdown.BalanceBreakdownScreen
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceArgs
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceScreen
+import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletArgs
+import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletScreen
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerScreen
+import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollmentNavType
+import co.electriccoin.zcash.ui.screen.connecthw.date.HWDateArgs
+import co.electriccoin.zcash.ui.screen.connecthw.date.HWFirstTransactionScreen
+import co.electriccoin.zcash.ui.screen.connecthw.estimation.HWEstimationArgs
+import co.electriccoin.zcash.ui.screen.connecthw.estimation.HWFirstTransactionEstimationScreen
+import co.electriccoin.zcash.ui.screen.connecthw.height.HWHeightArgs
+import co.electriccoin.zcash.ui.screen.connecthw.height.HWWBHScreen
+import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveArgs
+import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveScreen
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneArgs
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneScreen
 import co.electriccoin.zcash.ui.screen.connectkeystone.connected.KeystoneConnectedArgs
 import co.electriccoin.zcash.ui.screen.connectkeystone.connected.KeystoneConnectedScreen
-import co.electriccoin.zcash.ui.screen.connectkeystone.date.KeystoneDateArgs
-import co.electriccoin.zcash.ui.screen.connectkeystone.date.KeystoneFirstTransactionScreen
-import co.electriccoin.zcash.ui.screen.connectkeystone.estimation.KeystoneEstimationArgs
-import co.electriccoin.zcash.ui.screen.connectkeystone.estimation.KeystoneFirstTransactionEstimationScreen
 import co.electriccoin.zcash.ui.screen.connectkeystone.explainer.KeystoneExplainerScreen
 import co.electriccoin.zcash.ui.screen.connectkeystone.explainer.KeystoneExplainerScreenArgs
-import co.electriccoin.zcash.ui.screen.connectkeystone.height.KeystoneHeightArgs
-import co.electriccoin.zcash.ui.screen.connectkeystone.height.KeystoneWBHScreen
-import co.electriccoin.zcash.ui.screen.connectkeystone.neworactive.KeystoneNewOrActiveArgs
-import co.electriccoin.zcash.ui.screen.connectkeystone.neworactive.KeystoneNewOrActiveScreen
 import co.electriccoin.zcash.ui.screen.contact.AddGenericABContactArgs
 import co.electriccoin.zcash.ui.screen.contact.AddGenericABContactScreen
 import co.electriccoin.zcash.ui.screen.contact.AddZashiABContactArgs
@@ -290,11 +294,20 @@ fun NavGraphBuilder.walletNavGraph(
         }
         composable<RequestArgs> { RequestScreen(it.toRoute()) }
         composable<ConnectKeystoneArgs> { ConnectKeystoneScreen() }
+        composable<ChooseHWWalletArgs> { ChooseHWWalletScreen() }
         dialogComposable<KeystoneExplainerScreenArgs> { KeystoneExplainerScreen() }
-        composable<KeystoneNewOrActiveArgs> { KeystoneNewOrActiveScreen(it.toRoute()) }
-        composable<KeystoneDateArgs> { KeystoneFirstTransactionScreen(it.toRoute()) }
-        composable<KeystoneEstimationArgs> { KeystoneFirstTransactionEstimationScreen(it.toRoute()) }
-        composable<KeystoneHeightArgs> { KeystoneWBHScreen(it.toRoute()) }
+        composable<HWNewOrActiveArgs>(typeMap = HWWalletEnrollmentNavType.typeMap) {
+            HWNewOrActiveScreen(it.toRoute())
+        }
+        composable<HWDateArgs>(typeMap = HWWalletEnrollmentNavType.typeMap) {
+            HWFirstTransactionScreen(it.toRoute())
+        }
+        composable<HWEstimationArgs>(typeMap = HWWalletEnrollmentNavType.typeMap) {
+            HWFirstTransactionEstimationScreen(it.toRoute())
+        }
+        composable<HWHeightArgs>(typeMap = HWWalletEnrollmentNavType.typeMap) {
+            HWWBHScreen(it.toRoute())
+        }
         composable<KeystoneConnectedArgs> { KeystoneConnectedScreen() }
         composable<KeepOpenArgs> { KeepOpenScreen(it.toRoute()) }
         dialogComposable<HeightInfoArgs> { HeightInfoScreen() }
@@ -308,7 +321,7 @@ fun NavGraphBuilder.walletNavGraph(
         composable<TaxExport> { AndroidTaxExport() }
         composable<ReceiveArgs> { ReceiveScreen() }
         composable<Send> { WrapSend(it.toRoute()) }
-        dialogComposable<TEXUnsupportedArgs> { AndroidTEXUnsupported() }
+        dialogComposable<TEXUnsupportedArgs> { AndroidTEXUnsupported(it.toRoute()) }
         dialogComposable<InsufficientFundsArgs> { InsufficientFundsScreen() }
         dialogComposable<SeedInfo> { AndroidSeedInfo() }
         composable<WalletBackupDetail> { AndroidWalletBackupDetail(it.toRoute()) }
@@ -378,6 +391,9 @@ fun NavGraphBuilder.walletNavGraph(
         // Voting destinations are contributed by the feature-voting module — see
         // VotingNavContributor in VotingContracts.kt (wired via Koin in the app module).
         org.koin.mp.KoinPlatform.getKoin().getAll<VotingNavContributor>().forEach {
+            it.contribute(this)
+        }
+        org.koin.mp.KoinPlatform.getKoin().getAll<LedgerNavContributor>().forEach {
             it.contribute(this)
         }
     }
