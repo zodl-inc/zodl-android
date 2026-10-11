@@ -295,6 +295,7 @@ private fun QrCodePanel(
                                 when (state.qrCodeType) {
                                     QrCodeType.ZASHI -> R.string.accounts_zashi_shieldedAddress
                                     QrCodeType.KEYSTONE -> R.string.qr_code_wallet_address_shielded_keystone
+                                    QrCodeType.LEDGER -> R.string.accounts_ledger_shieldedAddress
                                 }
                             }
 
@@ -302,6 +303,7 @@ private fun QrCodePanel(
                                 when (state.qrCodeType) {
                                     QrCodeType.ZASHI -> R.string.receive_saplingAddress
                                     QrCodeType.KEYSTONE -> R.string.qr_code_wallet_address_sapling_keystone
+                                    QrCodeType.LEDGER -> R.string.receive_saplingAddress
                                 }
                             }
 

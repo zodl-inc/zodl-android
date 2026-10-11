@@ -71,6 +71,7 @@ android {
 dependencies {
     implementation(projects.configurationApiLib)
     implementation(projects.configurationImplAndroidLib)
+    implementation(projects.featureLedger)
     implementation(projects.featureMigration)
     implementation(projects.featureVoting)
     implementation(projects.sdkExtLib)

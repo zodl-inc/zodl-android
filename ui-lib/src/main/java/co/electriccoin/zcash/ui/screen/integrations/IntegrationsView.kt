@@ -178,12 +178,6 @@ private fun IntegrationSettings() =
                                 bigIcon = imageRes(R.drawable.ic_integrations_flexa),
                                 onClick = {}
                             ),
-                            ListItemState(
-                                title = stringRes(R.string.settings_keystone),
-                                subtitle = stringRes(R.string.settings_keystoneDesc),
-                                bigIcon = imageRes(R.drawable.ic_integrations_keystone),
-                                onClick = {}
-                            ),
                         ),
                 ),
         )

@@ -1,11 +1,21 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import android.system.ErrnoException
+import android.system.Os
+import android.system.OsConstants
 import co.electriccoin.zcash.ui.common.model.metadata.MetadataV3
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataEncryptor
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
 import java.io.File
+import java.io.FileOutputStream
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 interface MetadataProvider {
+    /**
+     * Replaces [file]'s content atomically: a failure or a crash leaves the previous content
+     * intact. Throws when the write did not land.
+     */
     fun writeMetadataToFile(
         file: File,
         metadata: MetadataV3,
@@ -14,36 +24,82 @@ interface MetadataProvider {
 
     fun readMetadataFromFile(
         file: File,
-        addressBookKey: MetadataKey
+        metadataKey: MetadataKey
     ): MetadataV3
+
+    /**
+     * Flushes the directory holding [file] to disk, so a rename into it survives a crash. Throws
+     * when the flush did not land.
+     */
+    fun syncDirectoryOf(file: File)
+}
+
+/**
+ * Flushes a directory to disk; a seam so JVM tests never reach [Os].
+ */
+fun interface DirectorySync {
+    fun sync(directory: File)
+}
+
+/**
+ * Flushes a directory through [Os]. A filesystem that cannot fsync a directory reports EINVAL,
+ * which counts as flushed since there is nothing more to do.
+ */
+class OsDirectorySync : DirectorySync {
+    override fun sync(directory: File) {
+        val descriptor = Os.open(directory.path, OsConstants.O_RDONLY, 0)
+        try {
+            Os.fsync(descriptor)
+        } catch (e: ErrnoException) {
+            if (e.errno != OsConstants.EINVAL) throw e
+        } finally {
+            Os.close(descriptor)
+        }
+    }
 }
 
 class MetadataProviderImpl(
-    private val metadataEncryptor: MetadataEncryptor
+    private val metadataEncryptor: MetadataEncryptor,
+    private val directorySync: DirectorySync
 ) : MetadataProvider {
     override fun writeMetadataToFile(
         file: File,
         metadata: MetadataV3,
         metadataKey: MetadataKey
     ) {
-        file.outputStream().buffered().use { stream ->
-            metadataEncryptor.encrypt(
-                key = metadataKey,
-                outputStream = stream,
-                data = metadata
+        val tempFile = File(file.parentFile, file.name + METADATA_TEMP_FILE_SUFFIX)
+        runCatching {
+            FileOutputStream(tempFile).use { fileStream ->
+                val stream = fileStream.buffered()
+                metadataEncryptor.encrypt(
+                    key = metadataKey,
+                    outputStream = stream,
+                    data = metadata
+                )
+                stream.flush()
+                fileStream.fd.sync()
+            }
+            Files.move(
+                tempFile.toPath(),
+                file.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING
             )
-            stream.flush()
-        }
+        }.onFailure {
+            tempFile.delete()
+        }.getOrThrow()
     }
 
     override fun readMetadataFromFile(
         file: File,
-        addressBookKey: MetadataKey
+        metadataKey: MetadataKey
     ): MetadataV3 =
         file.inputStream().use { stream ->
             metadataEncryptor.decrypt(
-                key = addressBookKey,
+                key = metadataKey,
                 inputStream = stream
             )
         }
+
+    override fun syncDirectoryOf(file: File) = directorySync.sync(checkNotNull(file.absoluteFile.parentFile))
 }

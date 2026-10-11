@@ -25,7 +25,11 @@ data class ReceiveAddressState(
 ) {
     enum class ColorMode {
         ZASHI,
-        KEYSTONE,
+
+        /**
+         * The indigo scheme of a hardware wallet's shielded address, Keystone and Ledger alike.
+         */
+        HW_WALLET,
         DEFAULT
     }
 }

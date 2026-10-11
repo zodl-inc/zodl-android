@@ -80,7 +80,7 @@ internal class SwapQuoteVMMapper {
                         EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swapAndPay_swapFrom)
                         EXACT_OUTPUT -> stringRes(R.string.swapAndPay_payFrom)
                     },
-                title = stringRes(R.string.swapAndPay_quote_zashi).withStyle(),
+                title = account.name.withStyle(),
                 subtitle = null
             ).takeIf { !quote.destinationAsset.isZCashAsset },
             SwapQuoteInfoItem(

@@ -7,7 +7,10 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
+import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.BiometricRequest
@@ -30,6 +33,8 @@ class SubmitProposalUseCase(
     private val accountDataSource: AccountDataSource,
     private val zashiProposalRepository: ZashiProposalRepository,
     private val keystoneProposalRepository: KeystoneProposalRepository,
+    private val ledgerProposalPipeline: LedgerProposalPipeline,
+    private val ledgerNavigator: LedgerNavigator,
     private val biometricRepository: BiometricRepository,
     private val swapRepository: SwapRepository,
     private val metadataRepository: MetadataRepository,
@@ -41,7 +46,8 @@ class SubmitProposalUseCase(
     internal var scope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     /**
-     * Submit Zashi proposal and navigate to Transaction Progress screen or navigate to Keystone PCZT flow.
+     * Submit Zashi proposal and navigate to Transaction Progress screen, navigate to Keystone PCZT flow, or open
+     * the Ledger sign sheet over the confirmation screen.
      */
     suspend operator fun invoke() {
         try {
@@ -59,6 +65,7 @@ class SubmitProposalUseCase(
             val proposal =
                 when (account) {
                     is KeystoneAccount -> keystoneProposalRepository.getTransactionProposal()
+                    is LedgerAccount -> ledgerProposalPipeline.getTransactionProposal()
                     is ZashiAccount -> zashiProposalRepository.getTransactionProposal()
                 }
             if (proposal is SwapTransactionProposal) {
@@ -71,6 +78,10 @@ class SubmitProposalUseCase(
             when (account) {
                 is KeystoneAccount -> {
                     navigationRouter.replace(SignKeystoneTransactionArgs)
+                }
+
+                is LedgerAccount -> {
+                    ledgerNavigator.forwardToSign()
                 }
 
                 is ZashiAccount -> {

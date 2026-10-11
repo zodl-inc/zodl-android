@@ -9,7 +9,9 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
 import co.electriccoin.zcash.ui.common.datasource.TexUnsupportedOnKSException
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
@@ -38,6 +40,7 @@ class RequestSwapQuoteUseCase(
     private val swapRepository: SwapRepository,
     private val zashiProposalRepository: ZashiProposalRepository,
     private val keystoneProposalRepository: KeystoneProposalRepository,
+    private val ledgerProposalPipeline: LedgerProposalPipeline,
     private val accountDataSource: AccountDataSource,
     private val synchronizerProvider: SynchronizerProvider,
 ) {
@@ -137,18 +140,22 @@ class RequestSwapQuoteUseCase(
                 swapRepository.clearQuote()
                 zashiProposalRepository.clear()
                 keystoneProposalRepository.clear()
-                navigationRouter.forward(TEXUnsupportedArgs)
+                ledgerProposalPipeline.clear()
+                val isLedger = accountDataSource.getSelectedAccount() is LedgerAccount
+                navigationRouter.forward(TEXUnsupportedArgs(isLedger = isLedger))
                 return@withContext
             } catch (_: InsufficientFundsException) {
                 swapRepository.clearQuote()
                 zashiProposalRepository.clear()
                 keystoneProposalRepository.clear()
+                ledgerProposalPipeline.clear()
                 navigationRouter.forward(InsufficientFundsArgs)
                 return@withContext
             } catch (e: Exception) {
                 swapRepository.clearQuote()
                 zashiProposalRepository.clear()
                 keystoneProposalRepository.clear()
+                ledgerProposalPipeline.clear()
                 navigateToErrorUseCase(ErrorArgs.General(e))
                 return@withContext
             }
@@ -159,7 +166,7 @@ class RequestSwapQuoteUseCase(
         }
     }
 
-    @Suppress("TooGenericExceptionCaught")
+    @Suppress("TooGenericExceptionCaught", "ThrowsCount")
     private suspend fun createProposal(quote: SwapQuote) {
         val send =
             ZecSend(
@@ -177,6 +184,15 @@ class RequestSwapQuoteUseCase(
                     FLEX_INPUT -> throw UnsupportedOperationException("Flex input swap not supported")
                 }
                 keystoneProposalRepository.createPCZTFromProposal()
+            }
+
+            is LedgerAccount -> {
+                when (quote.mode) {
+                    EXACT_INPUT -> ledgerProposalPipeline.createExactInputSwapProposal(send, quote)
+                    EXACT_OUTPUT -> ledgerProposalPipeline.createExactOutputSwapProposal(send, quote)
+                    FLEX_INPUT -> throw UnsupportedOperationException("Flex input swap not supported")
+                }
+                ledgerProposalPipeline.createPCZTFromProposal()
             }
 
             is ZashiAccount -> {

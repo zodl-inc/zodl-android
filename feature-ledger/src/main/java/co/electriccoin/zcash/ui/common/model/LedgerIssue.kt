@@ -1,0 +1,512 @@
+package co.electriccoin.zcash.ui.common.model
+
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
+import cash.z.ecc.android.sdk.exception.LedgerException
+import co.electriccoin.zcash.ledger.R
+import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.stringRes
+
+/**
+ * Which Ledger flow an issue arose in; a few failures read differently when a transaction is being
+ * signed than while an account is being connected, and while connecting, differently before the link
+ * to the device is up than after.
+ */
+enum class LedgerIssueContext {
+    /**
+     * Enrollment while the phone connects to the device, the step that bonds the two, before the
+     * link is up. A lost or refused connection here means pairing failed.
+     */
+    ENROLLMENT_PAIRING,
+
+    /**
+     * Enrollment once the link is up: opening the Zcash app and exporting the account. A lost
+     * connection here means the device disconnected during setup.
+     */
+    ENROLLMENT,
+    SIGNING,
+}
+
+/**
+ * What "Try again" can do about an issue: repeat the request over the same device link, look for
+ * the device again, or nothing at all.
+ */
+enum class LedgerIssueRetry {
+    SAME_LINK,
+    RECONNECT,
+    NONE,
+}
+
+/**
+ * @param icon the glyph a connect page shows inline for the issue.
+ * @param isBadge whether an error sheet shows the warning badge for the issue instead of [icon].
+ */
+enum class LedgerIssueKind(
+    @get:DrawableRes val icon: Int = R.drawable.ic_ledger_alert_circle,
+    val isBadge: Boolean = true,
+) {
+    NO_DEVICES,
+    BLUETOOTH_UNAVAILABLE(R.drawable.ic_ledger_bluetooth_off, isBadge = false),
+    BLUETOOTH_OFF(R.drawable.ic_ledger_bluetooth_off, isBadge = false),
+    PERMISSIONS,
+    PAIRING_FAILED,
+    LOCKED,
+    APP_TOO_OLD,
+    APP_NOT_INSTALLED,
+    OPEN_APP_REJECTED,
+    RESTART_APP,
+    WRONG_DEVICE,
+    REJECTED,
+    DISCONNECTED,
+    NOT_SIGNABLE,
+    UNBOUND,
+    UNKNOWN,
+}
+
+/**
+ * A Ledger failure as the user sees it, shared by the connect flow and the signing sheet.
+ *
+ * [title], [message] and [icon] are the error sheet's; [inlineIcon], [inlineTitle] and
+ * [inlineMessage] are what a connect page keeps showing over its placeholder rows, which the Figma
+ * "Waiting Indicator" words differently for a few issues and otherwise shares with the sheet.
+ */
+data class LedgerIssue(
+    val kind: LedgerIssueKind,
+    val retry: LedgerIssueRetry,
+    val title: StringResource,
+    val message: StringResource,
+    @get:DrawableRes
+    val inlineIcon: Int = kind.icon,
+    val inlineTitle: StringResource = title,
+    val inlineMessage: StringResource = message,
+) {
+    @get:DrawableRes
+    val icon: Int
+        get() = kind.icon
+
+    val isBadge: Boolean
+        get() = kind.isBadge
+
+    companion object {
+        /**
+         * A scan that found no Ledger before it timed out.
+         */
+        val noDevices: LedgerIssue =
+            issue(
+                LedgerIssueKind.NO_DEVICES,
+                LedgerIssueRetry.RECONNECT,
+                R.string.ledger_error_noDevices_title,
+                R.string.ledger_error_noDevices_message
+            ).copy(inlineTitle = stringRes(R.string.ledger_error_noDevices_inlineTitle))
+
+        /**
+         * The runtime Bluetooth permissions were denied.
+         */
+        val permissions: LedgerIssue =
+            issue(
+                LedgerIssueKind.PERMISSIONS,
+                LedgerIssueRetry.RECONNECT,
+                R.string.ledger_error_permissions_title,
+                R.string.ledger_error_permissions_message
+            ).copy(
+                inlineIcon = R.drawable.ic_ledger_bluetooth_on,
+                inlineTitle = stringRes(R.string.ledger_error_permissions_inlineTitle),
+                inlineMessage = stringRes(R.string.ledger_error_permissions_inlineMessage),
+            )
+
+        /**
+         * Location is off below API 31, where a Bluetooth LE scan needs it to find anything. It
+         * reads as the Bluetooth access issue, the one the app has copy for, and like it is fixed
+         * in Settings; the scan checks again on the way back.
+         */
+        val locationOff: LedgerIssue = permissions
+
+        /**
+         * A failure nothing more specific describes; looking for the device again may help.
+         */
+        val unknown: LedgerIssue = unknownIssue(LedgerIssueKind.UNKNOWN)
+
+        /**
+         * A failure nothing more specific describes and that trying again cannot fix, such as a
+         * signing session with nothing left to sign.
+         */
+        val unknownWithoutRetry: LedgerIssue = unknown.copy(retry = LedgerIssueRetry.NONE)
+
+        /**
+         * The selected account has no usable Ledger binding, so it cannot be signed for until it is
+         * connected again.
+         */
+        val unbound: LedgerIssue =
+            issue(
+                LedgerIssueKind.UNBOUND,
+                LedgerIssueRetry.NONE,
+                R.string.ledger_sign_error_unbound_title,
+                R.string.ledger_sign_error_unbound_message
+            )
+
+        /**
+         * Connecting to the device, the step that bonds it with the phone, failed or was refused.
+         */
+        val pairingFailed: LedgerIssue =
+            issue(
+                LedgerIssueKind.PAIRING_FAILED,
+                LedgerIssueRetry.RECONNECT,
+                R.string.ledger_error_pairingFailed_title,
+                R.string.ledger_error_pairingFailed_message
+            )
+
+        /**
+         * The link to the device was lost while an account was being connected, after the phone
+         * had reached the device. A [LedgerPairingTimedOutException] reads the same: the transport
+         * is gone either way.
+         */
+        val disconnectedDuringSetup: LedgerIssue =
+            issue(
+                LedgerIssueKind.DISCONNECTED,
+                LedgerIssueRetry.RECONNECT,
+                R.string.ledger_error_disconnected_title,
+                R.string.ledger_error_disconnected_message
+            )
+
+        /**
+         * The Ledger is not the one the account was connected with: signing met another device, or
+         * pairing the account again exported another viewing key.
+         */
+        val wrongDevice: LedgerIssue =
+            issue(
+                LedgerIssueKind.WRONG_DEVICE,
+                LedgerIssueRetry.RECONNECT,
+                R.string.ledger_sign_error_wrongDevice_title,
+                R.string.ledger_sign_error_wrongDevice_message
+            )
+
+        /**
+         * The link to the device was lost while a transaction was being signed.
+         */
+        val disconnectedWhileSigning: LedgerIssue =
+            issue(
+                LedgerIssueKind.DISCONNECTED,
+                LedgerIssueRetry.RECONNECT,
+                R.string.ledger_error_disconnected_title,
+                R.string.ledger_sign_error_disconnected_message
+            )
+    }
+}
+
+/**
+ * Maps a [LedgerException] to the issue shown for it.
+ *
+ * A [LedgerException.BluetoothUnavailable] carrying a scan error code means the scan itself failed
+ * to start; without one the phone has no Bluetooth LE at all, which nothing in the app can fix. A
+ * locked device answers with a transient [LedgerException.DeviceRefused], and a device that did not
+ * reach the Zcash app with [LedgerException.WrongApp]. A [LedgerException.WrongApp] without a status
+ * word is an app switch the device answered but never finished in time, which reads as a disconnect.
+ * A lost connection while the phone connects to the device means pairing failed; once the link is
+ * up, it means the device disconnected.
+ *
+ * While signing, a device that has to be unlocked, switched to the Zcash app or have that app
+ * restarted is looked for again on Try again, so the fresh link opens the Zcash app first; during
+ * enrollment every try connects anew anyway. A declined request to open the Zcash app reads as
+ * Figma's "Zcash App Not Opened" while signing.
+ */
+@Suppress("CyclomaticComplexMethod")
+fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
+    when (this) {
+        is LedgerException.UserRejected -> {
+            rejected(context, isRestartable)
+        }
+
+        is LedgerException.WrongApp -> {
+            if (statusWord == null) {
+                disconnected(context).copy(retry = context.appRetry)
+            } else {
+                locked(context, isZcashAppClosed = true)
+            }
+        }
+
+        is LedgerException.DeviceRefused -> {
+            if (isTransient) locked(context) else LedgerIssue.unknown
+        }
+
+        is LedgerException.DerivationBudgetExhausted -> {
+            issue(
+                LedgerIssueKind.RESTART_APP,
+                context.appRetry,
+                R.string.ledger_error_restartApp_title,
+                R.string.ledger_error_restartApp_message
+            )
+        }
+
+        is LedgerException.AppTooOld -> {
+            LedgerIssue(
+                kind = LedgerIssueKind.APP_TOO_OLD,
+                retry = LedgerIssueRetry.RECONNECT,
+                title = stringRes(R.string.ledger_error_appTooOld_title),
+                message = stringRes(R.string.ledger_error_appTooOld_message, LEDGER_ZCASH_APP_MIN_VERSION),
+            )
+        }
+
+        is LedgerException.AppNotInstalled -> {
+            issue(
+                LedgerIssueKind.APP_NOT_INSTALLED,
+                LedgerIssueRetry.RECONNECT,
+                R.string.ledger_error_appNotInstalled_title,
+                R.string.ledger_error_appNotInstalled_message
+            )
+        }
+
+        is LedgerException.AppOpenRejected -> {
+            if (context == LedgerIssueContext.SIGNING) {
+                issue(
+                    LedgerIssueKind.OPEN_APP_REJECTED,
+                    LedgerIssueRetry.RECONNECT,
+                    R.string.ledger_sign_error_openAppRejected_title,
+                    R.string.ledger_sign_error_openAppRejected_message
+                )
+            } else {
+                issue(
+                    LedgerIssueKind.OPEN_APP_REJECTED,
+                    LedgerIssueRetry.RECONNECT,
+                    R.string.ledger_error_openAppRejected_title,
+                    R.string.ledger_error_openAppRejected_message
+                )
+            }
+        }
+
+        is LedgerException.DeviceMismatch -> {
+            wrongDevice(context)
+        }
+
+        is LedgerException.CapsMismatch,
+        is LedgerException.MalformedReply,
+        is LedgerException.Internal -> {
+            LedgerIssue.unknown
+        }
+
+        is LedgerException.InvalidInput -> {
+            invalidInput(context)
+        }
+
+        is LedgerException.TransactionNotSignable -> {
+            notSignable(context)
+        }
+
+        is LedgerException.BluetoothUnavailable -> {
+            bluetoothUnavailable(scanErrorCode)
+        }
+
+        is LedgerException.BluetoothUnauthorized -> {
+            LedgerIssue.permissions
+        }
+
+        is LedgerException.BluetoothDisabled -> {
+            issue(
+                LedgerIssueKind.BLUETOOTH_OFF,
+                LedgerIssueRetry.RECONNECT,
+                R.string.ledger_error_bluetoothOff_title,
+                R.string.ledger_error_bluetoothOff_message
+            ).copy(inlineTitle = stringRes(R.string.ledger_error_bluetoothOff_inlineTitle))
+        }
+
+        is LedgerException.PairingRefused -> {
+            LedgerIssue.pairingFailed
+        }
+
+        is LedgerException.DeviceNotFound,
+        is LedgerException.ConnectionFailed,
+        is LedgerException.Timeout -> {
+            if (context == LedgerIssueContext.ENROLLMENT_PAIRING) LedgerIssue.pairingFailed else disconnected(context)
+        }
+
+        is LedgerException.Disconnected -> {
+            disconnected(context)
+        }
+    }
+
+/**
+ * A rejection the device can be asked about again is retried over the same link; any other one
+ * needs the device to be found again.
+ */
+private fun rejected(
+    context: LedgerIssueContext,
+    isRestartable: Boolean
+): LedgerIssue {
+    val retry = if (isRestartable) LedgerIssueRetry.SAME_LINK else LedgerIssueRetry.RECONNECT
+    return when (context) {
+        LedgerIssueContext.ENROLLMENT_PAIRING,
+        LedgerIssueContext.ENROLLMENT -> {
+            issue(
+                LedgerIssueKind.REJECTED,
+                retry,
+                R.string.ledger_error_importRejected_title,
+                R.string.ledger_error_importRejected_message
+            )
+        }
+
+        LedgerIssueContext.SIGNING -> {
+            issue(
+                LedgerIssueKind.REJECTED,
+                retry,
+                R.string.ledger_sign_error_rejected_title,
+                R.string.ledger_sign_error_rejected_message
+            )
+        }
+    }
+}
+
+/**
+ * Enrollment asks for the Zcash app only after pairing, so a locked device's Unlock sheet leaves out
+ * opening the app, which the turn-on step tells the user not to do yet. Once the link is up, a
+ * device that could not reach the Zcash app keeps asking for it, and so does signing.
+ *
+ * @param isZcashAppClosed whether the device answered without reaching the Zcash app, rather than
+ *        refusing because it is locked
+ */
+private fun locked(
+    context: LedgerIssueContext,
+    isZcashAppClosed: Boolean = false,
+) = issue(
+    LedgerIssueKind.LOCKED,
+    context.appRetry,
+    R.string.ledger_error_locked_title,
+    when (context) {
+        LedgerIssueContext.ENROLLMENT_PAIRING -> {
+            R.string.ledger_error_locked_enrollment_message
+        }
+
+        LedgerIssueContext.ENROLLMENT -> {
+            if (isZcashAppClosed) {
+                R.string.ledger_error_locked_message
+            } else {
+                R.string.ledger_error_locked_enrollment_message
+            }
+        }
+
+        LedgerIssueContext.SIGNING -> {
+            R.string.ledger_error_locked_message
+        }
+    }
+)
+
+/**
+ * What Try again does once the user has fixed the app state on the device: while signing, a fresh
+ * link, whose connect opens the Zcash app first; while enrolling, the device kept selected.
+ */
+private val LedgerIssueContext.appRetry: LedgerIssueRetry
+    get() =
+        when (this) {
+            LedgerIssueContext.ENROLLMENT_PAIRING,
+            LedgerIssueContext.ENROLLMENT -> {
+                LedgerIssueRetry.SAME_LINK
+            }
+
+            LedgerIssueContext.SIGNING -> {
+                LedgerIssueRetry.RECONNECT
+            }
+        }
+
+/**
+ * "Something Went Wrong"; the inline issue breaks its message over two lines where the sheet runs it
+ * on.
+ */
+private fun unknownIssue(kind: LedgerIssueKind) =
+    issue(
+        kind,
+        LedgerIssueRetry.RECONNECT,
+        R.string.ledger_error_unknown_title,
+        R.string.ledger_error_unknown_message
+    ).copy(inlineMessage = stringRes(R.string.ledger_error_unknown_inlineMessage))
+
+/**
+ * While signing, [LedgerException.DeviceMismatch] means the device is not the one the account is
+ * paired with. During enrollment the SDK raises it when the key exported for ZIP 32 account 0 does
+ * not belong to the device that answered the identity read; there is no paired device to name yet,
+ * so enrollment reads the exception as a failure nothing more specific describes. A Ledger that pairs
+ * an account again with another viewing key is [LedgerIssue.wrongDevice], which the handshake shows
+ * without an exception.
+ */
+private fun wrongDevice(context: LedgerIssueContext) =
+    when (context) {
+        LedgerIssueContext.ENROLLMENT_PAIRING,
+        LedgerIssueContext.ENROLLMENT -> {
+            unknownIssue(LedgerIssueKind.WRONG_DEVICE)
+        }
+
+        LedgerIssueContext.SIGNING -> {
+            LedgerIssue.wrongDevice
+        }
+    }
+
+/**
+ * While signing, invalid input means the account's stored pairing is unusable.
+ */
+private fun invalidInput(context: LedgerIssueContext) =
+    when (context) {
+        LedgerIssueContext.ENROLLMENT_PAIRING,
+        LedgerIssueContext.ENROLLMENT -> {
+            LedgerIssue.unknown
+        }
+
+        LedgerIssueContext.SIGNING -> {
+            LedgerIssue.unbound
+        }
+    }
+
+private fun notSignable(context: LedgerIssueContext) =
+    when (context) {
+        LedgerIssueContext.ENROLLMENT_PAIRING,
+        LedgerIssueContext.ENROLLMENT -> {
+            unknownIssue(LedgerIssueKind.NOT_SIGNABLE).copy(retry = LedgerIssueRetry.NONE)
+        }
+
+        LedgerIssueContext.SIGNING -> {
+            issue(
+                LedgerIssueKind.NOT_SIGNABLE,
+                LedgerIssueRetry.NONE,
+                R.string.ledger_sign_error_notSignable_title,
+                R.string.ledger_sign_error_notSignable_message
+            )
+        }
+    }
+
+private fun bluetoothUnavailable(scanErrorCode: Int?) =
+    if (scanErrorCode != null) {
+        LedgerIssue.noDevices
+    } else {
+        issue(
+            LedgerIssueKind.BLUETOOTH_UNAVAILABLE,
+            LedgerIssueRetry.NONE,
+            R.string.ledger_error_unavailable_title,
+            R.string.ledger_error_unavailable_message
+        ).copy(inlineTitle = stringRes(R.string.ledger_error_unavailable_inlineTitle))
+    }
+
+private fun disconnected(context: LedgerIssueContext) =
+    when (context) {
+        LedgerIssueContext.ENROLLMENT_PAIRING,
+        LedgerIssueContext.ENROLLMENT -> {
+            LedgerIssue.disconnectedDuringSetup
+        }
+
+        LedgerIssueContext.SIGNING -> {
+            LedgerIssue.disconnectedWhileSigning
+        }
+    }
+
+/**
+ * The oldest Zcash app on the Ledger that can sign PCZTs; the SDK refuses an older one with
+ * [LedgerException.AppTooOld].
+ */
+internal const val LEDGER_ZCASH_APP_MIN_VERSION = "3.6.0"
+
+private fun issue(
+    kind: LedgerIssueKind,
+    retry: LedgerIssueRetry,
+    @StringRes title: Int,
+    @StringRes message: Int,
+) = LedgerIssue(
+    kind = kind,
+    retry = retry,
+    title = stringRes(title),
+    message = stringRes(message),
+)

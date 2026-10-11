@@ -17,6 +17,7 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.withStyle
 import co.electriccoin.zcash.ui.screen.transactionnote.TransactionNote
 import co.electriccoin.zcash.ui.screen.transactionnote.model.TransactionNoteState
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -35,19 +36,22 @@ internal class TransactionNoteViewModel(
 ) : ViewModel() {
     private val noteText = MutableStateFlow("")
     private val foundNote = MutableStateFlow<String?>(null)
+    private val runningSave = MutableStateFlow<NoteSave?>(null)
+    private var saveJob: Job? = null
 
     val state: StateFlow<TransactionNoteState> =
-        combine(noteText, foundNote) { noteText, foundNote ->
-            createState(noteText = noteText, foundNote = foundNote)
+        combine(noteText, foundNote, runningSave) { noteText, foundNote, runningSave ->
+            createState(noteText = noteText, foundNote = foundNote, runningSave = runningSave)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
-            initialValue = createState(noteText = "", foundNote = null)
+            initialValue = createState(noteText = "", foundNote = null, runningSave = null)
         )
 
     private fun createState(
         noteText: String,
-        foundNote: String?
+        foundNote: String?,
+        runningSave: NoteSave?
     ): TransactionNoteState {
         val noteTextNormalized = noteText.trim()
         val isNoteTextTooLong = noteText.length > MAX_NOTE_LENGTH
@@ -77,6 +81,7 @@ internal class TransactionNoteViewModel(
                     text = stringRes(R.string.annotation_add),
                     onClick = ::onAddOrUpdateNoteClick,
                     isEnabled = !isNoteTextTooLong && noteTextNormalized.isNotEmpty(),
+                    isLoading = runningSave == NoteSave.SAVE,
                     hapticFeedbackType = HapticFeedbackType.Confirm
                 ).takeIf { foundNote == null },
             secondaryButton =
@@ -84,14 +89,17 @@ internal class TransactionNoteViewModel(
                     text = stringRes(R.string.annotation_save),
                     onClick = ::onAddOrUpdateNoteClick,
                     isEnabled = !isNoteTextTooLong && noteTextNormalized.isNotEmpty(),
+                    isLoading = runningSave == NoteSave.SAVE,
                     hapticFeedbackType = HapticFeedbackType.Confirm
                 ).takeIf { foundNote != null },
             negative =
                 ButtonState(
                     text = stringRes(R.string.annotation_delete),
                     onClick = ::onDeleteNoteClick,
+                    isLoading = runningSave == NoteSave.DELETE,
                     hapticFeedbackType = HapticFeedbackType.Confirm
                 ).takeIf { foundNote != null },
+            isSaving = runningSave != null,
         )
     }
 
@@ -104,20 +112,53 @@ internal class TransactionNoteViewModel(
     }
 
     private fun onAddOrUpdateNoteClick() =
-        viewModelScope.launch {
+        runSave(NoteSave.SAVE) {
             createOrUpdateTransactionNote(txId = transactionNote.txId, note = noteText.value)
         }
 
     private fun onDeleteNoteClick() =
-        viewModelScope.launch {
+        runSave(NoteSave.DELETE) {
             deleteTransactionNote(transactionNote.txId)
         }
+
+    /**
+     * Runs one save at a time: a tap while a save is running is ignored, and the pressed button
+     * shows loading until the save returns.
+     */
+    private fun runSave(save: NoteSave, block: suspend () -> Unit) {
+        if (saveJob?.isActive == true) return
+        runningSave.update { save }
+        saveJob =
+            viewModelScope.launch {
+                try {
+                    block()
+                } finally {
+                    runningSave.update { null }
+                }
+            }
+    }
 
     private fun onNoteTextChanged(newValue: String) {
         noteText.update { newValue }
     }
 
-    private fun onBack() = navigationRouter.back()
+    /**
+     * Ignored while a save runs: the save leaves the sheet itself when it returns, so a back or a
+     * dismissal now would make that second back pop the screen underneath. Every dismiss path of
+     * the sheet, back, scrim tap and drag down, ends here.
+     */
+    private fun onBack() {
+        if (runningSave.value != null) return
+        navigationRouter.back()
+    }
 }
 
 private const val MAX_NOTE_LENGTH = 90
+
+/**
+ * Which note button started the running save.
+ */
+private enum class NoteSave {
+    SAVE,
+    DELETE
+}

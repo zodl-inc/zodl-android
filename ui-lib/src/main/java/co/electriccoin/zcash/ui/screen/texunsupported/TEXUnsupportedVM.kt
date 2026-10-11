@@ -7,11 +7,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class TEXUnsupportedVM(
+    private val args: TEXUnsupportedArgs,
     private val navigationRouter: NavigationRouter
 ) : ViewModel() {
     val state: StateFlow<TEXUnsupportedState?> =
         MutableStateFlow<TEXUnsupportedState?>(
             TEXUnsupportedState(
+                isLedger = args.isLedger,
                 onBack = { navigationRouter.back() }
             )
         ).asStateFlow()

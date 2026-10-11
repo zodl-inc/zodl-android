@@ -52,12 +52,13 @@ import co.electriccoin.zcash.ui.screen.transactionnote.model.TransactionNoteStat
 @OptIn(ExperimentalMaterial3Api::class)
 internal fun TransactionNoteView(
     state: TransactionNoteState?,
-    sheetState: SheetState = rememberScreenModalBottomSheetState(),
+    sheetState: SheetState = rememberNoteSheetState(isSaving = state?.isSaving == true),
     onSheetOpen: (FocusRequester) -> Unit = { }
 ) {
     val onSheetOpen by rememberUpdatedState(onSheetOpen)
     ZashiScreenModalBottomSheet(
         state = state,
+        sheetGesturesEnabled = state?.isSaving != true,
         sheetState = sheetState,
         dragHandle = null,
         content = { state, contentPadding ->
@@ -75,6 +76,18 @@ internal fun TransactionNoteView(
             }
         },
     )
+}
+
+/**
+ * A sheet state that refuses to hide while a save runs, so the sheet cannot be dragged or tapped
+ * away before the save leaves it.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun rememberNoteSheetState(isSaving: Boolean): SheetState {
+    val isSavingState = rememberUpdatedState(isSaving)
+    val confirmValueChange = remember { { value: SheetValue -> value != SheetValue.Hidden || !isSavingState.value } }
+    return rememberScreenModalBottomSheetState(confirmValueChange = confirmValueChange)
 }
 
 @Composable

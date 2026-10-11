@@ -57,8 +57,9 @@ fun TEXUnsupportedView(
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(8.dp)
+        val warn1Res = if (innerState.isLedger) R.string.texLedger_warn1 else R.string.texKeystone_warn1
         val description =
-            (stringRes(R.string.texKeystone_warn1) + stringRes(" ")).withStyle(
+            (stringRes(warn1Res) + stringRes(" ")).withStyle(
                 StyledStringStyle(
                     color = StringResourceColor.PRIMARY,
                     fontWeight = FontWeight.SemiBold,

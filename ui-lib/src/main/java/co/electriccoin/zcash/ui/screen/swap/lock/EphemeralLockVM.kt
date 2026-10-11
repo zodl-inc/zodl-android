@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
+import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
@@ -13,6 +15,8 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByAddress
 import co.electriccoin.zcash.ui.design.util.withStyle
+import co.electriccoin.zcash.ui.screen.error.ErrorArgs
+import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteInfoItem
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,6 +32,8 @@ internal class EphemeralLockVM(
     private val submitIncreaseEphemeralGapLimit: SubmitIncreaseEphemeralGapLimitUseCase,
     private val zashiProposalRepository: ZashiProposalRepository,
     private val keystoneProposalRepository: KeystoneProposalRepository,
+    private val ledgerProposalPipeline: LedgerProposalPipeline,
+    private val navigateToError: NavigateToErrorUseCase,
 ) : ViewModel() {
     val state: StateFlow<EphemeralLockState?> =
         observeProposal
@@ -77,11 +83,19 @@ internal class EphemeralLockVM(
     private fun onBack() {
         zashiProposalRepository.clear()
         keystoneProposalRepository.clear()
+        ledgerProposalPipeline.clear()
         navigationRouter.backToRoot()
     }
 
     private fun onSubmitClick() {
         if (onSubmitClickJob?.isActive == true) return
-        onSubmitClickJob = viewModelScope.launch { submitIncreaseEphemeralGapLimit() }
+        onSubmitClickJob =
+            viewModelScope.launch {
+                try {
+                    submitIncreaseEphemeralGapLimit()
+                } catch (e: LedgerOperationUnsupportedException) {
+                    navigateToError(ErrorArgs.General(e))
+                }
+            }
     }
 }

@@ -10,6 +10,8 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.migration.MigrationGate
 import co.electriccoin.zcash.ui.common.migration.MigrationNavigator
 import co.electriccoin.zcash.ui.common.model.DistributionDimension
+import co.electriccoin.zcash.ui.common.model.HWWalletAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
@@ -80,7 +82,7 @@ class AdvancedSettingsVM(
         accounts: List<WalletAccount>?,
         isRestartAvailable: Boolean,
     ): AdvancedSettingsState {
-        val hasKeystoneAccount = accounts?.any { it is co.electriccoin.zcash.ui.common.model.KeystoneAccount } == true
+        val selectedHWAccount = accounts.orEmpty().firstOrNull { it.isSelected } as? HWWalletAccount
         val restoring = walletRestoringState == WalletRestoringState.RESTORING
         return AdvancedSettingsState(
             onBack = ::onBack,
@@ -136,10 +138,15 @@ class AdvancedSettingsVM(
                         onClick = ::onCrashReportingClick
                     ).takeIf { versionInfo.distribution == DistributionDimension.STORE },
                     ListItemState(
-                        title = stringRes(R.string.disconnectHWWallet_cta),
+                        title =
+                            if (selectedHWAccount is LedgerAccount) {
+                                stringRes(R.string.ledger_disconnect_title)
+                            } else {
+                                stringRes(R.string.disconnectHWWallet_cta)
+                            },
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_disconnect_hw),
                         onClick = ::onDisconnectHwWalletClick
-                    ).takeIf { hasKeystoneAccount },
+                    ).takeIf { selectedHWAccount != null },
                     ListItemState(
                         title = stringRes(co.electriccoin.zcash.ui.design.R.string.restartMigration_settingsItem),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_restart_migration),
@@ -181,9 +188,7 @@ class AdvancedSettingsVM(
 
     private fun onResetWalletClick() = viewModelScope.launch { navigateToResetWallet() }
 
-    private fun onDisconnectHwWalletClick() {
-        navigationRouter.forward(DisconnectArgs)
-    }
+    private fun onDisconnectHwWalletClick() = navigationRouter.forward(DisconnectArgs)
 
     private fun onRestartMigrationClick() = migrationNavigator.forwardToRestartMigration()
 

@@ -6,6 +6,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LceState
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteKeystoneStorageProvider
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteStorageProvider
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
@@ -33,8 +34,14 @@ class VoteHowToVoteVM(
 
     init {
         viewModelScope.launch {
-            val isKeystone = getSelectedWalletAccount() is KeystoneAccount
-            val walletName = if (isKeystone) "Keystone" else "Zodl"
+            val account = getSelectedWalletAccount()
+            val isKeystone = account is KeystoneAccount
+            val walletName =
+                when (account) {
+                    is KeystoneAccount -> "Keystone"
+                    is LedgerAccount -> "Ledger"
+                    else -> "Zodl"
+                }
 
             mutableState.value =
                 LceState(
