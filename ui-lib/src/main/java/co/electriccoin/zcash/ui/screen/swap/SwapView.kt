@@ -32,9 +32,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.key.NativeKeyEvent
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -123,13 +125,9 @@ internal fun SwapView(
                     focusRequester = amountFocusRequester
                 )
 
-                if (state.addressLocation == TOP) {
-                    Spacer(10.dp)
-                    AddressTextField(state = state)
-                    Spacer(16.dp)
-                } else {
-                    Spacer(16.dp)
-                }
+                Spacer(10.dp)
+                RefundAddressSlot(state = state)
+                Spacer(32.dp)
 
                 SlippageSeparator(
                     state = state
@@ -307,6 +305,32 @@ private fun TopAppBar(
                 containerColor = Color.Transparent
             ),
     )
+}
+
+/**
+ * Reserves the refund address height in both directions so the change mode button never moves.
+ */
+@Composable
+private fun RefundAddressSlot(state: SwapState) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier =
+                Modifier
+                    .clearAndSetSemantics {}
+                    .layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints)
+                        layout(placeable.width, placeable.height) {}
+                    }
+        ) {
+            AddressTextField(state = state.copy(addressLocation = TOP))
+        }
+
+        if (state.addressLocation == TOP) {
+            Column {
+                AddressTextField(state = state)
+            }
+        }
+    }
 }
 
 @Composable
