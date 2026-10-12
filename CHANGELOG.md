@@ -7,6 +7,12 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Changed:
+
+- In Swap, the button that switches the swap direction now stays in the same place in both directions. The screen
+  keeps space for the refund address in both directions, and there is more space between the refund address field
+  and the switch button.
+
 ## [3.16.0 (2958)] - 2026-10-07
 
 ### Added:

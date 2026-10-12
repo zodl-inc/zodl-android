@@ -234,6 +234,8 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)
     testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.compose.test.junit)
+    testImplementation(libs.androidx.compose.test.manifest)
     testImplementation("io.ktor:ktor-client-mock")
 
     androidTestImplementation(projects.testLib)
