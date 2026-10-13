@@ -476,13 +476,17 @@ class ChooseServerVM(
  */
 private fun endpointLabel(endpoint: LightWalletEndpoint) =
     when {
-        LightWalletEndpointProvider.isOhttpGatewayHost(endpoint.host) ->
+        LightWalletEndpointProvider.isOhttpGatewayHost(endpoint.host) -> {
             if (endpoint.host.lowercase().contains("testnet")) {
                 stringRes(R.string.choose_server_ohttp_gateway_testnet)
             } else {
                 stringRes(R.string.choose_server_ohttp_gateway_mainnet)
             }
-        else -> stringRes(R.string.choose_server_full_server_name, endpoint.host, endpoint.port)
+        }
+
+        else -> {
+            stringRes(R.string.choose_server_full_server_name, endpoint.host, endpoint.port)
+        }
     }
 
 private data class InnerState(
