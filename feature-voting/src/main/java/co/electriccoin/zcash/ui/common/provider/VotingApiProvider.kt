@@ -24,7 +24,6 @@ import co.electriccoin.zcash.ui.common.model.voting.TallyResults
 import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
 import co.electriccoin.zcash.ui.common.model.voting.TxEvent
 import co.electriccoin.zcash.ui.common.model.voting.TxEventAttribute
-import co.electriccoin.zcash.ui.common.model.voting.TxResult
 import co.electriccoin.zcash.ui.common.model.voting.VoteCommitmentBundle
 import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
@@ -1513,16 +1512,6 @@ internal fun String.toTxConfirmation(): TxConfirmation {
                     )
                 }
             },
-    )
-}
-
-internal fun String.toTxResult(): TxResult {
-    val json = JSONObject(this)
-    return TxResult(
-        txHash = json.optString("tx_hash", ""),
-        code = json.optNumber("code").toInt(),
-        log = json.optString("log", ""),
-        acceptedByServerUrl = null
     )
 }
 

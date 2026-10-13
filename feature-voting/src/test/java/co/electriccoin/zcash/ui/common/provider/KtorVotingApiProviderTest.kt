@@ -130,36 +130,6 @@ class KtorVotingApiProviderTest {
         }
 
     @Test
-    fun rejectedTransactionParserPreservesHashCodeAndLog() {
-        val result =
-            """
-            {
-              "tx_hash": "duplicate-tx",
-              "code": 1,
-              "log": "nullifier already spent: abc123"
-            }
-            """.trimIndent().toTxResult()
-
-        assertEquals("duplicate-tx", result.txHash)
-        assertEquals(1, result.code)
-        assertEquals("nullifier already spent: abc123", result.log)
-    }
-
-    @Test
-    fun rejectedTransactionParserRepresentsMissingHashAsEmpty() {
-        val result =
-            """
-            {
-              "code": 1,
-              "log": "nullifier already spent: abc123"
-            }
-            """.trimIndent().toTxResult()
-
-        assertEquals("", result.txHash)
-        assertEquals(1, result.code)
-    }
-
-    @Test
     fun transactionConfirmationParserPreservesSuccessfulEvents() {
         val confirmation =
             """
