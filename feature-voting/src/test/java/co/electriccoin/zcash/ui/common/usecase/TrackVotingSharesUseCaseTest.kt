@@ -15,8 +15,8 @@ import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
-import co.electriccoin.zcash.ui.common.repository.VotingChainConfig
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
+import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import io.mockk.coEvery
@@ -40,7 +40,7 @@ class TrackVotingSharesUseCaseTest {
             val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
 
             val votingChainConfigRepository = mockk<VotingChainConfigRepository>()
-            coEvery { votingChainConfigRepository.get() } returns VotingChainConfig(isOnDefaultConfig = true)
+            coEvery { votingChainConfigRepository.get() } returns VotingChainConfigState()
 
             val useCase =
                 TrackVotingSharesUseCase(
@@ -111,7 +111,7 @@ class TrackVotingSharesUseCaseTest {
             } returns report
 
             val votingChainConfigRepository = mockk<VotingChainConfigRepository>()
-            coEvery { votingChainConfigRepository.get() } returns VotingChainConfig(isOnDefaultConfig = true)
+            coEvery { votingChainConfigRepository.get() } returns VotingChainConfigState()
 
             val useCase =
                 TrackVotingSharesUseCase(
@@ -168,7 +168,7 @@ class TrackVotingSharesUseCaseTest {
             coEvery { votingCryptoClient.openVotingDb(any()) } returns 1L
 
             val votingChainConfigRepository = mockk<VotingChainConfigRepository>()
-            coEvery { votingChainConfigRepository.get() } returns VotingChainConfig(isOnDefaultConfig = true)
+            coEvery { votingChainConfigRepository.get() } returns VotingChainConfigState()
 
             val useCase =
                 TrackVotingSharesUseCase(

@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.provider
 
 import co.electriccoin.lightwallet.client.OhttpHttpClient
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.expectSuccess
 import io.ktor.client.request.header
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
@@ -30,6 +31,9 @@ internal fun passthroughOhttpClient(realClient: suspend () -> HttpClient): Ohttp
             val request = firstArg<OhttpHttpClient.Request>()
             val response =
                 realClient().request(request.url) {
+                    // The real OHTTP client reports non-2xx as a Response, never as a thrown
+                    // ResponseException, so opt out of the wrapped client's expectSuccess here.
+                    expectSuccess = false
                     method = HttpMethod.parse(request.method)
                     request.headers.forEach { (name, value) -> header(name, value) }
                     if (request.body.isNotEmpty()) setBody(request.body)
