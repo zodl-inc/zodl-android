@@ -182,36 +182,6 @@ class VotingServerFailoverPostTimeoutTest {
         }
 
     /**
-     * Document the problem scenario: timeout after delivery risks double-submission.
-     */
-    @Test
-    fun testProblemScenario() {
-        // Problem scenario WITHOUT the F-06 fix:
-        //
-        // 1. User submits a vote delegation via submitDelegation()
-        // 2. Request goes to server1.example.com via executeWithVoteServerFailover()
-        // 3. Server1 receives the POST and processes it (delegation recorded)
-        // 4. Server1's response is slow (network congestion)
-        // 5. Client timeout fires (voteServerFailoverTimeoutMillis = 30s)
-        // 6. withVoteServerFailover() catches TimeoutCancellationException
-        // 7. WITHOUT fix: shouldTryNextVoteServer(timeout) returns true
-        // 8. Failover logic tries server2.example.com with the SAME delegation
-        // 9. Server2 processes the duplicate delegation
-        // 10. Result: delegation may be counted twice (if servers don't de-duplicate)
-        //
-        // WITH the F-06 fix:
-        // - Step 7: shouldTryNextVoteServer(timeout) returns false
-        // - Step 8: withVoteServerFailover() throws VotingServerFailoverException
-        // - Step 9: App surfaces timeout error to user instead of silently double-submitting
-        // - User can check status or re-submit manually if needed
-
-        assertTrue(
-            "This test documents the double-submission risk fixed by F-06",
-            true
-        )
-    }
-
-    /**
      * Test that 4xx errors still trigger failover (server-specific validation failures).
      */
     @Test
