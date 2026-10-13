@@ -394,7 +394,7 @@ if (lightwalletClientIncludedBuildPath.isNotEmpty() && zcashSdkIncludedBuildPath
     )
     includeBuild(lightwalletClientIncludedBuildPath) {
         dependencySubstitution {
-            substitute(module("cash.z.ecc.android:lightwallet-client")).using(project(":lightwallet-client-lib"))
+            substitute(module("com.zodl.android:lightwallet-client")).using(project(":lightwallet-client-lib"))
         }
     }
 }

@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
@@ -50,6 +51,7 @@ internal fun OhttpUnavailableMessage(
                 modifier = Modifier.padding(top = ZcashTheme.dimens.spacingSmall)
             )
             ZashiButton(
+                minHeight = 36.dp,
                 state =
                     ButtonState(
                         text = stringRes(R.string.ohttpUnavailable_chooseServer),
