@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -18,6 +19,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
@@ -31,8 +33,9 @@ fun ZashiMaxChip(
 ) {
     val clickable = state.isEnabled && !state.isLoading
     val interactionSource = remember { MutableInteractionSource() }
+    // Loading is a tertiary icon button (Figma 9096:3324 / 9043:408): default tertiary colors, square, spinner only.
     val containerColor by animateColorAsState(
-        if (state.isEnabled) {
+        if (state.isEnabled || state.isLoading) {
             ZashiColors.Btns.Tertiary.btnTertiaryBg
         } else {
             ZashiColors.Btns.Tertiary.btnTertiaryBgDisabled
@@ -46,7 +49,7 @@ fun ZashiMaxChip(
         }
     )
     Surface(
-        modifier = modifier.pressMorph(interactionSource),
+        modifier = modifier.pressMorph(interactionSource).testTag(ZashiMaxChipTags.CHIP),
         shape = ZashiChipButtonDefaults.shape,
         color = containerColor,
     ) {
@@ -58,7 +61,13 @@ fun ZashiMaxChip(
                         enabled = clickable,
                         interactionSource = interactionSource,
                         indication = ripple()
-                    ).padding(ZashiChipButtonDefaults.contentPadding),
+                    ).padding(
+                        if (state.isLoading) {
+                            ZashiMaxChipDefaults.loadingPadding
+                        } else {
+                            ZashiChipButtonDefaults.contentPadding
+                        }
+                    ),
             contentAlignment = Alignment.Center
         ) {
             if (state.isLoading) {
@@ -81,7 +90,14 @@ data class SendMaxChipState(
     val onClick: () -> Unit,
 )
 
+object ZashiMaxChipDefaults {
+    /** 16dp spinner + 10dp on each side = 36dp square, the same height as the text chip (20dp line + 2 x 8dp). */
+    val loadingPadding: PaddingValues
+        get() = PaddingValues(10.dp)
+}
+
 object ZashiMaxChipTags {
+    const val CHIP = "zashi_max_chip"
     const val PROGRESS = "zashi_max_chip_progress"
 }
 

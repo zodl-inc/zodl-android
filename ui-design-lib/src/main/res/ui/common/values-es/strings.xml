@@ -2,7 +2,16 @@
     <string name="amount_with_fiat_currency_symbol" formatted="true"><xliff:g example="$" id="fiat_currency_symbol">%1$s</xliff:g><xliff:g example="123" id="amount">%2$s</xliff:g></string>
     <string name="general_hideBalancesMost">-----</string>
     <string name="general_max">Máx.</string>
-    <string name="general_maxFailed">No se pudo obtener el monto máximo.</string>
+    <string name="general_maxFailedTitle">No pudimos calcular el monto máximo</string>
+    <string name="general_maxFailedSubtitle">Inténtalo de nuevo o ingresa un monto.</string>
+    <string name="general_maxHintShieldedOnly">Máx. solo usa ZEC protegidos.</string>
+    <string name="general_maxHintShield">Proteger</string>
+    <string name="general_maxHintConfirming">Máx. estará disponible cuando se confirmen tus fondos.</string>
+    <string name="general_maxFeeBufferHint">Máx. reserva %s ZEC para la comisión de red.</string>
+    <string name="general_maxTooManyNotesTitle">Demasiadas notas para enviar a la vez</string>
+    <string name="general_maxTooManyNotesBody">Tu saldo está dividido en muchas partes pequeñas, así que no se puede enviar todo en una sola transacción. Intenta enviar un monto menor.</string>
+    <string name="general_maxTooManyNotesCta">Enviar un monto menor</string>
+    <string name="general_maxTooManyNotesClose">Cerrar</string>
     <string name="triple_dots">…</string>
     <string name="seed_recovery_reveal">Mostrar frase de recuperación</string>
     <string name="general_masked_seed_word">•••••</string>

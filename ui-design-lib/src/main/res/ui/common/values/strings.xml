@@ -3,7 +3,16 @@
     <string name="general_hideBalancesMost">-----</string>
     <string name="general_back">Back</string>
     <string name="general_max">Max</string>
-    <string name="general_maxFailed">Unable to get the max amount.</string>
+    <string name="general_maxFailedTitle">Couldn\'t calculate the max amount</string>
+    <string name="general_maxFailedSubtitle">Try again or enter an amount.</string>
+    <string name="general_maxHintShieldedOnly">Max uses shielded ZEC only.</string>
+    <string name="general_maxHintShield">Shield</string>
+    <string name="general_maxHintConfirming">Max will be available once your funds confirm.</string>
+    <string name="general_maxFeeBufferHint">Max keeps %s ZEC for the network fee.</string>
+    <string name="general_maxTooManyNotesTitle">Too many notes to send at once</string>
+    <string name="general_maxTooManyNotesBody">Your balance is split into many small pieces, so it can\'t all go in one transaction. Try sending a smaller amount.</string>
+    <string name="general_maxTooManyNotesCta">Send a smaller amount</string>
+    <string name="general_maxTooManyNotesClose">Close</string>
     <string name="triple_dots">…</string>
     <string name="seed_recovery_reveal">Reveal recovery phrase</string>
     <string name="general_masked_seed_word">•••••</string>
