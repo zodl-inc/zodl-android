@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -45,8 +44,8 @@ fun ZashiMaxTooManyNotesSheet(
     state: MaxTooManyNotesSheetState?,
     focusRequests: Flow<Unit>,
     focusRequester: FocusRequester,
-    sheetState: SheetState = rememberInScreenModalBottomSheetState(),
 ) {
+    val sheetState = rememberInScreenModalBottomSheetState()
     val view = LocalView.current
     LaunchedEffect(focusRequests, focusRequester, sheetState) {
         focusRequests.collect { focusRequester.requestFocusWhenHidden(sheetState, view) }
