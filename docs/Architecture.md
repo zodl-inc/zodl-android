@@ -49,7 +49,7 @@ The logical components of the app are implemented as a number of Gradle modules.
      * `spackle-android-lib` — Android-specific additions.
 
 The following diagram shows a rough depiction of dependencies between the modules.  Two notes on this diagram:
- * `sdk-lib` is in a [different repository](https://github.com/Electric-Coin-Company/zcash-android-wallet-sdk)
+ * `sdk-lib` is in a [different repository](https://github.com/zodl-inc/zodl-android-wallet-sdk)
  * Although effort goes into ensuring this diagram stays up-to-date, Gradle build files are the authoritative source on dependencies
 
 ```mermaid
