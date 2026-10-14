@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
 import cash.z.ecc.android.sdk.fixture.AccountFixture
+import cash.z.ecc.android.sdk.ledger.LedgerAccountPairing
 import cash.z.ecc.android.sdk.model.BlockHeight
 import co.electriccoin.zcash.preference.StandardPreferenceProvider
 import co.electriccoin.zcash.preference.api.PreferenceProvider
@@ -205,6 +206,11 @@ private class FakeAccountDataSource(
         ufvk: String,
         seedFingerprint: String,
         index: Long,
+        birthday: BlockHeight?
+    ): cash.z.ecc.android.sdk.model.Account = error("unsupported")
+
+    override suspend fun importLedgerAccount(
+        pairing: LedgerAccountPairing,
         birthday: BlockHeight?
     ): cash.z.ecc.android.sdk.model.Account = error("unsupported")
 

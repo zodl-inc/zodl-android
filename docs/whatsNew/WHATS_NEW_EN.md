@@ -14,6 +14,23 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.17.0 (3149)] - 2026-10-10
+
+### Added:
+
+- We added support for Ledger hardware wallets. Connect your Ledger to receive ZEC and to send it with approval on your device. You can choose which Ledger account to connect; one account can be connected at a time.
+
+### Changed:
+
+- We updated our cryptography library for faster performance.
+
+## [3.16.0 (2958)] - 2026-10-07
+
+### Added:
+
+- We added gift cards. Go to More → Redeem Gift Card, scan the QR code or paste the link, and the ZEC goes straight into your wallet.
+- You can also redeem gift cards created in other wallets.
+
 ## [3.15.0 (2852)] - 2026-09-28
 
 ### Added:

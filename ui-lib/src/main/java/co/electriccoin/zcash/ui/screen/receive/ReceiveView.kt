@@ -56,7 +56,7 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.styledStringResource
 import co.electriccoin.zcash.ui.fixture.ZashiMainTopAppBarStateFixture
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.DEFAULT
-import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.KEYSTONE
+import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.HW_WALLET
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.ZASHI
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
 
@@ -167,21 +167,21 @@ private fun AddressPanel(
     val containerColor =
         when (state.colorMode) {
             ZASHI -> ZashiColors.Utility.Purple.utilityPurple50
-            KEYSTONE -> ZashiColors.Utility.Indigo.utilityIndigo50
+            HW_WALLET -> ZashiColors.Utility.Indigo.utilityIndigo50
             DEFAULT -> ZashiColors.Surfaces.bgSecondary
         }
 
     val buttonColor =
         when (state.colorMode) {
             ZASHI -> ZashiColors.Utility.Purple.utilityPurple100
-            KEYSTONE -> ZashiColors.Utility.Indigo.utilityIndigo100
+            HW_WALLET -> ZashiColors.Utility.Indigo.utilityIndigo100
             DEFAULT -> ZashiColors.Surfaces.bgTertiary
         }
 
     val buttonTextColor =
         when (state.colorMode) {
             ZASHI -> ZashiColors.Utility.Purple.utilityPurple800
-            KEYSTONE -> ZashiColors.Utility.Indigo.utilityIndigo800
+            HW_WALLET -> ZashiColors.Utility.Indigo.utilityIndigo800
             DEFAULT -> ZashiColors.Text.textPrimary
         }
 
@@ -406,7 +406,7 @@ private fun KeystonePreview() =
                                 onRequestClicked = {},
                                 isExpanded = true,
                                 onClick = {},
-                                colorMode = KEYSTONE,
+                                colorMode = HW_WALLET,
                                 infoIconButton =
                                     IconButtonState(
                                         R.drawable.ic_receive_zashi_shielded_info,

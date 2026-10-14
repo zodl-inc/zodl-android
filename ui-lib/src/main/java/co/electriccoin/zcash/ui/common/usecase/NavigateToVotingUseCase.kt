@@ -1,9 +1,13 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteKeystoneStorageProvider
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteStorageProvider
 import co.electriccoin.zcash.ui.common.voting.VotingSettingsEntry
+import co.electriccoin.zcash.ui.screen.error.ErrorArgs
+import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 
 /**
  * Routes to the coinholder-voting entry point, branching on whether the currently selected
@@ -19,9 +23,15 @@ class NavigateToVotingUseCase(
     private val hasSeenHowToVote: HasSeenHowToVoteStorageProvider,
     private val hasSeenHowToVoteKeystone: HasSeenHowToVoteKeystoneStorageProvider,
     private val votingSettingsEntry: VotingSettingsEntry,
+    private val navigateToError: NavigateToErrorUseCase,
 ) {
     suspend operator fun invoke() {
-        val isKeystone = getSelectedWalletAccount() is KeystoneAccount
+        val selectedAccount = getSelectedWalletAccount()
+        if (selectedAccount is LedgerAccount) {
+            navigateToError(ErrorArgs.General(LedgerOperationUnsupportedException()))
+            return
+        }
+        val isKeystone = selectedAccount is KeystoneAccount
         val hasSeenHowToVoteForCurrentWallet =
             if (isKeystone) {
                 hasSeenHowToVoteKeystone.get()

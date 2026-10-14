@@ -14,6 +14,7 @@ import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapQuote
+import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.ResponseWithNearErrorException
 import co.electriccoin.zcash.ui.common.repository.SwapQuoteData
@@ -21,6 +22,7 @@ import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.usecase.CancelSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.CancelSwapUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitProposalUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.imageRes
@@ -42,6 +44,7 @@ import kotlin.time.Duration.Companion.minutes
 
 internal class SwapQuoteVM(
     observeProposal: ObserveProposalUseCase,
+    observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
     applicationStateProvider: ApplicationStateProvider,
     private val swapRepository: SwapRepository,
     private val cancelSwapQuote: CancelSwapQuoteUseCase,
@@ -54,11 +57,12 @@ internal class SwapQuoteVM(
         combine(
             swapRepository.quote.filterNotNull(),
             observeProposal.observeNullable(),
-        ) { quote, proposal ->
+            observeSelectedWalletAccount.require(),
+        ) { quote, proposal, account ->
             when (quote) {
                 SwapQuoteData.Loading -> null
                 is SwapQuoteData.Error -> createErrorState(quote)
-                is SwapQuoteData.Success -> createState(proposal, quote)
+                is SwapQuoteData.Success -> createState(proposal, quote, account)
             }
         }.stateIn(
             scope = viewModelScope,
@@ -80,10 +84,11 @@ internal class SwapQuoteVM(
 
     private fun createState(
         proposal: TransactionProposal?,
-        quote: SwapQuoteData.Success
+        quote: SwapQuoteData.Success,
+        account: WalletAccount
     ): SwapQuoteState.Success =
         swapQuoteSuccessMapper.createState(
-            state = SwapQuoteInternalState(proposal as? SwapTransactionProposal, quote.quote),
+            state = SwapQuoteInternalState(proposal as? SwapTransactionProposal, quote.quote, account),
             onBack = ::onBack,
             onSubmitQuoteClick = ::onSubmitQuoteClick,
             onNavigateToOnRampSwap = ::onNavigateToOnRampSwap
@@ -165,6 +170,7 @@ internal class SwapQuoteVM(
 internal data class SwapQuoteInternalState(
     val proposal: SwapTransactionProposal?,
     val quote: SwapQuote,
+    val account: WalletAccount,
 ) {
     val total: BigDecimal = quote.getTotal(proposal?.proposal)
     val totalUsd: BigDecimal = quote.getTotalUsd(proposal?.proposal)

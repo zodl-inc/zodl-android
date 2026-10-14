@@ -232,7 +232,7 @@ jobs:
         timeout-minutes: 45
         run: |
           ./gradlew :configuration-api-lib:check :crash-lib:check :preference-api-lib:check :spackle-lib:check :ui-design-lib:check
-          ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest
+          ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest :feature-ledger:testZcashmainnetStoreDebugUnitTest :feature-migration:testZcashmainnetStoreDebugUnitTest :feature-voting:testZcashmainnetStoreDebugUnitTest
       - name: Collect Artifacts
         if: ${{ always() }}
         timeout-minutes: 1

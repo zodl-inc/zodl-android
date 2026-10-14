@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.PersistableWallet
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -76,6 +77,12 @@ class AutomaticServerRepositoryTest {
             every { submitState } returns MutableStateFlow<SubmitProposalState?>(null)
         }
 
+    private val ledgerProposalPipeline =
+        mockk<LedgerProposalPipeline>(relaxed = true) {
+            every { transactionProposal } returns MutableStateFlow<TransactionProposal?>(null)
+            every { submitState } returns MutableStateFlow<SubmitProposalState?>(null)
+        }
+
     private val walletRepository = mockk<WalletRepository>(relaxed = true)
 
     private val timeSource = TestTimeSource()
@@ -85,6 +92,7 @@ class AutomaticServerRepositoryTest {
             walletRepository = walletRepository,
             zashiProposalRepository = zashiProposalRepository,
             keystoneProposalRepository = keystoneProposalRepository,
+            ledgerProposalPipeline = ledgerProposalPipeline,
             applicationStateProvider = mockk(relaxed = true),
             synchronizerProvider = synchronizerProvider,
             persistableWalletProvider = persistableWalletProvider,
@@ -184,6 +192,27 @@ class AutomaticServerRepositoryTest {
         runTest {
             coEvery { isAutomaticProvider.get() } returns true
             every { zashiProposalRepository.submitState } returns MutableStateFlow(SubmitProposalState.Submitting)
+
+            assertNull(repository.evaluateServerSwitch())
+            coVerify(exactly = 0) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun aPendingLedgerProposalSkipsTheSdkBenchmark() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            every { ledgerProposalPipeline.transactionProposal } returns
+                MutableStateFlow<TransactionProposal?>(mockk<TransactionProposal>())
+
+            assertNull(repository.evaluateServerSwitch())
+            coVerify(exactly = 0) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun aPendingLedgerSubmitStateSkipsTheSdkBenchmark() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            every { ledgerProposalPipeline.submitState } returns MutableStateFlow(SubmitProposalState.Submitting)
 
             assertNull(repository.evaluateServerSwitch())
             coVerify(exactly = 0) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }

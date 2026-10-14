@@ -4,7 +4,10 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
+import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
@@ -100,6 +103,20 @@ class SubmitProposalUseCaseTest {
         }
 
     @Test
+    fun ledgerProposalOpensTheSignSheetWithoutSubmittingOrClearingSwapState() =
+        runTest {
+            val fx = useCase()
+            fx.givenLedger(mockk<TransactionProposal>())
+
+            fx.useCase()
+
+            verify(exactly = 1) { fx.ledgerNavigator.forwardToSign() }
+            verify(exactly = 0) { fx.swapRepository.clear() }
+            verify(exactly = 0) { fx.prefillSend.clear() }
+            verify(exactly = 0) { fx.navigationRouter.replace(*anyVararg()) }
+        }
+
+    @Test
     fun zashiSwapProposalAddsHistoryClearsSubmitsProcessesAndNavigates() =
         runTest {
             val fx = useCase()
@@ -174,6 +191,11 @@ class SubmitProposalUseCaseTest {
         coEvery { keystoneProposalRepository.getTransactionProposal() } returns proposal
     }
 
+    private fun Fixtures.givenLedger(proposal: TransactionProposal) {
+        coEvery { accountDataSource.getSelectedAccount() } returns mockk<LedgerAccount>()
+        coEvery { ledgerProposalPipeline.getTransactionProposal() } returns proposal
+    }
+
     private fun Fixtures.givenZashi(
         proposal: TransactionProposal,
         submitResult: SubmitResult = mockk(relaxed = true)
@@ -196,6 +218,8 @@ class SubmitProposalUseCaseTest {
         val accountDataSource = mockk<AccountDataSource>(relaxed = true)
         val zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true)
         val keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true)
+        val ledgerProposalPipeline = mockk<LedgerProposalPipeline>(relaxed = true)
+        val ledgerNavigator = mockk<LedgerNavigator>(relaxed = true)
         val biometricRepository = mockk<BiometricRepository>(relaxed = true)
         val swapRepository = mockk<SwapRepository>(relaxed = true)
         val metadataRepository = mockk<MetadataRepository>(relaxed = true)
@@ -207,6 +231,8 @@ class SubmitProposalUseCaseTest {
                 accountDataSource = accountDataSource,
                 zashiProposalRepository = zashiProposalRepository,
                 keystoneProposalRepository = keystoneProposalRepository,
+                ledgerProposalPipeline = ledgerProposalPipeline,
+                ledgerNavigator = ledgerNavigator,
                 biometricRepository = biometricRepository,
                 swapRepository = swapRepository,
                 metadataRepository = metadataRepository,

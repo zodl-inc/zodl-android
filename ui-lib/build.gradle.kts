@@ -58,6 +58,7 @@ android {
                     "src/main/res/ui/common",
                     "src/main/res/ui/contact",
                     "src/main/res/ui/connect_keystone",
+                    "src/main/res/ui/connect_ledger",
                     "src/main/res/ui/crash_reporting_opt_in",
                     "src/main/res/ui/delete_wallet",
                     "src/main/res/ui/export_data",

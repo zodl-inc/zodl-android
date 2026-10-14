@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.common.usecase.ClearClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.ConfirmResyncUseCase
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateFlexaTransactionUseCase
+import co.electriccoin.zcash.ui.common.usecase.CreateHWWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateIncreaseEphemeralGapLimitProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateKeystoneAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateKeystoneProposalPCZTEncoderUseCase
@@ -42,7 +43,6 @@ import co.electriccoin.zcash.ui.common.usecase.GetFlexaStatusUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetGiftCardDestinationAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetHomeMessageUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetIronwoodBalanceUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetKeystoneStatusUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardBalanceUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetPersistableWalletUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetPreselectedSwapAssetUseCase
@@ -98,6 +98,7 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveABContactPickedUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveClearSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveContactByAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveFastestServersUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveKeepScreenOnSyncSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSeedMismatchUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
@@ -199,6 +200,7 @@ val useCaseModule =
         factoryOf(::ObserveSelectedWalletAccountUseCase)
         factoryOf(::ObserveZashiAccountUseCase)
         factoryOf(::GetZashiAccountUseCase)
+        factoryOf(::CreateHWWalletAccountUseCase)
         factoryOf(::CreateKeystoneAccountUseCase)
         factoryOf(::DeriveKeystoneAccountUnifiedAddressUseCase)
         factoryOf(::ParseKeystoneUrToZashiAccountsUseCase)
@@ -248,7 +250,6 @@ val useCaseModule =
         factoryOf(::ValidateSeedUseCase)
         factoryOf(::RestoreWalletUseCase)
         factoryOf(::NavigateToWalletBackupUseCase)
-        factoryOf(::GetKeystoneStatusUseCase)
         factoryOf(::GetFlexaStatusUseCase)
         factoryOf(::GetHomeMessageUseCase)
         factoryOf(::NavigateToVotingUseCase)
@@ -310,6 +311,7 @@ val useCaseModule =
         factoryOf(::GetPreselectedSwapAssetUseCase)
         singleOf(::RecoverFromSeedMismatchUseCase)
         factoryOf(::ObserveSeedMismatchUseCase)
+        factoryOf(::ObserveKeepScreenOnSyncSessionUseCase)
         factoryOf(::GetSwapStatusUseCase)
         factoryOf(::ExecuteDebugDBQueryUseCase)
         factoryOf(::SimulateSeedNotRelevantUseCase)
