@@ -126,7 +126,7 @@ internal class SwapQuoteVM(
             }
 
         return SwapQuoteState.Error(
-            icon = imageRes(R.drawable.ic_swap_quote_error),
+            icon = imageRes(R.drawable.ic_error_circle),
             title = stringRes(R.string.swapAndPay_quoteUnavailable),
             subtitle = message,
             negativeButton =

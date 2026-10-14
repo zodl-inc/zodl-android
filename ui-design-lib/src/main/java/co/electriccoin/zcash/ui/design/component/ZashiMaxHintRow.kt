@@ -15,7 +15,6 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.stringRes
 
 /**
  * "Why Max isn't available" hint: an info icon, a short text and an optional trailing tertiary button
@@ -48,11 +47,8 @@ data class ZashiMaxHintRowState(
 private class ZashiMaxHintRowStatePreviewProvider : PreviewParameterProvider<ZashiMaxHintRowState> {
     override val values =
         sequenceOf(
-            ZashiMaxHintRowState(
-                text = stringRes("Max uses shielded ZEC only."),
-                button = ChipButtonState(text = stringRes("Shield"), onClick = {})
-            ),
-            ZashiMaxHintRowState(text = stringRes("Max will be available once your funds confirm."))
+            maxShieldedOnlyHintState(onShield = {}),
+            maxFundsConfirmingHintState()
         )
 }
 

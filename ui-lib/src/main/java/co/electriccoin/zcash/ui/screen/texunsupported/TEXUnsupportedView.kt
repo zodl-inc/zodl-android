@@ -48,7 +48,7 @@ fun TEXUnsupportedView(
             ),
         sheetState = sheetState,
     ) { innerState ->
-        Image(painterResource(R.drawable.ic_swap_quote_error), contentDescription = null)
+        Image(painterResource(R.drawable.ic_error_circle), contentDescription = null)
         Spacer(12.dp)
         Text(
             text = stringResource(R.string.texKeystone_title),

@@ -21,7 +21,6 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.stringRes
 
 /**
  * Non-blocking inline banner: a warning icon, a title and a subtitle (Figma 9043:2986). It is not timed and
@@ -38,7 +37,7 @@ fun ZashiInlineBanner(
     ) {
         Row {
             Image(
-                painter = painterResource(R.drawable.ic_alert_circle),
+                painter = painterResource(R.drawable.ic_alert_circle_outline),
                 contentDescription = null,
                 colorFilter = ColorFilter.tint(ZashiColors.Text.textTertiary)
             )
@@ -72,11 +71,7 @@ private fun ZashiInlineBannerPreview() =
     ZcashTheme {
         BlankSurface {
             ZashiInlineBanner(
-                state =
-                    ZashiInlineBannerState(
-                        title = stringRes("Couldn't calculate the max amount"),
-                        subtitle = stringRes("Try again or enter an amount.")
-                    ),
+                state = maxFailedBannerState(),
                 modifier = Modifier.padding(ZcashTheme.dimens.spacingDefault)
             )
         }
