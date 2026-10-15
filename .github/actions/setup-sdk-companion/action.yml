@@ -190,3 +190,24 @@ runs:
         # resolution, not the app's own dependency locking (if any).
         echo "ORG_GRADLE_PROJECT_ZCASH_IS_DEPENDENCY_LOCKING_ENABLED=false" >> "$GITHUB_ENV"
         echo "::notice::Building against ${SDK_REPO}@${{ steps.pin.outputs.commit }} (SDK_COMMIT_PIN), not the published Maven artifact."
+    - name: Cap memory and parallelism for the companion SDK build
+      if: steps.pin.outputs.commit != ''
+      shell: bash
+      run: |
+        # The app's Gradle daemon (-Xmx4g), its Kotlin daemon and the companion SDK's
+        # parallel rustc jobs share a 16 GB standard runner. Jobs on pinned builds hung for
+        # 10-25 min and then died with "The runner has received a shutdown signal" (exit 143),
+        # the pattern of a runner out of memory. GRADLE_USER_HOME properties take precedence
+        # over the project's gradle.properties, so this caps the pinned CI builds only.
+        mkdir -p "${HOME}/.gradle"
+        {
+          echo "org.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError"
+          echo "org.gradle.workers.max=2"
+          echo "kotlin.daemon.jvmargs=-Xmx2g"
+        } >> "${HOME}/.gradle/gradle.properties"
+        echo "CARGO_BUILD_JOBS=2" >> "$GITHUB_ENV"
+        # Extra swap on the scratch disk, so a peak slows the build down instead of
+        # freezing the runner agent.
+        sudo fallocate -l 8G /mnt/companion.swap && sudo chmod 600 /mnt/companion.swap \
+          && sudo mkswap /mnt/companion.swap > /dev/null && sudo swapon /mnt/companion.swap || true
+        free -m
