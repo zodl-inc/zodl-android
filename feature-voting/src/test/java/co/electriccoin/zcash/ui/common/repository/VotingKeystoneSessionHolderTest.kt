@@ -186,7 +186,6 @@ class VotingKeystoneSessionHolderTest {
                 env.votingCryptoClient.openRoundSession(
                     dbHandle = DB_HANDLE_B,
                     torLease = any(),
-                    isCustomServer = true,
                     roundId = any(),
                     proposals = any(),
                     hotkeySecret = any(),

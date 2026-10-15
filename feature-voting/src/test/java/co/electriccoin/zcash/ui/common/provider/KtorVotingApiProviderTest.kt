@@ -951,7 +951,10 @@ class KtorVotingApiProviderTest {
             val attemptsByPath = mutableMapOf<String, Int>()
             val provider =
                 KtorVotingApiProvider(
-                    httpClientProvider = retryingHttpClientProvider(attemptsByPath),
+                    // The client-level retry exclusion (excludeFromClientRetry) only applies to the
+                    // Ktor leg, which is used when Tor is on; with Tor off the config request goes
+                    // through the OHTTP client instead.
+                    httpClientProvider = retryingHttpClientProvider(attemptsByPath, torEnabled = true),
                     configurationRepository = TestConfigurationRepository(),
                     votingChainConfigRepository = TestVotingChainConfigRepository(),
                     votingCryptoClient = unusedVotingCryptoClient(),
@@ -984,9 +987,10 @@ class KtorVotingApiProviderTest {
     private fun retryingHttpClientProvider(
         attemptsByPath: MutableMap<String, Int>,
         dynamicConfigFails: Boolean = true,
+        torEnabled: Boolean = false,
     ): HttpClientProvider =
         object : HttpClientProvider {
-            override suspend fun isTorEnabled(): Boolean = false
+            override suspend fun isTorEnabled(): Boolean = torEnabled
 
             override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
 

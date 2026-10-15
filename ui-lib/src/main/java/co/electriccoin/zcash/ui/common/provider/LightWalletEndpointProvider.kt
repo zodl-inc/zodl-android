@@ -31,7 +31,6 @@ class LightWalletEndpointProvider(
         if (isMainnet) {
             LightWalletEndpoint(host = "ohttp-gateway.example", port = 443, isSecure = true)
         } else {
-            // Served via relay-simulator-testnet.example.
             LightWalletEndpoint(host = "ohttp-gateway-testnet.example", port = 443, isSecure = true)
         }
 

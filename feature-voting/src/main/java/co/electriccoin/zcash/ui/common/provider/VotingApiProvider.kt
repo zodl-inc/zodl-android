@@ -691,9 +691,9 @@ class KtorVotingApiProvider(
 
     /**
      * OHTTP leg of [fetchDynamicConfigBody]: same failure classes as the Tor leg (every
-     * transport failure and any non-2xx status is [DynamicVotingConfigTransientException], so
-     * the mirror walk moves on to the next URL). The gateway proxies to the real host, so the
-     * config origin never sees the device IP.
+     * transport failure and any HTTP 5xx is [DynamicVotingConfigTransientException], so the
+     * mirror walk moves on to the next URL; any other non-2xx status is authoritative). The
+     * gateway proxies to the real host, so the config origin never sees the device IP.
      */
     private suspend fun fetchDynamicConfigBodyViaOhttp(
         ohttpClient: OhttpHttpClient,
@@ -714,9 +714,7 @@ class KtorVotingApiProvider(
                 throw exception.toOhttpDynamicVotingConfigException(url)
             }
         if (response.status !in OHTTP_HTTP_SUCCESS) {
-            throw DynamicVotingConfigTransientException(
-                "Dynamic voting config fetch via OHTTP failed for $url: HTTP ${response.status}",
-            )
+            throw ohttpStatusFailure(url, response.status)
         }
         return response.body.decodeToString()
     }
@@ -1220,6 +1218,23 @@ private fun Exception.toDynamicVotingConfigException(url: String): VotingConfigE
             "Dynamic voting config fetch failed for $url: ${this::class.simpleName ?: "unknown error"}",
         )
     }
+
+/**
+ * Classifies a non-2xx status of the OHTTP dynamic-config leg exactly like the Tor leg
+ * ([ResponseException.toDynamicVotingConfigException]): HTTP 5xx is retryable, every other
+ * status (4xx included) is authoritative and stops the mirror walk.
+ */
+private fun ohttpStatusFailure(
+    url: String,
+    status: Int
+): VotingConfigException {
+    val message = "Dynamic voting config fetch via OHTTP failed for $url: HTTP $status"
+    return if (status in TRANSIENT_HTTP_STATUS_MIN..TRANSIENT_HTTP_STATUS_MAX) {
+        DynamicVotingConfigTransientException(message)
+    } else {
+        VotingConfigException(message)
+    }
+}
 
 /**
  * Maps a failure of the OHTTP leg of the dynamic-config fetch. Real coroutine cancellations

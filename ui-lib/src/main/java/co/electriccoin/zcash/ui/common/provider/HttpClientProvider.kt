@@ -218,19 +218,23 @@ internal fun HttpRequestRetryConfig.configureClearnetRetry() {
     exponentialDelay()
 }
 
-// C-08 fix: Exclude all voting POSTs from retry — they carry OHTTP-encapsulated ciphertext
-// that must be sent exactly once (gateway replay cache returns 409 on duplicate nonce).
-// Covers both helper endpoints (/shares, /share-status) and direct voting POSTs
-// (/delegate-vote, /cast-vote) which can route through OHTTP when Tor is OFF.
+/**
+ * C-08 fix: Exclude all voting POSTs from retry — they carry OHTTP-encapsulated ciphertext
+ * that must be sent exactly once (gateway replay cache returns 409 on duplicate nonce).
+ * Covers both helper endpoints (/shares, /share-status) and direct voting POSTs
+ * (/delegate-vote, /cast-vote) which can route through OHTTP when Tor is OFF.
+ */
 internal fun String.isVotingPath(): Boolean =
     contains("/shielded-vote/v1/shares") ||
         contains("/shielded-vote/v1/share-status/") ||
         contains("/shielded-vote/v1/delegate-vote") ||
         contains("/shielded-vote/v1/cast-vote")
 
-// MOB-1378: the CMC quote API is the exchange-rate provider; requests to it must never leave over the
-// direct (clearnet) client. Matched on the host (not a substring of the full URL) so a path or query
-// that happens to echo the host can't trigger a false match. The host literal lives in CMCApiProvider.
+/**
+ * MOB-1378: the CMC quote API is the exchange-rate provider; requests to it must never leave over the
+ * direct (clearnet) client. Matched on the host (not a substring of the full URL) so a path or query
+ * that happens to echo the host can't trigger a false match. The host literal lives in CMCApiProvider.
+ */
 private fun String.isExchangeRateHost(): Boolean = this == CMC_API_HOST
 
 /**
@@ -251,8 +255,10 @@ private const val MAX_RETRIES = 4
 private const val DEFAULT_REQUEST_TIMEOUT_MILLIS = 120_000L
 private const val DEFAULT_CONNECT_TIMEOUT_MILLIS = 15_000L
 
-// Credential-bearing headers redacted from logs even in debug. The shared client also serves the
-// CMC quote API (X-CMC_PRO_API_KEY) and the voting helper (X-Helper-Token).
+/**
+ * Credential-bearing headers redacted from logs even in debug. The shared client also serves the
+ * CMC quote API (X-CMC_PRO_API_KEY) and the voting helper (X-Helper-Token).
+ */
 private val SANITIZED_HEADERS = setOf(HttpHeaders.Authorization, "X-CMC_PRO_API_KEY", "X-Helper-Token")
 
 private const val HTTP_SERVER_ERROR_FIRST = 500

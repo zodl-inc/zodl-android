@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
 import co.electriccoin.lightwallet.client.OhttpHttpClient
+import co.electriccoin.zcash.configuration.model.entry.ConfigKey
 import co.electriccoin.zcash.configuration.model.map.Configuration
 import co.electriccoin.zcash.ui.common.model.voting.EncryptedShare
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
@@ -10,6 +11,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
 import co.electriccoin.zcash.ui.common.repository.VotingCustomChainConfig
+import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -29,6 +31,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 /**
  * Regression tests for C-04 (Medium-High): Share operations (delegateShares) must route through
@@ -168,6 +171,14 @@ class VotingApiProviderOhttpRoutingTest {
                     status = 200,
                     body =
                         when {
+                            request.url.contains("/static-voting-config.json") -> {
+                                staticConfigJson().toByteArray()
+                            }
+
+                            request.url.contains("/dynamic-voting-config.json") -> {
+                                dynamicConfigJson().toByteArray()
+                            }
+
                             request.url.contains("/share-status") -> {
                                 """{"status":"confirmed"}""".toByteArray()
                             }
@@ -188,8 +199,41 @@ class VotingApiProviderOhttpRoutingTest {
             }
         }
 
+    /**
+     * Points the voting config at an unpinned (checksum-less) test URL. Without this the default
+     * (bundled) config source is used, whose static config is hash-pinned, so the canned JSON below
+     * could never verify and the share POST would never be reached.
+     */
     private class TestConfigurationRepository : ConfigurationRepository {
-        override val configurationFlow: StateFlow<Configuration?> = MutableStateFlow(null)
+        // ConfigKey is a value class, which MockK cannot match with any(), so use a tiny fake.
+        private val configuration =
+            object : Configuration {
+                override val updatedAt: Instant? = null
+
+                override fun hasKey(key: ConfigKey): Boolean = key == ConfigurationEntries.VOTING_CONFIG_URL.key
+
+                override fun getBoolean(
+                    key: ConfigKey,
+                    defaultValue: Boolean
+                ): Boolean = defaultValue
+
+                override fun getInt(
+                    key: ConfigKey,
+                    defaultValue: Int
+                ): Int = defaultValue
+
+                override fun getString(
+                    key: ConfigKey,
+                    defaultValue: String
+                ): String =
+                    if (key == ConfigurationEntries.VOTING_CONFIG_URL.key) {
+                        "https://example.com/static-voting-config.json"
+                    } else {
+                        defaultValue
+                    }
+            }
+
+        override val configurationFlow: StateFlow<Configuration?> = MutableStateFlow(configuration)
         override val isFlexaAvailable: StateFlow<Boolean?> = MutableStateFlow(false)
 
         override suspend fun isFlexaAvailable(): Boolean = false
