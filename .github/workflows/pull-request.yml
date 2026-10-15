@@ -272,7 +272,10 @@ jobs:
   test_android_modules_emulator:
     name: test_android_modules_emulator (${{ matrix.shard }})
     needs: [validate_gradle_wrapper]
-    runs-on: ubuntu-latest
+    # The app shard runs the emulator screenshot tests, which starve on the 2 vCPU / 8 GB
+    # standard runner (the emulator disappears mid-run); it uses the org's larger runner
+    # group (8 vCPU / 32 GB, github-config "Default Larger Runners").
+    runs-on: ${{ matrix.runner }}
     # 120 minutes for cold-cache first run: the `app` shard needs the SDK compiled, and when
     # SDK_COMMIT_PIN is set (see setup-sdk-companion) a cold cargo/target cache (vendored
     # zodl-slipstream + arti/hpke, 4 ABIs) takes ~45+ min before emulator/test steps start.
@@ -288,6 +291,7 @@ jobs:
       matrix:
         include:
           - shard: libs
+            runner: ubuntu-latest
             coverage: true
             gradle-tasks: >-
               connectedDebugAndroidTest
@@ -297,6 +301,7 @@ jobs:
               -x :ui-benchmark-test:connectedDebugAndroidTest
               :ui-integration-test:connectedZcashmainnetStoreDebugAndroidTest
           - shard: app
+            runner: ubuntu-24.04-8cores
             coverage: false
             gradle-tasks: >-
               :app:connectedZcashmainnetStoreDebugAndroidTest
