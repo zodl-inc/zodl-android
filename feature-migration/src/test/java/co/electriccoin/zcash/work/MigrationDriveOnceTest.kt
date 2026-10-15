@@ -392,4 +392,55 @@ class MigrationDriveOnceTest {
             waitingDisposition(allSent = true, hasUnprovableBlocker = true)
         )
     }
+
+    // ── NU7 characterization pins (MOB-2287): pre-NU7 behaviour at the 75 s/block rate. ──
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - engine wake delay is block delta times 75`() {
+        // NU7: revisit - spans activation once helper is height-aware
+        val delay =
+            computeEngineWakeDelay(
+                est = 1_000,
+                secondsPerBlock = 75,
+                peek = MigrationPeek(height = 1_100, kind = MigrationStepKind.BROADCAST),
+            )
+        assertEquals((100 * 75).seconds, delay)
+    }
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - engine wake delay floors at 60s for 0 and 1 block`() {
+        // NU7: revisit - spans activation once helper is height-aware
+        // 1 block * 75 s = 75 s is above the floor; 0 blocks (due now) and past peeks floor to 60 s.
+        val peekNow = MigrationPeek(height = 1_000, kind = MigrationStepKind.PROVE)
+        assertEquals(60.seconds, computeEngineWakeDelay(est = 1_000, secondsPerBlock = 75, peek = peekNow))
+        val peekNext = MigrationPeek(height = 1_001, kind = MigrationStepKind.PROVE)
+        assertEquals(75.seconds, computeEngineWakeDelay(est = 1_000, secondsPerBlock = 75, peek = peekNext))
+    }
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - nextWake takes the engine peek at 75s per block when no gap`() {
+        // NU7: revisit - spans activation once helper is height-aware
+        val delay =
+            nextWake(
+                states = states(tx(1, scheduled = 5_000)),
+                est = 1_000,
+                secondsPerBlock = 75,
+                lastActivityEpochSeconds = null,
+                privacyBufferSeconds = 180L,
+                nowEpochSeconds = 1_000_000L,
+                peek = MigrationPeek(height = 1_010, kind = MigrationStepKind.PROVE),
+            )
+        assertEquals((10 * 75).seconds, delay)
+    }
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - rearm and cadence constants`() {
+        assertEquals(60L, MIN_REARM_SECONDS)
+        assertEquals(60.seconds, REARM_FLOOR)
+        assertEquals(1.seconds, PREP_FAST_TRACK_REARM)
+        assertEquals(180.seconds, SYNC_TIMEOUT)
+        // Fallback cadence: 5 min testnet / 60 min mainnet; unit tests run under whichever flavor is active.
+        val cadence = migrationCadence()
+        assertTrue(cadence == 300.seconds || cadence == 3_600.seconds, "unexpected cadence $cadence")
+    }
 }

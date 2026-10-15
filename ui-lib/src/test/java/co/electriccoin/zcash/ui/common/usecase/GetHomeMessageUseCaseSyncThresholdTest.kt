@@ -117,4 +117,33 @@ class GetHomeMessageUseCaseSyncThresholdTest {
             )
         assertEquals(HomeMessageData.Resyncing(progress = 50f), result)
     }
+
+    // NU7 characterization pins (MOB-2287): the threshold is a block COUNT sized for 75 s blocks.
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - banner threshold is 3456 blocks which is 3 days at 75s`() {
+        // NU7: revisit - spans activation once helper is height-aware
+        assertEquals(3456L, SYNCING_BANNER_HIDE_BELOW_BLOCKS)
+        assertEquals(3L * 24L * 3600L, SYNCING_BANNER_HIDE_BELOW_BLOCKS * 75L)
+    }
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - one block under the threshold hides and the threshold shows`() {
+        // NU7: revisit - spans activation once helper is height-aware
+        assertNull(
+            syncingMessageFor(
+                snapshot(blocksRemaining = SYNCING_BANNER_HIDE_BELOW_BLOCKS - 1),
+                syncMessageShownBefore = false,
+                someBalance = false,
+            )
+        )
+        assertEquals(
+            HomeMessageData.Syncing(progress = 50f),
+            syncingMessageFor(
+                snapshot(blocksRemaining = SYNCING_BANNER_HIDE_BELOW_BLOCKS),
+                syncMessageShownBefore = false,
+                someBalance = false,
+            )
+        )
+    }
 }

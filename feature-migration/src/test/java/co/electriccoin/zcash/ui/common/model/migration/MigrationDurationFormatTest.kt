@@ -107,4 +107,63 @@ class MigrationDurationFormatTest {
         assertEquals("~1 h 15 min", formatMigrationDuration(totalSeconds = 75L * 60L, fineGrained = true))
         assertEquals("~1 h 59 min", formatMigrationDuration(totalSeconds = 119L * 60L, fineGrained = true))
     }
+
+    // ── NU7 characterization pins (MOB-2287): pre-NU7 behaviour at the 75 s/block rate. These pass
+    //    today and document what must stay true for pre-activation heights once the helper becomes
+    //    height-aware (25 s post-NU7). Explicit secondsPerBlock = 75 so they survive the default change. ──
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - default rate is 75 seconds per block`() {
+        assertEquals(75L, ZcashSdk.BLOCK_INTERVAL_MILLIS / 1000)
+        assertEquals(75L, estimatedSecondsBetweenHeights(fromHeight = 1_000L, toHeight = 1_001L))
+    }
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - estimatedSecondsBetweenHeights scales linearly with explicit 75`() {
+        // NU7: revisit - spans activation once helper is height-aware
+        assertEquals(
+            288L * 75L,
+            estimatedSecondsBetweenHeights(fromHeight = 4_180_000L, toHeight = 4_180_288L, secondsPerBlock = 75L),
+        )
+        // NU7: revisit - spans activation once helper is height-aware
+        assertEquals(
+            0L,
+            estimatedSecondsBetweenHeights(fromHeight = 4_180_000L, toHeight = 4_180_000L, secondsPerBlock = 75L),
+        )
+        // NU7: revisit - spans activation once helper is height-aware
+        assertEquals(
+            -100L * 75L,
+            estimatedSecondsBetweenHeights(fromHeight = 4_180_100L, toHeight = 4_180_000L, secondsPerBlock = 75L),
+        )
+    }
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - 1152 blocks is exactly 24 hours`() {
+        // NU7: revisit - spans activation once helper is height-aware
+        val seconds = estimatedSecondsBetweenHeights(fromHeight = 5_000_000L, toHeight = 5_001_152L, secondsPerBlock = 75L)
+        assertEquals(24L * 3600L, seconds)
+        assertEquals("~24 hours", formatMigrationDuration(seconds, fineGrained = false))
+        assertEquals("~24 h", formatMigrationDuration(seconds, fineGrained = true))
+    }
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - 3456 blocks is exactly 3 days`() {
+        // NU7: revisit - spans activation once helper is height-aware
+        val seconds = estimatedSecondsBetweenHeights(fromHeight = 0L, toHeight = 3_456L, secondsPerBlock = 75L)
+        assertEquals(3L * 24L * 3600L, seconds)
+        assertEquals("~72 hours", formatMigrationDuration(seconds, fineGrained = false))
+    }
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - sub-floor block spans surface as the privacy floor`() {
+        // NU7: revisit - spans activation once helper is height-aware
+        val fiveBlocks = estimatedSecondsBetweenHeights(fromHeight = 100L, toHeight = 105L, secondsPerBlock = 75L)
+        assertEquals(375L, fiveBlocks)
+        assertEquals("~10 min", formatMigrationDuration(fiveBlocks, fineGrained = true))
+        assertEquals("~1 hour", formatMigrationDuration(fiveBlocks, fineGrained = false))
+        // 48 blocks = 3600 s = exactly the mainnet floor boundary.
+        val fortyEightBlocks = estimatedSecondsBetweenHeights(fromHeight = 100L, toHeight = 148L, secondsPerBlock = 75L)
+        assertEquals(3_600L, fortyEightBlocks)
+        assertEquals("~1 hour", formatMigrationDuration(fortyEightBlocks, fineGrained = false))
+    }
 }
