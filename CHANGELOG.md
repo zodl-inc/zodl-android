@@ -7,6 +7,23 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.17.1 (3155)] - 2026-10-14
+
+### Changed:
+
+- Updated the SDK to 5.2.1, which builds `pasta_curves` with its `asm` feature. Proving, syncing and
+  shielded transactions use the assembly field arithmetic on 64-bit devices (`arm64-v8a`, `x86_64`).
+
+## [3.17.0 (3149)] - 2026-10-10
+
+### Added:
+
+- We added support for Ledger hardware wallets. Connect your Ledger to receive ZEC and to send it with approval on your device. You can choose which Ledger account to connect; one account can be connected at a time.
+
+### Changed:
+
+- We updated our cryptography library for faster performance.
+
 ### Added:
 
 - You can now connect a Ledger hardware wallet over Bluetooth: pair a Ledger account, then see it

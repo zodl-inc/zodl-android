@@ -14,6 +14,22 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.17.1 (3155)] - 2026-10-14
+
+### Changed:
+
+- We sped up the cryptography behind shielded transactions and syncing on 64-bit devices.
+
+## [3.17.0 (3149)] - 2026-10-10
+
+### Added:
+
+- We added support for Ledger hardware wallets. Connect your Ledger to receive ZEC and to send it with approval on your device. You can choose which Ledger account to connect; one account can be connected at a time.
+
+### Changed:
+
+- We updated our cryptography library for faster performance.
+
 ## [3.16.0 (2958)] - 2026-10-07
 
 ### Added:
