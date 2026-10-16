@@ -173,7 +173,10 @@ class VotingApiProviderOhttpRoutingTest {
                 }
 
             assertTrue(
-                failure.lastError?.message.orEmpty().contains("unsupported destination"),
+                failure.lastError
+                    ?.message
+                    .orEmpty()
+                    .contains("unsupported destination"),
                 "vote server GET should fail closed on the unsupported destination"
             )
             assertTrue(
