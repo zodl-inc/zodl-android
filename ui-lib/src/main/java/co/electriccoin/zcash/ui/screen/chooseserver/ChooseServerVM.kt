@@ -228,7 +228,7 @@ class ChooseServerVM(
                 refreshFastestServersUseCase()
             }
             // Preselect once per ViewModel: the first finished result with a clearnet candidate. Later
-            // emissions (e.g. a refresh) must not overwrite what the user has selected since.
+            // emissions (e.g. a refresh) and any selection the user has already made are never overwritten.
             viewModelScope.launch {
                 val clearnetEndpoints = lightWalletEndpointProvider.getFallbackEndpoints()
                 val fastestClearnet =
@@ -241,7 +241,7 @@ class ChooseServerVM(
                 innerState.first { it.local != null }
                 innerState.update { inner ->
                     inner.local?.let { local ->
-                        if (inner.persisted == null || local.selectedEndpoint == inner.persisted.endpoint) {
+                        if (!local.hasUserSelection && local.selectedEndpoint == inner.persisted?.endpoint) {
                             inner.copy(local = local.copy(isAutomatic = false, selectedEndpoint = fastestClearnet))
                         } else {
                             inner
@@ -361,6 +361,7 @@ class ChooseServerVM(
                         isAutomatic = false,
                         isCustomSelected = true,
                         selectedEndpoint = null,
+                        hasUserSelection = true,
                     )
             )
         }
@@ -369,7 +370,7 @@ class ChooseServerVM(
     private fun onAutomaticModeClicked() {
         if (!canUpdateSelection()) return
         innerState.update { inner ->
-            inner.copy(local = inner.requireLocal().copy(isAutomatic = true))
+            inner.copy(local = inner.requireLocal().copy(isAutomatic = true, hasUserSelection = true))
         }
     }
 
@@ -383,7 +384,8 @@ class ChooseServerVM(
                     inner.requireLocal().copy(
                         isAutomatic = false,
                         selectedEndpoint = if (!pickCustom) persisted.endpoint else null,
-                        isCustomSelected = pickCustom
+                        isCustomSelected = pickCustom,
+                        hasUserSelection = true
                     )
             )
         }
@@ -398,6 +400,7 @@ class ChooseServerVM(
                         isAutomatic = false,
                         selectedEndpoint = endpoint,
                         isCustomSelected = false,
+                        hasUserSelection = true,
                     )
             )
         }
@@ -412,6 +415,7 @@ class ChooseServerVM(
                         isAutomatic = false,
                         isCustomSelected = true,
                         selectedEndpoint = null,
+                        hasUserSelection = true,
                     )
             )
         }
@@ -503,6 +507,7 @@ private data class InnerState(
         val isCustomSelected: Boolean,
         val isSaveInProgress: Boolean,
         val customEndpoint: EndpointTextFieldInnerState,
+        val hasUserSelection: Boolean = false,
     )
 
     data class Persisted(
