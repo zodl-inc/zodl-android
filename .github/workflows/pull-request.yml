@@ -400,7 +400,7 @@ jobs:
           # background jobs are detached from the step's stdout (or the step never ends); the sampler
           # stops at a marker file and logcat ends with the emulator.
           script: |
-            rm -f /tmp/stop-emulator-stats ; (adb logcat -b all -v threadtime < /dev/null > /tmp/emulator-logcat.txt 2>&1 &) ; (while [ ! -e /tmp/stop-emulator-stats ]; do adb shell 'date; cat /proc/loadavg; grep -E "MemAvailable|SwapFree" /proc/meminfo; top -b -n 1 -m 8' >> /tmp/emulator-stats.txt 2>&1; sleep 5; done < /dev/null > /dev/null 2>&1 &) ; ./gradlew ${{ matrix.gradle-tasks }} ; rc=$? ; touch /tmp/stop-emulator-stats ; exit $rc
+            rm -f /tmp/stop-emulator-stats ; (adb logcat -b all -v threadtime < /dev/null > /tmp/emulator-logcat.txt 2>&1 &) ; (while [ ! -e /tmp/stop-emulator-stats ]; do adb shell 'date; cat /proc/loadavg; grep -E "MemAvailable|SwapFree" /proc/meminfo; top -b -n 1 -m 8' >> /tmp/emulator-stats.txt 2>&1; sleep 5; done < /dev/null > /dev/null 2>&1 &) ; ./gradlew ${{ matrix.gradle-tasks }} ; rc=$? ; touch /tmp/stop-emulator-stats ; { echo '== after gradle'; pgrep -a -x qemu-system-x86_64 || pgrep -a -f 'emulator/qemu' || echo 'emulator process is gone'; adb devices -l; } >> /tmp/emulator-stats.txt 2>&1 ; exit $rc
       - name: Emulator diagnostics
         # The app shard's emulator goes offline mid-run; show whether the host killed it.
         if: ${{ failure() && matrix.shard == 'app' }}
@@ -411,8 +411,6 @@ jobs:
           ls -la /tmp/android-runner/ 2>/dev/null || true
           ls -la ~/.android/avd/test.avd/*.lock ~/.android/avd/test.avd/hardware-qemu.ini 2>/dev/null || true
           grep -iE "hw.ramSize|hw.cpu.ncore|vm.heapSize" ~/.android/avd/test.avd/config.ini || true
-          pgrep -a qemu || echo "emulator process is gone"
-          adb devices -l || true
           tar czf /tmp/emulator-runner-tmp.tgz -C /tmp android-runner 2>/dev/null || true
       - name: Collect Artifacts
         if: ${{ always() }}
