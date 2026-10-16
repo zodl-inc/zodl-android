@@ -302,6 +302,9 @@ jobs:
               :ui-integration-test:connectedZcashmainnetStoreDebugAndroidTest
           - shard: app
             runner: ubuntu-24.04-8cores
+            # The screenshot tests take the emulator offline after ~8 of 12 runs with the
+            # default AVD RAM; the 8-core runner has room for a 4 GB guest.
+            ram-size: 4096M
             coverage: false
             gradle-tasks: >-
               :app:connectedZcashmainnetStoreDebugAndroidTest
@@ -357,7 +360,7 @@ jobs:
             ~/.android/adb*
           # Per runner type: a snapshot saved on one machine type does not restore on another
           # ("A snapshot operation for 'test' is pending and timeout has expired").
-          key: avd-api-35-x86_64-pixel_6-default-v2-${{ matrix.runner }}
+          key: avd-api-35-x86_64-pixel_6-default-v2-${{ matrix.runner }}-${{ matrix.ram-size || 'default' }}
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
@@ -367,6 +370,7 @@ jobs:
           profile: pixel_6
           target: default
           force-avd-creation: false
+          ram-size: ${{ matrix.ram-size }}
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           script: echo "Generated AVD snapshot for caching"
@@ -383,6 +387,7 @@ jobs:
           profile: pixel_6
           target: default
           force-avd-creation: false
+          ram-size: ${{ matrix.ram-size }}
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: ./gradlew ${{ matrix.gradle-tasks }}
