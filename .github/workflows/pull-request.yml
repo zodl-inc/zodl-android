@@ -181,7 +181,7 @@ jobs:
       - name: Android Lint
         # 120 minutes for cold-cache first run: when SDK_COMMIT_PIN is set (see
         # setup-sdk-companion), this compiles the full companion SDK's Rust dependency
-        # graph (vendored zodl-slipstream + arti/hpke, orchard, etc.) for 4 ABIs — observed
+        # graph (vendored zodl-slipstream + arti/hpke, orchard, etc.) for x86_64 — observed
         # at ~45+ min alone before lint analysis. Warm-cache runs (after Swatinem/rust-cache
         # in setup-sdk-companion seeds artifacts) complete in <30 min.
         timeout-minutes: 120
@@ -239,7 +239,7 @@ jobs:
       - name: Test
         # 120 minutes for cold-cache first run: when SDK_COMMIT_PIN is set (see
         # setup-sdk-companion), compiling :ui-lib pulls in the full companion SDK's Rust
-        # dependency graph (vendored zodl-slipstream + arti/hpke, etc.) for 4 ABIs — takes
+        # dependency graph (vendored zodl-slipstream + arti/hpke, etc.) for x86_64 — takes
         # ~45+ min on cold cargo/target cache. Warm-cache runs complete in <30 min.
         timeout-minutes: 120
         run: |
@@ -275,7 +275,7 @@ jobs:
     runs-on: ubuntu-latest
     # 120 minutes for cold-cache first run: the `app` shard needs the SDK compiled, and when
     # SDK_COMMIT_PIN is set (see setup-sdk-companion) a cold cargo/target cache (vendored
-    # zodl-slipstream + arti/hpke, 4 ABIs) takes ~45+ min before emulator/test steps start.
+    # zodl-slipstream + arti/hpke, x86_64 only) takes ~45+ min before emulator/test steps start.
     # Warm-cache runs complete in <60 min. Previous 90 min caused emulator death mid-run.
     timeout-minutes: 120
     permissions:
@@ -333,7 +333,7 @@ jobs:
         # already-built artifacts. The libs shard doesn't depend on feature-voting
         # (confirmed: it passes unaffected), so it skips this entirely.
         # 120 minutes for cold-cache first run (cross-compiles vendored zodl-slipstream +
-        # arti/hpke for 4 ABIs). Warm-cache runs complete in <45 min.
+        # arti/hpke for x86_64). Warm-cache runs complete in <45 min.
         if: matrix.shard == 'app'
         timeout-minutes: 120
         run: |
@@ -508,7 +508,7 @@ jobs:
       - name: Build Store APK
         # 120 minutes for cold-cache first run: when SDK_COMMIT_PIN is set (see
         # setup-sdk-companion), this compiles the full companion SDK's Rust dependency
-        # graph (vendored zodl-slipstream + arti/hpke, etc.) for release profile, 4 ABIs,
+        # graph (vendored zodl-slipstream + arti/hpke, etc.) for release profile, x86_64 only,
         # across both mainnet/testnet variants. Warm-cache runs complete in <45 min.
         timeout-minutes: 120
         env:
