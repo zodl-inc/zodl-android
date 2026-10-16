@@ -411,6 +411,9 @@ jobs:
           ls -la /tmp/android-runner/ 2>/dev/null || true
           ls -la ~/.android/avd/test.avd/*.lock ~/.android/avd/test.avd/hardware-qemu.ini 2>/dev/null || true
           grep -iE "hw.ramSize|hw.cpu.ncore|vm.heapSize" ~/.android/avd/test.avd/config.ini || true
+          pgrep -a qemu || echo "emulator process is gone"
+          adb devices -l || true
+          tar czf /tmp/emulator-runner-tmp.tgz -C /tmp android-runner 2>/dev/null || true
       - name: Collect Artifacts
         if: ${{ always() }}
         timeout-minutes: 1
@@ -421,7 +424,7 @@ jobs:
           mkdir ${ARTIFACTS_DIR_PATH}
 
           zip -r ${TEST_RESULTS_ZIP_PATH} . -i \*/build/outputs/androidTest-results/\* \*/build/reports/androidTests/\*
-          cp /tmp/emulator-logcat.txt /tmp/emulator-stats.txt ${ARTIFACTS_DIR_PATH}/ 2>/dev/null || true
+          cp /tmp/emulator-logcat.txt /tmp/emulator-stats.txt /tmp/emulator-runner-tmp.tgz ${ARTIFACTS_DIR_PATH}/ 2>/dev/null || true
       - name: Upload Artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
