@@ -26,12 +26,14 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import java.lang.reflect.Proxy
 import java.util.concurrent.atomic.AtomicInteger
@@ -803,6 +805,7 @@ class KtorVotingApiProviderTest {
         runBlocking {
             val inFlight = AtomicInteger(0)
             val maxObserved = AtomicInteger(0)
+            val capReached = CompletableDeferred<Unit>()
             val provider =
                 KtorVotingApiProvider(
                     httpClientProvider =
@@ -838,7 +841,12 @@ class KtorVotingApiProviderTest {
                                             "/shielded-vote/v1/shares" -> {
                                                 val current = inFlight.incrementAndGet()
                                                 maxObserved.updateAndGet { max -> maxOf(max, current) }
-                                                delay(SEMAPHORE_TEST_HOLD_MILLIS)
+                                                // Hold every request until SEMAPHORE_CAP are in flight at once, so
+                                                // a slow runner cannot finish one before the last one starts (a
+                                                // fixed delay flaked on CI). Bounded, so a cap below 16 fails the
+                                                // assertion below instead of hanging.
+                                                if (current >= SEMAPHORE_CAP) capReached.complete(Unit)
+                                                withTimeoutOrNull(SEMAPHORE_TEST_GATE_MILLIS) { capReached.await() }
                                                 inFlight.decrementAndGet()
                                                 respond(
                                                     content = "{}",
@@ -1401,7 +1409,7 @@ class KtorVotingApiProviderTest {
         // duplicated as SEMAPHORE_CAP for delegateSharesBoundsConcurrentShareDelegationToTheSemaphoreCap.
         const val SEMAPHORE_CAP = 16
         const val SHARE_COUNT_ABOVE_SEMAPHORE_CAP = 20
-        const val SEMAPHORE_TEST_HOLD_MILLIS = 40L
+        const val SEMAPHORE_TEST_GATE_MILLIS = 5_000L
         val TEST_CHAIN_CONFIG_STATE =
             VotingChainConfigState(
                 selected = VotingChainConfigSelection.Custom("test-chain"),
