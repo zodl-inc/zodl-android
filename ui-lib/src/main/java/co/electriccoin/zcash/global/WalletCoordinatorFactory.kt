@@ -18,7 +18,6 @@ internal operator fun WalletCoordinator.Companion.invoke(
     isTorEnabledStorageProvider: IsTorEnabledStorageProvider,
     isExchangeRateEnabledStorageProvider: IsExchangeRateEnabledStorageProvider,
 ): WalletCoordinator {
-    // DEBUG-only: pass trace prefix for request tracking in Grafana (bulk sync OHTTP-over-Tor path)
     val ohttpClientTraceIdPrefix =
         if (BuildConfig.DEBUG && BuildConfig.OHTTP_CLIENT_TRACE_PREFIX.isNotBlank()) {
             BuildConfig.OHTTP_CLIENT_TRACE_PREFIX

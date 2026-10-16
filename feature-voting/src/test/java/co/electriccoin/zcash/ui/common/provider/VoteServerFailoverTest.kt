@@ -30,9 +30,8 @@ class VoteServerFailoverTest {
                 withVoteServerFailover(
                     path = "/shielded-vote/v1/rounds",
                     serverUrls = listOf("https://first.example.com", "https://second.example.com"),
-                    // The default predicate deliberately does not fail over on timeout (F-06: a POST
-                    // may have been delivered); idempotent reads opt back in, which is the path the
-                    // per-attempt Tor timeout (MOB-1811) matters for.
+                    // The default predicate never fails over on timeout (a POST may have been delivered);
+                    // idempotent reads opt back in, which is where the per-attempt Tor timeout matters.
                     shouldTryNext = ::shouldTryNextVoteServerForRead
                 ) { serverUrl ->
                     triedServers += serverUrl

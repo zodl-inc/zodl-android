@@ -59,7 +59,7 @@ class HttpClientProviderImpl(
     private val synchronizerProvider: SynchronizerProvider,
     private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider
 ) : HttpClientProvider {
-    // Lazy OHTTP client — created on first use, respecting the Tor preference at that moment
+    /** Created lazily on first use, with the Tor preference of that moment. */
     @Volatile
     private var cachedOhttpClient: OhttpHttpClient? = null
 
@@ -85,16 +85,12 @@ class HttpClientProviderImpl(
 
     override suspend fun createOhttp(): OhttpHttpClient =
         lock.withLock {
-            // OHTTP-06: Atomically read Tor state, fetch sender, and publish client to ensure
-            // a concurrent Tor toggle cannot leave a stale-policy sender cached or returned.
+            // Atomically read Tor state, fetch sender, and publish client to prevent stale-policy caching.
             val torNow = isTorEnabled()
-            // Invalidate cache if the Tor preference changed
             if (cachedOhttpClient != null && cachedForTorEnabled != torNow) {
                 val outgoing = cachedOhttpClient
                 cachedOhttpClient = null
-                // Dispose the outgoing client to clean up its Tor sender. Launch in a background
-                // coroutine with a grace period to allow in-flight requests to complete. OHTTP
-                // over Tor can take tens of seconds, so use a 120s window.
+                // Dispose after a 120 s grace period: in-flight OHTTP over Tor can take tens of seconds.
                 outgoing?.let { client ->
                     disposalScope.launch {
                         delay(OHTTP_CLIENT_DISPOSE_GRACE_MS)
@@ -107,10 +103,8 @@ class HttpClientProviderImpl(
                 }
             }
             if (cachedOhttpClient == null) {
-                // The native OHTTP codec (shared zodl-ohttp-client core) comes from the SDK. Obtain it
-                // before the Tor sender so a load failure cannot leak a freshly created sender.
+                // Codec before the Tor sender, so a codec load failure cannot leak a fresh sender.
                 val codec = OhttpCodecFactory.create()
-                // DEBUG-only: pass trace prefix for request tracking in Grafana
                 val tracePrefix =
                     if (BuildConfig.DEBUG && BuildConfig.OHTTP_CLIENT_TRACE_PREFIX.isNotBlank()) {
                         BuildConfig.OHTTP_CLIENT_TRACE_PREFIX

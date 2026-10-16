@@ -348,21 +348,17 @@ class AutomaticServerRepositoryImpl(
             val onGateway = lightWalletEndpointProvider.isOhttpGateway(current)
             val healthyGateways =
                 if (trigger == SwitchTrigger.HEALTH && onGateway) {
-                    // Routine health tick on the gateway: only prove the gateway still answers. The full
-                    // benchmark (latency + block fetch per server) is for deciding between servers.
+                    // Routine tick: only prove the gateway answers; the full benchmark is for choosing servers.
                     listOf(current).filter { probeGateway(synchronizer, it) }
                 } else {
                     rankValidated(synchronizer, gateways)
                 }
 
-            // Reset consecutive failures when a gateway is healthy, when on a fallback (recovering back
-            // to OHTTP), or when switching to automatic mode (implied by being on a non-gateway).
             if (healthyGateways.isNotEmpty() || !onGateway) {
                 consecutiveGatewayFailures = 0
             }
 
-            // When on a gateway and it's unreachable, require confirmation before reporting unavailability,
-            // unless the trigger is CONNECTIVITY (real outage already surfaced by the synchronizer).
+            // Confirm before reporting unavailability, unless CONNECTIVITY already surfaced a real outage.
             val needsConfirmation = onGateway && healthyGateways.isEmpty()
             if (needsConfirmation && trigger != SwitchTrigger.CONNECTIVITY) {
                 consecutiveGatewayFailures++
@@ -410,7 +406,6 @@ class AutomaticServerRepositoryImpl(
                 }
 
                 is ServerFallbackPolicy.DecisionResult.Stay -> {
-                    // Gateway reachable and already on it, or on manual clearnet fallback with gateway still down
                     if (healthyGateways.isNotEmpty()) {
                         _ohttpUnavailable.value = false
                     }

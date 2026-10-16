@@ -172,10 +172,8 @@ class GetHomeMessageUseCase(
                     return@collect
                 }
 
-                // Priority order: disconnected -> ohttp unavailable -> synchronizer error -> syncing -> migration
-                // -> shield funds. Connectivity/sync issues now lead the chain — a user can't
-                // act on the migration banner while the wallet is disconnected, erroring, or
-                // still syncing, so those states take priority over it.
+                // Connectivity/sync states outrank migration: a user can't act on the migration banner
+                // while the wallet is disconnected, erroring, or still syncing.
                 val message =
                     createDisconnectedMessage(walletSnapshot)
                         ?: createOhttpUnavailableMessage(isOhttpUnavailable)

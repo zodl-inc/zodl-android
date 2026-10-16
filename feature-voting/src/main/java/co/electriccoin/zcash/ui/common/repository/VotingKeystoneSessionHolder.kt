@@ -57,9 +57,7 @@ class VotingKeystoneSessionHolder(
     // one that issued it.
     private var torLease: VotingTorLease? = null
 
-    // The isCustomServer value the currently-open roundSession was opened with. Stored so session
-    // reuse can detect a vote config change (custom <-> default) mid-round and open a fresh session
-    // with the correct OHTTP route.
+    /** isCustomServer at open time, so a mid-round custom/default switch reopens with the right OHTTP route. */
     private var openedWithIsCustomServer: Boolean? = null
 
     /**

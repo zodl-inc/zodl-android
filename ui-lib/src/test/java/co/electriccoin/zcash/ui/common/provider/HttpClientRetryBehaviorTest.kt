@@ -64,15 +64,11 @@ class HttpClientRetryBehaviorTest {
                 val result =
                     runCatching {
                         client.post("https://vote.example.com$path") {
-                            // Voting POST
                         }
                     }
-                // Expected to succeed (no exception with expectSuccess=false)
                 assertTrue("Request should succeed", result.isSuccess)
-                // But the response status should be 500
                 assertTrue("Response should be 500", result.getOrNull()?.status?.value == 500)
 
-                // Verify only ONE attempt was made (no retries)
                 assertEquals(
                     "Voting path $path must not be retried on 500 error",
                     1,
@@ -111,12 +107,9 @@ class HttpClientRetryBehaviorTest {
                 runCatching {
                     client.get("https://vote.example.com/shielded-vote/v1/share-status/round123/nullifier456")
                 }
-            // Expected to succeed (no exception thrown with expectSuccess=false)
             assertTrue("Request should succeed", result.isSuccess)
-            // But the response status should be 500
             assertTrue("Response should be 500", result.getOrNull()?.status?.value == 500)
 
-            // Verify only ONE attempt (no retries)
             assertEquals(
                 "Voting GET /share-status must not be retried",
                 1,
@@ -154,12 +147,9 @@ class HttpClientRetryBehaviorTest {
                 runCatching {
                     client.get("https://api.example.com/some-other-endpoint")
                 }
-            // Expected to succeed (no exception with expectSuccess=false)
             assertTrue("Request should succeed", result.isSuccess)
-            // But the response status should be 500 after retries
             assertTrue("Response should be 500", result.getOrNull()?.status?.value == 500)
 
-            // Verify it was tried 5 times (1 initial + 4 retries)
             assertEquals(
                 "Non-voting endpoints must be retried up to maxRetries=4",
                 5,
@@ -193,10 +183,8 @@ class HttpClientRetryBehaviorTest {
                 runCatching {
                     client.post("https://vote.example.com/shielded-vote/v1/delegate-vote")
                 }
-            // Expected - connection failed
             assertTrue("Request should fail on connection error", result.isFailure)
 
-            // Verify only ONE attempt (no retries on exception for voting paths)
             assertEquals(
                 "Voting POST must not retry on exception",
                 1,
@@ -294,7 +282,6 @@ class HttpClientRetryBehaviorTest {
      */
     @Test
     fun testAllFourVotingEndpointsExcluded() {
-        // The four voting endpoints that must be excluded from retry:
         val endpoints =
             mapOf(
                 "/shares" to "/shielded-vote/v1/shares",

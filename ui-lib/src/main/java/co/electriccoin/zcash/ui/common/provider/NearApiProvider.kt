@@ -64,11 +64,8 @@ class OhttpNearErrorException(
 class KtorNearApiProvider(
     private val httpClientProvider: HttpClientProvider
 ) : NearApiProvider {
-    // Privacy routing (MOB-1520: secrets never leave app when Tor ON):
-    //   Tor OFF → OHTTP gateway (relay sees app IP, gateway injects secret)
-    //   Tor ON  → Tor→OHTTP gateway (relay sees Tor exit, gateway injects secret)
-    // The app NEVER sends the secret itself — it's stripped with a warning if present (see
-    // OhttpHttpClient.execute → stripSecretsForGateway).
+    // Privacy: always via the OHTTP gateway (over Tor when Tor is on); the gateway injects the API
+    // secret, the app never sends it (stripped with a warning in OhttpHttpClient.execute).
 
     override suspend fun getSupportedTokens(): GetNearSupportedTokensResponse =
         execute(
@@ -134,7 +131,6 @@ class KtorNearApiProvider(
                 }
             Twig.debug { "OHTTP $ohttpMethod $loggableUrl -> HTTP ${response.status} (${response.body.size} bytes)" }
             if (response.status !in HTTP_SUCCESS) {
-                // Attempt to parse the NEAR error body for typed error handling downstream.
                 val bodyString = response.body.decodeToString()
                 val nearError =
                     try {
@@ -143,14 +139,12 @@ class KtorNearApiProvider(
                         null
                     }
                 if (nearError != null) {
-                    // Wrap in OhttpNearErrorException so callers can catch and inspect the NEAR error message.
                     throw OhttpNearErrorException(
                         error = nearError,
                         status = response.status,
                         url = ohttpUrl
                     )
                 } else {
-                    // Non-NEAR error body — throw generic exception with the raw body.
                     error("OHTTP $ohttpMethod $loggableUrl returned HTTP ${response.status}: $bodyString")
                 }
             }

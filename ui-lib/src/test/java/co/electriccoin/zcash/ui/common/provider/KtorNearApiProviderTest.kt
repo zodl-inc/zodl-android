@@ -47,8 +47,7 @@ class KtorNearApiProviderTest {
             val request = capturedRequests.single()
             assertEquals("https://near.zodl.com/v0/tokens", request.url)
             assertEquals("GET", request.method)
-            // MOB-1520: the token list is public — the app must never send Authorization
-            // (gateway doesn't inject it either).
+            // The token list is public: the app never sends Authorization and the gateway injects none.
             assertNoAuthorizationHeader(request)
             assertUsesOhttpOnly()
         }
@@ -56,7 +55,6 @@ class KtorNearApiProviderTest {
     @Test
     fun requestQuoteDoesNotSendAuthorizationHeader() =
         runBlocking {
-            // Valid QuoteResponseDto JSON matching the schema
             responseBody =
                 """
                 {
@@ -94,7 +92,7 @@ class KtorNearApiProviderTest {
             assertEquals("https://near.zodl.com/v0/quote", request.url)
             assertEquals("POST", request.method)
             assertTrue(request.headers.any { it.first == "Content-Type" && it.second == "application/json" })
-            // MOB-1520: the app must never send Authorization (gateway injects it server-side).
+            // The app must never send Authorization; the gateway injects it server-side.
             assertNoAuthorizationHeader(request)
             assertUsesOhttpOnly()
         }
@@ -111,7 +109,7 @@ class KtorNearApiProviderTest {
             val request = capturedRequests.single()
             assertEquals("https://near.zodl.com/v0/deposit/submit", request.url)
             assertEquals("POST", request.method)
-            // MOB-1520: the app must never send Authorization (gateway injects it server-side).
+            // The app must never send Authorization; the gateway injects it server-side.
             assertNoAuthorizationHeader(request)
             assertUsesOhttpOnly()
         }
@@ -119,7 +117,6 @@ class KtorNearApiProviderTest {
     @Test
     fun checkSwapStatusDoesNotSendAuthorizationHeaderAndSendsDepositAddressParameter() =
         runBlocking {
-            // Valid SwapStatusResponseDto JSON matching the schema
             responseBody =
                 """
                 {
@@ -165,7 +162,7 @@ class KtorNearApiProviderTest {
             )
             assertTrue(request.url.startsWith("https://near.zodl.com/v0/status"))
             assertEquals("GET", request.method)
-            // MOB-1520: the app must never send Authorization (gateway injects it server-side).
+            // The app must never send Authorization; the gateway injects it server-side.
             assertNoAuthorizationHeader(request)
             assertUsesOhttpOnly()
         }
@@ -178,7 +175,6 @@ class KtorNearApiProviderTest {
 
             val exception =
                 assertFailsWith<OhttpNearErrorException> {
-                    // Intentionally invalid request body to trigger error response
                     responseBody = """{"message":"boom","timestamp":"t","path":"/v0/quote"}"""
                     provider.requestQuote(quoteRequest())
                 }
@@ -208,7 +204,7 @@ class KtorNearApiProviderTest {
     }
 
     private fun assertNoAuthorizationHeader(request: OhttpHttpClient.Request) {
-        // MOB-1520: the app must never send Authorization; the gateway injects it server-side.
+        // The app must never send Authorization; the gateway injects it server-side.
         assertFalse(
             request.headers.any { it.first.equals("Authorization", ignoreCase = true) },
             "Authorization header must not be sent by the app (gateway injects it)"

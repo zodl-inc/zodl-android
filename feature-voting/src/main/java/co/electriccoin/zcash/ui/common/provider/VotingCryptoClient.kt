@@ -406,8 +406,10 @@ class VotingCryptoClientImpl(
     private val dbPaths = mutableMapOf<Long, String>()
     private val sessions = mutableMapOf<Long, VotingDbSession>()
 
-    // Same source of truth as KtorVotingApiProvider.isCustomVoteServer(): a user-selected custom
-    // voting config means custom servers, which the SDK routes Direct (Tor OFF) instead of OHTTP.
+    /**
+     * Same source of truth as KtorVotingApiProvider.isCustomVoteServer(): custom servers are routed
+     * Direct by the SDK instead of OHTTP.
+     */
     override suspend fun isCustomServer(): Boolean = !votingChainConfigRepository.get().isOnDefaultConfig
 
     private suspend fun votingSdk(): VotingSdk =

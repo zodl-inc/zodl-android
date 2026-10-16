@@ -31,12 +31,8 @@ interface CMCApiProvider {
 class CMCApiProviderImpl(
     private val httpClientProvider: HttpClientProvider
 ) : CMCApiProvider {
-    // Privacy routing for the exchange-rate provider (MOB-1378: the user's IP must never reach CMC;
-    // MOB-1520: secrets never leave app when Tor ON):
-    //   Tor OFF → OHTTP (relay sees app IP, gateway injects X-CMC_PRO_API_KEY)
-    //   Tor ON  → Tor→OHTTP (relay sees Tor exit, gateway injects X-CMC_PRO_API_KEY)
-    // The app holds no CMC key and never sends one. The direct (clearnet) client is never
-    // used for this host — HttpClientProvider keeps its backstop.
+    // Privacy: the user's IP must never reach CMC, so always via OHTTP (over Tor when Tor is on).
+    // The gateway injects X-CMC_PRO_API_KEY; the app holds no key. Never the clearnet client.
 
     override suspend fun getExchangeRateQuote(fiat: String): GetCMCQuoteResponse =
         execute("https://$CMC_API_HOST/v1/cryptocurrency/quotes/latest?symbol=ZEC&convert=$fiat")

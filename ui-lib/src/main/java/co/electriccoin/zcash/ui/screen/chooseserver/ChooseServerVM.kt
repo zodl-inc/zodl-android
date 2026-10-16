@@ -241,8 +241,6 @@ class ChooseServerVM(
                 innerState.first { it.local != null }
                 innerState.update { inner ->
                     inner.local?.let { local ->
-                        // Only preselect if the user hasn't already made a selection
-                        // (null persisted = first load, so preselect is allowed)
                         if (inner.persisted == null || local.selectedEndpoint == inner.persisted.endpoint) {
                             inner.copy(local = local.copy(isAutomatic = false, selectedEndpoint = fastestClearnet))
                         } else {

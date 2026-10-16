@@ -124,8 +124,7 @@ interface VotingApiProvider {
     ): CommitmentTreeLeafPage
 }
 
-// The OHTTP/Tor dual-path helpers (voteServerGet/Post, *ViaOhttp) push this class over
-// detekt's LargeClass threshold; splitting the transport out is tracked separately.
+/** The OHTTP/Tor dual-path helpers push this class over detekt's LargeClass threshold. */
 @Suppress("LargeClass")
 class KtorVotingApiProvider(
     private val httpClientProvider: HttpClientProvider,
@@ -518,13 +517,10 @@ class KtorVotingApiProvider(
         url: String,
         supportsKtorTimeouts: Boolean,
     ): ByteArray {
-        // Privacy routing for the static voting config fetch:
-        //   Tor OFF: route through the OHTTP gateway (voting.valargroup.dev -> vote.zodl.com proxy),
-        //            so the config host never sees the device IP. The URL is content-addressed and
-        //            immutable, so the gateway cache makes repeat fetches essentially free.
-        //   Tor ON:  skip OHTTP and fall through to this Ktor client, which is already Tor-backed.
-        // Failures are surfaced as StaticVotingConfigFetchFailedException so the mirror walk in
-        // fetchStaticConfigWalk() treats them as retryable and moves on to the next source.
+        // Privacy: with Tor off, go through the OHTTP gateway so the config host never sees the device
+        // IP (content-addressed URL, so the gateway cache makes repeats free); with Tor on, this client
+        // is already Tor-backed. Failures become StaticVotingConfigFetchFailedException so the mirror
+        // walk retries the next source.
         val ohttpClient = httpClientProvider.createOhttp()
         val torEnabled = httpClientProvider.isTorEnabled()
         if (!torEnabled && ohttpClient.canHandle(url)) {

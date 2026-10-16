@@ -45,13 +45,8 @@ object ServerFallbackPolicy {
         val gateway = healthyGateways.firstOrNull()
         val onGateway = isOhttpGateway(current)
         return when {
-            // OHTTP reachable but the wallet is on a clearnet server: return to the gateway.
             gateway != null && !onGateway -> DecisionResult.ReturnToGateway(gateway)
-
-            // OHTTP unreachable and on the gateway: report unavailability (no auto-fallback).
             gateway == null && onGateway -> DecisionResult.StayAndReportGatewayUnavailable
-
-            // Already on a reachable gateway, or on a clearnet server with the gateway still down.
             else -> DecisionResult.Stay
         }
     }

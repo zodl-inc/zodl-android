@@ -63,7 +63,6 @@ class VotingApiProviderOhttpRoutingTest {
                 provider.delegateShares(listOf(share))
             }
 
-            // Verify that OHTTP was used (requests were routed through OHTTP client)
             assertTrue(
                 ohttpRequests.any { it.contains("/shielded-vote/v1/shares") },
                 "postShare should route through OHTTP for predefined server when Tor is off"
@@ -205,7 +204,7 @@ class VotingApiProviderOhttpRoutingTest {
      * could never verify and the share POST would never be reached.
      */
     private class TestConfigurationRepository : ConfigurationRepository {
-        // ConfigKey is a value class, which MockK cannot match with any(), so use a tiny fake.
+        /** ConfigKey is a value class, which MockK cannot match with any(), so use a tiny fake. */
         private val configuration =
             object : Configuration {
                 override val updatedAt: Instant? = null

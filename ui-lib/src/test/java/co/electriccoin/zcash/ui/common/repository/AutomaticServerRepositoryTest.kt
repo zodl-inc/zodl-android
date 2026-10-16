@@ -108,7 +108,7 @@ class AutomaticServerRepositoryTest {
 
     private val timeSource = TestTimeSource()
 
-    // A relaxed mock returns a bare Object for the suspend Boolean getter; back it with a real value.
+    /** A relaxed mock returns a bare Object for the suspend Boolean getter; back it with a real value. */
     private var fallbackActive = false
     private val fallbackActiveFlow = MutableStateFlow(false)
     private val fallbackFlag =
@@ -582,7 +582,6 @@ class AutomaticServerRepositoryTest {
             advanceTimeBy(10.minutes)
             assertEquals(listOf(SwitchTrigger.HEALTH), ticks)
 
-            // Back in the foreground the ticks restart with a full interval.
             foreground.value = true
             runCurrent()
             advanceTimeBy(2.minutes - 1.seconds)

@@ -15,11 +15,10 @@ class GetAutomaticEndpointUseCase(
             persisted = getSelectedEndpoint()
         )
 
-    // The endpoint Automatic mode stands for: the OHTTP gateway. The benchmarked "fastest server"
-    // is no longer the automatic pick — clearnet servers are never preferred over OHTTP by speed.
-    // The only time Automatic resolves to a clearnet server is while the OHTTP fallback is active
-    // (the wallet is on a clearnet server) and the persisted endpoint is one of the bundled fallbacks;
-    // AutomaticServerRepository moves the wallet back to the gateway once it is reachable again.
+    /**
+     * Automatic mode means the OHTTP gateway; clearnet is never preferred by speed. Resolves to a
+     * clearnet server only while the OHTTP fallback is active and [persisted] is a bundled fallback.
+     */
     operator fun invoke(isFallbackActive: Boolean, persisted: LightWalletEndpoint?): LightWalletEndpoint =
         persisted
             ?.takeIf { isFallbackActive && lightWalletEndpointProvider.getFallbackEndpoints().contains(it) }

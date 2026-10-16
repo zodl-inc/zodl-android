@@ -88,12 +88,8 @@ class VotingServerFailoverPostTimeoutTest {
                         }
                     )
                 }
-            // Expected: failover should give up after first timeout, surfacing the timeout itself
-            // (withVoteServerFailover re-throws the exception shouldTryNext rejected, rather than
-            // wrapping it in VotingServerFailoverException -- that wrapper is reserved for the case
-            // where every server was actually attempted and failed, so the #2481 reconcile/VAN-probe
-            // machinery downstream can tell "may have landed, stop guessing" apart from "definitely
-            // never reached a server").
+            // The timeout itself surfaces, not VotingServerFailoverException: that wrapper means every
+            // server was tried, so downstream reconcile can tell "may have landed" from "never reached".
             assertTrue("Failover should fail after timeout", result.isFailure)
             assertTrue(
                 "Should surface the raw timeout instead of retrying",
@@ -133,7 +129,6 @@ class VotingServerFailoverPostTimeoutTest {
                         }
                     )
                 }
-            // Expected: all servers tried
             assertTrue("Failover should fail after all servers tried", result.isFailure)
             assertTrue(
                 "Should fail with VotingServerFailoverException",
@@ -168,7 +163,6 @@ class VotingServerFailoverPostTimeoutTest {
                             // First server fails with connection error (pre-send, safe to retry)
                             throw IOException("Connection refused")
                         }
-                        // Second server succeeds
                         "success"
                     }
                 )

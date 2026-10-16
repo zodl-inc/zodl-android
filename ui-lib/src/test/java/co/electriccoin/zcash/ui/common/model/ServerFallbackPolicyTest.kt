@@ -43,7 +43,6 @@ class ServerFallbackPolicyTest {
 
     @Test
     fun `scenario 5 - manual clearnet with gateway still down - stays put`() {
-        // User manually selected stardust; gateway still unreachable → no change.
         assertEquals(
             ServerFallbackPolicy.DecisionResult.Stay,
             decide(current = stardust, gateways = emptyList())
