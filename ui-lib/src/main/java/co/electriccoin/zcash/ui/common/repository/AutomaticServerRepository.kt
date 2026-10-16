@@ -174,11 +174,12 @@ class AutomaticServerRepositoryImpl(
      * re-enters automatic mode, before any evaluation has run.
      */
     internal fun clearUnavailableOnManualMode(): Flow<Boolean> =
-        isServerAutomatic.onEach { automatic ->
-            if (!automatic) {
-                _ohttpUnavailable.value = false
-            }
-        }
+        isServerAutomatic
+            .onEach { automatic ->
+                if (!automatic) {
+                    _ohttpUnavailable.value = false
+                }
+            }.catch { Twig.error(it) { "Automatic server: the server selection mode signal failed" } }
 
     /**
      * The automatic-selection lane, OHTTP first (see [ServerFallbackPolicy]). Every foreground edge
@@ -396,7 +397,9 @@ class AutomaticServerRepositoryImpl(
                 }
 
                 is ServerFallbackPolicy.DecisionResult.StayAndReportGatewayUnavailable -> {
-                    _ohttpUnavailable.value = true
+                    if (isServerAutomatic()) {
+                        _ohttpUnavailable.value = true
+                    }
                     Twig.info {
                         "Automatic server: OHTTP-first current=${current.host} " +
                             "gatewayReachable=false -> stay (gateway unavailable, awaiting manual server selection)"
