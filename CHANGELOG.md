@@ -7,6 +7,13 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Changed:
+
+- The app now connects to Zcash servers through OHTTP relays by default for private network
+  connections. The server picker shows which servers support OHTTP, and displays a message when OHTTP
+  becomes unavailable with an option to manually choose a server. Exchange rate updates also route
+  through OHTTP without requiring a build-time API key.
+
 ## [3.17.1 (3155)] - 2026-10-14
 
 ### Changed:
@@ -48,10 +55,6 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   account, whichever account was selected.
 - The integrations sheet no longer lists Connect Keystone; hardware wallets, Keystone or Ledger, are
   connected from the accounts sheet.
-- The app now connects to Zcash servers through OHTTP relays by default for private network
-  connections. The server picker shows which servers support OHTTP, and displays a message when OHTTP
-  becomes unavailable with an option to manually choose a server. Exchange rate updates also route
-  through OHTTP without requiring a build-time API key.
 
 ### Fixed:
 
