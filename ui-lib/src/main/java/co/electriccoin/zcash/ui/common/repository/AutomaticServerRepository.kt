@@ -44,6 +44,7 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -82,6 +83,12 @@ class AutomaticServerRepositoryImpl(
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val _ohttpUnavailable = MutableStateFlow(false)
+
+    /**
+     * Bumped each time automatic mode is left. An evaluation reports the gateway unavailable only if no
+     * manual-mode clear happened since it started, so a slow evaluation cannot re-raise the banner.
+     */
+    private val manualModeClears = AtomicLong(0)
 
     /**
      * Consecutive gateway failures count. Reset to 0 when a gateway is healthy or when automatic mode
@@ -177,6 +184,7 @@ class AutomaticServerRepositoryImpl(
         isServerAutomatic
             .onEach { automatic ->
                 if (!automatic) {
+                    manualModeClears.incrementAndGet()
                     _ohttpUnavailable.value = false
                 }
             }.catch { Twig.error(it) { "Automatic server: the server selection mode signal failed" } }
@@ -338,6 +346,7 @@ class AutomaticServerRepositoryImpl(
      */
     @Suppress("ReturnCount", "ComplexMethod", "NestedBlockDepth")
     internal suspend fun evaluateServerSwitch(trigger: SwitchTrigger): LightWalletEndpoint? {
+        val clearsAtStart = manualModeClears.get()
         if (!isServerAutomatic()) {
             _ohttpUnavailable.value = false
             return null
@@ -399,8 +408,10 @@ class AutomaticServerRepositoryImpl(
                 }
 
                 is ServerFallbackPolicy.DecisionResult.StayAndReportGatewayUnavailable -> {
-                    if (isServerAutomatic()) {
+                    if (manualModeClears.get() == clearsAtStart && isServerAutomatic()) {
                         _ohttpUnavailable.value = true
+                        // The clear bumps the counter before it writes false: re-check after our write.
+                        if (manualModeClears.get() != clearsAtStart) _ohttpUnavailable.value = false
                     }
                     Twig.info {
                         "Automatic server: OHTTP-first current=${current.host} " +
