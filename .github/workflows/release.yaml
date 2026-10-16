@@ -65,6 +65,7 @@ jobs:
           fi
 
       - name: Refuse to deploy with OHTTP relay URL override
+        timeout-minutes: 1
         shell: bash
         run: |
           if [ -n "$ZODL_OHTTP_RELAY_URL_MAINNET" ] || [ -n "$ZODL_OHTTP_RELAY_URL_TESTNET" ]; then
