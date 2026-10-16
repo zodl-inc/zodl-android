@@ -34,8 +34,8 @@ import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 /**
- * Regression tests for C-04 (Medium-High): Share operations (delegateShares) must route through
- * OHTTP for predefined vote servers when Tor is disabled, not go direct to clearnet.
+ * Vote server routing with Tor disabled: predefined servers route through OHTTP and fail closed
+ * when OHTTP cannot handle the destination; custom (user-added) servers go direct.
  */
 class VotingApiProviderOhttpRoutingTest {
     @Test
@@ -69,12 +69,139 @@ class VotingApiProviderOhttpRoutingTest {
             )
         }
 
+    @Test
+    fun postShareGoesDirectForCustomServerWhenTorDisabled() =
+        runBlocking {
+            val ohttpRequests = mutableListOf<String>()
+            val directRequests = mutableListOf<String>()
+            val provider =
+                providerWithOhttpTracking(
+                    ohttpRequests = ohttpRequests,
+                    directRequests = directRequests,
+                    torEnabled = false,
+                    isCustomServer = true,
+                    ohttpCanHandle = { true }
+                )
+
+            runCatching {
+                provider.delegateShares(listOf(testShare()))
+            }
+
+            assertTrue(
+                directRequests.any { it.endsWith(SHARES_PATH) },
+                "postShare should go direct for a custom server when Tor is off"
+            )
+            assertTrue(
+                ohttpRequests.none { it.contains(SHARES_PATH) },
+                "postShare must not use OHTTP for a custom server"
+            )
+        }
+
+    @Test
+    fun voteServerGetGoesDirectForCustomServerWhenTorDisabled() =
+        runBlocking {
+            val ohttpRequests = mutableListOf<String>()
+            val directRequests = mutableListOf<String>()
+            val provider =
+                providerWithOhttpTracking(
+                    ohttpRequests = ohttpRequests,
+                    directRequests = directRequests,
+                    torEnabled = false,
+                    isCustomServer = true,
+                    ohttpCanHandle = { true }
+                )
+
+            runCatching {
+                provider.fetchAllRounds()
+            }
+
+            assertTrue(
+                directRequests.any { it.endsWith(ROUNDS_PATH) },
+                "vote server GET should go direct for a custom server when Tor is off"
+            )
+            assertTrue(
+                ohttpRequests.none { it.endsWith(ROUNDS_PATH) },
+                "vote server GET must not use OHTTP for a custom server"
+            )
+        }
+
+    @Test
+    fun postShareFailsClosedForPredefinedServerWhenOhttpUnsupported() =
+        runBlocking {
+            val ohttpRequests = mutableListOf<String>()
+            val directRequests = mutableListOf<String>()
+            val provider =
+                providerWithOhttpTracking(
+                    ohttpRequests = ohttpRequests,
+                    directRequests = directRequests,
+                    torEnabled = false,
+                    isCustomServer = false,
+                    ohttpCanHandle = { url -> !url.startsWith(VOTE_SERVER_URL) }
+                )
+
+            assertFailsWith<IllegalStateException> {
+                provider.delegateShares(listOf(testShare()))
+            }
+
+            assertTrue(
+                directRequests.none { it.contains(SHARES_PATH) },
+                "postShare must not fall back to a direct connection"
+            )
+            assertTrue(
+                ohttpRequests.none { it.contains(SHARES_PATH) },
+                "postShare must not send through OHTTP to an unsupported destination"
+            )
+        }
+
+    @Test
+    fun voteServerGetFailsClosedForPredefinedServerWhenOhttpUnsupported() =
+        runBlocking {
+            val ohttpRequests = mutableListOf<String>()
+            val directRequests = mutableListOf<String>()
+            val provider =
+                providerWithOhttpTracking(
+                    ohttpRequests = ohttpRequests,
+                    directRequests = directRequests,
+                    torEnabled = false,
+                    isCustomServer = false,
+                    ohttpCanHandle = { url -> !url.startsWith(VOTE_SERVER_URL) }
+                )
+
+            val failure =
+                assertFailsWith<VotingServerFailoverException> {
+                    provider.fetchAllRounds()
+                }
+
+            assertTrue(
+                failure.lastError?.message.orEmpty().contains("unsupported destination"),
+                "vote server GET should fail closed on the unsupported destination"
+            )
+            assertTrue(
+                directRequests.none { it.endsWith(ROUNDS_PATH) },
+                "vote server GET must not fall back to a direct connection"
+            )
+            assertTrue(
+                ohttpRequests.none { it.endsWith(ROUNDS_PATH) },
+                "vote server GET must not send through OHTTP to an unsupported destination"
+            )
+        }
+
+    private fun testShare(): SharePayload =
+        SharePayload(
+            sharesHash = ByteArray(32) { 1 },
+            proposalId = 3,
+            voteDecision = 1,
+            encShare = EncryptedShare(c1 = ByteArray(32) { 2 }, c2 = ByteArray(32) { 3 }, shareIndex = 0),
+            treePosition = 42L,
+            voteRoundId = "01".repeat(32)
+        )
+
     private fun providerWithOhttpTracking(
         ohttpRequests: MutableList<String> = mutableListOf(),
         directRequests: MutableList<String> = mutableListOf(),
         torEnabled: Boolean,
         isCustomServer: Boolean,
-        ohttpCanHandle: Boolean = !torEnabled && !isCustomServer
+        ohttpCanHandle: (String) -> Boolean = { !torEnabled && !isCustomServer }
     ): KtorVotingApiProvider =
         KtorVotingApiProvider(
             httpClientProvider =
@@ -86,7 +213,7 @@ class VotingApiProviderOhttpRoutingTest {
                     override suspend fun createTor(): HttpClient = create()
 
                     override suspend fun createOhttp(): OhttpHttpClient =
-                        fakeOhttpClient(ohttpRequests, isSupported = ohttpCanHandle)
+                        fakeOhttpClient(ohttpRequests, handles = ohttpCanHandle)
 
                     override suspend fun create(): HttpClient =
                         HttpClient(
@@ -159,10 +286,10 @@ class VotingApiProviderOhttpRoutingTest {
      */
     private fun fakeOhttpClient(
         requests: MutableList<String>,
-        isSupported: Boolean
+        handles: (String) -> Boolean
     ): OhttpHttpClient =
         mockk {
-            every { canHandle(any()) } returns isSupported
+            every { canHandle(any()) } answers { handles(firstArg()) }
             coEvery { execute(any()) } answers {
                 val request = firstArg<OhttpHttpClient.Request>()
                 requests += request.url
@@ -256,7 +383,7 @@ class VotingApiProviderOhttpRoutingTest {
                                 VotingCustomChainConfig(
                                     id = "custom-chain",
                                     name = "Custom Chain",
-                                    pinnedSource = "https://custom.example.com/config.json"
+                                    pinnedSource = "https://custom.example.com/static-voting-config.json"
                                 )
                             )
                         } else {
@@ -286,6 +413,9 @@ class VotingApiProviderOhttpRoutingTest {
     }
 
     private companion object {
+        const val VOTE_SERVER_URL = "https://vote.example.com"
+        const val SHARES_PATH = "/shielded-vote/v1/shares"
+        const val ROUNDS_PATH = "/shielded-vote/v1/rounds"
         const val ADMIN_PUBKEY_BASE64 = "rKDbmhkoW9ja7dMiCV+1uTao7wXWV6xN/57erkrOuiQ="
 
         fun staticConfigJson(): String =
