@@ -272,10 +272,7 @@ jobs:
   test_android_modules_emulator:
     name: test_android_modules_emulator (${{ matrix.shard }})
     needs: [validate_gradle_wrapper]
-    # The app shard runs the emulator screenshot tests, which starve on the 2 vCPU / 8 GB
-    # standard runner (the emulator disappears mid-run); it uses the org's larger runner
-    # group (8 vCPU / 32 GB, github-config "Default Larger Runners").
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest
     # 120 minutes for cold-cache first run: the `app` shard needs the SDK compiled, and when
     # SDK_COMMIT_PIN is set (see setup-sdk-companion) a cold cargo/target cache (vendored
     # zodl-slipstream + arti/hpke, 4 ABIs) takes ~45+ min before emulator/test steps start.
@@ -291,7 +288,6 @@ jobs:
       matrix:
         include:
           - shard: libs
-            runner: ubuntu-latest
             coverage: true
             gradle-tasks: >-
               connectedDebugAndroidTest
@@ -301,18 +297,6 @@ jobs:
               -x :ui-benchmark-test:connectedDebugAndroidTest
               :ui-integration-test:connectedZcashmainnetStoreDebugAndroidTest
           - shard: app
-            runner: ubuntu-24.04-8cores
-            # The screenshot tests take the emulator offline after ~8 of 12 runs with the
-            # default AVD RAM; the 8-core runner has room for a 4 GB guest.
-            ram-size: 4096M
-            # 2 guest vCPUs went unresponsive (adb "device offline") once the restored wallet
-            # started syncing while swiftshader renders on the CPU too.
-            cores: 6
-            # The emulator process exits ~30 s after the app's first outbound TLS handshake (to the
-            # OHTTP relay) when the screenshot tests create a wallet (2026-10-16: logcat ends in
-            # rustls::client::hs, then adb loses the device; guest memory and load were fine).
-            # The screenshots need no network, so the emulator gets an unreachable DNS server.
-            emulator-extra-options: -dns-server 127.0.0.1
             coverage: false
             gradle-tasks: >-
               :app:connectedZcashmainnetStoreDebugAndroidTest
@@ -366,9 +350,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          # Per runner type: a snapshot saved on one machine type does not restore on another
-          # ("A snapshot operation for 'test' is pending and timeout has expired").
-          key: avd-api-35-x86_64-pixel_6-default-v2-${{ matrix.runner }}-${{ matrix.ram-size || 'default' }}-${{ matrix.cores || 2 }}
+          key: avd-api-35-x86_64-pixel_6-default-v2
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
@@ -378,8 +360,6 @@ jobs:
           profile: pixel_6
           target: default
           force-avd-creation: false
-          ram-size: ${{ matrix.ram-size }}
-          cores: ${{ matrix.cores || 2 }}
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
           script: echo "Generated AVD snapshot for caching"
@@ -396,27 +376,9 @@ jobs:
           profile: pixel_6
           target: default
           force-avd-creation: false
-          ram-size: ${{ matrix.ram-size }}
-          cores: ${{ matrix.cores || 2 }}
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none ${{ matrix.emulator-extra-options }}
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          # A full logcat and a memory/load sample every 5 s are streamed to the runner, so the last
-          # seconds before the emulator goes offline survive it (Collect Artifacts adds them). Both
-          # background jobs are detached from the step's stdout (or the step never ends); the sampler
-          # stops at a marker file and logcat ends with the emulator.
-          script: |
-            rm -f /tmp/stop-emulator-stats ; (adb logcat -b all -v threadtime < /dev/null > /tmp/emulator-logcat.txt 2>&1 &) ; (while [ ! -e /tmp/stop-emulator-stats ]; do adb shell 'date; cat /proc/loadavg; grep -E "MemAvailable|SwapFree" /proc/meminfo; top -b -n 1 -m 8' >> /tmp/emulator-stats.txt 2>&1; sleep 5; done < /dev/null > /dev/null 2>&1 &) ; ./gradlew ${{ matrix.gradle-tasks }} ; rc=$? ; touch /tmp/stop-emulator-stats ; { echo '== after gradle'; pgrep -a -x qemu-system-x86_64 || pgrep -a -f 'emulator/qemu' || echo 'emulator process is gone'; adb devices -l; } >> /tmp/emulator-stats.txt 2>&1 ; exit $rc
-      - name: Emulator diagnostics
-        # The app shard's emulator goes offline mid-run; show whether the host killed it.
-        if: ${{ failure() && matrix.shard == 'app' }}
-        timeout-minutes: 2
-        run: |
-          free -m
-          sudo dmesg -T | grep -iE "oom|killed process|qemu|kvm|segfault|general protection" | tail -40 || true
-          ls -la /tmp/android-runner/ 2>/dev/null || true
-          ls -la ~/.android/avd/test.avd/*.lock ~/.android/avd/test.avd/hardware-qemu.ini 2>/dev/null || true
-          grep -iE "hw.ramSize|hw.cpu.ncore|vm.heapSize" ~/.android/avd/test.avd/config.ini || true
-          tar czf /tmp/emulator-runner-tmp.tgz -C /tmp android-runner 2>/dev/null || true
+          script: ./gradlew ${{ matrix.gradle-tasks }}
       - name: Collect Artifacts
         if: ${{ always() }}
         timeout-minutes: 1
@@ -427,7 +389,6 @@ jobs:
           mkdir ${ARTIFACTS_DIR_PATH}
 
           zip -r ${TEST_RESULTS_ZIP_PATH} . -i \*/build/outputs/androidTest-results/\* \*/build/reports/androidTests/\*
-          cp /tmp/emulator-logcat.txt /tmp/emulator-stats.txt /tmp/emulator-runner-tmp.tgz ${ARTIFACTS_DIR_PATH}/ 2>/dev/null || true
       - name: Upload Artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
