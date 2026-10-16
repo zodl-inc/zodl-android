@@ -355,7 +355,9 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-api-35-x86_64-pixel_6-default-v2
+          # Per runner type: a snapshot saved on one machine type does not restore on another
+          # ("A snapshot operation for 'test' is pending and timeout has expired").
+          key: avd-api-35-x86_64-pixel_6-default-v2-${{ matrix.runner }}
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
