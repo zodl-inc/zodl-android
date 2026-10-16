@@ -86,7 +86,7 @@ class AutomaticServerRepositoryImpl(
     /**
      * Consecutive gateway failures count. Reset to 0 when a gateway is healthy or when automatic mode
      * changes. Prevents a single transient failure (e.g., Tor circuits timing out) from immediately
-     * triggering a fallback to clearnet.
+     * reporting the gateway unavailable.
      */
     @Volatile
     private var consecutiveGatewayFailures = 0
@@ -184,9 +184,9 @@ class AutomaticServerRepositoryImpl(
     /**
      * The automatic-selection lane, OHTTP first (see [ServerFallbackPolicy]). Every foreground edge
      * re-evaluates (rate limited by [evaluationInterval]); a connectivity edge - a synchronizer error or a
-     * sustained DISCONNECTED status - re-evaluates at once so the fallback to a clearnet server is not
-     * held back by the rate limit; and while a fallback is active a periodic tick checks whether the OHTTP
-     * gateway is back. A newer trigger cancels an in-flight evaluation. A switch candidate is applied only
+     * sustained DISCONNECTED status - re-evaluates at once so reporting a gateway outage is not held back
+     * by the rate limit; and while the wallet is on a clearnet server a periodic tick checks whether the
+     * OHTTP gateway is back. A newer trigger cancels an in-flight evaluation. A switch candidate is applied only
      * once the first local balance snapshot exists: a different endpoint rebuilds the Synchronizer, and UI
      * consumers retain that snapshot through the replacement.
      *
@@ -323,13 +323,15 @@ class AutomaticServerRepositoryImpl(
     /**
      * OHTTP first ([ServerFallbackPolicy]): the OHTTP gateway tier is validated with the SDK's own
      * fastest-server benchmark (Tor-aware through `ServiceMode`); while any gateway answers it is the
-     * server, and the clearnet tier is not even probed - so no clearnet host sees the device while OHTTP
-     * works, and speed is never a reason to leave OHTTP. Only when no gateway answers is the clearnet tier
-     * benchmarked and its best validated server returned; nothing reachable at all means "stay".
+     * server, and the clearnet tier is never probed - so no clearnet host sees the device, and speed is
+     * never a reason to leave OHTTP. When no gateway answers, the wallet stays on the gateway and the
+     * unavailability is reported ([ohttpUnavailable]); Automatic mode never switches to clearnet on its
+     * own, only an explicit manual server choice does.
      *
      * Consecutive failure confirmation: when the current server is a gateway and tier 0 is empty, a
-     * CONNECTIVITY trigger (synchronizer error) falls back immediately, but FOREGROUND/HEALTH triggers
-     * wait for a second consecutive failure to avoid leaving OHTTP on transient Tor circuit timeouts.
+     * CONNECTIVITY trigger (synchronizer error) reports the gateway unavailable immediately, but
+     * FOREGROUND/HEALTH triggers wait for a second consecutive failure so transient Tor circuit timeouts
+     * do not raise it.
      *
      * A HEALTH trigger on the gateway skips the benchmark and only probes the current gateway
      * ([probeGateway]); every other trigger ranks as described above.

@@ -15,10 +15,11 @@ class LightWalletEndpointProvider(
 
     /**
      * Every built-in endpoint, default first: the OHTTP gateway (tier 0, the default and the
-     * preferred transport) followed by the clearnet lightwalletd fallback tier. This is what the
-     * server picker lists and what the fastest-servers benchmark measures. Automatic mode never
-     * chooses among these by speed alone — see [co.electriccoin.zcash.ui.common.model.ServerFallbackPolicy]:
-     * OHTTP is used whenever it is reachable, and a clearnet server only while it is not.
+     * preferred transport) followed by the clearnet lightwalletd tier. This is what the server
+     * picker lists and what the fastest-servers benchmark measures. Automatic mode never chooses
+     * among these by speed — see [co.electriccoin.zcash.ui.common.model.ServerFallbackPolicy]:
+     * it stays on OHTTP and, when the gateway is unreachable, reports that to the user instead of
+     * switching to clearnet on its own.
      */
     fun getEndpoints(): List<LightWalletEndpoint> = listOf(getDefaultEndpoint()) + getFallbackEndpoints()
 
@@ -35,10 +36,10 @@ class LightWalletEndpointProvider(
         }
 
     /**
-     * Clearnet lightwalletd servers (the pre-OHTTP built-in list). Used ONLY as the automatic
-     * fallback while the OHTTP gateway cannot be reached, or when the user picks one explicitly in
-     * Manual mode. They see the device IP unless Tor is on; with Tor on the sync engine routes every
-     * call to them — block download included — through Tor.
+     * Clearnet lightwalletd servers (the pre-OHTTP built-in list). Used ONLY when the user picks
+     * one explicitly in Manual mode; Automatic mode never falls back to them on its own. They see
+     * the device IP unless Tor is on; with Tor on the sync engine routes every call to them — block
+     * download included — through Tor.
      */
     fun getFallbackEndpoints(): List<LightWalletEndpoint> =
         if (isMainnet) {
