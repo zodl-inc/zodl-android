@@ -66,7 +66,8 @@ class VotingKeystoneSessionHolderTest {
                     configuredHelperUrls = any(),
                     voteTreeNodeUrls = any(),
                     ceremonyStartSeconds = any(),
-                    voteEndTimeSeconds = any()
+                    voteEndTimeSeconds = any(),
+                    isCustomServer = any()
                 )
             }
             coVerify(exactly = 0) { env.torLeaseB.release() }
@@ -194,7 +195,8 @@ class VotingKeystoneSessionHolderTest {
                     configuredHelperUrls = any(),
                     voteTreeNodeUrls = any(),
                     ceremonyStartSeconds = any(),
-                    voteEndTimeSeconds = any()
+                    voteEndTimeSeconds = any(),
+                    isCustomServer = any()
                 )
             } returns env.roundSessionB
 
@@ -217,6 +219,22 @@ class VotingKeystoneSessionHolderTest {
             coVerify(exactly = 2) { env.votingCryptoClient.openVotingDb(any()) }
             coVerify(exactly = 1) { env.roundSessionA.run(any(), null) }
             coVerify(exactly = 1) { env.roundSessionB.run(any(), null) }
+            coVerify(exactly = 1) {
+                env.votingCryptoClient.openRoundSession(
+                    dbHandle = DB_HANDLE_B,
+                    torLease = any(),
+                    roundId = any(),
+                    proposals = any(),
+                    hotkeySecret = any(),
+                    chainEndpoints = any(),
+                    operationEpoch = any(),
+                    configuredHelperUrls = any(),
+                    voteTreeNodeUrls = any(),
+                    ceremonyStartSeconds = any(),
+                    voteEndTimeSeconds = any(),
+                    isCustomServer = true
+                )
+            }
         }
 
     private class Environment(
@@ -279,7 +297,8 @@ class VotingKeystoneSessionHolderTest {
                 configuredHelperUrls = any(),
                 voteTreeNodeUrls = any(),
                 ceremonyStartSeconds = any(),
-                voteEndTimeSeconds = any()
+                voteEndTimeSeconds = any(),
+                isCustomServer = any()
             )
         } returns roundSessionA
         coEvery {
@@ -294,7 +313,8 @@ class VotingKeystoneSessionHolderTest {
                 configuredHelperUrls = any(),
                 voteTreeNodeUrls = any(),
                 ceremonyStartSeconds = any(),
-                voteEndTimeSeconds = any()
+                voteEndTimeSeconds = any(),
+                isCustomServer = any()
             )
         } returns roundSessionB
 

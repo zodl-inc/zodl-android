@@ -249,6 +249,9 @@ interface VotingCryptoClient {
      * deliberately does not wrap it in another app-side abstraction layer (see this interface's
      * class doc for why the old per-step methods below it were deleted rather than shimmed).
      *
+     * [isCustomServer] is the routing decision the caller already made; when null, the current
+     * value of [isCustomServer] is read instead.
+     *
      * @throws RuntimeException if the native layer reports a failure.
      */
     @Suppress("LongParameterList")
@@ -264,7 +267,8 @@ interface VotingCryptoClient {
         configuredHelperUrls: List<String>,
         voteTreeNodeUrls: List<String>,
         ceremonyStartSeconds: Long?,
-        voteEndTimeSeconds: Long?
+        voteEndTimeSeconds: Long?,
+        isCustomServer: Boolean? = null
     ): VotingRoundSession
 
     /**
@@ -665,13 +669,14 @@ class VotingCryptoClientImpl(
         configuredHelperUrls: List<String>,
         voteTreeNodeUrls: List<String>,
         ceremonyStartSeconds: Long?,
-        voteEndTimeSeconds: Long?
+        voteEndTimeSeconds: Long?,
+        isCustomServer: Boolean?
     ): VotingRoundSession =
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .openRoundSession(
                     torLease = torLease,
-                    isCustomServer = isCustomServer(),
+                    isCustomServer = isCustomServer ?: this@VotingCryptoClientImpl.isCustomServer(),
                     roundId,
                     proposals,
                     hotkeySecret,

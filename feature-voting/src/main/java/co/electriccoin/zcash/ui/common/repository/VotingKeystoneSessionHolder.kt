@@ -134,7 +134,8 @@ class VotingKeystoneSessionHolder(
                     configuredHelperUrls = chainEndpoints,
                     voteTreeNodeUrls = chainEndpoints,
                     ceremonyStartSeconds = ceremonyStartSeconds,
-                    voteEndTimeSeconds = voteEndTimeSeconds
+                    voteEndTimeSeconds = voteEndTimeSeconds,
+                    isCustomServer = isCustomServer
                 )
             // A delegation-enabled run() call caches the DelegationPipeline this session's
             // getKeystoneSigningRequests needs -- see VotingRoundSession.run's doc comment. This
