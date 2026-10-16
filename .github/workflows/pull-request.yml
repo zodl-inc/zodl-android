@@ -395,7 +395,10 @@ jobs:
           cores: ${{ matrix.cores || 2 }}
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: ./gradlew ${{ matrix.gradle-tasks }}
+          # A full logcat and a memory/load sample every 5 s are streamed to the runner, so the last
+          # seconds before the emulator goes offline survive it (Collect Artifacts adds them).
+          script: |
+            (adb logcat -b all -v threadtime > /tmp/emulator-logcat.txt 2>&1 &) ; (while true; do adb shell 'date; cat /proc/loadavg; grep -E "MemAvailable|SwapFree" /proc/meminfo; top -b -n 1 -m 8 -o %CPU,RES,NAME' >> /tmp/emulator-stats.txt 2>&1; sleep 5; done &) ; ./gradlew ${{ matrix.gradle-tasks }}
       - name: Emulator diagnostics
         # The app shard's emulator goes offline mid-run; show whether the host killed it.
         if: ${{ failure() && matrix.shard == 'app' }}
@@ -416,6 +419,7 @@ jobs:
           mkdir ${ARTIFACTS_DIR_PATH}
 
           zip -r ${TEST_RESULTS_ZIP_PATH} . -i \*/build/outputs/androidTest-results/\* \*/build/reports/androidTests/\*
+          cp /tmp/emulator-logcat.txt /tmp/emulator-stats.txt ${ARTIFACTS_DIR_PATH}/ 2>/dev/null || true
       - name: Upload Artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
