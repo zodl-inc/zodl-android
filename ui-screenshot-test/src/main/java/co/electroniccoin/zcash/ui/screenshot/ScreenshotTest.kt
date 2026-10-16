@@ -64,6 +64,7 @@ import org.junit.Test
 import kotlin.time.Duration.Companion.seconds
 
 private const val DEFAULT_TIMEOUT_MILLISECONDS = 10_000L
+private const val RESTORE_INFO_TIMEOUT_MILLISECONDS = 60_000L
 private const val DEFAULT_TIMEOUT_MILLISECONDS_LONG = 100_000L
 
 /*
@@ -295,7 +296,9 @@ class ScreenshotTest : UiTestPrerequisites() {
         takeScreenshot(tag, "Import 4")
         composeTestRule.onNodeWithTag(RestoreTorTags.RESTORE_BTN).performClick()
 
-        composeTestRule.waitUntil(DEFAULT_TIMEOUT_MILLISECONDS) {
+        // Restoring initializes the SDK and its first network channel before this screen shows;
+        // on a CI emulator that can take longer than the 10 s used for plain navigation.
+        composeTestRule.waitUntil(RESTORE_INFO_TIMEOUT_MILLISECONDS) {
             composeTestRule
                 .onNodeWithText(
                     text = resContext.getString(co.electriccoin.zcash.ui.design.R.string.restoreInfo_gotIt),
