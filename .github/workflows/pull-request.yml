@@ -391,6 +391,16 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: ./gradlew ${{ matrix.gradle-tasks }}
+      - name: Emulator diagnostics
+        # The app shard's emulator goes offline mid-run; show whether the host killed it.
+        if: ${{ failure() && matrix.shard == 'app' }}
+        timeout-minutes: 2
+        run: |
+          free -m
+          sudo dmesg -T | grep -iE "oom|killed process|qemu|kvm|segfault|general protection" | tail -40 || true
+          ls -la /tmp/android-runner/ 2>/dev/null || true
+          ls -la ~/.android/avd/test.avd/*.lock ~/.android/avd/test.avd/hardware-qemu.ini 2>/dev/null || true
+          grep -iE "hw.ramSize|hw.cpu.ncore|vm.heapSize" ~/.android/avd/test.avd/config.ini || true
       - name: Collect Artifacts
         if: ${{ always() }}
         timeout-minutes: 1
