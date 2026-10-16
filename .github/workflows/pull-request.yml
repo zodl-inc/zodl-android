@@ -308,6 +308,11 @@ jobs:
             # 2 guest vCPUs went unresponsive (adb "device offline") once the restored wallet
             # started syncing while swiftshader renders on the CPU too.
             cores: 6
+            # The emulator process exits ~30 s after the app's first outbound TLS handshake (to the
+            # OHTTP relay) when the screenshot tests create a wallet (2026-10-16: logcat ends in
+            # rustls::client::hs, then adb loses the device; guest memory and load were fine).
+            # The screenshots need no network, so the emulator gets an unreachable DNS server.
+            emulator-extra-options: -dns-server 127.0.0.1
             coverage: false
             gradle-tasks: >-
               :app:connectedZcashmainnetStoreDebugAndroidTest
@@ -393,7 +398,7 @@ jobs:
           force-avd-creation: false
           ram-size: ${{ matrix.ram-size }}
           cores: ${{ matrix.cores || 2 }}
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none ${{ matrix.emulator-extra-options }}
           disable-animations: true
           # A full logcat and a memory/load sample every 5 s are streamed to the runner, so the last
           # seconds before the emulator goes offline survive it (Collect Artifacts adds them). Both
