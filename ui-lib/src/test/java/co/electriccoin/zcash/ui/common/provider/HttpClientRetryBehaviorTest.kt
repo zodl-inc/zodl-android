@@ -17,7 +17,7 @@ import org.junit.Test
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Behavioral tests for HTTP client retry logic (C-08 fix verification).
+ * Behavioral tests for HTTP client retry logic.
  *
  * Verifies that:
  * 1. Voting POST endpoints are never retried (they may carry OHTTP ciphertext with nonces)

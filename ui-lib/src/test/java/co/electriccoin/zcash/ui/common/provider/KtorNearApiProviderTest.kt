@@ -19,7 +19,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 /**
- * MOB-1520: [KtorNearApiProvider] drives the 1Click HTTP API through OHTTP. The contract these tests
+ * [KtorNearApiProvider] drives the 1Click HTTP API through OHTTP. The contract these tests
  * pin down: all requests route through OHTTP (never create() or createTor()); the app NEVER sends
  * the `Authorization: Bearer` token (the gateway injects it server-side); depositAddress query params
  * are sent; NEAR error bodies are lifted into [OhttpNearErrorException]; unparsable error bodies fall

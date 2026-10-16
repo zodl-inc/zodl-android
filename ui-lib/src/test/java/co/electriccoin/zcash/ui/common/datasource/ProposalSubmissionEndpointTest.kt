@@ -12,7 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * F-05 fix verification: Transaction submission endpoint selection behavior.
+ * Transaction submission endpoint selection behavior.
  *
  * Prior to the fix, automatic mode broadcast transactions to ALL bundled endpoints (OHTTP gateway
  * + 6 clearnet servers), defeating OHTTP privacy by exposing the raw transaction to every operator.
@@ -41,7 +41,7 @@ class ProposalSubmissionEndpointTest {
             val result = dataSource.getSubmissionEndpoints()
 
             assertEquals(
-                "F-05: submission must go only to the current endpoint, never every bundled server",
+                "Submission must go only to the current endpoint, never every bundled server",
                 listOf(ohttpGatewayMainnet),
                 result
             )
@@ -55,7 +55,7 @@ class ProposalSubmissionEndpointTest {
             val result = dataSource.getSubmissionEndpoints()
 
             assertEquals(
-                "F-05: a manually-selected fallback must be honored as the sole submission target",
+                "A manually-selected fallback must be honored as the sole submission target",
                 listOf(clearnetServer1),
                 result
             )

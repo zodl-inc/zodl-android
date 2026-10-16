@@ -213,7 +213,7 @@ internal fun HttpRequestRetryConfig.configureClearnetRetry() {
 }
 
 /**
- * C-08 fix: Exclude all voting POSTs from retry — they carry OHTTP-encapsulated ciphertext
+ * Exclude all voting POSTs from retry — they carry OHTTP-encapsulated ciphertext
  * that must be sent exactly once (gateway replay cache returns 409 on duplicate nonce).
  * Covers both helper endpoints (/shares, /share-status) and direct voting POSTs
  * (/delegate-vote, /cast-vote) which can route through OHTTP when Tor is OFF.
@@ -225,7 +225,7 @@ internal fun String.isVotingPath(): Boolean =
         contains("/shielded-vote/v1/cast-vote")
 
 /**
- * MOB-1378: the CMC quote API is the exchange-rate provider; requests to it must never leave over the
+ * The CMC quote API is the exchange-rate provider; requests to it must never leave over the
  * direct (clearnet) client. Matched on the host (not a substring of the full URL) so a path or query
  * that happens to echo the host can't trigger a false match. The host literal lives in CMCApiProvider.
  */

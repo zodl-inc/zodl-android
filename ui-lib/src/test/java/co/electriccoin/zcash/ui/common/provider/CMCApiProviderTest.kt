@@ -12,7 +12,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * MOB-1520: CMC requests always route through OHTTP (with Tor ON the relay leg goes over Tor).
+ * CMC requests always route through OHTTP (with Tor ON the relay leg goes over Tor).
  * The app never sends X-CMC_PRO_API_KEY — the gateway injects it server-side. These tests pin
  * that contract: create() and createTor() must never be called, and the OHTTP path is used.
  */
@@ -73,7 +73,7 @@ class CMCApiProviderTest {
 }
 
 /**
- * MOB-1520: the app must never send X-CMC_PRO_API_KEY; the gateway injects it server-side. Asserted against
+ * The app must never send X-CMC_PRO_API_KEY; the gateway injects it server-side. Asserted against
  * the actual request headers (not the URL) so a regression that reintroduces the header fails the test.
  */
 private fun assertNoCmcApiKeyHeader(request: OhttpHttpClient.Request) {

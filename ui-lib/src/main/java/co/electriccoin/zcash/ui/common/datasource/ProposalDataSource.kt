@@ -309,7 +309,7 @@ class ProposalDataSourceImpl(
      * is the OHTTP gateway when available (chosen by ServerFallbackPolicy), or a manually-selected
      * fallback when OHTTP is down.
      *
-     * F-05 fix: In automatic mode, submit ONLY to the current endpoint (OHTTP gateway when
+     * In automatic mode, submit ONLY to the current endpoint (OHTTP gateway when
      * available). Never broadcast to multiple servers - that would expose the tx to all operators
      * and defeat OHTTP's IP hiding. The current endpoint already provides the right privacy/Tor
      * routing, as determined by ServerFallbackPolicy.

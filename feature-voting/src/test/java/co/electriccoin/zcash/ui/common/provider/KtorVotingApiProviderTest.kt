@@ -281,7 +281,7 @@ class KtorVotingApiProviderTest {
             )
         }
 
-    // region config-request timeout capability (MOB-1809)
+    // region config-request timeout capability
 
     /**
      * The Ktor timeout capability only exists on the direct/Tor client. With Tor off the config legs go

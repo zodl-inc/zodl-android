@@ -26,7 +26,7 @@ private fun fakeTimeoutException(): TimeoutCancellationException =
     }
 
 /**
- * F-06 audit fix verification: Tests that voting server failover does NOT retry after timeout.
+ * Tests that voting server failover does NOT retry after timeout.
  *
  * A TimeoutCancellationException means the request may have timed out after delivery. For POSTs
  * (delegate vote, cast vote), retrying on another server would risk double-submission. The fix
@@ -46,7 +46,7 @@ class VotingServerFailoverPostTimeoutTest {
         val shouldRetry = shouldTryNextVoteServer(timeout)
 
         assertEquals(
-            "F-06 fix: TimeoutCancellationException should NOT trigger failover (may have delivered)",
+            "TimeoutCancellationException should NOT trigger failover (may have delivered)",
             false,
             shouldRetry
         )
@@ -97,7 +97,7 @@ class VotingServerFailoverPostTimeoutTest {
             )
 
             assertEquals(
-                "F-06 fix: After timeout on first server, should NOT try second server",
+                "After timeout on first server, should NOT try second server",
                 1,
                 attemptedServers.size
             )

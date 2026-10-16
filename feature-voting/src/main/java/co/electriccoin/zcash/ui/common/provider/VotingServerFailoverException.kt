@@ -75,7 +75,7 @@ internal fun shouldTryNextVoteServerForRead(throwable: Throwable): Boolean =
     shouldTryNextVoteServer(throwable, retryOnTimeout = true)
 
 /**
- * F-06 audit fix: a [TimeoutCancellationException] means the request may have timed out after delivery.
+ * A [TimeoutCancellationException] means the request may have timed out after delivery.
  * For POSTs (delegate/cast vote), retrying on another server risks a double submission, so the default
  * ([retryOnTimeout] = false) surfaces the timeout instead of failing over; idempotent GET call sites opt
  * back in through [shouldTryNextVoteServerForRead]. The timeout branch must precede
