@@ -38,7 +38,7 @@ jobs:
           sdk-token: ${{ secrets.SDK_COMPANION_TOKEN || secrets.ZODL_QA }}
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
