@@ -13,6 +13,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   connections. The server picker shows which servers support OHTTP, and displays a message when OHTTP
   becomes unavailable with an option to manually choose a server. Exchange rate updates also route
   through OHTTP without requiring a build-time API key.
+- The F-Droid build now behaves like the Google Play build: the More button opens Integrations
+  (gift cards) also with a hardware wallet connected. It still ships without Firebase Crashlytics,
+  ML Kit (QR scanning uses zxing-cpp) and Flexa, whose SDK needs a build-time publishable key.
 
 ## [3.17.1 (3155)] - 2026-10-14
 

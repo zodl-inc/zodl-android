@@ -8,13 +8,9 @@ import co.electriccoin.zcash.preference.StandardPreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.BooleanPreferenceDefault
 import co.electriccoin.zcash.ui.BuildConfig
 import co.electriccoin.zcash.ui.NavigationRouter
-import co.electriccoin.zcash.ui.common.model.DistributionDimension
-import co.electriccoin.zcash.ui.common.model.HWWalletAccount
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
-import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.IconButtonState
@@ -38,8 +34,6 @@ class ZashiTopAppBarVM(
     getWalletAccountsUseCase: GetWalletAccountsUseCase,
     private val standardPreferenceProvider: StandardPreferenceProvider,
     private val navigationRouter: NavigationRouter,
-    private val getVersionInfo: GetVersionInfoProvider,
-    private val configurationRepository: ConfigurationRepository,
 ) : ViewModel() {
     private val isHideBalances: StateFlow<Boolean?> = booleanStateFlow(StandardPreferenceKeys.IS_HIDE_BALANCES)
 
@@ -94,7 +88,7 @@ class ZashiTopAppBarVM(
             moreButton =
                 IconButtonState(
                     icon = co.electriccoin.zcash.ui.R.drawable.ic_home_more,
-                    onClick = { onInfoClick(accounts) },
+                    onClick = ::onInfoClick,
                     onDoubleClick = { navigationRouter.forward(MoreArgs) }.takeIf { BuildConfig.DEBUG },
                     contentDescription = stringRes(R.string.general_more)
                 )
@@ -103,20 +97,7 @@ class ZashiTopAppBarVM(
 
     private fun onAccountTypeClicked() = navigationRouter.forward(AccountListArgs)
 
-    private fun onInfoClick(accounts: List<WalletAccount>?) =
-        viewModelScope.launch {
-            if (getVersionInfo().distribution == DistributionDimension.FOSS) {
-                val isFlexaAvailable = configurationRepository.isFlexaAvailable()
-                val isHWWalletConnected = accounts.orEmpty().any { it is HWWalletAccount }
-                if (!isFlexaAvailable && isHWWalletConnected) {
-                    navigationRouter.forward(MoreArgs)
-                } else {
-                    navigationRouter.forward(IntegrationsArgs)
-                }
-            } else {
-                navigationRouter.forward(IntegrationsArgs)
-            }
-        }
+    private fun onInfoClick() = navigationRouter.forward(IntegrationsArgs)
 
     private fun onShowOrHideBalancesClicked() =
         viewModelScope.launch {

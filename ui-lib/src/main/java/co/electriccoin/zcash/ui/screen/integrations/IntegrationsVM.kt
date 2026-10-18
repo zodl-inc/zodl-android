@@ -65,6 +65,10 @@ class IntegrationsVM(
                     stringRes(R.string.integrations_disabled_info)
                 }
 
+                flexaStatus == UNAVAILABLE -> {
+                    null
+                }
+
                 selectedAccount is KeystoneAccount -> {
                     stringRes(R.string.integrations_disabled_info_flexa)
                 }
