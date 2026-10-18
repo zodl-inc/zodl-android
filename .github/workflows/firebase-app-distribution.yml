@@ -18,7 +18,6 @@
 #                                  same signature and testers can update-install instead of wiping their wallet
 # FIREBASE_DEBUG_JSON_BASE64 - Optional JSON to enable Firebase (e.g. Crashlytics) for debug builds
 # FIREBASE_RELEASE_JSON_BASE64 - Optional JSON to enable Firebase (e.g. Crashlytics) for release builds
-# FLEXA_PUBLISHABLE_KEY - Optional Flexa key embedded into release variants
 # SLACK_WEBHOOK_URL_WALLET_TEAM - Optional Slack incoming webhook for the wallet-team channel; deploy result notification is skipped when unset
 
 name: Firebase App Distribution
@@ -242,7 +241,6 @@ jobs:
           # IS_SIGN_RELEASE_BUILD_WITH_DEBUG_KEY=true with no release keystore configured, and
           # FIREBASE_DEBUG_KEYSTORE_BASE64 is that machine's debug keystore.
           ORG_GRADLE_PROJECT_IS_SIGN_RELEASE_BUILD_WITH_DEBUG_KEY: true
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
         shell: bash
         run: |
           CAP_VARIANT="$(echo ${VARIANT:0:1} | tr '[:lower:]' '[:upper:]')${VARIANT:1}"

@@ -4,7 +4,7 @@ import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.configuration.api.ConfigurationProvider
 import co.electriccoin.zcash.configuration.model.map.Configuration
-import co.electriccoin.zcash.ui.BuildConfig
+import co.electriccoin.zcash.ui.common.model.DistributionDimension
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
 import kotlinx.coroutines.CoroutineScope
@@ -49,9 +49,11 @@ class ConfigurationRepositoryImpl(
             .filterNotNull()
             .map {
                 val versionInfo = getVersionInfo()
-                versionInfo.network != ZcashNetwork.Testnet &&
-                    ConfigurationEntries.IS_FLEXA_AVAILABLE.getValue(it) &&
-                    BuildConfig.ZCASH_FLEXA_KEY.isNotEmpty()
+                isFlexaAvailable(
+                    network = versionInfo.network,
+                    distribution = versionInfo.distribution,
+                    isEnabledRemotely = ConfigurationEntries.IS_FLEXA_AVAILABLE.getValue(it)
+                )
             }.stateIn(
                 scope = scope,
                 started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
@@ -60,3 +62,16 @@ class ConfigurationRepositoryImpl(
 
     override suspend fun isFlexaAvailable(): Boolean = isFlexaAvailable.filterNotNull().first()
 }
+
+/**
+ * Flexa is a mainnet service. Its API calls go through the OHTTP gateway, which holds the publishable key
+ * (see FlexaRepositoryImpl), so no build needs a key. The F-Droid build does not offer it yet.
+ */
+internal fun isFlexaAvailable(
+    network: ZcashNetwork,
+    distribution: DistributionDimension,
+    isEnabledRemotely: Boolean
+): Boolean =
+    network != ZcashNetwork.Testnet &&
+        distribution != DistributionDimension.FOSS &&
+        isEnabledRemotely
