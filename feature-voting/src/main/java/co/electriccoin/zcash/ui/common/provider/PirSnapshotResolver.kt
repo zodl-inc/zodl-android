@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.provider
 
 import co.electriccoin.lightwallet.client.OhttpHttpClient
 import co.electriccoin.zcash.spackle.rethrowIfCancellation
+import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -21,7 +22,8 @@ interface PirSnapshotResolver {
 }
 
 class HttpPirSnapshotResolver(
-    private val httpClientProvider: HttpClientProvider
+    private val httpClientProvider: HttpClientProvider,
+    private val votingChainConfigRepository: VotingChainConfigRepository
 ) : PirSnapshotResolver {
     override suspend fun resolve(
         endpoints: List<String>,
@@ -38,24 +40,24 @@ class HttpPirSnapshotResolver(
             throw PirSnapshotResolverException.NoEndpointsConfigured
         }
 
-        // Route PIR probes through the proper privacy path:
-        // - Tor OFF: OHTTP (relay sees clearnet IP, gateway does not)
-        // - Tor ON: direct over Tor
-        // This prevents IP leaks to PIR servers when Tor is disabled.
-        val torEnabled = httpClientProvider.isTorEnabled()
-        val ohttpClient = if (!torEnabled) httpClientProvider.createOhttp() else null
+        // ZIP #10 voting routes: Tor on -> Tor; Tor off -> OHTTP for the predefined config (fail closed
+        // if the gateway cannot reach the host), direct for a user-selected custom config.
+        val route =
+            when {
+                httpClientProvider.isTorEnabled() -> PirProbeRoute.Direct
+                !votingChainConfigRepository.get().isOnDefaultConfig -> PirProbeRoute.Direct
+                else -> PirProbeRoute.Ohttp(httpClientProvider.createOhttp())
+            }
 
         val outcomes =
             coroutineScope {
                 normalizedEndpoints
                     .map { url ->
                         async {
-                            probeWithRouting(url, expectedSnapshotHeight, torEnabled, ohttpClient)
+                            probe(route, url, expectedSnapshotHeight)
                         }
                     }.awaitAll()
             }
-
-        ohttpClient?.dispose()
 
         return outcomes
             .firstOrNull { outcome ->
@@ -66,40 +68,20 @@ class HttpPirSnapshotResolver(
         )
     }
 
-    private suspend fun probeWithRouting(
+    private suspend fun probe(
+        route: PirProbeRoute,
         url: String,
-        expectedSnapshotHeight: Long,
-        torEnabled: Boolean,
-        ohttpClient: OhttpHttpClient?
+        expectedSnapshotHeight: Long
     ): PirSnapshotProbeOutcome {
         val status =
             runCatching {
                 val rootUrl = "$url/root"
                 val bodyText =
-                    if (!torEnabled && ohttpClient != null) {
-                        val response =
-                            try {
-                                ohttpClient.execute(
-                                    OhttpHttpClient.Request(
-                                        url = rootUrl,
-                                        headers = listOf("Cache-Control" to "no-cache")
-                                    )
-                                )
-                            } catch (exception: Exception) {
-                                exception.rethrowIfCancellation()
-                                val errorType = exception::class.simpleName ?: "unknown error"
-                                throw IllegalStateException("PIR probe via OHTTP failed for $rootUrl: $errorType", exception)
-                            }
-                        if (response.status !in 200..299) {
-                            throw IllegalStateException("PIR probe returned HTTP ${response.status}")
-                        }
-                        String(response.body)
-                    } else {
-                        httpClientProvider.create().use { client ->
-                            client.get(rootUrl).bodyAsText()
-                        }
+                    when (route) {
+                        is PirProbeRoute.Ohttp -> fetchViaOhttp(route.client, rootUrl)
+                        // A fresh client per probe: under Tor each gets its own circuit (MOB-1808).
+                        PirProbeRoute.Direct -> httpClientProvider.create().use { it.get(rootUrl).bodyAsText() }
                     }
-
                 val rootInfo = pirSnapshotJson.decodeFromString<PirRootInfo>(bodyText)
                 val height =
                     rootInfo.height
@@ -115,6 +97,7 @@ class HttpPirSnapshotResolver(
                         is ResponseException -> {
                             "HTTP ${throwable.response.status.value}"
                         }
+
                         else -> {
                             throwable.message ?: throwable::class.simpleName ?: "unknown error"
                         }
@@ -127,7 +110,38 @@ class HttpPirSnapshotResolver(
             status = status
         )
     }
+
+    private suspend fun fetchViaOhttp(
+        client: OhttpHttpClient,
+        rootUrl: String
+    ): String {
+        check(client.canHandle(rootUrl)) { "PIR server $rootUrl is not reachable through the OHTTP gateway" }
+        val response =
+            try {
+                client.execute(
+                    OhttpHttpClient.Request(
+                        url = rootUrl,
+                        headers = listOf("Cache-Control" to "no-cache")
+                    )
+                )
+            } catch (exception: Exception) {
+                exception.rethrowIfCancellation()
+                error("PIR probe via OHTTP failed: ${exception::class.simpleName}")
+            }
+        check(response.status in HTTP_SUCCESS) { "HTTP ${response.status}" }
+        return response.body.decodeToString()
+    }
 }
+
+private sealed interface PirProbeRoute {
+    data object Direct : PirProbeRoute
+
+    data class Ohttp(
+        val client: OhttpHttpClient
+    ) : PirProbeRoute
+}
+
+private val HTTP_SUCCESS = 200..299
 
 sealed interface PirSnapshotProbeStatus {
     data class Matching(

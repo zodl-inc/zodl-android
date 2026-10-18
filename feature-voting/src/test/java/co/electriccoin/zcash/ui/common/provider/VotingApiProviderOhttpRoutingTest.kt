@@ -126,6 +126,35 @@ class VotingApiProviderOhttpRoutingTest {
         }
 
     @Test
+    fun customVotingConfigGoesDirectWhenTorDisabled() =
+        runBlocking {
+            val ohttpRequests = mutableListOf<String>()
+            val directRequests = mutableListOf<String>()
+            val provider =
+                providerWithOhttpTracking(
+                    ohttpRequests = ohttpRequests,
+                    directRequests = directRequests,
+                    torEnabled = false,
+                    isCustomServer = true,
+                    ohttpCanHandle = { true }
+                )
+
+            runCatching {
+                provider.fetchServiceConfig()
+            }
+
+            assertTrue(
+                directRequests.any { it.endsWith("/static-voting-config.json") } &&
+                    directRequests.any { it.endsWith("/dynamic-voting-config.json") },
+                "a custom voting config should be fetched direct when Tor is off"
+            )
+            assertTrue(
+                ohttpRequests.none { it.contains("voting-config.json") },
+                "a custom voting config must never be fetched through the gateway"
+            )
+        }
+
+    @Test
     fun postShareFailsClosedForPredefinedServerWhenOhttpUnsupported() =
         runBlocking {
             val ohttpRequests = mutableListOf<String>()

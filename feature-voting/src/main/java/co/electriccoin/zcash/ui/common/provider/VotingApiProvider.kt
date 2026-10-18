@@ -517,19 +517,19 @@ class KtorVotingApiProvider(
         url: String,
         supportsKtorTimeouts: Boolean,
     ): ByteArray {
-        // Privacy: with Tor off, go through the OHTTP gateway so the config host never sees the device
-        // IP (content-addressed URL, so the gateway cache makes repeats free); with Tor on, this client
-        // is already Tor-backed. Failures become StaticVotingConfigFetchFailedException so the mirror
-        // walk retries the next source.
-        val ohttpClient = httpClientProvider.createOhttp()
-        val torEnabled = httpClientProvider.isTorEnabled()
-        if (!torEnabled && ohttpClient.canHandle(url)) {
+        // Privacy: with Tor off, the predefined config goes through the OHTTP gateway so the config host
+        // never sees the device IP (content-addressed URL, so the gateway cache makes repeats free); a
+        // user-selected custom config goes direct and never through the gateway (ZIP #10). With Tor on,
+        // this client is already Tor-backed. Failures become StaticVotingConfigFetchFailedException so
+        // the mirror walk retries the next source.
+        if (!httpClientProvider.isTorEnabled() && !isCustomVoteServer()) {
+            val ohttpClient = httpClientProvider.createOhttp()
+            if (!ohttpClient.canHandle(url)) {
+                throw UnsupportedPrivateDestinationException(
+                    "Cannot fetch static voting config from unsupported destination $url with Tor disabled",
+                )
+            }
             return fetchStaticConfigBytesViaOhttp(ohttpClient, url)
-        }
-        if (!torEnabled && !ohttpClient.canHandle(url)) {
-            throw UnsupportedPrivateDestinationException(
-                "Cannot fetch static voting config from unsupported destination $url with Tor disabled",
-            )
         }
         return try {
             withTorRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
@@ -642,8 +642,9 @@ class KtorVotingApiProvider(
      * what the caller logs and reports as the serving origin.
      *
      * Privacy routing for the dynamic voting config fetch:
-     *   Tor OFF: route through the OHTTP gateway (voting.valargroup.dev -> vote.zodl.com proxy),
-     *            so the config host never sees the device IP.
+     *   Tor OFF: route the predefined config through the OHTTP gateway (voting.valargroup.dev ->
+     *            vote.zodl.com proxy), so the config host never sees the device IP; a custom config
+     *            goes direct.
      *   Tor ON:  skip OHTTP and fall through to this Ktor client, which is already Tor-backed.
      *
      * The generic transport-failure branch below builds its message from that clean [url] plus
@@ -657,15 +658,14 @@ class KtorVotingApiProvider(
         cacheBustToken: String,
         supportsKtorTimeouts: Boolean,
     ): String {
-        val ohttpClient = httpClientProvider.createOhttp()
-        val torEnabled = httpClientProvider.isTorEnabled()
-        if (!torEnabled && ohttpClient.canHandle(url)) {
+        if (!httpClientProvider.isTorEnabled() && !isCustomVoteServer()) {
+            val ohttpClient = httpClientProvider.createOhttp()
+            if (!ohttpClient.canHandle(url)) {
+                throw UnsupportedPrivateDestinationException(
+                    "Cannot fetch dynamic voting config from unsupported destination $url with Tor disabled",
+                )
+            }
             return fetchDynamicConfigBodyViaOhttp(ohttpClient, url, cacheBustToken)
-        }
-        if (!torEnabled && !ohttpClient.canHandle(url)) {
-            throw UnsupportedPrivateDestinationException(
-                "Cannot fetch dynamic voting config from unsupported destination $url with Tor disabled",
-            )
         }
         return try {
             withTorRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {

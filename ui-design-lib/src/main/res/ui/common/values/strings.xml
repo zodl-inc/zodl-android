@@ -1182,6 +1182,7 @@
     <string name="coinVote_pollsList_statusClosed" tools:ignore="MissingTranslation">Closed</string>
     <string name="coinVote_pollsList_approvedByZodl" tools:ignore="MissingTranslation">Approved by Zodl</string>
     <string name="coinVote_pollsList_unverifiedSheetTitle" tools:ignore="MissingTranslation">Unverified Poll</string>
+    <string name="coinVote_pollsList_customServerNotPrivate">Custom server · not private</string>
     <string name="coinVote_pollsList_dateCloses" tools:ignore="MissingTranslation">Closes %1$s</string>
     <string name="coinVote_pollsList_dateClosed" tools:ignore="MissingTranslation">Closed %1$s</string>
     <string name="coinVote_pollsList_enterPoll" tools:ignore="MissingTranslation">Enter Poll</string>
