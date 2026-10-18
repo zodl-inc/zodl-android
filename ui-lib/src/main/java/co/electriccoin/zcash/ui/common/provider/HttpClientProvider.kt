@@ -68,6 +68,7 @@ interface HttpClientProvider {
     suspend fun supportsKtorTimeouts(): Boolean = true
 }
 
+@Suppress("TooManyFunctions")
 class HttpClientProviderImpl(
     private val application: Application,
     private val synchronizerProvider: SynchronizerProvider,

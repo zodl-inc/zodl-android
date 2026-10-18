@@ -79,6 +79,7 @@ class HttpPirSnapshotResolver(
                 val bodyText =
                     when (route) {
                         is PirProbeRoute.Ohttp -> fetchViaOhttp(route.client, rootUrl)
+
                         // A fresh client per probe: under Tor each gets its own circuit (MOB-1808).
                         PirProbeRoute.Direct -> httpClientProvider.create().use { it.get(rootUrl).bodyAsText() }
                     }
@@ -111,6 +112,7 @@ class HttpPirSnapshotResolver(
         )
     }
 
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun fetchViaOhttp(
         client: OhttpHttpClient,
         rootUrl: String
@@ -141,7 +143,9 @@ private sealed interface PirProbeRoute {
     ) : PirProbeRoute
 }
 
-private val HTTP_SUCCESS = 200..299
+private const val HTTP_SUCCESS_MIN = 200
+private const val HTTP_SUCCESS_MAX = 299
+private val HTTP_SUCCESS = HTTP_SUCCESS_MIN..HTTP_SUCCESS_MAX
 
 sealed interface PirSnapshotProbeStatus {
     data class Matching(
