@@ -304,6 +304,12 @@ class ChooseServerVM(
                         },
                     isChecked = isChecked,
                     onClick = ::onCustomEndpointClicked,
+                    subtitle =
+                        if (isPersistedEndpointCustom && lightWalletEndpointProvider.isOhttpGateway(persisted.endpoint)) {
+                            stringRes(R.string.serverSetup_ohttpPrivate)
+                        } else {
+                            stringRes(R.string.serverSetup_customNotPrivate)
+                        },
                     hapticFeedbackType = if (isChecked) null else HapticFeedbackType.SegmentTick,
                 ),
             newServerTextFieldState =

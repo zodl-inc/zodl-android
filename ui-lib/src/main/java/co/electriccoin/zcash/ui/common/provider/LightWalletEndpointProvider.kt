@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.provider
 import android.app.Application
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.sdk.type.fromResources
+import co.electriccoin.lightwallet.client.LightWalletClient
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 
 // TODO [#1273]: Add ChooseServer Tests #1273
@@ -58,7 +59,7 @@ class LightWalletEndpointProvider(
             )
         }
 
-    /** True for a Zodl OHTTP gateway (`ohttp-gateway*.example`), i.e. an endpoint the SDK reaches over OHTTP. */
+    /** True for a Zodl OHTTP gateway, i.e. an endpoint the SDK reaches over OHTTP. */
     fun isOhttpGateway(endpoint: LightWalletEndpoint): Boolean = isOhttpGatewayHost(endpoint.host)
 
     fun getDecommissionedHosts(): Set<String> =
@@ -68,9 +69,13 @@ class LightWalletEndpointProvider(
         )
 
     companion object {
-        fun isOhttpGatewayHost(host: String): Boolean {
-            val normalized = host.lowercase()
-            return normalized.startsWith("ohttp-gateway") && normalized.endsWith(".example")
-        }
+        /**
+         * Exactly the SDK's own decision (exact host match, no prefix or suffix matching), so a custom
+         * `ohttp-gateway-x.example` that the SDK would dial as plain gRPC is never labelled private.
+         */
+        fun isOhttpGatewayHost(host: String): Boolean =
+            LightWalletClient.isOhttpGateway(LightWalletEndpoint(host = host, port = GATEWAY_PORT, isSecure = true))
+
+        private const val GATEWAY_PORT = 443
     }
 }
