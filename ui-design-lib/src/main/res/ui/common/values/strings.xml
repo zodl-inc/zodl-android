@@ -208,6 +208,7 @@
     <string name="serverSetup_ohttpPrivate">Private · OHTTP (default)</string>
     <string name="serverSetup_clearnetNotPrivate">Clearnet · not private (fallback only)</string>
     <string name="serverSetup_customNotPrivate">Custom · not private</string>
+    <string name="serverSetup_ohttpTestRelayNotPrivate">OHTTP · test relay, not private</string>
     <string name="choose_server_ohttp_gateway_mainnet">Zodl Private Server</string>
     <string name="choose_server_ohttp_gateway_testnet">Zodl Private Server (OHTTP, Testnet)</string>
     <string name="serverSetup_performingTest">Performing server test…</string>

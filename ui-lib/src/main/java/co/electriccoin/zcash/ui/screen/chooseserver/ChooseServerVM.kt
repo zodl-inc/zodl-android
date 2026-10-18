@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.BuildConfig
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.component.EndpointTextFieldInnerState
 import co.electriccoin.zcash.ui.common.component.EndpointTextFieldState
@@ -306,7 +307,7 @@ class ChooseServerVM(
                     onClick = ::onCustomEndpointClicked,
                     subtitle =
                         if (isPersistedEndpointCustom && lightWalletEndpointProvider.isOhttpGateway(persisted.endpoint)) {
-                            stringRes(R.string.serverSetup_ohttpPrivate)
+                            ohttpSubtitle()
                         } else {
                             stringRes(R.string.serverSetup_customNotPrivate)
                         },
@@ -343,7 +344,7 @@ class ChooseServerVM(
                     // Clearnet lightwalletd rows (the automatic fallback tier) are flagged as not private.
                     subtitle =
                         when {
-                            endpoint == defaultEndpoint -> stringRes(R.string.serverSetup_ohttpPrivate)
+                            endpoint == defaultEndpoint -> ohttpSubtitle()
                             else -> stringRes(R.string.serverSetup_clearnetNotPrivate)
                         },
                     hapticFeedbackType = if (isEndpointChecked) null else HapticFeedbackType.SegmentTick,
@@ -477,6 +478,17 @@ class ChooseServerVM(
         }
     }
 }
+
+/**
+ * A build whose relay URL was overridden (the relay simulator, which the gateway operator runs) gives
+ * no unlinkability, so its gateway is not labelled private (ZIP #10). Releases refuse the override.
+ */
+private fun ohttpSubtitle() =
+    if (BuildConfig.IS_OHTTP_RELAY_OVERRIDDEN) {
+        stringRes(R.string.serverSetup_ohttpTestRelayNotPrivate)
+    } else {
+        stringRes(R.string.serverSetup_ohttpPrivate)
+    }
 
 /**
  * The name shown for [endpoint] in the server picker. The Zodl OHTTP gateways get a product name: their

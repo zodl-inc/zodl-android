@@ -214,6 +214,7 @@
     <string name="serverSetup_ohttpPrivate">Privado · OHTTP (predeterminado)</string>
     <string name="serverSetup_clearnetNotPrivate">Clearnet · no privado (solo respaldo)</string>
     <string name="serverSetup_customNotPrivate">Personalizado · no privado</string>
+    <string name="serverSetup_ohttpTestRelayNotPrivate">OHTTP · relay de prueba, no privado</string>
     <string name="coinVote_pollsList_customServerNotPrivate">Servidor personalizado · no privado</string>
     <string name="choose_server_ohttp_gateway_mainnet">Servidor privado de Zodl</string>
     <string name="choose_server_ohttp_gateway_testnet">Servidor privado de Zodl (OHTTP, Testnet)</string>
