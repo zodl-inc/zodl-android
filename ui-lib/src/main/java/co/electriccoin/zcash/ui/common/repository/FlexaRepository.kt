@@ -3,8 +3,11 @@ package co.electriccoin.zcash.ui.common.repository
 import android.app.Application
 import cash.z.ecc.android.sdk.ext.convertZatoshiToZec
 import cash.z.ecc.android.sdk.internal.Twig
-import co.electriccoin.zcash.ui.BuildConfig
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.provider.FLEXA_OHTTP_PUBLISHABLE_KEY
+import co.electriccoin.zcash.ui.common.provider.FlexaOhttpInterceptor
+import co.electriccoin.zcash.ui.common.provider.FlexaOhttpTransportImpl
+import co.electriccoin.zcash.ui.common.provider.HttpClientProvider
 import com.flexa.core.Flexa
 import com.flexa.core.shared.AssetAccount
 import com.flexa.core.shared.AvailableAsset
@@ -29,40 +32,37 @@ interface FlexaRepository {
 class FlexaRepositoryImpl(
     private val application: Application,
     private val configurationRepository: ConfigurationRepository,
-    private val accountDataSource: AccountDataSource
+    private val accountDataSource: AccountDataSource,
+    httpClientProvider: HttpClientProvider,
 ) : FlexaRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private val publishableKey: String?
-        get() = BuildConfig.ZCASH_FLEXA_KEY.takeIf { it.isNotEmpty() }
+    private val ohttpInterceptor = FlexaOhttpInterceptor(FlexaOhttpTransportImpl(httpClientProvider))
 
     override fun init() {
         scope.launch {
             if (!configurationRepository.isFlexaAvailable()) return@launch
-            val configuration = getFlexaClientConfiguration()
-            if (configuration != null) {
-                Flexa.init(configuration)
-                Twig.info { "Flexa initialized" }
+            Flexa.init(getFlexaClientConfiguration())
+            Twig.info { "Flexa initialized" }
 
-                accountDataSource.zashiAccount
-                    .mapNotNull { account ->
-                        val total = account?.totalShieldedBalance
-                        val available = account?.spendableShieldedBalance
-                        if (total != null && available != null) total to available else null
-                    }.collect { (total, available) ->
-                        val totalZec = total.convertZatoshiToZec().toDouble()
-                        val availableZec = available.convertZatoshiToZec().toDouble()
-                        Flexa.updateAssetAccounts(
-                            arrayListOf(
-                                createFlexaAccount(
-                                    total = totalZec,
-                                    available = availableZec
-                                )
+            accountDataSource.zashiAccount
+                .mapNotNull { account ->
+                    val total = account?.totalShieldedBalance
+                    val available = account?.spendableShieldedBalance
+                    if (total != null && available != null) total to available else null
+                }.collect { (total, available) ->
+                    val totalZec = total.convertZatoshiToZec().toDouble()
+                    val availableZec = available.convertZatoshiToZec().toDouble()
+                    Flexa.updateAssetAccounts(
+                        arrayListOf(
+                            createFlexaAccount(
+                                total = totalZec,
+                                available = availableZec
                             )
                         )
-                        Twig.info { "Flexa updated by total:$totalZec available:$availableZec" }
-                    }
-            }
+                    )
+                    Twig.info { "Flexa updated by total:$totalZec available:$availableZec" }
+                }
         }
     }
 
@@ -73,41 +73,42 @@ class FlexaRepositoryImpl(
     }
 
     /**
-     * @return an instance of [FlexaClientConfiguration] or null if no publishable key set up
+     * The SDK gets the gateway's placeholder key and sends its API calls through OHTTP: the gateway swaps
+     * the placeholder for the real key, so no build carries it. Its web views (merchant directory, how to
+     * pay, legal pages) and images are not loaded with these OkHttp clients and still go to Flexa directly.
      */
-    private fun getFlexaClientConfiguration() =
-        publishableKey?.let { publishableKey ->
-            FlexaClientConfiguration(
-                context = application,
-                publishableKey = publishableKey,
-                theme =
-                    FlexaTheme(
-                        useDynamicColorScheme = true,
-                    ),
-                assetAccounts = arrayListOf(createFlexaAccount(DEFAULT_BALANCE, DEFAULT_BALANCE)),
-                webViewThemeConfig =
-                    "{\n" +
-                        "    \"android\": {\n" +
-                        "        \"light\": {\n" +
-                        "            \"backgroundColor\": \"#100e29\",\n" +
-                        "            \"sortTextColor\": \"#ed7f60\",\n" +
-                        "            \"titleColor\": \"#ffffff\",\n" +
-                        "            \"cardColor\": \"#2a254e\",\n" +
-                        "            \"borderRadius\": \"15px\",\n" +
-                        "            \"textColor\": \"#ffffff\"\n" +
-                        "        },\n" +
-                        "        \"dark\": {\n" +
-                        "            \"backgroundColor\": \"#100e29\",\n" +
-                        "            \"sortTextColor\": \"#ed7f60\",\n" +
-                        "            \"titleColor\": \"#ffffff\",\n" +
-                        "            \"cardColor\": \"#2a254e\",\n" +
-                        "            \"borderRadius\": \"15px\",\n" +
-                        "            \"textColor\": \"#ffffff\"\n" +
-                        "        }\n" +
-                        "    }\n" +
-                        "}"
-            )
-        }
+    internal fun getFlexaClientConfiguration() =
+        FlexaClientConfiguration(
+            context = application,
+            publishableKey = FLEXA_OHTTP_PUBLISHABLE_KEY,
+            theme =
+                FlexaTheme(
+                    useDynamicColorScheme = true,
+                ),
+            assetAccounts = arrayListOf(createFlexaAccount(DEFAULT_BALANCE, DEFAULT_BALANCE)),
+            webViewThemeConfig =
+                "{\n" +
+                    "    \"android\": {\n" +
+                    "        \"light\": {\n" +
+                    "            \"backgroundColor\": \"#100e29\",\n" +
+                    "            \"sortTextColor\": \"#ed7f60\",\n" +
+                    "            \"titleColor\": \"#ffffff\",\n" +
+                    "            \"cardColor\": \"#2a254e\",\n" +
+                    "            \"borderRadius\": \"15px\",\n" +
+                    "            \"textColor\": \"#ffffff\"\n" +
+                    "        },\n" +
+                    "        \"dark\": {\n" +
+                    "            \"backgroundColor\": \"#100e29\",\n" +
+                    "            \"sortTextColor\": \"#ed7f60\",\n" +
+                    "            \"titleColor\": \"#ffffff\",\n" +
+                    "            \"cardColor\": \"#2a254e\",\n" +
+                    "            \"borderRadius\": \"15px\",\n" +
+                    "            \"textColor\": \"#ffffff\"\n" +
+                    "        }\n" +
+                    "    }\n" +
+                    "}",
+            okHttpClientCustomizer = { it.addInterceptor(ohttpInterceptor) },
+        )
 
     private fun createFlexaAccount(
         total: Double,
