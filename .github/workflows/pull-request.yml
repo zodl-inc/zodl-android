@@ -566,6 +566,17 @@ jobs:
         run: |
           ./gradlew clean :app:assembleZcashmainnetFossRelease
 
+      - name: Check FOSS dependencies
+        timeout-minutes: 10
+        run: |
+          ./scripts/check-foss-dependencies.sh zcashmainnetFossReleaseRuntimeClasspath
+
+      - name: F-Droid scanner
+        timeout-minutes: 10
+        run: |
+          pipx run --spec fdroidserver fdroid scanner --exit-code --verbose \
+            app/build/outputs/apk/zcashmainnetFoss/release/app-zcashmainnet-foss-release.apk
+
       - name: Check APK size
         timeout-minutes: 1
         run: |

@@ -174,6 +174,10 @@ jobs:
         run: |
           ./gradlew clean :app:assembleZcashmainnetFossRelease
 
+      - name: Check FOSS dependencies
+        run: |
+          ./scripts/check-foss-dependencies.sh zcashmainnetFossReleaseRuntimeClasspath
+
       - name: Prepare FOSS (F-Droid) artifacts
         run: |
           mv app/build/outputs/apk/zcashmainnetFoss/release/app-zcashmainnet-foss-release.apk artifacts/
