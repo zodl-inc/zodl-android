@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.common.provider
 
 import co.electriccoin.lightwallet.client.OhttpHttpClient
-import co.electriccoin.zcash.spackle.rethrowIfCancellation
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.get
