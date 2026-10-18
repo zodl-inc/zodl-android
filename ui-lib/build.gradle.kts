@@ -228,6 +228,8 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.robolectric)
     testImplementation("io.ktor:ktor-client-mock")
+    // The Flexa SDK's event stream reader (okhttp-sse, a non-transitive dependency of flexaCore).
+    testImplementation("com.squareup.okhttp3:okhttp-sse:5.1.0")
 
     androidTestImplementation(projects.testLib)
     androidTestImplementation(libs.bundles.androidx.test)

@@ -121,8 +121,10 @@ class FlexaOhttpInterceptor(
     ): Response {
         val inner = request.toOhttpRequest()
         val timeoutMs = call.deadlineMs(OhttpHttpClient.DEFAULT_TIMEOUT_MS)
-        val answer = scope.async { transport.execute(inner, timeoutMs) }
-        cancelWhenCanceled(call, answer)
+        val answer = CompletableDeferred<OhttpHttpClient.Response>()
+        val job = scope.launch { answer.completeWith(runCatching { transport.execute(inner, timeoutMs) }) }
+        // Completing the answer too returns the call at once, even while a sender finishes a blocking read.
+        cancelWhenCanceled(call, job) { answer.completeExceptionally(canceled()) }
         val answered = blocking { answer.await() }
         return response(request, answered.status, answered.headers)
             .body(answered.body.toResponseBody(answered.headers.contentType()))
@@ -179,7 +181,10 @@ class FlexaOhttpInterceptor(
                 }
             runCatching { out.close() }
         }
-        cancelWhenCanceled(call, job) { pipe.cancel() }
+        cancelWhenCanceled(call, job) {
+            head.completeExceptionally(canceled())
+            pipe.cancel()
+        }
         val (status, headers) =
             try {
                 blocking { head.await() }
@@ -216,7 +221,9 @@ class FlexaOhttpInterceptor(
 
     /**
      * The streamed body: at its end it throws what ended the stream, if anything; closing it stops the
-     * read. It hands each event `id` field it passes to [onEventId].
+     * read. It hands [onEventId] the last event ID of each event it passes in full: the value of the
+     * latest `id` field, once the blank line that dispatches the event is read (an event cut before its
+     * end is not resumed after).
      */
     private class StreamedBody(
         source: Source
@@ -231,6 +238,8 @@ class FlexaOhttpInterceptor(
         var onEventId: ((String) -> Unit)? = null
 
         private val line = Buffer()
+
+        private var idBuffer: String? = null
 
         override fun read(
             sink: Buffer,
@@ -253,7 +262,11 @@ class FlexaOhttpInterceptor(
                 if (end < 0) break
                 val field = line.readUtf8(end).removeSuffix("\r")
                 line.skip(1)
-                eventId(field)?.let(onEventId)
+                if (field.isEmpty()) {
+                    idBuffer?.let(onEventId)
+                } else {
+                    eventId(field)?.let { idBuffer = it }
+                }
             }
         }
 
@@ -304,6 +317,8 @@ private fun Call.deadlineMs(default: Int): Int {
     val callTimeoutMs = TimeUnit.NANOSECONDS.toMillis(timeout().timeoutNanos())
     return if (callTimeoutMs > 0) minOf(default.toLong(), callTimeoutMs).toInt() else default
 }
+
+private fun canceled() = IOException("Canceled")
 
 private fun Throwable.asIOException() = this as? IOException ?: IOException(message ?: javaClass.simpleName, this)
 
