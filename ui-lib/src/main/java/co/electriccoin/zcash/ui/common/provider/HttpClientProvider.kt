@@ -20,11 +20,13 @@ import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 interface HttpClientProvider {
     suspend fun create(): HttpClient
@@ -43,6 +45,14 @@ interface HttpClientProvider {
      * relay sees the app's clearnet IP (but the gateway, which injects secrets, does not).
      */
     suspend fun createOhttp(): OhttpHttpClient
+
+    /**
+     * Runs [block] with an OHTTP client of its own for wallet-identifying third-party calls (NEAR quotes,
+     * deposits and status carry addresses). With Tor ON its relay leg uses a fresh isolated Tor circuit,
+     * released when [block] returns, so such calls cannot be linked through a shared circuit (ZIP #10).
+     * With Tor OFF there is no circuit to isolate and the shared client is used.
+     */
+    suspend fun <T> withIsolatedOhttp(block: suspend (OhttpHttpClient) -> T): T = block(createOhttp())
 
     /**
      * Whether the user has opted into Tor. Callers that choose between a direct and an OHTTP path
@@ -105,12 +115,7 @@ class HttpClientProviderImpl(
             if (cachedOhttpClient == null) {
                 // Codec before the Tor sender, so a codec load failure cannot leak a fresh sender.
                 val codec = OhttpCodecFactory.create()
-                val tracePrefix =
-                    if (BuildConfig.DEBUG && BuildConfig.OHTTP_CLIENT_TRACE_PREFIX.isNotBlank()) {
-                        BuildConfig.OHTTP_CLIENT_TRACE_PREFIX
-                    } else {
-                        null
-                    }
+                val tracePrefix = ohttpTracePrefix()
                 cachedOhttpClient =
                     if (torNow) {
                         val sender = synchronizerProvider.getSynchronizer().ohttpSenderOverTor()
@@ -130,12 +135,37 @@ class HttpClientProviderImpl(
             return@withLock cachedOhttpClient!!
         }
 
+    override suspend fun <T> withIsolatedOhttp(block: suspend (OhttpHttpClient) -> T): T {
+        if (!isTorEnabled()) return block(createOhttp())
+        val codec = OhttpCodecFactory.create()
+        val client =
+            OhttpHttpClient.create(
+                codec = codec,
+                sender = synchronizerProvider.getSynchronizer().ohttpSenderOverTor(),
+                ohttpClientTraceIdPrefix = ohttpTracePrefix()
+            )
+        return try {
+            block(client)
+        } finally {
+            withContext(NonCancellable) {
+                runCatching { client.dispose() }.onFailure { Twig.error(it) { "Isolated OHTTP client disposal failed" } }
+            }
+        }
+    }
+
     override suspend fun createTor() =
         synchronizerProvider
             .getSynchronizer()
             .getTorHttpClient {
                 configureHttpClient(installTimeouts = false)
             }
+
+    private fun ohttpTracePrefix(): String? =
+        if (BuildConfig.DEBUG && BuildConfig.OHTTP_CLIENT_TRACE_PREFIX.isNotBlank()) {
+            BuildConfig.OHTTP_CLIENT_TRACE_PREFIX
+        } else {
+            null
+        }
 
     @Suppress("MagicNumber")
     private fun createDirect() =

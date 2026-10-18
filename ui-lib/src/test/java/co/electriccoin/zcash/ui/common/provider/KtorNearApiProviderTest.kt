@@ -34,8 +34,20 @@ class KtorNearApiProviderTest {
     private var createCalls = 0
     private var createTorCalls = 0
     private var createOhttpCalls = 0
+    private var isolatedOhttpCalls = 0
 
     private val provider = KtorNearApiProvider(RecordingHttpClientProvider())
+
+    @Test
+    fun everyNearCallRunsOnAnIsolatedOhttpClient() =
+        runBlocking {
+            responseBody = "[]"
+
+            provider.getSupportedTokens()
+            provider.getSupportedTokens()
+
+            assertEquals(2, isolatedOhttpCalls)
+        }
 
     @Test
     fun getSupportedTokensDoesNotSendAuthorizationHeader() =
@@ -234,6 +246,11 @@ class KtorNearApiProviderTest {
 
     private inner class RecordingHttpClientProvider : HttpClientProvider {
         override suspend fun isTorEnabled(): Boolean = false
+
+        override suspend fun <T> withIsolatedOhttp(block: suspend (OhttpHttpClient) -> T): T {
+            isolatedOhttpCalls++
+            return block(createOhttp())
+        }
 
         override suspend fun createTor(): HttpClient {
             createTorCalls++

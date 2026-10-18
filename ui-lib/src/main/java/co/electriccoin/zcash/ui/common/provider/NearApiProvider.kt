@@ -111,23 +111,25 @@ class KtorNearApiProvider(
         withContext(Dispatchers.IO) {
             // Query parameters (the deposit address) are kept out of logs and error messages.
             val loggableUrl = ohttpUrl.substringBefore('?')
-            val ohttpClient = httpClientProvider.createOhttp()
-            if (!ohttpClient.canHandle(ohttpUrl)) {
-                error("No OHTTP proxy mapping for $loggableUrl")
-            }
+            // Each call on a Tor circuit of its own: the requests carry wallet addresses.
             val response =
-                try {
-                    ohttpClient.execute(
-                        OhttpHttpClient.Request(
-                            url = ohttpUrl,
-                            method = ohttpMethod,
-                            headers = ohttpHeaders,
-                            body = ohttpBodyJson?.toByteArray(Charsets.UTF_8) ?: ByteArray(0)
+                httpClientProvider.withIsolatedOhttp { ohttpClient ->
+                    if (!ohttpClient.canHandle(ohttpUrl)) {
+                        error("No OHTTP proxy mapping for $loggableUrl")
+                    }
+                    try {
+                        ohttpClient.execute(
+                            OhttpHttpClient.Request(
+                                url = ohttpUrl,
+                                method = ohttpMethod,
+                                headers = ohttpHeaders,
+                                body = ohttpBodyJson?.toByteArray(Charsets.UTF_8) ?: ByteArray(0)
+                            )
                         )
-                    )
-                } catch (e: Exception) {
-                    Twig.warn(e) { "OHTTP $ohttpMethod $loggableUrl failed" }
-                    throw e
+                    } catch (e: Exception) {
+                        Twig.warn(e) { "OHTTP $ohttpMethod $loggableUrl failed" }
+                        throw e
+                    }
                 }
             Twig.debug { "OHTTP $ohttpMethod $loggableUrl -> HTTP ${response.status} (${response.body.size} bytes)" }
             if (response.status !in HTTP_SUCCESS) {
