@@ -35,9 +35,9 @@ class LightWalletEndpointProvider(
      */
     fun getDefaultEndpoint(): LightWalletEndpoint =
         if (isMainnet) {
-            LightWalletEndpoint(host = "ohttp-gateway.example", port = 443, isSecure = true)
+            LightWalletEndpoint(host = GATEWAY_HOST_MAINNET, port = 443, isSecure = true)
         } else {
-            LightWalletEndpoint(host = "ohttp-gateway-testnet.example", port = 443, isSecure = true)
+            LightWalletEndpoint(host = GATEWAY_HOST_TESTNET, port = 443, isSecure = true)
         }
 
     /**
@@ -67,13 +67,13 @@ class LightWalletEndpointProvider(
     fun isOhttpGateway(endpoint: LightWalletEndpoint): Boolean = isOhttpGatewayHost(endpoint.host)
 
     /**
-     * False when this build reaches [endpoint] through a relay its operator also runs (a build-time relay
+     * False when this build reaches [gatewayHost] through a relay its operator also runs (a build-time relay
      * override such as the relay simulator), or when that cannot be determined.
      */
     @Suppress("TooGenericExceptionCaught")
-    suspend fun usesIndependentRelay(endpoint: LightWalletEndpoint): Boolean =
+    suspend fun usesIndependentRelay(gatewayHost: String): Boolean =
         try {
-            OhttpCodecFactory.create().usesIndependentRelay(endpoint.host)
+            OhttpCodecFactory.create().usesIndependentRelay(gatewayHost)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -96,5 +96,9 @@ class LightWalletEndpointProvider(
             LightWalletClient.isOhttpGateway(LightWalletEndpoint(host = host, port = GATEWAY_PORT, isSecure = true))
 
         private const val GATEWAY_PORT = 443
+
+        const val GATEWAY_HOST_MAINNET = "ohttp-gateway.example"
+        const val GATEWAY_HOST_TESTNET = "ohttp-gateway-testnet.example"
+        val GATEWAY_HOSTS = listOf(GATEWAY_HOST_MAINNET, GATEWAY_HOST_TESTNET)
     }
 }

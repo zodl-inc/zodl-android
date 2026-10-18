@@ -205,13 +205,11 @@ class ChooseServerVM(
 
     init {
         viewModelScope.launch {
-            val withoutIndependentRelay =
-                lightWalletEndpointProvider
-                    .getEndpoints()
-                    .filter { lightWalletEndpointProvider.isOhttpGateway(it) }
-                    .filterNot { lightWalletEndpointProvider.usesIndependentRelay(it) }
-                    .toSet()
-            innerState.update { it.copy(gatewaysWithoutIndependentRelay = withoutIndependentRelay) }
+            val relayIndependence =
+                LightWalletEndpointProvider.GATEWAY_HOSTS.associateWith {
+                    lightWalletEndpointProvider.usesIndependentRelay(it)
+                }
+            innerState.update { it.copy(gatewayRelayIndependence = relayIndependence) }
         }
 
         combine(
@@ -369,10 +367,10 @@ class ChooseServerVM(
     private fun isGateway(endpoint: LightWalletEndpoint) = lightWalletEndpointProvider.isOhttpGateway(endpoint)
 
     private fun ohttpSubtitle(endpoint: LightWalletEndpoint) =
-        if (endpoint in innerState.value.gatewaysWithoutIndependentRelay) {
-            stringRes(R.string.serverSetup_ohttpTestRelayNotPrivate)
-        } else {
-            stringRes(R.string.serverSetup_ohttpPrivate)
+        when (innerState.value.gatewayRelayIndependence[endpoint.host]) {
+            true -> stringRes(R.string.serverSetup_ohttpPrivate)
+            false -> stringRes(R.string.serverSetup_ohttpTestRelayNotPrivate)
+            null -> null
         }
 
     private fun onRefreshClicked() {
@@ -525,8 +523,11 @@ private data class InnerState(
     val local: Local? = null,
     val persisted: Persisted? = null,
     val dialogState: ServerDialogState? = null,
-    /** Gateways this build reaches through a relay the gateway operator runs (e.g. the relay simulator). */
-    val gatewaysWithoutIndependentRelay: Set<LightWalletEndpoint> = emptySet(),
+    /**
+     * Per gateway host, whether this build reaches it through an independent relay (false: a relay the
+     * gateway operator runs, e.g. the relay simulator). Absent until known: no privacy label meanwhile.
+     */
+    val gatewayRelayIndependence: Map<String, Boolean> = emptyMap(),
 ) {
     fun requireLocal(): Local = requireNotNull(local) { "Local state has not been initialized" }
 
