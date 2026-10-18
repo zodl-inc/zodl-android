@@ -1,5 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import co.electriccoin.lightwallet.client.OhttpHttpClient
+import co.electriccoin.zcash.spackle.rethrowIfCancellation
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -36,23 +38,24 @@ class HttpPirSnapshotResolver(
             throw PirSnapshotResolverException.NoEndpointsConfigured
         }
 
-        // MOB-1808: probes used to fan out concurrently but all through ONE shared/isolated Tor
-        // HttpClient (built once outside the loop). Confirmed live (via the identical pattern in
-        // VotingApiProvider.delegateShares) that the native Tor engine serializes concurrent
-        // requests on a single isolated client/stream regardless of Kotlin-level concurrency —
-        // so this fan-out was likely no faster than probing endpoints one at a time. Fix: give
-        // each concurrent probe its own freshly-built isolated Tor client instead.
+        // Route PIR probes through the proper privacy path:
+        // - Tor OFF: OHTTP (relay sees clearnet IP, gateway does not)
+        // - Tor ON: direct over Tor
+        // This prevents IP leaks to PIR servers when Tor is disabled.
+        val torEnabled = httpClientProvider.isTorEnabled()
+        val ohttpClient = if (!torEnabled) httpClientProvider.createOhttp() else null
+
         val outcomes =
             coroutineScope {
                 normalizedEndpoints
                     .map { url ->
                         async {
-                            httpClientProvider.create().use { client ->
-                                probe(client, url, expectedSnapshotHeight)
-                            }
+                            probeWithRouting(url, expectedSnapshotHeight, torEnabled, ohttpClient)
                         }
                     }.awaitAll()
             }
+
+        ohttpClient?.dispose()
 
         return outcomes
             .firstOrNull { outcome ->
@@ -63,17 +66,41 @@ class HttpPirSnapshotResolver(
         )
     }
 
-    private suspend fun probe(
-        client: io.ktor.client.HttpClient,
+    private suspend fun probeWithRouting(
         url: String,
-        expectedSnapshotHeight: Long
+        expectedSnapshotHeight: Long,
+        torEnabled: Boolean,
+        ohttpClient: OhttpHttpClient?
     ): PirSnapshotProbeOutcome {
         val status =
             runCatching {
-                val rootInfo =
-                    pirSnapshotJson.decodeFromString<PirRootInfo>(
-                        client.get("$url/root").bodyAsText()
-                    )
+                val rootUrl = "$url/root"
+                val bodyText =
+                    if (!torEnabled && ohttpClient != null) {
+                        val response =
+                            try {
+                                ohttpClient.execute(
+                                    OhttpHttpClient.Request(
+                                        url = rootUrl,
+                                        headers = listOf("Cache-Control" to "no-cache")
+                                    )
+                                )
+                            } catch (exception: Exception) {
+                                exception.rethrowIfCancellation()
+                                val errorType = exception::class.simpleName ?: "unknown error"
+                                throw IllegalStateException("PIR probe via OHTTP failed for $rootUrl: $errorType", exception)
+                            }
+                        if (response.status !in 200..299) {
+                            throw IllegalStateException("PIR probe returned HTTP ${response.status}")
+                        }
+                        String(response.body)
+                    } else {
+                        httpClientProvider.create().use { client ->
+                            client.get(rootUrl).bodyAsText()
+                        }
+                    }
+
+                val rootInfo = pirSnapshotJson.decodeFromString<PirRootInfo>(bodyText)
                 val height =
                     rootInfo.height
                         ?: return@runCatching PirSnapshotProbeStatus.MissingHeight
@@ -88,7 +115,6 @@ class HttpPirSnapshotResolver(
                         is ResponseException -> {
                             "HTTP ${throwable.response.status.value}"
                         }
-
                         else -> {
                             throwable.message ?: throwable::class.simpleName ?: "unknown error"
                         }
