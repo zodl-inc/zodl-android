@@ -1537,4 +1537,3 @@ private fun votingConfigUrlConfiguration(url: String): Configuration =
             defaultValue: String
         ): String = if (key == ConfigurationEntries.VOTING_CONFIG_URL.key) url else defaultValue
     }
-
