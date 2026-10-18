@@ -236,6 +236,7 @@ class AutomaticServerRepositoryTest {
             }
 
             assertNull(repository.evaluateServerSwitch())
+            assertNull(repository.evaluateServerSwitch())
             assertEquals(listOf(false, true), emissions)
 
             automaticPreference.value = false
@@ -320,6 +321,7 @@ class AutomaticServerRepositoryTest {
             val banner = collectBanner()
 
             assertNull(repository.evaluateServerSwitch())
+            assertNull(repository.evaluateServerSwitch())
             assertEquals(true, banner.last())
 
             automaticPreference.value = false
@@ -337,6 +339,7 @@ class AutomaticServerRepositoryTest {
             // The user leaves automatic mode while an evaluation that started earlier is still running:
             // it then finishes and reports the gateway as unavailable.
             automaticPreference.value = false
+            assertNull(repository.evaluateServerSwitch())
             assertNull(repository.evaluateServerSwitch())
 
             assertEquals(false, banner.last())
@@ -618,14 +621,16 @@ class AutomaticServerRepositoryTest {
         }
 
     @Test
-    fun connectivityTriggerReportsGatewayUnavailabilityWithoutConfirmation() =
+    fun connectivityTriggerAlsoNeedsTwoConsecutiveFailuresToReportUnavailability() =
         runTest {
             coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
             stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
             val banner = collectBanner()
 
             assertNull(repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
+            assertEquals(false, banner.last())
 
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
             assertEquals(true, banner.last())
         }
 
@@ -671,6 +676,7 @@ class AutomaticServerRepositoryTest {
             val banner = collectBanner()
 
             assertNull(repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
 
             assertEquals(true, banner.last())
         }
@@ -682,6 +688,20 @@ class AutomaticServerRepositoryTest {
             stubTiers(gatewayReachable = true, rankedFallbacks = fallbacks)
 
             assertEquals(gateway, repository.evaluateServerSwitch(SwitchTrigger.RECOVERY))
+        }
+
+    @Test
+    fun anAutomaticWalletOnClearnetMovesToTheGatewayAndReportsItWhenTheGatewayIsDown() =
+        runTest {
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(known.last())
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns
+                ServerValidation.InValid(IllegalStateException("down"))
+            val banner = collectBanner()
+
+            assertEquals(gateway, repository.evaluateServerSwitch(SwitchTrigger.FOREGROUND))
+            assertEquals(true, banner.last())
+            coVerify(exactly = 0) { synchronizer.getFastestServers(fallbacks) }
         }
 
     /** A wallet on a clearnet server while the OHTTP gateway answers, so a switch back to it is due. */

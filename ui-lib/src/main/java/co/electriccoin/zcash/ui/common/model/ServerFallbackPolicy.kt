@@ -7,13 +7,13 @@ import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
  *
  * Pure decision logic, shared by the runtime coordinator and its unit tests:
  * - While any OHTTP gateway is reachable it is THE server. Speed is never compared against the
- *   clearnet tier, so a healthy gateway is never demoted, and a wallet currently on a fallback
- *   server returns to the gateway as soon as it is reachable again.
+ *   clearnet tier, so a healthy gateway is never demoted.
+ * - Automatic mode selects only the gateway tier: a wallet in Automatic mode found on a clearnet
+ *   server (e.g. one upgraded from before OHTTP) is moved to a gateway whether or not one answers
+ *   right now; when none answers the move is reported as an outage like any other.
  * - When no gateway is reachable, automatic mode STAYS on the gateway and reports the unavailability
  *   to the user (via UI banner), requiring manual clearnet server selection. Automatic fallback is
  *   disabled (product decision 2026-09-22).
- * - With nothing reachable at all the wallet stays where it is (the SDK keeps surfacing the
- *   connection error) instead of hopping to a server that just failed.
  *
  * Manual mode never consults this policy: an explicit choice is used as-is.
  */
@@ -22,9 +22,10 @@ object ServerFallbackPolicy {
         /** Stay on the gateway and report it is unavailable to the UI. */
         data object StayAndReportGatewayUnavailable : DecisionResult
 
-        /** Return to the OHTTP gateway from a clearnet fallback (manual selection recovery). */
+        /** Move from a clearnet server to the OHTTP gateway; [isReachable] false = report the outage too. */
         data class ReturnToGateway(
-            val endpoint: LightWalletEndpoint
+            val endpoint: LightWalletEndpoint,
+            val isReachable: Boolean = true,
         ) : DecisionResult
 
         /** Stay on the current endpoint (no change). */
@@ -35,18 +36,22 @@ object ServerFallbackPolicy {
      * @param current the endpoint the wallet is on right now
      * @param healthyGateways OHTTP gateways that just passed validation (empty = OHTTP unreachable)
      * @param isOhttpGateway how to recognize an OHTTP gateway endpoint
+     * @param configuredGateways every bundled gateway, the target when none of them answers
      * @return the decision: which endpoint to use or report unavailability
      */
     fun decide(
         current: LightWalletEndpoint,
         healthyGateways: List<LightWalletEndpoint>,
         isOhttpGateway: (LightWalletEndpoint) -> Boolean,
+        configuredGateways: List<LightWalletEndpoint> = emptyList(),
     ): DecisionResult {
         val gateway = healthyGateways.firstOrNull()
         val onGateway = isOhttpGateway(current)
+        val unreachableTarget = configuredGateways.firstOrNull()
         return when {
             gateway != null && !onGateway -> DecisionResult.ReturnToGateway(gateway)
             gateway == null && onGateway -> DecisionResult.StayAndReportGatewayUnavailable
+            gateway == null && unreachableTarget != null -> DecisionResult.ReturnToGateway(unreachableTarget, false)
             else -> DecisionResult.Stay
         }
     }

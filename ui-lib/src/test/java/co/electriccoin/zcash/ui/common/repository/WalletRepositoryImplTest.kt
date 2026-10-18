@@ -2,7 +2,9 @@ package co.electriccoin.zcash.ui.common.repository
 
 import android.app.Application
 import cash.z.ecc.android.sdk.Synchronizer
+import cash.z.ecc.android.sdk.WalletInitMode
 import cash.z.ecc.android.sdk.model.PersistableWallet
+import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.configuration.model.map.Configuration
 import co.electriccoin.zcash.crash.android.GlobalCrashReporter
@@ -13,6 +15,7 @@ import co.electriccoin.zcash.ui.common.datasource.RestoreTimestampDataSource
 import co.electriccoin.zcash.ui.common.model.OnboardingState
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.provider.IsIronwoodAnnouncementShownStorageProvider
+import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProvider
@@ -156,6 +159,69 @@ class WalletRepositoryImplTest {
         }
 
     @Test
+    fun initMovesAnAutomaticWalletOnClearnetToTheGateway() =
+        runTest {
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(ZEC_ROCKS),
+                    isAutomaticPreference = true,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(GATEWAY, harness.walletProvider.getPersistableWallet()?.endpoint)
+            assertEquals(listOf("wallet"), harness.events)
+        }
+
+    @Test
+    fun initMovesAnUpgradedWalletWithoutAModePreferenceOnABundledClearnetServerToTheGateway() =
+        runTest {
+            val (repository, harness) =
+                newRepository(onboardingState = OnboardingState.READY, initialWallet = walletOn(ZEC_ROCKS))
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(GATEWAY, harness.walletProvider.getPersistableWallet()?.endpoint)
+        }
+
+    @Test
+    fun initKeepsAManualClearnetSelection() =
+        runTest {
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(ZEC_ROCKS),
+                    isAutomaticPreference = false,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(ZEC_ROCKS, harness.walletProvider.getPersistableWallet()?.endpoint)
+            assertEquals(emptyList(), harness.events)
+        }
+
+    @Test
+    fun initKeepsACustomServerWithoutAModePreference() =
+        runTest {
+            val custom = LightWalletEndpoint("lwd.example.org", 443, true)
+            val (repository, harness) =
+                newRepository(onboardingState = OnboardingState.READY, initialWallet = walletOn(custom))
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(custom, harness.walletProvider.getPersistableWallet()?.endpoint)
+        }
+
+    @Test
     fun initSkipsRepairAndEraseWhenFlagIsNotReady() =
         runTest {
             val (repository, harness) = newRepository(onboardingState = OnboardingState.NONE, initialWallet = null)
@@ -254,6 +320,7 @@ class WalletRepositoryImplTest {
         onboardingState: OnboardingState,
         initialWallet: PersistableWallet?,
         persistableWalletProviderOverride: PersistableWalletProvider? = null,
+        isAutomaticPreference: Boolean? = null,
     ): Pair<WalletRepositoryImpl, TestHarness> {
         val events = mutableListOf<String>()
 
@@ -271,8 +338,15 @@ class WalletRepositoryImplTest {
 
         val lightWalletEndpointProvider =
             mockk<LightWalletEndpointProvider> {
-                every { getDefaultEndpoint() } returns LightWalletEndpoint("zec.rocks", 443, true)
+                every { getDefaultEndpoint() } returns GATEWAY
+                every { getEndpoints() } returns listOf(GATEWAY, ZEC_ROCKS)
+                every { isOhttpGateway(any()) } answers { firstArg<LightWalletEndpoint>() == GATEWAY }
                 every { getDecommissionedHosts() } returns emptySet()
+            }
+
+        val isServerSelectionAutomaticProvider =
+            mockk<IsServerSelectionAutomaticProvider> {
+                coEvery { get() } returns isAutomaticPreference
             }
 
         val persistableWalletProvider =
@@ -315,6 +389,7 @@ class WalletRepositoryImplTest {
                 walletBackupFlagStorageProvider = walletBackupFlagStorageProvider,
                 isIronwoodAnnouncementShownStorageProvider = isIronwoodAnnouncementShownStorageProvider,
                 sdkEncryptedPreferenceRecoveryProvider = sdkEncryptedPreferenceRecoveryProvider,
+                isServerSelectionAutomaticProvider = isServerSelectionAutomaticProvider,
             )
 
         fakePrefs.seed(StandardPreferenceKeys.ONBOARDING_STATE.key, onboardingState.toNumber().toString())
@@ -322,14 +397,27 @@ class WalletRepositoryImplTest {
         scopes += repository.scope
         scopes += repository.sharingScope
 
-        return repository to TestHarness(events, fakePrefs)
+        return repository to TestHarness(events, fakePrefs, persistableWalletProvider)
     }
+
+    private fun walletOn(endpoint: LightWalletEndpoint) =
+        PersistableWallet(
+            network = ZcashNetwork.Mainnet,
+            endpoint = endpoint,
+            birthday = null,
+            seedPhrase = mockk(relaxed = true),
+            walletInitMode = WalletInitMode.ExistingWallet,
+        )
 
     private data class TestHarness(
         val events: List<String>,
         val fakePrefs: RecordingPreferenceProvider,
+        val walletProvider: PersistableWalletProvider,
     )
 }
+
+private val GATEWAY = LightWalletEndpoint("ohttp-gateway.example", 443, true)
+private val ZEC_ROCKS = LightWalletEndpoint("zec.rocks", 443, true)
 
 /**
  * Records `"sdkRepair"` into the shared events list, so tests can assert where the SDK secret

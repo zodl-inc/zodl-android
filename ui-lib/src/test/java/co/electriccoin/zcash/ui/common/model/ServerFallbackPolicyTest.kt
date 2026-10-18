@@ -66,6 +66,14 @@ class ServerFallbackPolicyTest {
     }
 
     @Test
+    fun `automatic wallet on clearnet with the gateway down - moves to the gateway and reports it`() {
+        assertEquals(
+            ServerFallbackPolicy.DecisionResult.ReturnToGateway(gateway, isReachable = false),
+            ServerFallbackPolicy.decide(naZecRocks, emptyList(), isGateway, configuredGateways = listOf(gateway))
+        )
+    }
+
+    @Test
     fun `host comparison is case-insensitive`() {
         assertEquals(
             ServerFallbackPolicy.DecisionResult.Stay,

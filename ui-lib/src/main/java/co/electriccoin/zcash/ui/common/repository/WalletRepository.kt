@@ -17,10 +17,12 @@ import co.electriccoin.zcash.crash.android.GlobalCrashReporter
 import co.electriccoin.zcash.preference.StandardPreferenceProvider
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.datasource.RestoreTimestampDataSource
+import co.electriccoin.zcash.ui.common.datasource.resolveIsServerSelectionAutomatic
 import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.model.OnboardingState
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.provider.IsIronwoodAnnouncementShownStorageProvider
+import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProvider
@@ -92,6 +94,7 @@ class WalletRepositoryImpl(
     private val walletBackupFlagStorageProvider: WalletBackupFlagStorageProvider,
     private val isIronwoodAnnouncementShownStorageProvider: IsIronwoodAnnouncementShownStorageProvider,
     private val sdkEncryptedPreferenceRecoveryProvider: SdkEncryptedPreferenceRecoveryProvider,
+    private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
 ) : WalletRepository {
     /**
      * Scope the repository's `stateIn`-shared flows run on. Captured by those flows at
@@ -257,7 +260,7 @@ class WalletRepositoryImpl(
                 walletMutation.withLock {
                     val wallet = persistableWalletProvider.getPersistableWallet()
                     val onboarding = onboardingState.first()
-                    migrateDecommissionedEndpointIfNeeded(wallet)
+                    migrateEndpointIfNeeded(wallet)
                     resetOnboardingIfWalletMissing(wallet = wallet, onboardingState = onboarding)
                 }
             } catch (e: Exception) {
@@ -266,9 +269,23 @@ class WalletRepositoryImpl(
         }
     }
 
-    private suspend fun migrateDecommissionedEndpointIfNeeded(wallet: PersistableWallet?) {
+    /**
+     * Moves the wallet to the OHTTP gateway when its server was decommissioned, or when it is in
+     * Automatic mode but still on a clearnet server (a wallet upgraded from before OHTTP): Automatic
+     * mode selects only the gateway tier, so it must not start on a clearnet server (ZIP #10).
+     */
+    private suspend fun migrateEndpointIfNeeded(wallet: PersistableWallet?) {
         if (wallet == null) return
-        if (wallet.endpoint.host in lightWalletEndpointProvider.getDecommissionedHosts()) {
+        val endpoint = wallet.endpoint
+        val isDecommissioned = endpoint.host in lightWalletEndpointProvider.getDecommissionedHosts()
+        val isAutomaticOffGateway =
+            !lightWalletEndpointProvider.isOhttpGateway(endpoint) &&
+                resolveIsServerSelectionAutomatic(
+                    isAutomaticPreference = isServerSelectionAutomaticProvider.get(),
+                    currentEndpoint = endpoint,
+                    knownEndpoints = lightWalletEndpointProvider.getEndpoints(),
+                )
+        if (isDecommissioned || isAutomaticOffGateway) {
             persistWalletInternal(wallet.copy(endpoint = lightWalletEndpointProvider.getDefaultEndpoint()))
         }
     }

@@ -208,10 +208,7 @@ class AutomaticServerRepositoryImpl(
         trigger: SwitchTrigger = SwitchTrigger.FOREGROUND,
     ): Flow<LightWalletEndpoint> = switchLane(edges.map { trigger })
 
-    /**
-     * Internal test hook: evaluates as a connectivity edge, i.e. an outage the synchronizer already
-     * reported, so a single evaluation may leave the gateway (foreground/health need confirmation).
-     */
+    /** Internal test hook: evaluates as a connectivity edge, i.e. an outage the synchronizer already reported. */
     internal suspend fun evaluateServerSwitch(): LightWalletEndpoint? =
         evaluateServerSwitch(trigger = SwitchTrigger.CONNECTIVITY)
 
@@ -336,10 +333,9 @@ class AutomaticServerRepositoryImpl(
      * unavailability is reported ([ohttpUnavailable]); Automatic mode never switches to clearnet on its
      * own, only an explicit manual server choice does.
      *
-     * Consecutive failure confirmation: when the current server is a gateway and tier 0 is empty, a
-     * CONNECTIVITY trigger (synchronizer error) reports the gateway unavailable immediately, but
-     * FOREGROUND/HEALTH triggers wait for a second consecutive failure so transient Tor circuit timeouts
-     * do not raise it.
+     * Consecutive failure confirmation: when the current server is a gateway and tier 0 is empty, every
+     * trigger waits for a second consecutive failure before reporting, so a single failed check (a
+     * transient Tor circuit timeout, one synchronizer error) does not raise it.
      *
      * A HEALTH trigger on the gateway skips the benchmark and only probes the current gateway
      * ([probeGateway]); every other trigger ranks as described above.
@@ -370,11 +366,12 @@ class AutomaticServerRepositoryImpl(
                 consecutiveGatewayFailures = 0
             }
 
-            // Confirm before reporting unavailability, unless CONNECTIVITY already surfaced a real outage.
+            // Every trigger, a synchronizer error included, needs CONFIRMATIONS_TO_REPORT consecutive failed
+            // checks before the outage is reported (ZIP #10), so one transient failure never raises it.
             val needsConfirmation = onGateway && healthyGateways.isEmpty()
-            if (needsConfirmation && trigger != SwitchTrigger.CONNECTIVITY) {
+            if (needsConfirmation) {
                 consecutiveGatewayFailures++
-                if (consecutiveGatewayFailures < 2) {
+                if (consecutiveGatewayFailures < CONFIRMATIONS_TO_REPORT) {
                     Twig.info {
                         "Automatic server: gateway unreachable once (trigger=$trigger), waiting for confirmation"
                     }
@@ -382,10 +379,9 @@ class AutomaticServerRepositoryImpl(
                     return null
                 }
                 Twig.info {
-                    "Automatic server: gateway unavailability confirmed after 2 consecutive failures"
+                    "Automatic server: gateway unavailability confirmed after $CONFIRMATIONS_TO_REPORT consecutive " +
+                        "failures"
                 }
-                consecutiveGatewayFailures = 0
-            } else if (needsConfirmation) {
                 consecutiveGatewayFailures = 0
             }
 
@@ -394,11 +390,16 @@ class AutomaticServerRepositoryImpl(
                     current = current,
                     healthyGateways = healthyGateways,
                     isOhttpGateway = lightWalletEndpointProvider::isOhttpGateway,
+                    configuredGateways = gateways,
                 )
 
             when (decision) {
                 is ServerFallbackPolicy.DecisionResult.ReturnToGateway -> {
-                    _ohttpUnavailable.value = false
+                    if (decision.isReachable) {
+                        _ohttpUnavailable.value = false
+                    } else {
+                        reportGatewayUnavailable(clearsAtStart)
+                    }
                     Twig.info {
                         "Automatic server: OHTTP-first current=${current.host} " +
                             "gatewayReachable=${healthyGateways.isNotEmpty()} -> ${decision.endpoint.host}"
@@ -408,11 +409,7 @@ class AutomaticServerRepositoryImpl(
                 }
 
                 is ServerFallbackPolicy.DecisionResult.StayAndReportGatewayUnavailable -> {
-                    if (manualModeClears.get() == clearsAtStart && isServerAutomatic()) {
-                        _ohttpUnavailable.value = true
-                        // The clear bumps the counter before it writes false: re-check after our write.
-                        if (manualModeClears.get() != clearsAtStart) _ohttpUnavailable.value = false
-                    }
+                    reportGatewayUnavailable(clearsAtStart)
                     Twig.info {
                         "Automatic server: OHTTP-first current=${current.host} " +
                             "gatewayReachable=false -> stay (gateway unavailable, awaiting manual server selection)"
@@ -435,6 +432,14 @@ class AutomaticServerRepositoryImpl(
             }
         } finally {
             evaluationInterval.markAttempted()
+        }
+    }
+
+    private suspend fun reportGatewayUnavailable(clearsAtStart: Long) {
+        if (manualModeClears.get() == clearsAtStart && isServerAutomatic()) {
+            _ohttpUnavailable.value = true
+            // The clear bumps the counter before it writes false: re-check after our write.
+            if (manualModeClears.get() != clearsAtStart) _ohttpUnavailable.value = false
         }
     }
 
@@ -516,6 +521,9 @@ enum class SwitchTrigger(
     HEALTH(bypassesInterval = true),
     RECOVERY(bypassesInterval = true),
 }
+
+/** Consecutive failed gateway checks before the outage is reported. */
+private const val CONFIRMATIONS_TO_REPORT = 2
 
 /** How often, while on the OHTTP gateway, to confirm it still answers. */
 private val GATEWAY_HEALTH_INTERVAL = 2.minutes
