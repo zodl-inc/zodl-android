@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.NavigationRouter
-import co.electriccoin.zcash.ui.BuildConfig
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.component.EndpointTextFieldInnerState
 import co.electriccoin.zcash.ui.common.component.EndpointTextFieldState
@@ -205,6 +204,16 @@ class ChooseServerVM(
     }
 
     init {
+        viewModelScope.launch {
+            val withoutIndependentRelay =
+                lightWalletEndpointProvider
+                    .getEndpoints()
+                    .filter { lightWalletEndpointProvider.isOhttpGateway(it) }
+                    .filterNot { lightWalletEndpointProvider.usesIndependentRelay(it) }
+                    .toSet()
+            innerState.update { it.copy(gatewaysWithoutIndependentRelay = withoutIndependentRelay) }
+        }
+
         combine(
             isServerAutomatic.observe(),
             getSelectedEndpoint.observe().filterNotNull()
@@ -306,8 +315,8 @@ class ChooseServerVM(
                     isChecked = isChecked,
                     onClick = ::onCustomEndpointClicked,
                     subtitle =
-                        if (isPersistedEndpointCustom && lightWalletEndpointProvider.isOhttpGateway(persisted.endpoint)) {
-                            ohttpSubtitle()
+                        if (isPersistedEndpointCustom && isGateway(persisted.endpoint)) {
+                            ohttpSubtitle(persisted.endpoint)
                         } else {
                             stringRes(R.string.serverSetup_customNotPrivate)
                         },
@@ -344,7 +353,7 @@ class ChooseServerVM(
                     // Clearnet lightwalletd rows (the automatic fallback tier) are flagged as not private.
                     subtitle =
                         when {
-                            endpoint == defaultEndpoint -> ohttpSubtitle()
+                            endpoint == defaultEndpoint -> ohttpSubtitle(endpoint)
                             else -> stringRes(R.string.serverSetup_clearnetNotPrivate)
                         },
                     hapticFeedbackType = if (isEndpointChecked) null else HapticFeedbackType.SegmentTick,
@@ -352,6 +361,19 @@ class ChooseServerVM(
             badge = if (endpoint == persistedEndpoint) stringRes(R.string.serverSetup_active) else null,
         )
     }
+
+    /**
+     * A gateway reached through a relay its own operator runs (the relay simulator) gives no unlinkability,
+     * so it is not labelled private (ZIP #10).
+     */
+    private fun isGateway(endpoint: LightWalletEndpoint) = lightWalletEndpointProvider.isOhttpGateway(endpoint)
+
+    private fun ohttpSubtitle(endpoint: LightWalletEndpoint) =
+        if (endpoint in innerState.value.gatewaysWithoutIndependentRelay) {
+            stringRes(R.string.serverSetup_ohttpTestRelayNotPrivate)
+        } else {
+            stringRes(R.string.serverSetup_ohttpPrivate)
+        }
 
     private fun onRefreshClicked() {
         if (!canUpdateSelection()) return
@@ -480,17 +502,6 @@ class ChooseServerVM(
 }
 
 /**
- * A build whose relay URL was overridden (the relay simulator, which the gateway operator runs) gives
- * no unlinkability, so its gateway is not labelled private (ZIP #10). Releases refuse the override.
- */
-private fun ohttpSubtitle() =
-    if (BuildConfig.IS_OHTTP_RELAY_OVERRIDDEN) {
-        stringRes(R.string.serverSetup_ohttpTestRelayNotPrivate)
-    } else {
-        stringRes(R.string.serverSetup_ohttpPrivate)
-    }
-
-/**
  * The name shown for [endpoint] in the server picker. The Zodl OHTTP gateways get a product name: their
  * host is a logical identifier the SDK routes over OHTTP, not an address the user connects to.
  */
@@ -514,6 +525,8 @@ private data class InnerState(
     val local: Local? = null,
     val persisted: Persisted? = null,
     val dialogState: ServerDialogState? = null,
+    /** Gateways this build reaches through a relay the gateway operator runs (e.g. the relay simulator). */
+    val gatewaysWithoutIndependentRelay: Set<LightWalletEndpoint> = emptySet(),
 ) {
     fun requireLocal(): Local = requireNotNull(local) { "Local state has not been initialized" }
 

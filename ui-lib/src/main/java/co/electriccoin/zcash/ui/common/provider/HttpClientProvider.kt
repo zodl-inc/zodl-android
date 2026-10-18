@@ -1,7 +1,10 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import android.app.Application
 import android.util.Log
+import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.android.sdk.util.OhttpCodecFactory
+import cash.z.ecc.sdk.type.fromResources
 import co.electriccoin.lightwallet.client.OhttpHttpClient
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.BuildConfig
@@ -66,6 +69,7 @@ interface HttpClientProvider {
 }
 
 class HttpClientProviderImpl(
+    private val application: Application,
     private val synchronizerProvider: SynchronizerProvider,
     private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider
 ) : HttpClientProvider {
@@ -125,12 +129,14 @@ class HttpClientProviderImpl(
                         OhttpHttpClient.create(
                             codec = codec,
                             sender = sender,
-                            ohttpClientTraceIdPrefix = tracePrefix
+                            ohttpClientTraceIdPrefix = tracePrefix,
+                            testnet = isTestnet()
                         )
                     } else {
                         OhttpHttpClient.create(
                             codec = codec,
-                            ohttpClientTraceIdPrefix = tracePrefix
+                            ohttpClientTraceIdPrefix = tracePrefix,
+                            testnet = isTestnet()
                         )
                     }
                 cachedForTorEnabled = torNow
@@ -147,13 +153,15 @@ class HttpClientProviderImpl(
             OhttpHttpClient.create(
                 codec = codec,
                 sender = synchronizerProvider.getSynchronizer().ohttpSenderOverTor(),
-                ohttpClientTraceIdPrefix = ohttpTracePrefix()
+                ohttpClientTraceIdPrefix = ohttpTracePrefix(),
+                testnet = isTestnet()
             )
         return try {
             block(client)
         } finally {
             withContext(NonCancellable) {
-                runCatching { client.dispose() }.onFailure { Twig.error(it) { "Isolated OHTTP client disposal failed" } }
+                runCatching { client.dispose() }
+                    .onFailure { Twig.error(it) { "Isolated OHTTP client disposal failed" } }
             }
         }
     }
@@ -164,6 +172,9 @@ class HttpClientProviderImpl(
             .getTorHttpClient {
                 configureHttpClient(installTimeouts = false)
             }
+
+    /** The proxy gateway must match the wallet's network (ZIP #10), as the SDK's own voting route does. */
+    private fun isTestnet(): Boolean = ZcashNetwork.fromResources(application) == ZcashNetwork.Testnet
 
     private fun ohttpTracePrefix(): String? =
         if (BuildConfig.DEBUG && BuildConfig.OHTTP_CLIENT_TRACE_PREFIX.isNotBlank()) {

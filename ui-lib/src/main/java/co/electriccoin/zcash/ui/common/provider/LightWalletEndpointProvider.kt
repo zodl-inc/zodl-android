@@ -2,9 +2,13 @@ package co.electriccoin.zcash.ui.common.provider
 
 import android.app.Application
 import cash.z.ecc.android.sdk.model.ZcashNetwork
+import cash.z.ecc.android.sdk.util.OhttpCodecFactory
 import cash.z.ecc.sdk.type.fromResources
 import co.electriccoin.lightwallet.client.LightWalletClient
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
+import co.electriccoin.lightwallet.client.usesIndependentRelay
+import co.electriccoin.zcash.spackle.Twig
+import kotlin.coroutines.cancellation.CancellationException
 
 // TODO [#1273]: Add ChooseServer Tests #1273
 // TODO [#1273]: https://github.com/Electric-Coin-Company/zashi-android/issues/1273
@@ -61,6 +65,21 @@ class LightWalletEndpointProvider(
 
     /** True for a Zodl OHTTP gateway, i.e. an endpoint the SDK reaches over OHTTP. */
     fun isOhttpGateway(endpoint: LightWalletEndpoint): Boolean = isOhttpGatewayHost(endpoint.host)
+
+    /**
+     * False when this build reaches [endpoint] through a relay its operator also runs (a build-time relay
+     * override such as the relay simulator), or when that cannot be determined.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    suspend fun usesIndependentRelay(endpoint: LightWalletEndpoint): Boolean =
+        try {
+            OhttpCodecFactory.create().usesIndependentRelay(endpoint.host)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Twig.warn(e) { "Could not tell whether the OHTTP relay is independent" }
+            false
+        }
 
     fun getDecommissionedHosts(): Set<String> =
         setOf(

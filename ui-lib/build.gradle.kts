@@ -168,18 +168,6 @@ androidComponents {
                 comment = "OHTTP client trace ID prefix for debug request tracking (DEBUG builds only)"
             )
         )
-        val isOhttpRelayOverridden =
-            listOf("ZODL_OHTTP_RELAY_URL_MAINNET", "ZODL_OHTTP_RELAY_URL_TESTNET").any {
-                !providers.environmentVariable(it).orNull.isNullOrBlank()
-            }
-        variant.buildConfigFields?.put(
-            "IS_OHTTP_RELAY_OVERRIDDEN",
-            BuildConfigField(
-                type = "boolean",
-                value = isOhttpRelayOverridden.toString(),
-                comment = "Whether the SDK was built with an OHTTP relay URL override (e.g. the relay simulator)"
-            )
-        )
         // To configure screen orientation in runtime
         variant.buildConfigFields?.put(
             "IS_SCREEN_ROTATION_ENABLED",
