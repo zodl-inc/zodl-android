@@ -176,6 +176,7 @@ jobs:
 
       - name: Check FOSS dependencies
         run: |
+          ./scripts/check-foss-dependencies.sh --self-test
           ./scripts/check-foss-dependencies.sh zcashmainnetFossReleaseRuntimeClasspath
 
       - name: Prepare FOSS (F-Droid) artifacts

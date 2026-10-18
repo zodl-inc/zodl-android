@@ -569,6 +569,7 @@ jobs:
       - name: Check FOSS dependencies
         timeout-minutes: 10
         run: |
+          ./scripts/check-foss-dependencies.sh --self-test
           ./scripts/check-foss-dependencies.sh zcashmainnetFossReleaseRuntimeClasspath
 
       - name: F-Droid scanner
