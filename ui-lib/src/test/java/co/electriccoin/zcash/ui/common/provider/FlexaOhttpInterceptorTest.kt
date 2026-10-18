@@ -4,6 +4,8 @@ import co.electriccoin.lightwallet.client.OhttpException
 import co.electriccoin.lightwallet.client.OhttpHttpClient
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import okhttp3.Call
@@ -165,19 +167,25 @@ class FlexaOhttpInterceptorTest {
     }
 
     @Test
-    fun cancellingReturnsTheCallAtOnceEvenIfTheSenderIsStillBlocked() {
+    fun cancellingReturnsTheCallAtOnceAndEndsTheExchangeOfASenderStillBlocked() {
         val release = CountDownLatch(1)
         val started = AtomicReference(CountDownLatch(1))
+        val stillActive = CopyOnWriteArrayList<Boolean>()
+        val ended = CountDownLatch(2)
+        val blocked: suspend () -> Unit = {
+            started.get().countDown()
+            release.await(WAIT_S, TimeUnit.SECONDS)
+            stillActive += currentCoroutineContext().isActive
+            ended.countDown()
+        }
         val transport =
             FakeTransport(
                 { listener ->
-                    started.get().countDown()
-                    release.await(WAIT_S, TimeUnit.SECONDS)
+                    blocked()
                     listener.onEnd()
                 },
                 answer = {
-                    started.get().countDown()
-                    release.await(WAIT_S, TimeUnit.SECONDS)
+                    blocked()
                     OhttpHttpClient.Response(200, ByteArray(0))
                 }
             )
@@ -197,6 +205,50 @@ class FlexaOhttpInterceptorTest {
             assertIs<IOException>(failure.get())
         }
         release.countDown()
+        assertTrue(ended.await(WAIT_S, TimeUnit.SECONDS))
+        assertEquals(listOf(false, false), stillActive.toList(), "both exchanges were cancelled")
+    }
+
+    @Test
+    fun aCallTimeoutThatFiresEndsTheExchangeOfASenderStillBlocked() {
+        val release = CountDownLatch(1)
+        val stillActive = CompletableDeferred<Boolean>()
+        val transport =
+            FakeTransport(
+                answer = {
+                    release.await(WAIT_S, TimeUnit.SECONDS)
+                    stillActive.complete(currentCoroutineContext().isActive)
+                    OhttpHttpClient.Response(200, ByteArray(0))
+                }
+            )
+        val call = client(transport) { callTimeout(CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS) }.newCall(accountRequest())
+        val startedAt = System.nanoTime()
+
+        assertFailsWith<IOException> { call.execute() }
+
+        assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt) < WAIT_S * MILLIS / 2)
+        assertTrue(transport.timeouts.single() <= CALL_TIMEOUT_MS)
+        release.countDown()
+        assertEquals(false, runBlocking { withTimeout(WAIT_S * MILLIS) { stillActive.await() } })
+    }
+
+    @Test
+    fun aStreamHeadTheResponseCannotCarryFailsTheCallAndEndsTheExchange() {
+        val stopped = CompletableDeferred<Unit>()
+        val transport =
+            FakeTransport(
+                { listener ->
+                    listener.onHead(200, listOf("" to "x", "content-type" to "text/event-stream"))
+                    try {
+                        awaitCancellation()
+                    } finally {
+                        stopped.complete(Unit)
+                    }
+                }
+            )
+
+        assertFailsWith<IOException> { client(transport).newCall(eventsRequest()).execute() }
+        runBlocking { withTimeout(WAIT_S * MILLIS) { stopped.await() } }
     }
 
     @Test
@@ -319,6 +371,52 @@ class FlexaOhttpInterceptorTest {
         client.newCall(eventsRequest()).execute().close()
 
         assertTrue(transport.requests[1].headers.contains("Last-Event-ID" to "ev_2"))
+    }
+
+    @Test
+    fun anEmptyIdResetsTheResumptionInsteadOfFallingBackToTheSdksId() {
+        val transport =
+            FakeTransport(
+                { listener ->
+                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
+                    listener.onData("id: ev_2\ndata: {}\n\nid\ndata: {}\n\n".toByteArray())
+                    listener.onEnd()
+                },
+                { listener ->
+                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
+                    listener.onEnd()
+                }
+            )
+        val client = client(transport)
+
+        assertFailsWith<IOException> { client.newCall(eventsRequest()).execute().body.source().readByteArray() }
+        client.newCall(eventsRequest()).execute().close()
+
+        assertTrue(transport.requests[1].headers.none { (name, _) -> name.equals("Last-Event-ID", true) })
+    }
+
+    @Test
+    fun linesEndingInCrAloneOrCrlfSplitAcrossReadsAreFieldsToo() {
+        val transport =
+            FakeTransport(
+                { listener ->
+                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
+                    listener.onData("id: ev_2\rdata: {}\r\rid: ev_3\r".toByteArray())
+                    listener.onData("\ndata: {}\r\n\r".toByteArray())
+                    listener.onData("\n".toByteArray())
+                    listener.onEnd()
+                },
+                { listener ->
+                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
+                    listener.onEnd()
+                }
+            )
+        val client = client(transport)
+
+        assertFailsWith<IOException> { client.newCall(eventsRequest()).execute().body.source().readByteArray() }
+        client.newCall(eventsRequest()).execute().close()
+
+        assertTrue(transport.requests[1].headers.contains("Last-Event-ID" to "ev_3"))
     }
 
     /**
@@ -485,6 +583,7 @@ class FlexaOhttpInterceptorTest {
         const val DATE = "Sun, 18 Oct 2026 12:00:00 GMT"
         const val STREAM_TIMEOUT_MS = 90_000
         const val WAIT_S = 10L
+        const val CALL_TIMEOUT_MS = 300L
         const val MILLIS = 1000L
     }
 }

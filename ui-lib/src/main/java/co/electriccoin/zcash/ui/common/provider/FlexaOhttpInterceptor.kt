@@ -131,15 +131,20 @@ class FlexaOhttpInterceptor(
             .build()
     }
 
+    @Suppress("TooGenericExceptionCaught")
     private fun stream(
         call: Call,
         request: Request
     ): Response {
         val authorization = request.header(AUTHORIZATION)
+        // An empty id (the stream reset it) resumes from nothing, not from the id the SDK first read.
         val resumeFrom = authorization?.let(lastEventIds::get)
         val inner =
-            (resumeFrom?.let { request.newBuilder().header(LAST_EVENT_ID, it).build() } ?: request)
-                .toOhttpRequest()
+            when {
+                resumeFrom == null -> request
+                resumeFrom.isEmpty() -> request.newBuilder().removeHeader(LAST_EVENT_ID).build()
+                else -> request.newBuilder().header(LAST_EVENT_ID, resumeFrom).build()
+            }.toOhttpRequest()
         val timeoutMs = call.deadlineMs(STREAM_TIMEOUT_MS)
         val head = CompletableDeferred<Pair<Int, List<Pair<String, String>>>>()
         var headFields: List<Pair<String, String>>? = null
@@ -185,21 +190,20 @@ class FlexaOhttpInterceptor(
             head.completeExceptionally(canceled())
             pipe.cancel()
         }
-        val (status, headers) =
-            try {
-                blocking { head.await() }
-            } catch (e: IOException) {
-                job.cancel()
-                throw e
+        try {
+            val (status, headers) = blocking { head.await() }
+            if (authorization != null && headers.isEventStream()) {
+                body.onEventId = { id -> lastEventIds[authorization] = id }
             }
-        if (authorization != null && headers.isEventStream()) {
-            body.onEventId = { id ->
-                if (id.isEmpty()) lastEventIds.remove(authorization) else lastEventIds[authorization] = id
-            }
+            return response(request, status, headers)
+                .body(body.buffer().asResponseBody(headers.contentType(), -1L))
+                .build()
+        } catch (e: Exception) {
+            // No response reaches the caller to close: the exchange ends here.
+            job.cancel()
+            pipe.cancel()
+            throw e
         }
-        return response(request, status, headers)
-            .body(body.buffer().asResponseBody(headers.contentType(), -1L))
-            .build()
     }
 
     /** OkHttp has no cancellation callback for an interceptor, so the call is polled while [job] runs. */
@@ -241,6 +245,8 @@ class FlexaOhttpInterceptor(
 
         private var idBuffer: String? = null
 
+        private var afterCr = false
+
         override fun read(
             sink: Buffer,
             byteCount: Long
@@ -256,17 +262,27 @@ class FlexaOhttpInterceptor(
             read: Long,
             onEventId: (String) -> Unit
         ) {
-            sink.copyTo(line, sink.size - read, read)
-            while (true) {
-                val end = line.indexOf(NEWLINE)
-                if (end < 0) break
-                val field = line.readUtf8(end).removeSuffix("\r")
-                line.skip(1)
-                if (field.isEmpty()) {
-                    idBuffer?.let(onEventId)
-                } else {
-                    eventId(field)?.let { idBuffer = it }
+            // Lines end in CRLF, LF or CR alone, as an EventSource reads them.
+            for (i in sink.size - read until sink.size) {
+                val byte = sink[i]
+                val crlf = afterCr && byte == LF
+                afterCr = byte == CR
+                when {
+                    crlf -> Unit
+                    byte == CR || byte == LF -> field(line.readUtf8(), onEventId)
+                    else -> line.writeByte(byte.toInt())
                 }
+            }
+        }
+
+        private fun field(
+            field: String,
+            onEventId: (String) -> Unit
+        ) {
+            if (field.isEmpty()) {
+                idBuffer?.let(onEventId)
+            } else {
+                eventId(field)?.let { idBuffer = it }
             }
         }
 
@@ -385,4 +401,5 @@ private const val HTTP_TOO_MANY_REQUESTS = 429
 private const val STREAM_TIMEOUT_MS = 90_000
 private const val PIPE_BUFFER_BYTES = 1024L * 1024L
 private const val CANCEL_POLL_MS = 250L
-private const val NEWLINE = '\n'.code.toByte()
+private const val LF = '\n'.code.toByte()
+private const val CR = '\r'.code.toByte()
