@@ -34,8 +34,8 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 /**
- * Flexa is unavailable on a hardware wallet, and the explanation names the one the user has. Builds
- * without Flexa (no publishable key, e.g. F-Droid) show no Flexa notice at all.
+ * Flexa is unavailable on a hardware wallet, and the explanation names the one the user has. Without
+ * Flexa (testnet, or switched off remotely) there is no Flexa notice at all.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class IntegrationsVMTest {

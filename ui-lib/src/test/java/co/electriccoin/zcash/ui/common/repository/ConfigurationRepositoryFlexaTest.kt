@@ -17,7 +17,7 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** Flexa needs no build-time key: its availability depends on the network and the remote switch only. */
+/** Flexa needs no build-time key: every distribution offers it on mainnet unless the remote switch is off. */
 class ConfigurationRepositoryFlexaTest {
     @Test
     fun aMainnetStoreBuildOffersFlexaWithoutAKey() =
@@ -39,9 +39,15 @@ class ConfigurationRepositoryFlexaTest {
         }
 
     @Test
-    fun theFDroidBuildDoesNotOfferFlexaYet() =
+    fun theFDroidBuildOffersFlexa() =
         runTest {
-            assertFalse(repository(ZcashNetwork.Mainnet, DistributionDimension.FOSS).isFlexaAvailable())
+            assertTrue(repository(ZcashNetwork.Mainnet, DistributionDimension.FOSS).isFlexaAvailable())
+        }
+
+    @Test
+    fun theFDroidTestnetBuildDoesNotOfferFlexa() =
+        runTest {
+            assertFalse(repository(ZcashNetwork.Testnet, DistributionDimension.FOSS).isFlexaAvailable())
         }
 
     private fun repository(

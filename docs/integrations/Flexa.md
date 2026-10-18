@@ -18,7 +18,8 @@
   its Last-Event-ID.
 - Not proxied: the SDK's web views (merchant directory, how to pay, privacy and terms pages) and the brand and
   asset images, which Android's WebView and Coil load directly from Flexa, also with Tor on.
-- Flexa is mainnet only; the testnet build does not offer it.
+- Flexa is mainnet only; the testnet builds do not offer it. Every distribution (store, internal, F-Droid)
+  offers it on mainnet unless the remote `is_flexa_available` switch is off.
 
 # Setup
 To bump the Flexa libraries follow `third-party/flexa/README.md`.
