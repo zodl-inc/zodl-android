@@ -1,0 +1,10 @@
+Flexa SDK
+Copyright (c) 2024 Flexa
+
+This product includes software developed at
+Flexa Inc. (https://flexa.network)
+
+This product includes software from kotlin-onetimepassword project
+* Copyright (C) 2022 Marcel Kliemannel
+* Licensed under the Apache 2.0 License;
+* https://github.com/marcelkliemannel/kotlin-onetimepassword

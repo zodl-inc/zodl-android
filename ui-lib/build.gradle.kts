@@ -211,8 +211,8 @@ dependencies {
     implementation(libs.tink)
     implementation(libs.zxing)
 
-    api(libs.flexa.core)
-    api(libs.flexa.spend)
+    api(projects.flexaCore)
+    api(projects.flexaSpend)
 
     implementation(projects.buildInfoLib)
     implementation(projects.configurationApiLib)
