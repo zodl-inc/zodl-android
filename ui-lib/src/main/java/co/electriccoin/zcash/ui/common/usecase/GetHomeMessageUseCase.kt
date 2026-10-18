@@ -175,8 +175,8 @@ class GetHomeMessageUseCase(
                 // Connectivity/sync states outrank migration: a user can't act on the migration banner
                 // while the wallet is disconnected, erroring, or still syncing.
                 val message =
-                    createDisconnectedMessage(walletSnapshot)
-                        ?: createOhttpUnavailableMessage(isOhttpUnavailable)
+                    createOhttpUnavailableMessage(isOhttpUnavailable)
+                        ?: createDisconnectedMessage(walletSnapshot)
                         ?: createSynchronizerErrorMessage(walletSnapshot)
                         ?: createSyncingMessage(
                             walletSnapshot,
