@@ -38,14 +38,15 @@ android {
         buildConfig = true
     }
 
-    lint {
-        abortOnError = false
-        checkReleaseBuilds = false
-    }
-
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
+}
+
+// Android lint's K2 UAST crashes on this upstream code (upstream builds with android.lint.useK2Uast=false);
+// it is third-party code, so it is not linted here.
+tasks.configureEach {
+    if (name.startsWith("lint")) enabled = false
 }
 
 kotlin {
