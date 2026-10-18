@@ -93,10 +93,13 @@ class HttpClientProviderImpl(
 
     override suspend fun isTorEnabled(): Boolean = isTorEnabledStorageProvider.get() == true
 
-    override suspend fun createOhttp(): OhttpHttpClient =
+    override suspend fun createOhttp(): OhttpHttpClient = cachedOhttp { isTorEnabled() }
+
+    /** The shared client, built for the Tor state [torState] reads under the lock. */
+    private suspend fun cachedOhttp(torState: suspend () -> Boolean): OhttpHttpClient =
         lock.withLock {
             // Atomically read Tor state, fetch sender, and publish client to prevent stale-policy caching.
-            val torNow = isTorEnabled()
+            val torNow = torState()
             if (cachedOhttpClient != null && cachedForTorEnabled != torNow) {
                 val outgoing = cachedOhttpClient
                 cachedOhttpClient = null
@@ -136,7 +139,9 @@ class HttpClientProviderImpl(
         }
 
     override suspend fun <T> withIsolatedOhttp(block: suspend (OhttpHttpClient) -> T): T {
-        if (!isTorEnabled()) return block(createOhttp())
+        // One read of the Tor state decides both the branch and the client, so a toggle in between
+        // can never hand this call the shared Tor-backed client.
+        if (!isTorEnabled()) return block(cachedOhttp { false })
         val codec = OhttpCodecFactory.create()
         val client =
             OhttpHttpClient.create(
