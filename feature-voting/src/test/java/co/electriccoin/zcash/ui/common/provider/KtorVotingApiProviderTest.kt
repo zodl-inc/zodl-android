@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
 import co.electriccoin.lightwallet.client.OhttpHttpClient
+import co.electriccoin.zcash.configuration.model.entry.ConfigKey
 import co.electriccoin.zcash.configuration.model.map.Configuration
 import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLatestResponse
 import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLeavesResponse
@@ -15,6 +16,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
 import co.electriccoin.zcash.ui.common.repository.VotingCustomChainConfig
+import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -43,6 +45,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 class KtorVotingApiProviderTest {
     @Test
@@ -1170,8 +1173,9 @@ class KtorVotingApiProviderTest {
                             },
                         ) { expectSuccess = true }
                 },
-            configurationRepository = TestConfigurationRepository(),
-            votingChainConfigRepository = TestVotingChainConfigRepository(),
+            // The default (non-custom) config: only that one goes through OHTTP with Tor off.
+            configurationRepository = TestConfigurationRepository(votingConfigUrl = STATIC_CONFIG_URL),
+            votingChainConfigRepository = TestVotingChainConfigRepository(VotingChainConfigState()),
             votingCryptoClient = unusedVotingCryptoClient(),
             configRequestTimeoutMillis = TEST_TIMEOUT_MILLIS,
         )
@@ -1358,17 +1362,23 @@ class KtorVotingApiProviderTest {
         val status: HttpStatusCode = HttpStatusCode.OK,
     )
 
-    private class TestConfigurationRepository : ConfigurationRepository {
-        override val configurationFlow: StateFlow<Configuration?> = MutableStateFlow(null)
+    /** [votingConfigUrl] set = the remote-config (default, non-custom) voting config source. */
+    private class TestConfigurationRepository(
+        votingConfigUrl: String? = null,
+    ) : ConfigurationRepository {
+        override val configurationFlow: StateFlow<Configuration?> =
+            MutableStateFlow(votingConfigUrl?.let(::votingConfigUrlConfiguration))
         override val isFlexaAvailable: StateFlow<Boolean?> = MutableStateFlow(false)
 
         override suspend fun isFlexaAvailable(): Boolean = false
     }
 
-    private class TestVotingChainConfigRepository : VotingChainConfigRepository {
-        override val state: StateFlow<VotingChainConfigState> = MutableStateFlow(TEST_CHAIN_CONFIG_STATE)
+    private class TestVotingChainConfigRepository(
+        private val chainConfigState: VotingChainConfigState = TEST_CHAIN_CONFIG_STATE,
+    ) : VotingChainConfigRepository {
+        override val state: StateFlow<VotingChainConfigState> = MutableStateFlow(chainConfigState)
 
-        override suspend fun get(): VotingChainConfigState = TEST_CHAIN_CONFIG_STATE
+        override suspend fun get(): VotingChainConfigState = chainConfigState
 
         override suspend fun selectDefault() = Unit
 
@@ -1504,3 +1514,27 @@ private fun unusedVotingCryptoClient(): VotingCryptoClient =
     ) { _, method, _ ->
         error("Unexpected VotingCryptoClient call: ${method.name}")
     } as VotingCryptoClient
+
+/** ConfigKey is a value class, which MockK cannot match with any(), so a tiny fake. */
+private fun votingConfigUrlConfiguration(url: String): Configuration =
+    object : Configuration {
+        override val updatedAt: Instant? = null
+
+        override fun hasKey(key: ConfigKey): Boolean = key == ConfigurationEntries.VOTING_CONFIG_URL.key
+
+        override fun getBoolean(
+            key: ConfigKey,
+            defaultValue: Boolean
+        ): Boolean = defaultValue
+
+        override fun getInt(
+            key: ConfigKey,
+            defaultValue: Int
+        ): Int = defaultValue
+
+        override fun getString(
+            key: ConfigKey,
+            defaultValue: String
+        ): String = if (key == ConfigurationEntries.VOTING_CONFIG_URL.key) url else defaultValue
+    }
+
