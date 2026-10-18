@@ -6,18 +6,27 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.Interceptor
+import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import okio.BufferedSink
 import java.io.IOException
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -32,29 +41,34 @@ class FlexaOhttpInterceptorTest {
                 chain
                     .request()
                     .newBuilder()
-                    .header("Authorization", "Basic OnB1Ymxpc2hhYmxlX2xpdmVfem9kbF9nYXRld2F5X3BsYWNlaG9sZGVy")
-                    .header("Connection", "keep-alive")
+                    .header("Authorization", AUTHORIZATION)
+                    .header("Connection", "keep-alive, X-Hop")
+                    .header("X-Hop", "1")
                     .build()
             )
         }
 
-    private fun client(transport: FlexaOhttpTransport) =
-        OkHttpClient
-            .Builder()
-            .addInterceptor(sdkHeaders)
-            .addInterceptor(FlexaOhttpInterceptor(transport))
-            .build()
+    private fun client(
+        transport: FlexaOhttpTransport,
+        configure: OkHttpClient.Builder.() -> Unit = {}
+    ) = OkHttpClient
+        .Builder()
+        .addInterceptor(sdkHeaders)
+        .addInterceptor(FlexaOhttpInterceptor(transport))
+        .apply(configure)
+        .build()
 
     @Test
     fun aRestCallIsSentToTheGatewayAliasWithTheSdkCredentials() {
         val transport =
             FakeTransport(
-                answer =
+                answer = {
                     OhttpHttpClient.Response(
                         status = 201,
                         body = """{"id":"tok_1","status":"requires_verification"}""".toByteArray(),
                         headers = listOf("content-type" to "application/vnd.flexa+json", "date" to DATE)
                     )
+                }
             )
 
         val response =
@@ -71,13 +85,12 @@ class FlexaOhttpInterceptorTest {
         assertEquals("https://flexa.zodl.com/tokens?x=a,b", sent.url)
         assertEquals("POST", sent.method)
         assertEquals("""{"email":"a@b.c"}""", sent.body.decodeToString())
-        assertTrue(
-            sent.headers.contains(
-                "Authorization" to "Basic OnB1Ymxpc2hhYmxlX2xpdmVfem9kbF9nYXRld2F5X3BsYWNlaG9sZGVy"
-            )
-        )
+        assertTrue(sent.headers.contains("Authorization" to AUTHORIZATION))
         assertTrue(sent.headers.contains("Content-Type" to "application/json; charset=utf-8"))
-        assertTrue(sent.headers.none { (name, _) -> name.equals("Connection", ignoreCase = true) })
+        assertTrue(
+            sent.headers.none { (name, _) -> name.equals("Connection", true) || name.equals("X-Hop", true) },
+            "connection fields, and the fields Connection names, stay on the outer hop"
+        )
         assertEquals(OhttpHttpClient.DEFAULT_TIMEOUT_MS, transport.timeouts.single())
         assertEquals(201, response.code)
         assertEquals(DATE, response.header("date"))
@@ -97,7 +110,7 @@ class FlexaOhttpInterceptorTest {
 
     @Test
     fun aRelayRateLimitIsAnswered429WithItsRetryAfter() {
-        val transport = FakeTransport(failure = OhttpException("wait", 429, retryAfterSeconds = 7))
+        val transport = FakeTransport(answer = { throw OhttpException("wait", 429, retryAfterSeconds = 7) })
 
         val response = client(transport).newCall(accountRequest()).execute()
 
@@ -107,11 +120,86 @@ class FlexaOhttpInterceptorTest {
 
     @Test
     fun anotherOhttpFailureFailsTheCall() {
-        val transport = FakeTransport(failure = OhttpException("relay answered 503", 503))
+        val transport = FakeTransport(answer = { throw OhttpException("relay answered 503", 503) })
 
-        assertFailsWith<OhttpException> {
-            client(transport).newCall(accountRequest()).execute()
-        }
+        assertFailsWith<OhttpException> { client(transport).newCall(accountRequest()).execute() }
+    }
+
+    @Test
+    fun aShorterCallTimeoutBoundsTheOhttpExchange() {
+        val transport = FakeTransport()
+
+        client(transport) { callTimeout(2, TimeUnit.SECONDS) }.newCall(accountRequest()).execute()
+
+        assertTrue(transport.timeouts.single() in 1..2_000)
+    }
+
+    @Test
+    fun cancellingARestCallEndsTheOhttpExchange() {
+        val stopped = CompletableDeferred<Unit>()
+        val started = CountDownLatch(1)
+        val transport =
+            FakeTransport(
+                answer = {
+                    started.countDown()
+                    try {
+                        awaitCancellation()
+                    } finally {
+                        stopped.complete(Unit)
+                    }
+                }
+            )
+        val call = client(transport).newCall(accountRequest())
+        val failure = AtomicReference<Throwable>()
+        val caller = thread { failure.set(runCatching { call.execute() }.exceptionOrNull()) }
+
+        assertTrue(started.await(WAIT_S, TimeUnit.SECONDS))
+        call.cancel()
+
+        runBlocking { withTimeout(WAIT_S * MILLIS) { stopped.await() } }
+        caller.join(WAIT_S * MILLIS)
+        assertIs<IOException>(failure.get())
+    }
+
+    @Test
+    fun aFailureOutsideTheExchangeFailsAnEnqueuedCallInsteadOfCrashing() {
+        val transport = FakeTransport()
+        val failure = CompletableDeferred<IOException>()
+        val throwingBody =
+            object : RequestBody() {
+                override fun contentType(): MediaType? = null
+
+                override fun writeTo(sink: BufferedSink): Unit = error("body")
+            }
+
+        client(transport)
+            .newCall(
+                Request
+                    .Builder()
+                    .url("https://api.flexa.co/tokens")
+                    .post(throwingBody)
+                    .build()
+            ).enqueue(
+                object : Callback {
+                    override fun onFailure(
+                        call: Call,
+                        e: IOException
+                    ) {
+                        failure.complete(e)
+                    }
+
+                    override fun onResponse(
+                        call: Call,
+                        response: Response
+                    ) {
+                        failure.completeExceptionally(AssertionError("unexpected response"))
+                    }
+                }
+            )
+
+        val e = runBlocking { withTimeout(WAIT_S * MILLIS) { failure.await() } }
+        assertIs<IllegalStateException>(e.cause)
+        assertTrue(transport.requests.isEmpty())
     }
 
     @Test
@@ -119,7 +207,7 @@ class FlexaOhttpInterceptorTest {
         val release = CountDownLatch(1)
         val transport =
             FakeTransport(
-                stream = { listener ->
+                { listener ->
                     listener.onHead(200, listOf("content-type" to "text/event-stream"))
                     listener.onData("id: ev_2\nevent: commerce_session.created\ndata: {}\n\n".toByteArray())
                     release.await(WAIT_S, TimeUnit.SECONDS)
@@ -150,10 +238,34 @@ class FlexaOhttpInterceptorTest {
     }
 
     @Test
+    fun theReconnectionResumesAfterTheLastEventTheStreamDelivered() {
+        val transport =
+            FakeTransport(
+                { listener ->
+                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
+                    listener.onData("id: ev_2\ndata: {}\n\nid:ev_3\r\ndata: {}\r\n\r\n".toByteArray())
+                    listener.onEnd()
+                },
+                { listener ->
+                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
+                    listener.onEnd()
+                }
+            )
+        val client = client(transport)
+
+        val first = client.newCall(eventsRequest()).execute()
+        assertFailsWith<IOException> { first.body.source().readByteArray() }
+        client.newCall(eventsRequest()).execute().close()
+
+        assertTrue(transport.requests[0].headers.contains("Last-Event-ID" to "ev_1"))
+        assertTrue(transport.requests[1].headers.contains("Last-Event-ID" to "ev_3"))
+    }
+
+    @Test
     fun aJsonAnswerOnTheEventStreamPathEndsCleanly() {
         val transport =
             FakeTransport(
-                stream = { listener ->
+                { listener ->
                     listener.onHead(401, listOf("content-type" to "application/json"))
                     listener.onData("""{"error":{}}""".toByteArray())
                     listener.onEnd()
@@ -168,7 +280,7 @@ class FlexaOhttpInterceptorTest {
 
     @Test
     fun aStreamThatFailsBeforeItsHeadFailsTheCall() {
-        val transport = FakeTransport(stream = { throw OhttpException("relay answered 502", 502) })
+        val transport = FakeTransport({ throw OhttpException("relay answered 502", 502) })
 
         assertFailsWith<OhttpException> { client(transport).newCall(eventsRequest()).execute() }
     }
@@ -178,7 +290,7 @@ class FlexaOhttpInterceptorTest {
         val stopped = CompletableDeferred<Unit>()
         val transport =
             FakeTransport(
-                stream = { listener ->
+                { listener ->
                     listener.onHead(200, listOf("content-type" to "text/event-stream"))
                     listener.onData(": open\n\n".toByteArray())
                     try {
@@ -200,6 +312,17 @@ class FlexaOhttpInterceptorTest {
         assertNull(reader.takeIf { it.isAlive }, "the blocked read is released")
     }
 
+    @Test
+    fun eventIdFieldsAreParsedAsServerSentEventsDefineThem() {
+        assertEquals("ev_1", eventId("id: ev_1"))
+        assertEquals("ev_1", eventId("id:ev_1"))
+        assertEquals(" ev_1", eventId("id:  ev_1"))
+        assertEquals("", eventId("id"))
+        assertNull(eventId("data: id: ev_1"))
+        assertNull(eventId("idx: 1"))
+        assertNull(eventId("id: a\u0000b"))
+    }
+
     private fun accountRequest() = Request.Builder().url("https://api.flexa.co/accounts/me").build()
 
     private fun eventsRequest() =
@@ -211,12 +334,12 @@ class FlexaOhttpInterceptorTest {
             .build()
 
     private class FakeTransport(
-        private val answer: OhttpHttpClient.Response = OhttpHttpClient.Response(200, ByteArray(0)),
-        private val failure: OhttpException? = null,
-        private val stream: suspend (OhttpHttpClient.ResponseListener) -> Unit = {},
+        vararg streams: suspend (OhttpHttpClient.ResponseListener) -> Unit,
+        private val answer: suspend () -> OhttpHttpClient.Response = { OhttpHttpClient.Response(200, ByteArray(0)) },
     ) : FlexaOhttpTransport {
-        val requests = mutableListOf<OhttpHttpClient.Request>()
-        val timeouts = mutableListOf<Int>()
+        private val streams = ArrayDeque(streams.toList())
+        val requests = CopyOnWriteArrayList<OhttpHttpClient.Request>()
+        val timeouts = CopyOnWriteArrayList<Int>()
 
         override suspend fun execute(
             request: OhttpHttpClient.Request,
@@ -224,8 +347,7 @@ class FlexaOhttpInterceptorTest {
         ): OhttpHttpClient.Response {
             requests += request
             timeouts += timeoutMs
-            failure?.let { throw it }
-            return answer
+            return answer()
         }
 
         override suspend fun executeStreaming(
@@ -235,11 +357,12 @@ class FlexaOhttpInterceptorTest {
         ) {
             requests += request
             timeouts += timeoutMs
-            stream(listener)
+            streams.removeFirst()(listener)
         }
     }
 
     private companion object {
+        const val AUTHORIZATION = "Basic OnB1Ymxpc2hhYmxlX2xpdmVfem9kbF9nYXRld2F5X3BsYWNlaG9sZGVy"
         const val DATE = "Sun, 18 Oct 2026 12:00:00 GMT"
         const val STREAM_TIMEOUT_MS = 90_000
         const val WAIT_S = 10L

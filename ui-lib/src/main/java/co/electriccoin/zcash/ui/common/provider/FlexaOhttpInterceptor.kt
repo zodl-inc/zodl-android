@@ -28,6 +28,8 @@ import okio.Source
 import okio.buffer
 import java.io.IOException
 import java.io.InterruptedIOException
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 /**
  * Where [FlexaOhttpInterceptor] sends the Flexa API calls: the OHTTP client of [HttpClientProvider], whose
@@ -67,53 +69,76 @@ class FlexaOhttpTransportImpl(
  * after the SDK's own interceptors (FlexaClientConfiguration.okHttpClientCustomizer), so the request
  * already carries the SDK's Authorization, which the gateway swaps for the real publishable key when it
  * is built from [FLEXA_OHTTP_PUBLISHABLE_KEY]. It never proceeds down the chain: a request to another host
- * fails instead of leaving directly.
+ * fails instead of leaving directly. Cancelling the call, or its call timeout, ends the OHTTP exchange.
  *
  * A `text/event-stream` request (the commerce session events) is answered as its chunks arrive. The
  * gateway ends such a stream after at most 80 s; the end is reported as a failure, as a dropped connection
- * would be, so the SDK reconnects with its Last-Event-ID. A relay 429 is answered as a 429 with its
+ * would be, so the SDK reconnects, and the reconnection carries as Last-Event-ID the id of the last event
+ * the previous stream of the same Authorization delivered. A relay 429 is answered as a 429 with its
  * Retry-After; the SDK's OHTTP client refuses to send through that relay until it is over.
  */
 class FlexaOhttpInterceptor(
     private val transport: FlexaOhttpTransport,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) : Interceptor {
-    override fun intercept(chain: Interceptor.Chain): Response {
-        val request = chain.request()
+    private val lastEventIds = ConcurrentHashMap<String, String>()
+
+    /** OkHttp only expects an IOException from an interceptor; anything else crashes an enqueued call. */
+    @Suppress("TooGenericExceptionCaught")
+    override fun intercept(chain: Interceptor.Chain): Response =
+        try {
+            route(chain.call(), chain.request())
+        } catch (e: OhttpException) {
+            rateLimited(chain.request(), e) ?: throw e
+        } catch (e: RuntimeException) {
+            throw e.asIOException()
+        }
+
+    private fun route(
+        call: Call,
+        request: Request
+    ): Response {
         if (request.url.host != FLEXA_API_HOST) {
             throw IOException("Only $FLEXA_API_HOST goes through OHTTP, not ${request.url.host}")
         }
-        val inner = request.toOhttpRequest()
-        return try {
-            if (request.header("Accept").isEventStream()) {
-                stream(chain.call(), request, inner)
-            } else {
-                exchange(request, inner)
-            }
-        } catch (e: OhttpException) {
-            val retryAfter = e.retryAfterSeconds
-            if (e.httpStatus != HTTP_TOO_MANY_REQUESTS || retryAfter == null) throw e
-            response(request, HTTP_TOO_MANY_REQUESTS, listOf(RETRY_AFTER to retryAfter.toString()))
-                .body(ByteArray(0).toResponseBody())
-                .build()
-        }
+        return if (request.header(ACCEPT).isEventStream()) stream(call, request) else exchange(call, request)
+    }
+
+    private fun rateLimited(
+        request: Request,
+        e: OhttpException
+    ): Response? {
+        val retryAfter = e.retryAfterSeconds
+        if (e.httpStatus != HTTP_TOO_MANY_REQUESTS || retryAfter == null) return null
+        return response(request, HTTP_TOO_MANY_REQUESTS, listOf(RETRY_AFTER to retryAfter.toString()))
+            .body(ByteArray(0).toResponseBody())
+            .build()
     }
 
     private fun exchange(
-        request: Request,
-        inner: OhttpHttpClient.Request
+        call: Call,
+        request: Request
     ): Response {
-        val answer = blocking { transport.execute(inner, OhttpHttpClient.DEFAULT_TIMEOUT_MS) }
-        return response(request, answer.status, answer.headers)
-            .body(answer.body.toResponseBody(answer.headers.contentType()))
+        val inner = request.toOhttpRequest()
+        val timeoutMs = call.deadlineMs(OhttpHttpClient.DEFAULT_TIMEOUT_MS)
+        val answer = scope.async { transport.execute(inner, timeoutMs) }
+        cancelWhenCanceled(call, answer)
+        val answered = blocking { answer.await() }
+        return response(request, answered.status, answered.headers)
+            .body(answered.body.toResponseBody(answered.headers.contentType()))
             .build()
     }
 
     private fun stream(
         call: Call,
-        request: Request,
-        inner: OhttpHttpClient.Request
+        request: Request
     ): Response {
+        val authorization = request.header(AUTHORIZATION)
+        val resumeFrom = authorization?.let(lastEventIds::get)
+        val inner =
+            (resumeFrom?.let { request.newBuilder().header(LAST_EVENT_ID, it).build() } ?: request)
+                .toOhttpRequest()
+        val timeoutMs = call.deadlineMs(STREAM_TIMEOUT_MS)
         val head = CompletableDeferred<Pair<Int, List<Pair<String, String>>>>()
         var headFields: List<Pair<String, String>>? = null
         val pipe = Pipe(PIPE_BUFFER_BYTES)
@@ -124,7 +149,7 @@ class FlexaOhttpInterceptor(
             scope.async {
                 transport.executeStreaming(
                     inner,
-                    STREAM_TIMEOUT_MS,
+                    timeoutMs,
                     object : OhttpHttpClient.ResponseListener {
                         override fun onHead(
                             status: Int,
@@ -154,15 +179,7 @@ class FlexaOhttpInterceptor(
                 }
             runCatching { out.close() }
         }
-        scope.launch {
-            while (job.isActive) {
-                if (call.isCanceled()) {
-                    job.cancel()
-                    pipe.cancel()
-                }
-                delay(CANCEL_POLL_MS)
-            }
-        }
+        cancelWhenCanceled(call, job) { pipe.cancel() }
         val (status, headers) =
             try {
                 blocking { head.await() }
@@ -170,12 +187,37 @@ class FlexaOhttpInterceptor(
                 job.cancel()
                 throw e
             }
+        if (authorization != null && headers.isEventStream()) {
+            body.onEventId = { id ->
+                if (id.isEmpty()) lastEventIds.remove(authorization) else lastEventIds[authorization] = id
+            }
+        }
         return response(request, status, headers)
             .body(body.buffer().asResponseBody(headers.contentType(), -1L))
             .build()
     }
 
-    /** The streamed body: at its end it throws what ended the stream, if anything; closing it stops the read. */
+    /** OkHttp has no cancellation callback for an interceptor, so the call is polled while [job] runs. */
+    private fun cancelWhenCanceled(
+        call: Call,
+        job: Job,
+        onCancel: () -> Unit = {}
+    ) {
+        scope.launch {
+            while (job.isActive) {
+                if (call.isCanceled()) {
+                    job.cancel()
+                    onCancel()
+                }
+                delay(CANCEL_POLL_MS)
+            }
+        }
+    }
+
+    /**
+     * The streamed body: at its end it throws what ended the stream, if anything; closing it stops the
+     * read. It hands each event `id` field it passes to [onEventId].
+     */
     private class StreamedBody(
         source: Source
     ) : ForwardingSource(source) {
@@ -185,13 +227,34 @@ class FlexaOhttpInterceptor(
         @Volatile
         var endError: IOException? = null
 
+        @Volatile
+        var onEventId: ((String) -> Unit)? = null
+
+        private val line = Buffer()
+
         override fun read(
             sink: Buffer,
             byteCount: Long
         ): Long {
             val read = super.read(sink, byteCount)
             if (read == -1L) endError?.let { throw it }
+            if (read > 0) onEventId?.let { scan(sink, read, it) }
             return read
+        }
+
+        private fun scan(
+            sink: Buffer,
+            read: Long,
+            onEventId: (String) -> Unit
+        ) {
+            sink.copyTo(line, sink.size - read, read)
+            while (true) {
+                val end = line.indexOf(NEWLINE)
+                if (end < 0) break
+                val field = line.readUtf8(end).removeSuffix("\r")
+                line.skip(1)
+                eventId(field)?.let(onEventId)
+            }
         }
 
         override fun close() {
@@ -217,7 +280,7 @@ class FlexaOhttpInterceptor(
                 .build()
         )
 
-    /** OkHttp only expects an IOException from an interceptor; anything else crashes an enqueued call. */
+    /** Waits for [block] on the calling thread, which is OkHttp's: only IOExceptions leave it. */
     @Suppress("TooGenericExceptionCaught")
     private fun <T> blocking(block: suspend () -> T): T =
         try {
@@ -227,6 +290,19 @@ class FlexaOhttpInterceptor(
         } catch (e: Exception) {
             throw e.asIOException()
         }
+}
+
+/** The value of an SSE `id` field line (WHATWG HTML, server-sent events), or null for another line. */
+internal fun eventId(line: String): String? {
+    if (line != "id" && !line.startsWith("id:")) return null
+    val value = line.removePrefix("id").removePrefix(":").removePrefix(" ")
+    return value.takeUnless { '\u0000' in it }
+}
+
+/** [default] ms, or less if the call has a shorter call timeout of its own. */
+private fun Call.deadlineMs(default: Int): Int {
+    val callTimeoutMs = TimeUnit.NANOSECONDS.toMillis(timeout().timeoutNanos())
+    return if (callTimeoutMs > 0) minOf(default.toLong(), callTimeoutMs).toInt() else default
 }
 
 private fun Throwable.asIOException() = this as? IOException ?: IOException(message ?: javaClass.simpleName, this)
@@ -241,7 +317,12 @@ internal const val FLEXA_OHTTP_PUBLISHABLE_KEY = "publishable_live_zodl_gateway_
 private fun Request.toOhttpRequest(): OhttpHttpClient.Request {
     val content = body
     val bytes = content?.let { Buffer().also(it::writeTo).readByteArray() } ?: ByteArray(0)
-    val fields = headers.filter { (name, _) -> name.lowercase() !in CONNECTION_FIELDS }
+    val nominated =
+        headers(CONNECTION)
+            .flatMap { it.split(',') }
+            .map { it.trim().lowercase() }
+            .filter { it.isNotEmpty() }
+    val fields = headers.filter { (name, _) -> name.lowercase().let { it !in CONNECTION_FIELDS && it !in nominated } }
     val contentType =
         content
             ?.contentType()
@@ -270,11 +351,18 @@ private fun String?.isEventStream() = this?.toMediaTypeOrNull().isEventStream()
 
 private fun MediaType?.isEventStream() = this != null && type == "text" && subtype == "event-stream"
 
-/** Fields of the outer hop that have no meaning in an inner request (RFC 9110 section 7.6.1, RFC 9113 8.2.2). */
+/**
+ * Fields of the outer hop that have no meaning in an inner request, besides those the Connection field
+ * names (RFC 9110 section 7.6.1, RFC 9113 section 8.2.2).
+ */
 private val CONNECTION_FIELDS =
     setOf("connection", "keep-alive", "proxy-connection", "transfer-encoding", "upgrade", "te", "host")
 
+private const val ACCEPT = "Accept"
+private const val AUTHORIZATION = "Authorization"
+private const val CONNECTION = "Connection"
 private const val CONTENT_TYPE = "Content-Type"
+private const val LAST_EVENT_ID = "Last-Event-ID"
 private const val RETRY_AFTER = "Retry-After"
 private const val HTTP_TOO_MANY_REQUESTS = 429
 
@@ -282,3 +370,4 @@ private const val HTTP_TOO_MANY_REQUESTS = 429
 private const val STREAM_TIMEOUT_MS = 90_000
 private const val PIPE_BUFFER_BYTES = 1024L * 1024L
 private const val CANCEL_POLL_MS = 250L
+private const val NEWLINE = '\n'.code.toByte()
