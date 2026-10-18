@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.common.repository
 
-import cash.z.ecc.android.sdk.model.FiatCurrency
 import co.electriccoin.zcash.ui.common.datasource.ExchangeRateUnavailable
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateError
 import io.ktor.client.HttpClient
@@ -25,34 +24,14 @@ import kotlin.test.assertTrue
  */
 class ExchangeRateRepositoryTest {
     @Test
-    fun fallsBackWhenCmcUnavailableAndFiatIsUsd() {
-        assertTrue(
-            shouldFallBackToSynchronizerRoute(isCmcAvailable = false, fiat = FiatCurrency.USD)
-        )
+    fun fallsBackWhenCmcUnavailable() {
+        assertTrue(shouldFallBackToSynchronizerRoute(isCmcAvailable = false))
     }
 
     @Test
-    fun fallsBackWhenCmcUnavailableAndFiatIsNonUsd() {
-        // CMC is the only rate source when unavailable, so the USD-only synchronizer route is used
-        // regardless of the preferred fiat (e.g. a stale non-USD preference from a prior build).
-        assertTrue(
-            shouldFallBackToSynchronizerRoute(isCmcAvailable = false, fiat = FiatCurrency("EUR"))
-        )
-    }
-
-    @Test
-    fun fallsBackWhenCmcAvailableAndFiatIsUsd() {
-        assertTrue(
-            shouldFallBackToSynchronizerRoute(isCmcAvailable = true, fiat = FiatCurrency.USD)
-        )
-    }
-
-    @Test
-    fun doesNotFallBackWhenCmcAvailableAndFiatIsNonUsd() {
-        // The synchronizer route only provides a USD rate, so it cannot serve a non-USD fiat.
-        assertFalse(
-            shouldFallBackToSynchronizerRoute(isCmcAvailable = true, fiat = FiatCurrency("EUR"))
-        )
+    fun doesNotFallBackAroundTheGatewayWhenCmcAvailable() {
+        // A failed CMC lookup through the OHTTP gateway must not be retried around it.
+        assertFalse(shouldFallBackToSynchronizerRoute(isCmcAvailable = true))
     }
 
     // region classifyExchangeRateError
