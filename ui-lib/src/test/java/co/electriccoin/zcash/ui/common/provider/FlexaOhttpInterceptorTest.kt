@@ -16,6 +16,9 @@ import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import okhttp3.sse.EventSource
+import okhttp3.sse.EventSourceListener
+import okhttp3.sse.EventSources
 import okio.BufferedSink
 import java.io.IOException
 import java.util.concurrent.CopyOnWriteArrayList
@@ -162,6 +165,41 @@ class FlexaOhttpInterceptorTest {
     }
 
     @Test
+    fun cancellingReturnsTheCallAtOnceEvenIfTheSenderIsStillBlocked() {
+        val release = CountDownLatch(1)
+        val started = AtomicReference(CountDownLatch(1))
+        val transport =
+            FakeTransport(
+                { listener ->
+                    started.get().countDown()
+                    release.await(WAIT_S, TimeUnit.SECONDS)
+                    listener.onEnd()
+                },
+                answer = {
+                    started.get().countDown()
+                    release.await(WAIT_S, TimeUnit.SECONDS)
+                    OhttpHttpClient.Response(200, ByteArray(0))
+                }
+            )
+        val client = client(transport)
+
+        listOf(accountRequest(), eventsRequest()).forEach { request ->
+            started.set(CountDownLatch(1))
+            val call = client.newCall(request)
+            val failure = AtomicReference<Throwable>()
+            val caller = thread { failure.set(runCatching { call.execute() }.exceptionOrNull()) }
+            assertTrue(started.get().await(WAIT_S, TimeUnit.SECONDS))
+
+            call.cancel()
+
+            caller.join(WAIT_S * MILLIS / 2)
+            assertTrue(!caller.isAlive && release.count == 1L, "the call returned while the sender was blocked")
+            assertIs<IOException>(failure.get())
+        }
+        release.countDown()
+    }
+
+    @Test
     fun aFailureOutsideTheExchangeFailsAnEnqueuedCallInsteadOfCrashing() {
         val transport = FakeTransport()
         val failure = CompletableDeferred<IOException>()
@@ -259,6 +297,87 @@ class FlexaOhttpInterceptorTest {
 
         assertTrue(transport.requests[0].headers.contains("Last-Event-ID" to "ev_1"))
         assertTrue(transport.requests[1].headers.contains("Last-Event-ID" to "ev_3"))
+    }
+
+    @Test
+    fun anEventCutBeforeItsEndIsNotResumedAfter() {
+        val transport =
+            FakeTransport(
+                { listener ->
+                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
+                    listener.onData("id: ev_2\ndata: {}\n\nid: ev_3\ndata: {\"id\":".toByteArray())
+                    listener.onEnd()
+                },
+                { listener ->
+                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
+                    listener.onEnd()
+                }
+            )
+        val client = client(transport)
+
+        assertFailsWith<IOException> { client.newCall(eventsRequest()).execute().body.source().readByteArray() }
+        client.newCall(eventsRequest()).execute().close()
+
+        assertTrue(transport.requests[1].headers.contains("Last-Event-ID" to "ev_2"))
+    }
+
+    /**
+     * As the SDK listens (RestRepository.listenEvents through an okhttp-sse EventSource) and retries
+     * (SpendViewModel.listenEvents: the same request, with the Last-Event-ID it read when it subscribed).
+     */
+    @Test
+    fun anSdkEventSourceRetryingWithItsFirstIdResumesAfterTheLatestEvent() {
+        val transport =
+            FakeTransport(
+                { listener ->
+                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
+                    listener.onData("id: ev_2\nevent: commerce_session.created\ndata: {}\n\n".toByteArray())
+                    listener.onData("id: ev_3\nevent: commerce_session.closed\ndata: {}\n\n".toByteArray())
+                    listener.onEnd()
+                },
+                { listener ->
+                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
+                    listener.onData("id: ev_4\nevent: commerce_session.completed\ndata: {}\n\n".toByteArray())
+                    listener.onEnd()
+                }
+            )
+        val factory = EventSources.createFactory(client(transport))
+        val events = CopyOnWriteArrayList<String?>()
+
+        repeat(2) {
+            val ended = CompletableDeferred<Throwable?>()
+            factory.newEventSource(
+                eventsRequest(),
+                object : EventSourceListener() {
+                    override fun onEvent(
+                        eventSource: EventSource,
+                        id: String?,
+                        type: String?,
+                        data: String
+                    ) {
+                        events += id
+                    }
+
+                    override fun onClosed(eventSource: EventSource) {
+                        ended.complete(null)
+                    }
+
+                    override fun onFailure(
+                        eventSource: EventSource,
+                        t: Throwable?,
+                        response: Response?
+                    ) {
+                        ended.complete(t)
+                    }
+                }
+            )
+            assertIs<IOException>(runBlocking { withTimeout(WAIT_S * MILLIS) { ended.await() } })
+        }
+
+        assertEquals(listOf("ev_2", "ev_3", "ev_4"), events.toList())
+        assertTrue(transport.requests[0].headers.contains("Last-Event-ID" to "ev_1"))
+        assertTrue(transport.requests[1].headers.contains("Last-Event-ID" to "ev_3"))
+        assertEquals(1, transport.requests[1].headers.count { (name, _) -> name.equals("Last-Event-ID", true) })
     }
 
     @Test
