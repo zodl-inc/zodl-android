@@ -44,7 +44,8 @@ class ZashiTopAppBarVMTest {
         val router = mockk<NavigationRouter>(relaxed = true)
         val vm = vm(listOf(zashi(isSelected = false), keystone()), router)
 
-        vm.state.value.moreButton.onClick()
+        val state = vm.state.value
+        state.moreButton.onClick()
 
         verify(exactly = 1) { router.forward(IntegrationsArgs) }
     }
@@ -54,7 +55,8 @@ class ZashiTopAppBarVMTest {
         val router = mockk<NavigationRouter>(relaxed = true)
         val vm = vm(listOf(zashi(isSelected = true)), router)
 
-        vm.state.value.moreButton.onClick()
+        val state = vm.state.value
+        state.moreButton.onClick()
 
         verify(exactly = 1) { router.forward(IntegrationsArgs) }
     }
