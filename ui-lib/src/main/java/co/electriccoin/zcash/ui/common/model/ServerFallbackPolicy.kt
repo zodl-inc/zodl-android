@@ -10,7 +10,7 @@ import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
  *   clearnet tier, so a healthy gateway is never demoted.
  * - Automatic mode selects only the gateway tier: a wallet in Automatic mode found on a clearnet
  *   server (e.g. one upgraded from before OHTTP) is moved to a gateway whether or not one answers
- *   right now; when none answers the move is reported as an outage like any other.
+ *   right now; when none answers, the outage is then confirmed and reported like any other.
  * - When no gateway is reachable, automatic mode STAYS on the gateway and reports the unavailability
  *   to the user (via UI banner), requiring manual clearnet server selection. Automatic fallback is
  *   disabled (product decision 2026-09-22).
@@ -22,7 +22,7 @@ object ServerFallbackPolicy {
         /** Stay on the gateway and report it is unavailable to the UI. */
         data object StayAndReportGatewayUnavailable : DecisionResult
 
-        /** Move from a clearnet server to the OHTTP gateway; [isReachable] false = report the outage too. */
+        /** Move from a clearnet server to the OHTTP gateway; [isReachable] false = it did not answer this check. */
         data class ReturnToGateway(
             val endpoint: LightWalletEndpoint,
             val isReachable: Boolean = true,

@@ -691,15 +691,19 @@ class AutomaticServerRepositoryTest {
         }
 
     @Test
-    fun anAutomaticWalletOnClearnetMovesToTheGatewayAndReportsItWhenTheGatewayIsDown() =
+    fun anAutomaticWalletOnClearnetMovesToTheGatewayAndReportsItOnceTheOutageIsConfirmed() =
         runTest {
-            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(known.last())
+            coEvery { persistableWalletProvider.getPersistableWallet() } returnsMany
+                listOf(wallet(known.last()), wallet(gateway))
             stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
             coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns
                 ServerValidation.InValid(IllegalStateException("down"))
             val banner = collectBanner()
 
             assertEquals(gateway, repository.evaluateServerSwitch(SwitchTrigger.FOREGROUND))
+            assertEquals(false, banner.last())
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
             assertEquals(true, banner.last())
             coVerify(exactly = 0) { synchronizer.getFastestServers(fallbacks) }
         }

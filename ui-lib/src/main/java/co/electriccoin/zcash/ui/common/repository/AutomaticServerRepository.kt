@@ -398,7 +398,8 @@ class AutomaticServerRepositoryImpl(
                     if (decision.isReachable) {
                         _ohttpUnavailable.value = false
                     } else {
-                        reportGatewayUnavailable(clearsAtStart)
+                        // Counts as the first failed check: the next check, on the gateway, confirms it.
+                        consecutiveGatewayFailures = 1
                     }
                     Twig.info {
                         "Automatic server: OHTTP-first current=${current.host} " +
