@@ -342,10 +342,14 @@ class AutomaticServerRepositoryImpl(
     @Suppress("ReturnCount", "ComplexMethod", "NestedBlockDepth")
     internal suspend fun evaluateServerSwitch(trigger: SwitchTrigger): LightWalletEndpoint? {
         val clearsAtStart = manualModeClears.get()
-        // Manual and Public never use the gateway lane; Public's own clearnet selection comes later.
-        if (!isServerAutomatic() || isPublicConnectionProvider.get()) {
+        if (!isServerAutomatic()) {
             _ohttpUnavailable.value = false
             return null
+        }
+        // Public is the classic automatic server switch on public servers; the gateway lane is Private's.
+        if (isPublicConnectionProvider.get()) {
+            _ohttpUnavailable.value = false
+            return evaluatePublicServerSwitch(trigger)
         }
         if (isAppInTransactionState) return null
         val current = persistableWalletProvider.getPersistableWallet()?.endpoint ?: return null
@@ -436,6 +440,29 @@ class AutomaticServerRepositoryImpl(
         }
     }
 
+    /**
+     * Public mode: the original automatic server switch, restricted to the public (clearnet) servers. On a
+     * foreground edge the SDK benchmarks them through its hysteresis policy and names a better server, if
+     * any; the gateway is never a candidate. Health, recovery and connectivity triggers belong to Private.
+     */
+    private suspend fun evaluatePublicServerSwitch(trigger: SwitchTrigger): LightWalletEndpoint? {
+        if (trigger != SwitchTrigger.FOREGROUND || isAppInTransactionState) return null
+        val current = persistableWalletProvider.getPersistableWallet()?.endpoint ?: return null
+        val candidates = lightWalletEndpointProvider.getFallbackEndpoints()
+        if (candidates.isEmpty()) return null
+        val synchronizer = synchronizerProvider.getSynchronizerOrNull() ?: return null
+        return try {
+            synchronizer.evaluateServerSwitch(
+                current = current,
+                candidates = candidates,
+                fetchThreshold = PUBLIC_FETCH_THRESHOLD,
+                blocksToFetch = 1
+            )
+        } finally {
+            evaluationInterval.markAttempted()
+        }
+    }
+
     private suspend fun reportGatewayUnavailable(clearsAtStart: Long) {
         if (manualModeClears.get() == clearsAtStart && isServerAutomatic()) {
             _ohttpUnavailable.value = true
@@ -508,7 +535,8 @@ class AutomaticServerRepositoryImpl(
         val synchronizer: Synchronizer? = synchronizerProvider.getSynchronizerOrNull()
         Twig.info { "Automatic server: switching to ${candidate.host}:${candidate.port}" }
         walletRepository.updateWalletEndpoint(candidate)
-        syncFallbackFlag(candidate)
+        // Public runs on clearnet by choice; only Private marks being off the gateway as the OHTTP fallback.
+        if (!isPublicConnectionProvider.get()) syncFallbackFlag(candidate)
         synchronizer?.confirmServerSwitch(candidate)
     }
 }
@@ -531,6 +559,9 @@ private val GATEWAY_HEALTH_INTERVAL = 2.minutes
 
 /** Cap on one plain validation of a fallback candidate. */
 private val VALIDATION_TIMEOUT = 20.seconds
+
+/** Public mode: how long a test block fetch may take before the SDK counts the server as slow. */
+private val PUBLIC_FETCH_THRESHOLD = 5.seconds
 
 /** How often, while on a clearnet fallback, to check whether the OHTTP gateway is back. */
 private val FALLBACK_RECOVERY_INTERVAL = 5.minutes
