@@ -53,6 +53,7 @@ class GetHomeMessageUseCase(
     private val migrationHomeMessageSource: MigrationHomeMessageSource,
     private val votingHomeMessageSource: VotingHomeMessageSource,
     private val automaticServerRepository: co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository,
+    private val observeOhttpOptInVisible: ObserveOhttpOptInVisibleUseCase,
 ) {
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     fun observe(): Flow<HomeMessageData?> =
@@ -134,6 +135,7 @@ class GetHomeMessageUseCase(
         val isOhttpUnavailable: Boolean,
         /** [WalletSnapshot.status] DISCONNECTED for the shared grace (see [observeRuntimeMessage]). */
         val isDisconnectedSustained: Boolean,
+        val isOhttpOptInVisible: Boolean,
     )
 
     /**
@@ -167,9 +169,12 @@ class GetHomeMessageUseCase(
                 migrationHomeMessageSource.observe(),
                 accountDataSource.selectedAccount,
                 snapshotsWithGrace,
-                automaticServerRepository.ohttpUnavailable
-            ) { sf, mig, acc, (ws, disconnectedSustained), ohttpUnavailable ->
-                RuntimeMessageInputs(sf, mig, acc, ws, ohttpUnavailable, disconnectedSustained)
+                combine(
+                    automaticServerRepository.ohttpUnavailable,
+                    observeOhttpOptInVisible()
+                ) { unavailable, optInVisible -> unavailable to optInVisible }
+            ) { sf, mig, acc, (ws, disconnectedSustained), ohttp ->
+                RuntimeMessageInputs(sf, mig, acc, ws, ohttp.first, disconnectedSustained, ohttp.second)
             }.collect { inputs ->
                 val shieldFundsMessage = inputs.shieldFunds
                 val migrationMessage = inputs.migration
@@ -198,6 +203,7 @@ class GetHomeMessageUseCase(
                             someBalance = (account?.spendableShieldedBalance?.value ?: 0) > 0
                         )
                         ?: migrationMessage
+                        ?: HomeMessageData.OhttpOptIn.takeIf { inputs.isOhttpOptInVisible }
                         ?: shieldFundsMessage
 
                 if (message is HomeMessageData.Syncing && firstSyncingMessage == null) {

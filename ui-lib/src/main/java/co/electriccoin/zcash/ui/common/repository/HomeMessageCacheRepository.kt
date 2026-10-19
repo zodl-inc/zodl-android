@@ -62,6 +62,9 @@ sealed interface HomeMessageData {
 
     data object OhttpUnavailable : RuntimeMessage()
 
+    /** Offers the private connection to users not on Private; no close button, see [OhttpOptIn] widget. */
+    data object OhttpOptIn : RuntimeMessage()
+
     data class Restoring(
         val isSpendable: Boolean,
         val progress: Float

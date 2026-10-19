@@ -216,6 +216,13 @@
     <string name="ohttpInfo_item3Title">Siempre se te pregunta primero</string>
     <string name="ohttpInfo_item3Body">Si el relé privado deja de funcionar, Zodl no cambiará a servidores públicos sin tu consentimiento.</string>
     <string name="ohttpInfo_gotIt">Entendido</string>
+    <string name="ohttpOptIn_widgetTitle">Conexión privada disponible</string>
+    <string name="ohttpOptIn_widgetSubtitle">Oculta tu dirección IP</string>
+    <string name="ohttpOptIn_widgetView">Ver</string>
+    <string name="ohttpOptIn_title">Oculta tu dirección IP</string>
+    <string name="ohttpOptIn_body">Zodl puede enviar sus solicitudes a través de un relé privado mediante Oblivious HTTP (OHTTP) en lugar de conectarse directamente a los servidores.</string>
+    <string name="ohttpOptIn_notNow">Ahora no</string>
+    <string name="ohttpOptIn_turnOn">Activar la conexión privada</string>
     <string name="serverSetup_manual">Manual</string>
     <string name="serverSetup_fastestServers">Servidores más rápidos</string>
     <string name="serverSetup_otherServers">Otros servidores</string>

@@ -228,6 +228,13 @@
     <string name="ohttpInfo_item3Title">You\'re always asked first</string>
     <string name="ohttpInfo_item3Body">If the private relay goes down, Zodl won\'t switch to public servers without your OK.</string>
     <string name="ohttpInfo_gotIt">Got it</string>
+    <string name="ohttpOptIn_widgetTitle">Private connection available</string>
+    <string name="ohttpOptIn_widgetSubtitle">Hide your IP address</string>
+    <string name="ohttpOptIn_widgetView">View</string>
+    <string name="ohttpOptIn_title">Hide Your IP Address</string>
+    <string name="ohttpOptIn_body">Zodl can send its requests through a private relay using Oblivious HTTP (OHTTP) instead of connecting to servers directly.</string>
+    <string name="ohttpOptIn_notNow">Not now</string>
+    <string name="ohttpOptIn_turnOn">Turn on private connection</string>
     <string name="serverSetup_manual">Manual</string>
     <string name="serverSetup_fastestServers">Fastest servers</string>
     <string name="serverSetup_otherServers">Other servers</string>

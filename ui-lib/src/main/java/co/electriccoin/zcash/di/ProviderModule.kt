@@ -30,6 +30,8 @@ import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProvi
 import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProviderImpl
+import co.electriccoin.zcash.ui.common.provider.IsOhttpOptInDismissedProvider
+import co.electriccoin.zcash.ui.common.provider.IsOhttpOptInDismissedProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsOledEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.IsOledEnabledStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
@@ -100,6 +102,7 @@ val providerModule =
         singleOf(::IsServerSelectionAutomaticProviderImpl) bind IsServerSelectionAutomaticProvider::class
         singleOf(::IsOhttpFallbackActiveProviderImpl) bind IsOhttpFallbackActiveProvider::class
         singleOf(::IsPublicConnectionProviderImpl) bind IsPublicConnectionProvider::class
+        singleOf(::IsOhttpOptInDismissedProviderImpl) bind IsOhttpOptInDismissedProvider::class
         single {
             SynchronizerProviderImpl(
                 walletCoordinator = get(),

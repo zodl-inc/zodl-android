@@ -126,6 +126,8 @@ import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenArgs
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenScreen
 import co.electriccoin.zcash.ui.screen.more.MoreArgs
 import co.electriccoin.zcash.ui.screen.more.MoreScreen
+import co.electriccoin.zcash.ui.screen.ohttpoptin.OhttpOptInArgs
+import co.electriccoin.zcash.ui.screen.ohttpoptin.OhttpOptInScreen
 import co.electriccoin.zcash.ui.screen.ohttpunavailable.OhttpUnavailableArgs
 import co.electriccoin.zcash.ui.screen.ohttpunavailable.OhttpUnavailableScreen
 import co.electriccoin.zcash.ui.screen.pay.PayArgs
@@ -264,6 +266,7 @@ fun NavGraphBuilder.walletNavGraph(
         composable<ChooseServerArgs> { ChooseServerScreen(it.toRoute()) }
         dialogComposable<OhttpInfoArgs> { OhttpInfoScreen() }
         dialogComposable<OhttpUnavailableArgs> { OhttpUnavailableScreen() }
+        composable<OhttpOptInArgs> { OhttpOptInScreen() }
         composable<WalletBackup> { AndroidWalletBackup(it.toRoute()) }
         composable<FeedbackArgs> { FeedbackScreen() }
         composable<ResetZashiArgs> { ResetZashiScreen() }
