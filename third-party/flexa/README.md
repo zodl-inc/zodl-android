@@ -3,6 +3,10 @@
 The `core` and `spend` modules of the Flexa Android SDK, built from source as the Gradle projects
 `:flexa-core` and `:flexa-spend` instead of the `co.flexa:core` / `co.flexa:spend` Maven artifacts.
 
+**Maintainer:** y4ssi
+**Automation:** `.github/workflows/flexa-sdk-update.yml` checks daily for new releases and opens
+update PRs automatically.
+
 - Upstream: https://github.com/flexa/flexa-android, tag `1.1.3`, commit
   `e83f3923923a20ff877fe9858f1b14defe093363` (`FLEXA_VERSION` in `gradle.properties`).
 - License: MIT (`LICENSE.md`, `NOTICE.txt`), unchanged.
