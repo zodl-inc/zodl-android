@@ -246,30 +246,21 @@ jobs:
             echo "Patch conflict detected for Flexa SDK ${LATEST_VERSION}" > .flexa-update-conflict
             git add .flexa-update-conflict
 
-            COMMIT_MSG="[DRAFT] Flexa SDK ${LATEST_VERSION} available (patch conflict)
-
-Automated update check found a new Flexa SDK release, but the OkHttp
-customizer patch failed to apply cleanly.
-
-Manual resolution required. See PR body for conflict details and
-resolution steps.
-
-No version changes committed to avoid stale source/version mismatch."
+            git commit -m "[DRAFT] Flexa SDK ${LATEST_VERSION} available (patch conflict)" \
+              -m "Automated update check found a new Flexa SDK release, but the OkHttp customizer patch failed to apply cleanly." \
+              -m "Manual resolution required. See PR body for conflict details and resolution steps." \
+              -m "No version changes committed to avoid stale source/version mismatch."
           else
             # Patch succeeded - commit the updated sources and metadata
             git add third-party/flexa/ gradle.properties
 
-            COMMIT_MSG="Update Flexa SDK to ${LATEST_VERSION}
-
-Automated update from flexa-android release.
-- Patch applied successfully
-- Sources updated
-- Version metadata bumped
-
-Review checklist in PR body."
+            git commit -m "Update Flexa SDK to ${LATEST_VERSION}" \
+              -m "Automated update from flexa-android release." \
+              -m "- Patch applied successfully" \
+              -m "- Sources updated" \
+              -m "- Version metadata bumped" \
+              -m "Review checklist in PR body."
           fi
-
-          git commit -m "$COMMIT_MSG"
 
       - name: Generate PR token
         if: steps.check.outputs.needs_update == 'true'
