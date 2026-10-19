@@ -241,6 +241,12 @@
     <string name="ohttpUnavailable_title">Private connection unavailable</string>
     <string name="ohttpUnavailable_body">Zodl couldn\'t reach private (OHTTP) servers. You can keep waiting or choose a public server. Public servers can see your IP address.</string>
     <string name="ohttpUnavailable_chooseServer">Choose server</string>
+    <string name="ohttpUnavailableSheet_title">Private connection unavailable</string>
+    <string name="ohttpUnavailableSheet_body">Zodl can\'t reach its private relay right now. You can keep waiting or switch to public servers, which can see your IP address unless you turn on Tor below or use a VPN. Zodl will switch you back automatically once the relay is available.</string>
+    <string name="ohttpUnavailableSheet_torTitle">Enable Tor Protection</string>
+    <string name="ohttpUnavailableSheet_torBody">Hide your IP address by routing traffic through the Tor network.</string>
+    <string name="ohttpUnavailableSheet_keepWaiting">Keep waiting</string>
+    <string name="ohttpUnavailableSheet_switchToPublic">Switch to public servers</string>
 
     <!-- ===== connect_keystone ===== -->
     <string name="keystone_addHWWallet_scan">Scan your device’s QR code to connect.</string>

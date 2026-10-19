@@ -99,6 +99,7 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveClearSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveContactByAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveFastestServersUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveKeepScreenOnSyncSessionUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveOhttpUnavailablePromptUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSeedMismatchUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
@@ -133,6 +134,7 @@ import co.electriccoin.zcash.ui.common.usecase.SendEmailUseCase
 import co.electriccoin.zcash.ui.common.usecase.SendSupportEmailUseCase
 import co.electriccoin.zcash.ui.common.usecase.SendTransactionAgainUseCase
 import co.electriccoin.zcash.ui.common.usecase.SetAppearanceModeUseCase
+import co.electriccoin.zcash.ui.common.usecase.SetTorEnabledUseCase
 import co.electriccoin.zcash.ui.common.usecase.ShareImageUseCase
 import co.electriccoin.zcash.ui.common.usecase.SharePCZTUseCase
 import co.electriccoin.zcash.ui.common.usecase.ShareQRUseCase
@@ -320,6 +322,8 @@ val useCaseModule =
         factoryOf(::GetAutomaticEndpointUseCase)
         factoryOf(::IsServerAutomaticUseCase)
         factoryOf(::ObserveServerConnectionModeUseCase)
+        factoryOf(::ObserveOhttpUnavailablePromptUseCase)
+        factoryOf(::SetTorEnabledUseCase)
         factoryOf(::GetGiftCardDestinationAddressUseCase)
         factoryOf(::NavigateToRedeemGiftCardUseCase)
         factoryOf(::HandleExternalLinkUseCase)

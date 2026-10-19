@@ -236,6 +236,12 @@
     <string name="ohttpUnavailable_title">Conexión privada no disponible</string>
     <string name="ohttpUnavailable_body">Zodl no pudo conectarse a los servidores privados (OHTTP). Puedes seguir esperando o elegir un servidor público. Los servidores públicos pueden ver tu dirección IP.</string>
     <string name="ohttpUnavailable_chooseServer">Elegir servidor</string>
+    <string name="ohttpUnavailableSheet_title">Conexión privada no disponible</string>
+    <string name="ohttpUnavailableSheet_body">Zodl no puede conectar con su relé privado en este momento. Puedes seguir esperando o cambiar a servidores públicos, que pueden ver tu dirección IP a menos que actives Tor abajo o uses una VPN. Zodl te devolverá automáticamente a la conexión privada cuando el relé vuelva a estar disponible.</string>
+    <string name="ohttpUnavailableSheet_torTitle">Activar la protección Tor</string>
+    <string name="ohttpUnavailableSheet_torBody">Oculta tu dirección IP enviando el tráfico a través de la red Tor.</string>
+    <string name="ohttpUnavailableSheet_keepWaiting">Seguir esperando</string>
+    <string name="ohttpUnavailableSheet_switchToPublic">Cambiar a servidores públicos</string>
 
     <!-- ===== connect_keystone ===== -->
     <string name="keystone_addHWWallet_scan">Escanea el código QR de tu dispositivo para conectarte.</string>

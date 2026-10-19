@@ -53,6 +53,7 @@ import co.electriccoin.zcash.ui.screen.integrations.IntegrationsVM
 import co.electriccoin.zcash.ui.screen.ironwood.IronwoodAnnouncementVM
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenVM
 import co.electriccoin.zcash.ui.screen.more.MoreVM
+import co.electriccoin.zcash.ui.screen.ohttpunavailable.OhttpUnavailableVM
 import co.electriccoin.zcash.ui.screen.pay.PayVM
 import co.electriccoin.zcash.ui.screen.qrcode.QrCodeVM
 import co.electriccoin.zcash.ui.screen.receive.ReceiveVM
@@ -126,6 +127,7 @@ val viewModelModule =
         viewModelOf(::WhatsNewViewModel)
         viewModelOf(::ChooseServerVM)
         viewModelOf(::OhttpInfoVM)
+        viewModelOf(::OhttpUnavailableVM)
         viewModelOf(::ReceiveVM)
         viewModelOf(::QrCodeVM)
         viewModelOf(::RequestVM)
