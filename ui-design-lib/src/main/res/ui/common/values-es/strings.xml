@@ -440,6 +440,7 @@
     <string name="integrations_disabled_info">Durante el proceso de restauración no es posible usar integraciones de pago.</string>
     <string name="settings_flexa">Pagar con Flexa</string>
     <string name="settings_flexaDesc">Gasta ZEC en miles de establecimientos comerciales.</string>
+    <string name="settings_flexaIpDesc">Flexa puede ver tu dirección IP al mostrar comercios y sus páginas. Zodl no la ve.</string>
     <string name="integrations_flexa_biometric_message">Autentícate para pagar con Flexa</string>
     <string name="integrations_disabled_info_flexa">Cambia de Keystone a Zodl para usar Flexa.</string>
     <string name="integrations_dialog_more_options">Más opciones</string>
