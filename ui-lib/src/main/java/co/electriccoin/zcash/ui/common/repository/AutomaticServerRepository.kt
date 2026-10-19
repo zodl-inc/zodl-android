@@ -446,7 +446,13 @@ class AutomaticServerRepositoryImpl(
      * any; the gateway is never a candidate. Health, recovery and connectivity triggers belong to Private.
      */
     private suspend fun evaluatePublicServerSwitch(trigger: SwitchTrigger): LightWalletEndpoint? {
-        if (trigger != SwitchTrigger.FOREGROUND || isAppInTransactionState) return null
+        if (isAppInTransactionState) return null
+        if (isOhttpFallbackActiveProvider.get() && trigger.probesGatewayRecovery) {
+            // Public was entered from the "private connection unavailable" prompt: go back to Private
+            // as soon as a gateway answers again.
+            evaluateReturnToPrivate()?.let { return it }
+        }
+        if (trigger != SwitchTrigger.FOREGROUND) return null
         val current = persistableWalletProvider.getPersistableWallet()?.endpoint ?: return null
         val candidates = lightWalletEndpointProvider.getFallbackEndpoints()
         if (candidates.isEmpty()) return null
@@ -458,6 +464,17 @@ class AutomaticServerRepositoryImpl(
                 fetchThreshold = PUBLIC_FETCH_THRESHOLD,
                 blocksToFetch = 1
             )
+        } finally {
+            evaluationInterval.markAttempted()
+        }
+    }
+
+    private suspend fun evaluateReturnToPrivate(): LightWalletEndpoint? {
+        val gateways = lightWalletEndpointProvider.getEndpoints().filter(lightWalletEndpointProvider::isOhttpGateway)
+        if (gateways.isEmpty()) return null
+        val synchronizer = synchronizerProvider.getSynchronizerOrNull() ?: return null
+        return try {
+            rankValidated(synchronizer, gateways).firstOrNull()
         } finally {
             evaluationInterval.markAttempted()
         }
@@ -534,9 +551,12 @@ class AutomaticServerRepositoryImpl(
         if (candidate !in lightWalletEndpointProvider.getEndpoints()) return
         val synchronizer: Synchronizer? = synchronizerProvider.getSynchronizerOrNull()
         Twig.info { "Automatic server: switching to ${candidate.host}:${candidate.port}" }
+        // A gateway candidate while Public can only be the return to Private after an outage.
+        val returningToPrivate = lightWalletEndpointProvider.isOhttpGateway(candidate)
+        if (returningToPrivate) isPublicConnectionProvider.store(false)
         walletRepository.updateWalletEndpoint(candidate)
         // Public runs on clearnet by choice; only Private marks being off the gateway as the OHTTP fallback.
-        if (!isPublicConnectionProvider.get()) syncFallbackFlag(candidate)
+        if (returningToPrivate || !isPublicConnectionProvider.get()) syncFallbackFlag(candidate)
         synchronizer?.confirmServerSwitch(candidate)
     }
 }
@@ -544,11 +564,12 @@ class AutomaticServerRepositoryImpl(
 /** What woke the automatic-selection lane; connectivity edges skip the foreground rate limit. */
 enum class SwitchTrigger(
     val bypassesInterval: Boolean,
+    val probesGatewayRecovery: Boolean = false,
 ) {
-    FOREGROUND(bypassesInterval = false),
+    FOREGROUND(bypassesInterval = false, probesGatewayRecovery = true),
     CONNECTIVITY(bypassesInterval = true),
     HEALTH(bypassesInterval = true),
-    RECOVERY(bypassesInterval = true),
+    RECOVERY(bypassesInterval = true, probesGatewayRecovery = true),
 }
 
 /** Consecutive failed gateway checks before the outage is reported. */

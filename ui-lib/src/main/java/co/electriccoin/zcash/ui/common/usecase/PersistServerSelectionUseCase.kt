@@ -30,9 +30,13 @@ class PersistServerSelectionUseCase(
         persistFlagAndEndpoint(isAutomatic = true, endpoint = endpoint)
     }
 
-    /** Public: automatic selection on public (clearnet) servers; starts from the default clearnet server. */
-    suspend fun persistPublic() {
-        isOhttpFallbackActiveProvider.store(false)
+    /**
+     * Public: automatic selection on public (clearnet) servers; starts from the default clearnet server.
+     * [afterPrivateUnavailable] marks a switch made from the "private connection unavailable" prompt: the
+     * wallet then returns to Private by itself once the gateway answers again. A deliberate Public never does.
+     */
+    suspend fun persistPublic(afterPrivateUnavailable: Boolean = false) {
+        isOhttpFallbackActiveProvider.store(afterPrivateUnavailable)
         isPublicConnectionProvider.store(true)
         val endpoint =
             lightWalletEndpointProvider.getFallbackEndpoints().firstOrNull()

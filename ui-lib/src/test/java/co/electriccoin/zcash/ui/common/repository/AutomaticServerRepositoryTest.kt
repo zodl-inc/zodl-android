@@ -315,6 +315,58 @@ class AutomaticServerRepositoryTest {
         }
 
     @Test
+    fun publicAfterAnOutageReturnsToTheGatewayOnceItAnswers() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            fallbackActive = true
+            stubTiers(gatewayReachable = true, rankedFallbacks = fallbacks)
+
+            assertEquals(gateway, repository.evaluateServerSwitch(SwitchTrigger.RECOVERY))
+            coVerify(exactly = 0) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun publicAfterAnOutageStaysWhileTheGatewayIsStillDown() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            fallbackActive = true
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            coEvery { synchronizer.validateServerEndpoint(any(), any()) } returns
+                ServerValidation.InValid(IllegalStateException("down"))
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.RECOVERY))
+        }
+
+    @Test
+    fun aDeliberatePublicNeverProbesTheGatewayOnRecovery() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            fallbackActive = false
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.RECOVERY))
+            coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
+        }
+
+    @Test
+    fun returningToTheGatewayLeavesPublicMode() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            fallbackActive = true
+            localBalances.value = emptyMap()
+            stubTiers(gatewayReachable = true, rankedFallbacks = fallbacks)
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.RECOVERY).launchIn(backgroundScope)
+            runCurrent()
+            edges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(gateway) }
+            coVerify(exactly = 1) { isPublicProvider.store(false) }
+            assertEquals(false, fallbackActive)
+        }
+
+    @Test
     fun manualSelectionSkipsTheSdkBenchmark() =
         runTest {
             coEvery { isAutomaticProvider.get() } returns false
