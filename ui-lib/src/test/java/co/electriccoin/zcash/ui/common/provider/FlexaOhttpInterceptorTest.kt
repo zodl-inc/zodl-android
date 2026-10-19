@@ -3,10 +3,14 @@ package co.electriccoin.zcash.ui.common.provider
 import co.electriccoin.lightwallet.client.OhttpException
 import co.electriccoin.lightwallet.client.OhttpHttpClient
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withTimeout
 import okhttp3.Call
 import okhttp3.Callback
@@ -104,6 +108,37 @@ class FlexaOhttpInterceptorTest {
     }
 
     @Test
+    fun aContentTypeTheConnectionFieldNamesIsNotAddedFromTheBody() {
+        val transport = FakeTransport()
+        val client =
+            OkHttpClient
+                .Builder()
+                .addInterceptor { chain ->
+                    chain.proceed(
+                        chain
+                            .request()
+                            .newBuilder()
+                            .header("Connection", "Content-Type")
+                            .build()
+                    )
+                }.addInterceptor(FlexaOhttpInterceptor(transport))
+                .build()
+
+        client
+            .newCall(
+                Request
+                    .Builder()
+                    .url("https://api.flexa.co/tokens")
+                    .post("{}".toRequestBody("application/json".toMediaType()))
+                    .build()
+            ).execute()
+            .close()
+
+        val sent = transport.requests.single()
+        assertTrue(sent.headers.none { (name, _) -> name.equals("Content-Type", true) })
+    }
+
+    @Test
     fun anotherHostIsRefusedAndNothingIsSent() {
         val transport = FakeTransport()
 
@@ -167,69 +202,57 @@ class FlexaOhttpInterceptorTest {
     }
 
     @Test
-    fun cancellingReturnsTheCallAtOnceAndEndsTheExchangeOfASenderStillBlocked() {
-        val release = CountDownLatch(1)
-        val started = AtomicReference(CountDownLatch(1))
-        val stillActive = CopyOnWriteArrayList<Boolean>()
-        val ended = CountDownLatch(2)
-        val blocked: suspend () -> Unit = {
-            started.get().countDown()
-            release.await(WAIT_S, TimeUnit.SECONDS)
-            stillActive += currentCoroutineContext().isActive
-            ended.countDown()
-        }
+    fun cancellingReturnsTheCallAtOnceAndClosesTheConnectionOfABlockedSender() {
+        val sockets = CopyOnWriteArrayList<FakeSocket>()
         val transport =
             FakeTransport(
                 { listener ->
-                    blocked()
+                    blockingRead(sockets)
                     listener.onEnd()
                 },
                 answer = {
-                    blocked()
+                    blockingRead(sockets)
                     OhttpHttpClient.Response(200, ByteArray(0))
                 }
             )
         val client = client(transport)
 
-        listOf(accountRequest(), eventsRequest()).forEach { request ->
-            started.set(CountDownLatch(1))
+        listOf(accountRequest(), eventsRequest()).forEachIndexed { i, request ->
             val call = client.newCall(request)
             val failure = AtomicReference<Throwable>()
             val caller = thread { failure.set(runCatching { call.execute() }.exceptionOrNull()) }
-            assertTrue(started.get().await(WAIT_S, TimeUnit.SECONDS))
+            awaitSocket(sockets, i)
 
             call.cancel()
 
             caller.join(WAIT_S * MILLIS / 2)
-            assertTrue(!caller.isAlive && release.count == 1L, "the call returned while the sender was blocked")
+            assertTrue(!caller.isAlive, "the call returned")
             assertIs<IOException>(failure.get())
+            assertTrue(sockets[i].closed.await(WAIT_S, TimeUnit.SECONDS), "the sender's connection was closed")
         }
-        release.countDown()
-        assertTrue(ended.await(WAIT_S, TimeUnit.SECONDS))
-        assertEquals(listOf(false, false), stillActive.toList(), "both exchanges were cancelled")
     }
 
     @Test
-    fun aCallTimeoutThatFiresEndsTheExchangeOfASenderStillBlocked() {
-        val release = CountDownLatch(1)
-        val stillActive = CompletableDeferred<Boolean>()
+    fun aCallTimeoutThatFiresClosesTheConnectionOfABlockedSender() {
+        val sockets = CopyOnWriteArrayList<FakeSocket>()
         val transport =
             FakeTransport(
                 answer = {
-                    release.await(WAIT_S, TimeUnit.SECONDS)
-                    stillActive.complete(currentCoroutineContext().isActive)
+                    blockingRead(sockets)
                     OhttpHttpClient.Response(200, ByteArray(0))
                 }
             )
-        val call = client(transport) { callTimeout(CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS) }.newCall(accountRequest())
+        val call =
+            client(transport) { callTimeout(CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS) }
+                .newCall(accountRequest())
         val startedAt = System.nanoTime()
 
         assertFailsWith<IOException> { call.execute() }
 
         assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt) < WAIT_S * MILLIS / 2)
         assertTrue(transport.timeouts.single() <= CALL_TIMEOUT_MS)
-        release.countDown()
-        assertEquals(false, runBlocking { withTimeout(WAIT_S * MILLIS) { stillActive.await() } })
+        awaitSocket(sockets, 0)
+        assertTrue(sockets[0].closed.await(WAIT_S, TimeUnit.SECONDS), "the sender's connection was closed")
     }
 
     @Test
@@ -355,21 +378,13 @@ class FlexaOhttpInterceptorTest {
     fun anEventCutBeforeItsEndIsNotResumedAfter() {
         val transport =
             FakeTransport(
-                { listener ->
-                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
-                    listener.onData("id: ev_2\ndata: {}\n\nid: ev_3\ndata: {\"id\":".toByteArray())
-                    listener.onEnd()
-                },
-                { listener ->
-                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
-                    listener.onEnd()
-                }
+                eventStream("id: ev_2\ndata: {}\n\nid: ev_3\ndata: {\"id\":"),
+                eventStream()
             )
-        val client = client(transport)
+        val factory = EventSources.createFactory(client(transport))
 
-        val first = client.newCall(eventsRequest()).execute()
-        assertFailsWith<IOException> { first.body.source().readByteArray() }
-        client.newCall(eventsRequest()).execute().close()
+        assertEquals(listOf("ev_2"), listenAsTheSdkDoes(factory))
+        listenAsTheSdkDoes(factory)
 
         assertTrue(transport.requests[1].headers.contains("Last-Event-ID" to "ev_2"))
     }
@@ -378,21 +393,13 @@ class FlexaOhttpInterceptorTest {
     fun anEmptyIdResetsTheResumptionInsteadOfFallingBackToTheSdksId() {
         val transport =
             FakeTransport(
-                { listener ->
-                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
-                    listener.onData("id: ev_2\ndata: {}\n\nid\ndata: {}\n\n".toByteArray())
-                    listener.onEnd()
-                },
-                { listener ->
-                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
-                    listener.onEnd()
-                }
+                eventStream("id: ev_2\ndata: {}\n\nid\ndata: {}\n\n"),
+                eventStream()
             )
-        val client = client(transport)
+        val factory = EventSources.createFactory(client(transport))
 
-        val first = client.newCall(eventsRequest()).execute()
-        assertFailsWith<IOException> { first.body.source().readByteArray() }
-        client.newCall(eventsRequest()).execute().close()
+        assertEquals(listOf("ev_2", null), listenAsTheSdkDoes(factory))
+        listenAsTheSdkDoes(factory)
 
         assertTrue(transport.requests[1].headers.none { (name, _) -> name.equals("Last-Event-ID", true) })
     }
@@ -401,23 +408,13 @@ class FlexaOhttpInterceptorTest {
     fun linesEndingInCrAloneOrCrlfSplitAcrossReadsAreFieldsToo() {
         val transport =
             FakeTransport(
-                { listener ->
-                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
-                    listener.onData("id: ev_2\rdata: {}\r\rid: ev_3\r".toByteArray())
-                    listener.onData("\ndata: {}\r\n\r".toByteArray())
-                    listener.onData("\n".toByteArray())
-                    listener.onEnd()
-                },
-                { listener ->
-                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
-                    listener.onEnd()
-                }
+                eventStream("id: ev_2\rdata: {}\r\rid: ev_3\r", "\ndata: {}\r\n\r", "\n"),
+                eventStream()
             )
-        val client = client(transport)
+        val factory = EventSources.createFactory(client(transport))
 
-        val first = client.newCall(eventsRequest()).execute()
-        assertFailsWith<IOException> { first.body.source().readByteArray() }
-        client.newCall(eventsRequest()).execute().close()
+        assertEquals(listOf("ev_2", "ev_3"), listenAsTheSdkDoes(factory))
+        listenAsTheSdkDoes(factory)
 
         assertTrue(transport.requests[1].headers.contains("Last-Event-ID" to "ev_3"))
     }
@@ -430,52 +427,15 @@ class FlexaOhttpInterceptorTest {
     fun anSdkEventSourceRetryingWithItsFirstIdResumesAfterTheLatestEvent() {
         val transport =
             FakeTransport(
-                { listener ->
-                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
-                    listener.onData("id: ev_2\nevent: commerce_session.created\ndata: {}\n\n".toByteArray())
-                    listener.onData("id: ev_3\nevent: commerce_session.closed\ndata: {}\n\n".toByteArray())
-                    listener.onEnd()
-                },
-                { listener ->
-                    listener.onHead(200, listOf("content-type" to "text/event-stream"))
-                    listener.onData("id: ev_4\nevent: commerce_session.completed\ndata: {}\n\n".toByteArray())
-                    listener.onEnd()
-                }
+                eventStream(
+                    "id: ev_2\nevent: commerce_session.created\ndata: {}\n\n",
+                    "id: ev_3\nevent: commerce_session.closed\ndata: {}\n\n"
+                ),
+                eventStream("id: ev_4\nevent: commerce_session.completed\ndata: {}\n\n")
             )
         val factory = EventSources.createFactory(client(transport))
-        val events = CopyOnWriteArrayList<String?>()
 
-        repeat(2) {
-            val ended = CompletableDeferred<Throwable?>()
-            factory.newEventSource(
-                eventsRequest(),
-                object : EventSourceListener() {
-                    override fun onEvent(
-                        eventSource: EventSource,
-                        id: String?,
-                        type: String?,
-                        data: String
-                    ) {
-                        events += id
-                    }
-
-                    override fun onClosed(eventSource: EventSource) {
-                        ended.complete(null)
-                    }
-
-                    override fun onFailure(
-                        eventSource: EventSource,
-                        t: Throwable?,
-                        response: Response?
-                    ) {
-                        ended.complete(t)
-                    }
-                }
-            )
-            assertIs<IOException>(runBlocking { withTimeout(WAIT_S * MILLIS) { ended.await() } })
-        }
-
-        assertEquals(listOf("ev_2", "ev_3", "ev_4"), events.toList())
+        assertEquals(listOf("ev_2", "ev_3", "ev_4"), listenAsTheSdkDoes(factory) + listenAsTheSdkDoes(factory))
         assertTrue(transport.requests[0].headers.contains("Last-Event-ID" to "ev_1"))
         assertTrue(transport.requests[1].headers.contains("Last-Event-ID" to "ev_3"))
         assertEquals(1, transport.requests[1].headers.count { (name, _) -> name.equals("Last-Event-ID", true) })
@@ -543,6 +503,71 @@ class FlexaOhttpInterceptorTest {
         assertNull(eventId("id: a\u0000b"))
     }
 
+    /** One subscription of the SDK: the ids of the events it got, until the stream failed (the gateway's cut). */
+    private fun listenAsTheSdkDoes(factory: EventSource.Factory): List<String?> {
+        val ids = CopyOnWriteArrayList<String?>()
+        val ended = CompletableDeferred<Throwable?>()
+        factory.newEventSource(
+            eventsRequest(),
+            object : EventSourceListener() {
+                override fun onEvent(
+                    eventSource: EventSource,
+                    id: String?,
+                    type: String?,
+                    data: String
+                ) {
+                    ids += id?.ifEmpty { null }
+                }
+
+                override fun onClosed(eventSource: EventSource) {
+                    ended.complete(null)
+                }
+
+                override fun onFailure(
+                    eventSource: EventSource,
+                    t: Throwable?,
+                    response: Response?
+                ) {
+                    ended.complete(t)
+                }
+            }
+        )
+        assertIs<IOException>(runBlocking { withTimeout(WAIT_S * MILLIS) { ended.await() } })
+        return ids.toList()
+    }
+
+    private fun eventStream(vararg chunks: String): suspend (OhttpHttpClient.ResponseListener) -> Unit =
+        { listener ->
+            listener.onHead(200, listOf("content-type" to "text/event-stream"))
+            chunks.forEach { listener.onData(it.toByteArray()) }
+            listener.onEnd()
+        }
+
+    /** A connection whose read blocks until it is closed, as DirectOhttpSender closes it on cancellation. */
+    private class FakeSocket {
+        val closed = CountDownLatch(1)
+    }
+
+    private suspend fun blockingRead(sockets: MutableList<FakeSocket>) {
+        val socket = FakeSocket().also { sockets += it }
+        coroutineScope {
+            launch {
+                try {
+                    awaitCancellation()
+                } finally {
+                    socket.closed.countDown()
+                }
+            }
+            runInterruptible(Dispatchers.IO) { socket.closed.await() }
+            coroutineContext.cancelChildren()
+        }
+    }
+
+    private fun awaitSocket(
+        sockets: List<FakeSocket>,
+        index: Int
+    ) = runBlocking { withTimeout(WAIT_S * MILLIS) { while (sockets.size <= index) delay(POLL_MS) } }
+
     private fun accountRequest() = Request.Builder().url("https://api.flexa.co/accounts/me").build()
 
     private fun eventsRequest() =
@@ -587,6 +612,7 @@ class FlexaOhttpInterceptorTest {
         const val STREAM_TIMEOUT_MS = 90_000
         const val WAIT_S = 10L
         const val CALL_TIMEOUT_MS = 300L
+        const val POLL_MS = 10L
         const val MILLIS = 1000L
     }
 }
