@@ -18,13 +18,15 @@ The `core` and `spend` modules of the Flexa Android SDK, built from source as th
 
 ## Why the vendored copy and patch
 
-`OkHttpProvider` (the SDK's internal HTTP client builder) is declared `internal`, so there's no public
-hook for a host app to customize the clients (interceptors, timeouts, DNS resolver, or transport
-entirely). An upstream PR changing that visibility to `public` would work, but we decided not to open one:
-Flexa would have to maintain a public API they may not need, and we'd still vendor the source for
-F-Droid's reproducible-build scanner, which requires every transitive dependency's source on disk at
-build time (AAR binaries aren't reproducible). Since we're vendoring anyway, a local patch that hooks
-the builder is simpler than upstreaming + waiting + migrating to a new release.
+`OkHttpProvider` (the SDK's internal HTTP client builder) is `internal`, so a host app has no public hook
+to change the clients the SDK builds. The app needs one to send the Flexa API calls through OHTTP. With
+such a hook upstream, the Maven artifacts would do: F-Droid accepts libraries from Maven Central, as it
+does for the wallet SDK.
+
+We decided (2026-10-19) not to open an upstream PR to flexa/flexa-android for now. The patch is small and
+Flexa releases are rare, so keeping it here costs little; an upstream PR would also make public that our
+wallet proxies Flexa traffic. If keeping the copy current becomes a burden, propose the hook upstream as a
+generic "customize the OkHttp clients" option.
 
 The patch file is `patches/0001-okhttp-client-customizer.patch` (generated with `git format-patch`).
 
@@ -38,5 +40,6 @@ The patch file is `patches/0001-okhttp-client-customizer.patch` (generated with 
 4. Align the dependency lists in `build.gradle.kts` with the new published `.module` files
    (check Maven Central or the upstream tag's `core/build.gradle` / `spend/build.gradle`).
 5. Update `FLEXA_VERSION`, `RELEASE_DATE` (from the upstream release), and the commit SHA in this README.
-6. Verify: build the app, run `./gradlew :app:check-foss-dependencies`, and confirm the F-Droid scanner
-   (`fdroid build --test <appid>`) succeeds with byte-identical output.
+6. Verify: CI builds the app; on the F-Droid build (`feature/fdroid-parity`) the "Check FOSS dependencies"
+   (`scripts/check-foss-dependencies.sh`) and "F-Droid scanner" steps must pass, and `third-party/flexa`
+   must contain no binaries.
