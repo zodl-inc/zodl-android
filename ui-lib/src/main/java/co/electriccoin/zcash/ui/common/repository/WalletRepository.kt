@@ -279,6 +279,12 @@ class WalletRepositoryImpl(
     private suspend fun migrateEndpointIfNeeded(wallet: PersistableWallet?) {
         if (wallet == null) return
         val endpoint = wallet.endpoint
+        // Manual on the OHTTP gateway is what Private is: same endpoint, no fastest-server lookup. Make it
+        // Private so it also gets the gateway health check and the unavailable prompt.
+        if (lightWalletEndpointProvider.isOhttpGateway(endpoint) && isServerSelectionAutomaticProvider.get() == false) {
+            isServerSelectionAutomaticProvider.store(true)
+            isPublicConnectionProvider.store(false)
+        }
         val isDecommissioned = endpoint.host in lightWalletEndpointProvider.getDecommissionedHosts()
         // Public mode runs on clearnet by choice, so it is not "automatic but off the gateway".
         val isAutomaticOffGateway =

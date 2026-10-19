@@ -191,6 +191,24 @@ class WalletRepositoryImplTest {
         }
 
     @Test
+    fun initTurnsAManualGatewaySelectionIntoPrivate() =
+        runTest {
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(GATEWAY),
+                    isAutomaticPreference = false,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { harness.isAutomaticProvider.store(true) }
+            assertEquals(GATEWAY, harness.walletProvider.getPersistableWallet()?.endpoint)
+        }
+
+    @Test
     fun initKeepsAManualClearnetSelection() =
         runTest {
             val (repository, harness) =
@@ -346,9 +364,12 @@ class WalletRepositoryImplTest {
             }
 
         val isServerSelectionAutomaticProvider =
-            mockk<IsServerSelectionAutomaticProvider> {
+            mockk<IsServerSelectionAutomaticProvider>(relaxed = true) {
                 coEvery { get() } returns isAutomaticPreference
             }
+
+        val isPublicConnectionProvider =
+            mockk<IsPublicConnectionProvider>(relaxed = true).also { coEvery { it.get() } returns false }
 
         val persistableWalletProvider =
             persistableWalletProviderOverride ?: FakePersistableWalletProvider(initialWallet, events)
@@ -391,8 +412,7 @@ class WalletRepositoryImplTest {
                 isIronwoodAnnouncementShownStorageProvider = isIronwoodAnnouncementShownStorageProvider,
                 sdkEncryptedPreferenceRecoveryProvider = sdkEncryptedPreferenceRecoveryProvider,
                 isServerSelectionAutomaticProvider = isServerSelectionAutomaticProvider,
-                isPublicConnectionProvider =
-                    mockk<IsPublicConnectionProvider>(relaxed = true).also { coEvery { it.get() } returns false },
+                isPublicConnectionProvider = isPublicConnectionProvider,
             )
 
         fakePrefs.seed(StandardPreferenceKeys.ONBOARDING_STATE.key, onboardingState.toNumber().toString())
@@ -400,7 +420,8 @@ class WalletRepositoryImplTest {
         scopes += repository.scope
         scopes += repository.sharingScope
 
-        return repository to TestHarness(events, fakePrefs, persistableWalletProvider)
+        return repository to
+            TestHarness(events, fakePrefs, persistableWalletProvider, isServerSelectionAutomaticProvider)
     }
 
     private fun walletOn(endpoint: LightWalletEndpoint) =
@@ -416,6 +437,7 @@ class WalletRepositoryImplTest {
         val events: List<String>,
         val fakePrefs: RecordingPreferenceProvider,
         val walletProvider: PersistableWalletProvider,
+        val isAutomaticProvider: IsServerSelectionAutomaticProvider,
     )
 }
 
