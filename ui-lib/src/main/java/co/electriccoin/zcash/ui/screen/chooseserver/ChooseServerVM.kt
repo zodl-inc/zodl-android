@@ -25,6 +25,7 @@ import co.electriccoin.zcash.ui.design.component.AlertDialogState
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.RadioButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.chooseserver.ohttpinfo.OhttpInfoArgs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
@@ -173,6 +174,7 @@ class ChooseServerVM(
                     }
                 },
             manualBadge = if (local.mode == ServerConnectionMode.MANUAL && isTesting) testingBadge else null,
+            onPrivateInfoClick = ::onPrivateInfoClicked,
         )
     }
 
@@ -185,6 +187,7 @@ class ChooseServerVM(
             title = stringRes(R.string.serverSetup_fastestServers),
             servers =
                 fastestServers.servers
+                    ?.filterNot { isGateway(it) }
                     ?.map { endpoint ->
                         createDefaultServerState(
                             endpoint = endpoint,
@@ -216,13 +219,15 @@ class ChooseServerVM(
         val customEndpointState = createCustomServerState(local = local, persisted = persisted)
         return ServerListState.Other(
             title =
-                if (fastestServers.servers.isNullOrEmpty()) {
+                if (fastestServers.servers?.filterNot { isGateway(it) }.isNullOrEmpty()) {
                     stringRes(R.string.serverSetup_allServers)
                 } else {
                     stringRes(R.string.serverSetup_otherServers)
                 },
             servers =
                 innerState.value.availableServers
+                    // The Zodl OHTTP gateway is chosen with the Private radio, not from the Manual list.
+                    .filterNot { isGateway(it) }
                     .filter { !fastestServers.servers.orEmpty().contains(it) }
                     .map<LightWalletEndpoint, ServerState> { endpoint ->
                         createDefaultServerState(
@@ -453,6 +458,8 @@ class ChooseServerVM(
             )
         }
     }
+
+    private fun onPrivateInfoClicked() = navigationRouter.forward(OhttpInfoArgs)
 
     private fun onPrivateModeClicked() = onAutomaticModeClicked(ServerConnectionMode.PRIVATE)
 

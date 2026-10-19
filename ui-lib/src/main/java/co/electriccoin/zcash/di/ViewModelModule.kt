@@ -17,6 +17,7 @@ import co.electriccoin.zcash.ui.screen.balances.breakdown.BalanceBreakdownVM
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceVM
 import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletVM
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerVM
+import co.electriccoin.zcash.ui.screen.chooseserver.ohttpinfo.OhttpInfoVM
 import co.electriccoin.zcash.ui.screen.connecthw.date.HWDateVM
 import co.electriccoin.zcash.ui.screen.connecthw.estimation.HWEstimationVM
 import co.electriccoin.zcash.ui.screen.connecthw.height.HWHeightVM
@@ -124,6 +125,7 @@ val viewModelModule =
         viewModelOf(::SupportViewModel)
         viewModelOf(::WhatsNewViewModel)
         viewModelOf(::ChooseServerVM)
+        viewModelOf(::OhttpInfoVM)
         viewModelOf(::ReceiveVM)
         viewModelOf(::QrCodeVM)
         viewModelOf(::RequestVM)

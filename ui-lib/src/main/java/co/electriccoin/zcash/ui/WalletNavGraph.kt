@@ -39,6 +39,8 @@ import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletArgs
 import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletScreen
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerScreen
+import co.electriccoin.zcash.ui.screen.chooseserver.ohttpinfo.OhttpInfoArgs
+import co.electriccoin.zcash.ui.screen.chooseserver.ohttpinfo.OhttpInfoScreen
 import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollmentNavType
 import co.electriccoin.zcash.ui.screen.connecthw.date.HWDateArgs
 import co.electriccoin.zcash.ui.screen.connecthw.date.HWFirstTransactionScreen
@@ -258,6 +260,7 @@ fun NavGraphBuilder.walletNavGraph(
         composable<MoreArgs> { MoreScreen() }
         composable<AdvancedSettingsArgs> { AdvancedSettingsScreen() }
         composable<ChooseServerArgs> { ChooseServerScreen(it.toRoute()) }
+        dialogComposable<OhttpInfoArgs> { OhttpInfoScreen() }
         composable<WalletBackup> { AndroidWalletBackup(it.toRoute()) }
         composable<FeedbackArgs> { FeedbackScreen() }
         composable<ResetZashiArgs> { ResetZashiScreen() }

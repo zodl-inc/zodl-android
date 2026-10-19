@@ -24,6 +24,7 @@ data class ServerConnectionModeState(
     val privateBadge: ModeBadgeState? = null,
     val publicBadge: ModeBadgeState? = null,
     val manualBadge: ModeBadgeState? = null,
+    val onPrivateInfoClick: () -> Unit = {},
 ) {
     val isManualSelected = manual.isChecked
 }
