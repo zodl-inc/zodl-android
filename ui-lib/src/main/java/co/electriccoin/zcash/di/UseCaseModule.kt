@@ -102,6 +102,7 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveKeepScreenOnSyncSessionUse
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSeedMismatchUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveServerConnectionModeUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveTransactionSubmitStateUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveZashiAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.OnAddressScannedUseCase
@@ -318,6 +319,7 @@ val useCaseModule =
         factoryOf(::SwapSupportMapper)
         factoryOf(::GetAutomaticEndpointUseCase)
         factoryOf(::IsServerAutomaticUseCase)
+        factoryOf(::ObserveServerConnectionModeUseCase)
         factoryOf(::GetGiftCardDestinationAddressUseCase)
         factoryOf(::NavigateToRedeemGiftCardUseCase)
         factoryOf(::HandleExternalLinkUseCase)

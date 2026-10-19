@@ -22,6 +22,7 @@ import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.model.OnboardingState
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.provider.IsIronwoodAnnouncementShownStorageProvider
+import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -95,6 +96,7 @@ class WalletRepositoryImpl(
     private val isIronwoodAnnouncementShownStorageProvider: IsIronwoodAnnouncementShownStorageProvider,
     private val sdkEncryptedPreferenceRecoveryProvider: SdkEncryptedPreferenceRecoveryProvider,
     private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
+    private val isPublicConnectionProvider: IsPublicConnectionProvider,
 ) : WalletRepository {
     /**
      * Scope the repository's `stateIn`-shared flows run on. Captured by those flows at
@@ -278,8 +280,10 @@ class WalletRepositoryImpl(
         if (wallet == null) return
         val endpoint = wallet.endpoint
         val isDecommissioned = endpoint.host in lightWalletEndpointProvider.getDecommissionedHosts()
+        // Public mode runs on clearnet by choice, so it is not "automatic but off the gateway".
         val isAutomaticOffGateway =
             !lightWalletEndpointProvider.isOhttpGateway(endpoint) &&
+                !isPublicConnectionProvider.get() &&
                 resolveIsServerSelectionAutomatic(
                     isAutomaticPreference = isServerSelectionAutomaticProvider.get(),
                     currentEndpoint = endpoint,

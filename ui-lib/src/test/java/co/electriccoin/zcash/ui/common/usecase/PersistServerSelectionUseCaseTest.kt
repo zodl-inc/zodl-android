@@ -5,7 +5,9 @@ import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.type.ServerValidation
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
+import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
+import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import io.mockk.coEvery
@@ -33,6 +35,8 @@ class PersistServerSelectionUseCaseTest {
     private val isAutomaticProvider = mockk<IsServerSelectionAutomaticProvider>(relaxed = true)
     private val isOhttpFallbackActiveProvider = mockk<IsOhttpFallbackActiveProvider>(relaxed = true)
     private val getAutomaticEndpoint = mockk<GetAutomaticEndpointUseCase>()
+    private val isPublicProvider = mockk<IsPublicConnectionProvider>(relaxed = true)
+    private val lightWalletEndpointProvider = mockk<LightWalletEndpointProvider>()
     private val useCase =
         PersistServerSelectionUseCase(
             application = mockk<Application>(),
@@ -40,7 +44,9 @@ class PersistServerSelectionUseCaseTest {
             synchronizerProvider = synchronizerProvider,
             isServerSelectionAutomaticProvider = isAutomaticProvider,
             isOhttpFallbackActiveProvider = isOhttpFallbackActiveProvider,
-            getAutomaticEndpoint = getAutomaticEndpoint
+            getAutomaticEndpoint = getAutomaticEndpoint,
+            isPublicConnectionProvider = isPublicProvider,
+            lightWalletEndpointProvider = lightWalletEndpointProvider
         )
 
     @BeforeTest
@@ -88,9 +94,42 @@ class PersistServerSelectionUseCaseTest {
         runTest {
             coEvery { getAutomaticEndpoint() } returns fastest
 
-            useCase.persistAutomatic()
+            useCase.persistPrivate()
 
             coVerify(exactly = 1) { isAutomaticProvider.store(true) }
             coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(fastest) }
+        }
+
+    @Test
+    fun privateClearsPublicFlag() =
+        runTest {
+            coEvery { getAutomaticEndpoint() } returns fastest
+
+            useCase.persistPrivate()
+
+            coVerify(exactly = 1) { isPublicProvider.store(false) }
+        }
+
+    @Test
+    fun publicPersistsPublicFlagAutomaticFlagAndFirstClearnetEndpoint() =
+        runTest {
+            io.mockk.every { lightWalletEndpointProvider.getFallbackEndpoints() } returns listOf(endpoint, fastest)
+
+            useCase.persistPublic()
+
+            coVerify(exactly = 1) { isPublicProvider.store(true) }
+            coVerify(exactly = 1) { isAutomaticProvider.store(true) }
+            coVerify(exactly = 1) { isOhttpFallbackActiveProvider.store(false) }
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(endpoint) }
+        }
+
+    @Test
+    fun manualClearsPublicFlag() =
+        runTest {
+            coEvery { synchronizer.validateServerEndpoint(any(), endpoint) } returns ServerValidation.Valid
+
+            useCase.persistManual(endpoint)
+
+            coVerify(exactly = 1) { isPublicProvider.store(false) }
         }
 }

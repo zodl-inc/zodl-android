@@ -13,6 +13,7 @@ import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.ServerFallbackPolicy
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
+import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -78,6 +79,7 @@ class AutomaticServerRepositoryImpl(
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
     private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
     private val isOhttpFallbackActiveProvider: IsOhttpFallbackActiveProvider,
+    private val isPublicConnectionProvider: IsPublicConnectionProvider,
     private val evaluationInterval: EvaluationInterval,
 ) : AutomaticServerRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -340,7 +342,8 @@ class AutomaticServerRepositoryImpl(
     @Suppress("ReturnCount", "ComplexMethod", "NestedBlockDepth")
     internal suspend fun evaluateServerSwitch(trigger: SwitchTrigger): LightWalletEndpoint? {
         val clearsAtStart = manualModeClears.get()
-        if (!isServerAutomatic()) {
+        // Manual and Public never use the gateway lane; Public's own clearnet selection comes later.
+        if (!isServerAutomatic() || isPublicConnectionProvider.get()) {
             _ohttpUnavailable.value = false
             return null
         }

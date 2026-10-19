@@ -11,6 +11,7 @@ import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
+import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -111,6 +112,9 @@ class AutomaticServerRepositoryTest {
     /** A relaxed mock returns a bare Object for the suspend Boolean getter; back it with a real value. */
     private var fallbackActive = false
     private val fallbackActiveFlow = MutableStateFlow(false)
+    private val isPublicProvider =
+        mockk<IsPublicConnectionProvider>(relaxed = true).also { coEvery { it.get() } returns false }
+
     private val fallbackFlag =
         mockk<IsOhttpFallbackActiveProvider>(relaxed = true) {
             every { observe() } returns fallbackActiveFlow
@@ -140,6 +144,7 @@ class AutomaticServerRepositoryTest {
             lightWalletEndpointProvider = lightWalletEndpointProvider,
             isServerSelectionAutomaticProvider = isAutomaticProvider,
             isOhttpFallbackActiveProvider = fallbackFlag,
+            isPublicConnectionProvider = isPublicProvider,
             evaluationInterval = EvaluationInterval(MINIMUM_EVALUATION_INTERVAL, timeSource)
         )
 

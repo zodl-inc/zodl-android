@@ -32,6 +32,8 @@ import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsOledEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.IsOledEnabledStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
+import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsSwapRefundWarningDismissedStorageProvider
@@ -97,6 +99,7 @@ val providerModule =
         singleOf(::PreferredFiatProviderImpl) bind PreferredFiatProvider::class
         singleOf(::IsServerSelectionAutomaticProviderImpl) bind IsServerSelectionAutomaticProvider::class
         singleOf(::IsOhttpFallbackActiveProviderImpl) bind IsOhttpFallbackActiveProvider::class
+        singleOf(::IsPublicConnectionProviderImpl) bind IsPublicConnectionProvider::class
         single {
             SynchronizerProviderImpl(
                 walletCoordinator = get(),
