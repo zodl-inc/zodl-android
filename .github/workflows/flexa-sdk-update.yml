@@ -67,6 +67,16 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Validate version format (must be x.y.z)
+          if [[ ! "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid current version format: $CURRENT_VERSION (expected x.y.z)" >&2
+            exit 1
+          fi
+          if [[ ! "$LATEST_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid latest version format: $LATEST_VERSION (expected x.y.z)" >&2
+            exit 1
+          fi
+
           # Simple version comparison: split on dots, compare each part
           IFS='.' read -ra CURRENT <<< "$CURRENT_VERSION"
           IFS='.' read -ra LATEST <<< "$LATEST_VERSION"
@@ -114,6 +124,13 @@ jobs:
         run: |
           set -euo pipefail
           git clone --depth 1 --branch "$LATEST_TAG" https://github.com/flexa/flexa-android.git /tmp/flexa-android
+
+          # Verify clone succeeded
+          if [ ! -d /tmp/flexa-android/.git ]; then
+            echo "ERROR: Failed to clone flexa-android at tag $LATEST_TAG" >&2
+            exit 1
+          fi
+
           cd /tmp/flexa-android
           echo "Cloned commit: $(git rev-parse HEAD)"
           echo "$(git rev-parse HEAD)" > /tmp/flexa-commit-sha
@@ -222,16 +239,26 @@ jobs:
           set -euo pipefail
 
           git checkout -b "$UPDATE_BRANCH"
-          git add third-party/flexa/ gradle.properties
 
           if [ "$PATCH_FAILED" = "true" ]; then
-            COMMIT_MSG="[DRAFT] Update Flexa SDK to ${LATEST_VERSION} (patch conflict)
+            # When patch fails, do not commit version changes
+            # Create a marker file to indicate the draft PR state
+            echo "Patch conflict detected for Flexa SDK ${LATEST_VERSION}" > .flexa-update-conflict
+            git add .flexa-update-conflict
 
-Automated update check found a new Flexa SDK release, but the patch
-failed to apply cleanly. Manual resolution required.
+            COMMIT_MSG="[DRAFT] Flexa SDK ${LATEST_VERSION} available (patch conflict)
 
-See PR body for conflict details."
+Automated update check found a new Flexa SDK release, but the OkHttp
+customizer patch failed to apply cleanly.
+
+Manual resolution required. See PR body for conflict details and
+resolution steps.
+
+No version changes committed to avoid stale source/version mismatch."
           else
+            # Patch succeeded - commit the updated sources and metadata
+            git add third-party/flexa/ gradle.properties
+
             COMMIT_MSG="Update Flexa SDK to ${LATEST_VERSION}
 
 Automated update from flexa-android release.
@@ -375,6 +402,7 @@ EOF_OUTER
           LATEST_VERSION: ${{ steps.latest.outputs.version }}
           CURRENT_VERSION: ${{ steps.current.outputs.version }}
           PATCH_FAILED: ${{ steps.patch.outputs.patch_failed }}
+          UPDATE_BRANCH: ${{ steps.check.outputs.branch }}
         run: |
           set -euo pipefail
 
@@ -391,7 +419,7 @@ Status: ${STATUS}
 PR: ${PR_URL}
 Assignee: @y4ssi"
 
-          curl -X POST "$SLACK_WEBHOOK" \
+          curl --fail -X POST "$SLACK_WEBHOOK" \
             -H 'Content-Type: application/json' \
             -d "{\"text\":$(jq -Rs . <<< "$MESSAGE")}"
 
