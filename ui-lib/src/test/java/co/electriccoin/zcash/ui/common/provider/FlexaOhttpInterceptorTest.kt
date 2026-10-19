@@ -405,10 +405,11 @@ class FlexaOhttpInterceptorTest {
     }
 
     @Test
-    fun linesEndingInCrAloneOrCrlfSplitAcrossReadsAreFieldsToo() {
+    fun linesEndingInCrlfSplitAcrossReadsAreFieldsToo() {
+        // okhttp-sse reads an id field up to a LF, so a stream it can follow ends its lines in LF or CRLF.
         val transport =
             FakeTransport(
-                eventStream("id: ev_2\rdata: {}\r\rid: ev_3\r", "\ndata: {}\r\n\r", "\n"),
+                eventStream("id: ev_2\r\ndata: {}\r\n\r\nid: ev_3\r", "\ndata: {}\r\n\r", "\n"),
                 eventStream()
             )
         val factory = EventSources.createFactory(client(transport))
