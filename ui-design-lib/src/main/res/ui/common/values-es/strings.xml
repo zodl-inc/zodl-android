@@ -202,7 +202,10 @@
     <string name="serverSetup_performingTest">Realizando prueba de servidor…</string>
     <string name="serverSetup_couldTakeTime">Esto puede tardar un momento…</string>
     <string name="serverSetup_connectionMode">Modo de conexión</string>
-    <string name="serverSetup_automatic">Automático</string>
+    <string name="serverSetup_private">Privado</string>
+    <string name="serverSetup_privateSubtitle">Servidores de ZODL</string>
+    <string name="serverSetup_public">Público</string>
+    <string name="serverSetup_unavailable">No disponible</string>
     <string name="serverSetup_manual">Manual</string>
     <string name="serverSetup_fastestServers">Servidores más rápidos</string>
     <string name="serverSetup_otherServers">Otros servidores</string>
