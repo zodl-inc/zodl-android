@@ -115,7 +115,7 @@ class FlexaRepositoryImpl(
         available: Double,
     ) = AssetAccount(
         displayName = "",
-        icon = "android.resource://co.electriccoin.zcash.ui/drawable/ic_flexa_logo",
+        icon = "android.resource://${application.packageName}/drawable/ic_flexa_logo",
         availableAssets =
             listOf(
                 AvailableAsset(
@@ -123,7 +123,7 @@ class FlexaRepositoryImpl(
                     balance = total,
                     balanceAvailable = available,
                     symbol = "ZEC",
-                    icon = "android.resource://co.electriccoin.zcash.ui.design/drawable/ic_token_zec",
+                    icon = "android.resource://${application.packageName}/drawable/ic_token_zec",
                 ),
             ),
         custodyModel = CustodyModel.LOCAL,
