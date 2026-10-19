@@ -367,7 +367,8 @@ class FlexaOhttpInterceptorTest {
             )
         val client = client(transport)
 
-        assertFailsWith<IOException> { client.newCall(eventsRequest()).execute().body.source().readByteArray() }
+        val first = client.newCall(eventsRequest()).execute()
+        assertFailsWith<IOException> { first.body.source().readByteArray() }
         client.newCall(eventsRequest()).execute().close()
 
         assertTrue(transport.requests[1].headers.contains("Last-Event-ID" to "ev_2"))
@@ -389,7 +390,8 @@ class FlexaOhttpInterceptorTest {
             )
         val client = client(transport)
 
-        assertFailsWith<IOException> { client.newCall(eventsRequest()).execute().body.source().readByteArray() }
+        val first = client.newCall(eventsRequest()).execute()
+        assertFailsWith<IOException> { first.body.source().readByteArray() }
         client.newCall(eventsRequest()).execute().close()
 
         assertTrue(transport.requests[1].headers.none { (name, _) -> name.equals("Last-Event-ID", true) })
@@ -413,7 +415,8 @@ class FlexaOhttpInterceptorTest {
             )
         val client = client(transport)
 
-        assertFailsWith<IOException> { client.newCall(eventsRequest()).execute().body.source().readByteArray() }
+        val first = client.newCall(eventsRequest()).execute()
+        assertFailsWith<IOException> { first.body.source().readByteArray() }
         client.newCall(eventsRequest()).execute().close()
 
         assertTrue(transport.requests[1].headers.contains("Last-Event-ID" to "ev_3"))
