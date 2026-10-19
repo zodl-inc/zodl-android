@@ -358,7 +358,7 @@ private fun Request.toOhttpRequest(): OhttpHttpClient.Request {
     val contentType =
         content
             ?.contentType()
-            ?.takeIf { header(CONTENT_TYPE) == null }
+            ?.takeIf { header(CONTENT_TYPE) == null && CONTENT_TYPE.lowercase() !in nominated }
             ?.let { listOf(CONTENT_TYPE to it.toString()) }
             .orEmpty()
     return OhttpHttpClient.Request(
