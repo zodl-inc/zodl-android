@@ -97,7 +97,7 @@ class IntegrationsVM(
                             }
                         ),
                     title = stringRes(R.string.settings_flexa),
-                    subtitle = stringRes(R.string.settings_flexaDesc),
+                    subtitle = stringRes(R.string.settings_flexaDesc) + stringRes("\n") + stringRes(co.electriccoin.zcash.ui.design.R.string.settings_flexaIpDesc),
                     onClick = ::onFlexaClicked
                 ).takeIf { flexaStatus != UNAVAILABLE },
                 ListItemState(
