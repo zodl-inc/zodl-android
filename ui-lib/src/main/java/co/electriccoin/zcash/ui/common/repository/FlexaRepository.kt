@@ -57,9 +57,9 @@ class FlexaRepositoryImpl(
                         arrayListOf(
                             createFlexaAccount(
                                 total = totalZec,
-                                available = availableZec
-                            )
-                        )
+                                available = availableZec,
+                            ),
+                        ),
                     )
                     Twig.info { "Flexa updated by total:$totalZec available:$availableZec" }
                 }
@@ -112,7 +112,7 @@ class FlexaRepositoryImpl(
 
     private fun createFlexaAccount(
         total: Double,
-        available: Double
+        available: Double,
     ) = AssetAccount(
         displayName = "",
         icon = "android.resource://co.electriccoin.zcash.ui/drawable/ic_flexa_logo",
@@ -124,10 +124,10 @@ class FlexaRepositoryImpl(
                     balanceAvailable = available,
                     symbol = "ZEC",
                     icon = "android.resource://co.electriccoin.zcash.ui.design/drawable/ic_token_zec",
-                )
+                ),
             ),
         custodyModel = CustodyModel.LOCAL,
-        assetAccountHash = UUID.randomUUID().toString().toSha256()
+        assetAccountHash = UUID.randomUUID().toString().toSha256(),
     )
 
     private fun String.toSha256() =
