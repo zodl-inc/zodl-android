@@ -65,6 +65,7 @@ import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryPr
 import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProviderImpl
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProvider
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProviderImpl
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProvider
 import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProviderImpl
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
@@ -115,6 +116,7 @@ val providerModule =
         } bind SynchronizerProvider::class
         singleOf(::ApplicationStateProviderImpl) bind ApplicationStateProvider::class
         singleOf(::AppAccessLockProviderImpl) bind AppAccessLockProvider::class
+        singleOf(::ServerSelectionMutex)
         singleOf(::RestoreTimestampStorageProviderImpl) bind RestoreTimestampStorageProvider::class
         singleOf(::WalletBackupRemindMeCountStorageProviderImpl) bind
             WalletBackupRemindMeCountStorageProvider::class

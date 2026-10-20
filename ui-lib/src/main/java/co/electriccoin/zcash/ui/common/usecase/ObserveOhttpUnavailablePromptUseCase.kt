@@ -19,7 +19,8 @@ import kotlinx.coroutines.flow.first
  * An episode ends when [AutomaticServerRepository.ohttpUnavailable] turns false again; "Keep waiting" does not
  * re-arm it. If the outage is confirmed while the app is in the background, or while it waits for the user to pass
  * app access authentication, the prompt waits until the app is in the foreground and unlocked: it changes the
- * network settings, so it must never be usable in front of the lock screen.
+ * network settings, so it must never be usable in front of the lock screen. It also waits while a send or signing
+ * flow is in progress: the switch rebuilds the Synchronizer, which the automatic lane never does mid-transaction.
  */
 class ObserveOhttpUnavailablePromptUseCase(
     private val automaticServerRepository: AutomaticServerRepository,
@@ -35,7 +36,8 @@ class ObserveOhttpUnavailablePromptUseCase(
                     combine(
                         applicationStateProvider.isInForeground,
                         appAccessLockProvider.isLocked,
-                    ) { foreground, locked -> foreground && !locked }
+                        automaticServerRepository.isTransactionInProgress,
+                    ) { foreground, locked, inTransaction -> foreground && !locked && !inTransaction }
                         .first { it }
                     showPrompt()
                     // Hold the episode open: collectLatest cancels this once the outage clears.
@@ -44,7 +46,7 @@ class ObserveOhttpUnavailablePromptUseCase(
             }
     }
 
-    // The prompt can be left open while the gateway flaps, which starts a new episode: never stack a second one.
+    /** The prompt can be left open while the gateway flaps and starts a new episode: never stack a second one. */
     private fun showPrompt() =
         navigationRouter.custom { current ->
             if (current?.destination?.hasRoute(OhttpUnavailableArgs::class) == true) {

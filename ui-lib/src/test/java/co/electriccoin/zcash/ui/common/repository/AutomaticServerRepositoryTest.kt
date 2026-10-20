@@ -15,11 +15,13 @@ import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
@@ -30,6 +32,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -136,6 +139,8 @@ class AutomaticServerRepositoryTest {
     private val applicationStateProvider =
         mockk<ApplicationStateProvider>(relaxed = true) { every { isInForeground } returns foreground }
 
+    private val serverSelectionMutex = ServerSelectionMutex()
+
     private val repository =
         AutomaticServerRepositoryImpl(
             application = mockk(relaxed = true),
@@ -150,6 +155,7 @@ class AutomaticServerRepositoryTest {
             isServerSelectionAutomaticProvider = isAutomaticProvider,
             isOhttpFallbackActiveProvider = fallbackFlag,
             isPublicConnectionProvider = isPublicProvider,
+            serverSelectionMutex = serverSelectionMutex,
             evaluationInterval = EvaluationInterval(MINIMUM_EVALUATION_INTERVAL, timeSource)
         )
 
@@ -317,6 +323,72 @@ class AutomaticServerRepositoryTest {
 
             coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
             assertEquals(false, fallbackActive)
+        }
+
+    @Test
+    fun aSwitchWaitsForTheUsersSaveAndIsDroppedWhenItChangedTheMode() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            localBalances.value = emptyMap()
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns fallbacks[1]
+
+            // The user's save of Private holds the lock while it writes the mode and the endpoint.
+            val saveFinishes = CompletableDeferred<Unit>()
+            backgroundScope.launch {
+                serverSelectionMutex.withLock {
+                    saveFinishes.await()
+                    coEvery { isPublicProvider.get() } returns false
+                }
+            }
+            runCurrent()
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.FOREGROUND).launchIn(backgroundScope)
+            runCurrent()
+            edges.emit(Unit)
+            runCurrent()
+            // The candidate is ready but must not be written while the save is still running.
+            coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
+
+            saveFinishes.complete(Unit)
+            runCurrent()
+
+            // It then sees Private and is dropped: Private never ends on clearnet.
+            coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
+        }
+
+    @Test
+    fun theTransactionSignalFollowsTheProposalStates() =
+        runTest {
+            val proposal = MutableStateFlow<TransactionProposal?>(null)
+            every { zashiProposalRepository.transactionProposal } returns proposal
+            val freshRepository =
+                AutomaticServerRepositoryImpl(
+                    application = mockk(relaxed = true),
+                    walletRepository = walletRepository,
+                    zashiProposalRepository = zashiProposalRepository,
+                    keystoneProposalRepository = keystoneProposalRepository,
+                    ledgerProposalPipeline = ledgerProposalPipeline,
+                    applicationStateProvider = applicationStateProvider,
+                    synchronizerProvider = synchronizerProvider,
+                    persistableWalletProvider = persistableWalletProvider,
+                    lightWalletEndpointProvider = lightWalletEndpointProvider,
+                    isServerSelectionAutomaticProvider = isAutomaticProvider,
+                    isOhttpFallbackActiveProvider = fallbackFlag,
+                    isPublicConnectionProvider = isPublicProvider,
+                    serverSelectionMutex = serverSelectionMutex,
+                    evaluationInterval = EvaluationInterval(MINIMUM_EVALUATION_INTERVAL, timeSource)
+                )
+            val values = mutableListOf<Boolean>()
+            backgroundScope.launch { freshRepository.isTransactionInProgress.toList(values) }
+            runCurrent()
+
+            proposal.value = mockk<TransactionProposal>()
+            runCurrent()
+            proposal.value = null
+            runCurrent()
+
+            assertEquals(listOf(false, true, false), values)
         }
 
     @Test

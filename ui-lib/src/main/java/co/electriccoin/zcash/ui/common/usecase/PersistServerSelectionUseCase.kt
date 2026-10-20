@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
 
@@ -19,16 +20,16 @@ class PersistServerSelectionUseCase(
     private val getAutomaticEndpoint: GetAutomaticEndpointUseCase,
     private val isPublicConnectionProvider: IsPublicConnectionProvider,
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
+    private val serverSelectionMutex: ServerSelectionMutex,
 ) {
     /** Private: switching to it always starts from the OHTTP gateway. */
-    suspend fun persistPrivate() {
-        // If the gateway turns out to be unreachable, AutomaticServerRepository reports it to the
-        // user (no automatic clearnet fallback).
-        isOhttpFallbackActiveProvider.store(false)
-        isPublicConnectionProvider.store(false)
-        val endpoint = getAutomaticEndpoint()
-        persistFlagAndEndpoint(isAutomatic = true, endpoint = endpoint)
-    }
+    suspend fun persistPrivate() =
+        serverSelectionMutex.withLock {
+            isOhttpFallbackActiveProvider.store(false)
+            isPublicConnectionProvider.store(false)
+            val endpoint = getAutomaticEndpoint()
+            persistFlagAndEndpoint(isAutomatic = true, endpoint = endpoint)
+        }
 
     /**
      * Public: automatic selection on public (clearnet) servers; starts from the default clearnet server.
@@ -36,16 +37,17 @@ class PersistServerSelectionUseCase(
      * wallet then returns to Private by itself once the gateway answers again. A deliberate Public never does.
      * [fastest] is the public server a speed test just ranked first; without a usable one the default is used.
      */
-    suspend fun persistPublic(afterPrivateUnavailable: Boolean = false, fastest: LightWalletEndpoint? = null) {
-        isOhttpFallbackActiveProvider.store(afterPrivateUnavailable)
-        isPublicConnectionProvider.store(true)
-        val publicServers = lightWalletEndpointProvider.getFallbackEndpoints()
-        val endpoint =
-            fastest?.takeIf { it in publicServers }
-                ?: publicServers.firstOrNull()
-                ?: lightWalletEndpointProvider.getDefaultEndpoint()
-        persistFlagAndEndpoint(isAutomatic = true, endpoint = endpoint)
-    }
+    suspend fun persistPublic(afterPrivateUnavailable: Boolean = false, fastest: LightWalletEndpoint? = null) =
+        serverSelectionMutex.withLock {
+            isOhttpFallbackActiveProvider.store(afterPrivateUnavailable)
+            isPublicConnectionProvider.store(true)
+            val publicServers = lightWalletEndpointProvider.getFallbackEndpoints()
+            val endpoint =
+                fastest?.takeIf { it in publicServers }
+                    ?: publicServers.firstOrNull()
+                    ?: lightWalletEndpointProvider.getDefaultEndpoint()
+            persistFlagAndEndpoint(isAutomatic = true, endpoint = endpoint)
+        }
 
     @Throws(PersistEndpointException::class)
     suspend fun persistManual(endpoint: LightWalletEndpoint) {
@@ -56,8 +58,11 @@ class PersistServerSelectionUseCase(
         }
         when (val result = validateServerEndpoint(endpoint)) {
             ServerValidation.Valid -> {
-                isPublicConnectionProvider.store(false)
-                persistFlagAndEndpoint(isAutomatic = false, endpoint = endpoint)
+                // Validated outside the lock: it is a network call.
+                serverSelectionMutex.withLock {
+                    isPublicConnectionProvider.store(false)
+                    persistFlagAndEndpoint(isAutomatic = false, endpoint = endpoint)
+                }
             }
 
             is ServerValidation.InValid -> {

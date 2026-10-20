@@ -23,12 +23,16 @@ class ObserveOhttpUnavailablePromptUseCaseTest {
     private val unavailable = MutableStateFlow(false)
     private val foreground = MutableStateFlow(true)
     private val locked = MutableStateFlow(false)
+    private val inTransaction = MutableStateFlow(false)
     private val navigationRouter = mockk<NavigationRouter>(relaxed = true)
 
     private val useCase =
         ObserveOhttpUnavailablePromptUseCase(
             automaticServerRepository =
-                mockk<AutomaticServerRepository> { every { ohttpUnavailable } returns unavailable },
+                mockk<AutomaticServerRepository> {
+                    every { ohttpUnavailable } returns unavailable
+                    every { isTransactionInProgress } returns inTransaction
+                },
             applicationStateProvider = mockk<ApplicationStateProvider> { every { isInForeground } returns foreground },
             appAccessLockProvider = mockk<AppAccessLockProvider> { every { isLocked } returns locked },
             navigationRouter = navigationRouter,
@@ -83,6 +87,20 @@ class ObserveOhttpUnavailablePromptUseCaseTest {
             verify(exactly = 0) { navigationRouter.custom(any()) }
 
             locked.value = false
+            runCurrent()
+            verify(exactly = 1) { navigationRouter.custom(any()) }
+        }
+
+    @Test
+    fun aSendOrSigningFlowInProgressHoldsThePromptBack() =
+        runTest {
+            inTransaction.value = true
+            backgroundScope.launch { useCase() }
+            unavailable.value = true
+            runCurrent()
+            verify(exactly = 0) { navigationRouter.custom(any()) }
+
+            inTransaction.value = false
             runCurrent()
             verify(exactly = 1) { navigationRouter.custom(any()) }
         }

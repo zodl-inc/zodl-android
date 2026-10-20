@@ -17,6 +17,7 @@ import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.rawWalletBalances
 import co.electriccoin.zcash.ui.common.provider.retainWhileWalletExists
@@ -59,6 +60,9 @@ interface AutomaticServerRepository {
 
     val ohttpUnavailable: Flow<Boolean>
 
+    /** True while a send, shield or signing flow is in progress; the wallet's server must not change then. */
+    val isTransactionInProgress: Flow<Boolean>
+
     suspend fun isServerAutomatic(): Boolean
 
     suspend fun isServerCustom(): Boolean
@@ -80,6 +84,7 @@ class AutomaticServerRepositoryImpl(
     private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
     private val isOhttpFallbackActiveProvider: IsOhttpFallbackActiveProvider,
     private val isPublicConnectionProvider: IsPublicConnectionProvider,
+    private val serverSelectionMutex: ServerSelectionMutex,
     private val evaluationInterval: EvaluationInterval,
 ) : AutomaticServerRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -108,6 +113,18 @@ class AutomaticServerRepositoryImpl(
                 keystoneProposalRepository.submitState.value != null ||
                 ledgerProposalPipeline.transactionProposal.value != null ||
                 ledgerProposalPipeline.submitState.value != null
+
+    override val isTransactionInProgress: Flow<Boolean> =
+        combine(
+            listOf<Flow<Any?>>(
+                zashiProposalRepository.transactionProposal,
+                zashiProposalRepository.submitState,
+                keystoneProposalRepository.transactionProposal,
+                keystoneProposalRepository.submitState,
+                ledgerProposalPipeline.transactionProposal,
+                ledgerProposalPipeline.submitState,
+            )
+        ) { states -> states.any { it != null } }.distinctUntilChanged()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val walletBalances =
@@ -269,7 +286,6 @@ class AutomaticServerRepositoryImpl(
                             if (fallbackActive) {
                                 ticks(FALLBACK_RECOVERY_INTERVAL, SwitchTrigger.RECOVERY)
                             } else if (isPublic) {
-                                // A deliberate Public has no gateway to watch.
                                 emptyFlow()
                             } else {
                                 applicationStateProvider
@@ -351,7 +367,6 @@ class AutomaticServerRepositoryImpl(
             _ohttpUnavailable.value = false
             return null
         }
-        // Public is the classic automatic server switch on public servers; the gateway lane is Private's.
         if (isPublicConnectionProvider.get()) {
             _ohttpUnavailable.value = false
             return evaluatePublicServerSwitch(trigger)
@@ -454,11 +469,8 @@ class AutomaticServerRepositoryImpl(
     private suspend fun evaluatePublicServerSwitch(trigger: SwitchTrigger): LightWalletEndpoint? {
         if (isAppInTransactionState) return null
         if (isOhttpFallbackActiveProvider.get() && trigger.probesGatewayRecovery) {
-            // Public was entered from the "private connection unavailable" prompt: go back to Private
-            // as soon as a gateway answers again.
             evaluateReturnToPrivate()?.let { return it }
         }
-        // A public server that stops answering is reported as a connectivity edge: look for a better one at once.
         if (trigger != SwitchTrigger.FOREGROUND && trigger != SwitchTrigger.CONNECTIVITY) return null
         val current = persistableWalletProvider.getPersistableWallet()?.endpoint ?: return null
         val candidates = lightWalletEndpointProvider.getFallbackEndpoints()
@@ -554,13 +566,17 @@ class AutomaticServerRepositoryImpl(
      * Synchronizer down and rebuilds it. Which instance receives the confirmation does not matter - the
      * hysteresis state it updates is process-wide and outlives any single Synchronizer.
      */
+    private suspend fun applyServerSwitch(candidate: LightWalletEndpoint) =
+        serverSelectionMutex.withLock { applyServerSwitchLocked(candidate) }
+
     @Suppress("ReturnCount")
-    private suspend fun applyServerSwitch(candidate: LightWalletEndpoint) {
+    private suspend fun applyServerSwitchLocked(candidate: LightWalletEndpoint) {
         if (!isServerAutomatic() || isAppInTransactionState) return
         if (candidate !in lightWalletEndpointProvider.getEndpoints()) return
         // The candidate was chosen for the mode the wallet was in when the evaluation started, and the user can
         // change the mode while it runs (a benchmark plus the snapshot wait takes a while). Apply it only if it
         // still fits: Private never moves to clearnet, and a deliberate Public never returns to the gateway.
+        // The user's save takes the same lock, so the mode cannot change between this check and the writes below.
         val returningToPrivate = lightWalletEndpointProvider.isOhttpGateway(candidate)
         val isPublic = isPublicConnectionProvider.get()
         if (!returningToPrivate && !isPublic) {
