@@ -260,12 +260,17 @@ class AutomaticServerRepositoryImpl(
                 if (!automatic) {
                     emptyFlow()
                 } else {
-                    isOhttpFallbackActiveProvider
-                        .observe()
+                    combine(
+                        isOhttpFallbackActiveProvider.observe(),
+                        isPublicConnectionProvider.observe(),
+                    ) { fallbackActive, isPublic -> fallbackActive to isPublic }
                         .distinctUntilChanged()
-                        .flatMapLatest { fallbackActive ->
+                        .flatMapLatest { (fallbackActive, isPublic) ->
                             if (fallbackActive) {
                                 ticks(FALLBACK_RECOVERY_INTERVAL, SwitchTrigger.RECOVERY)
+                            } else if (isPublic) {
+                                // A deliberate Public has no gateway to watch.
+                                emptyFlow()
                             } else {
                                 applicationStateProvider
                                     .isInForeground
@@ -452,7 +457,8 @@ class AutomaticServerRepositoryImpl(
             // as soon as a gateway answers again.
             evaluateReturnToPrivate()?.let { return it }
         }
-        if (trigger != SwitchTrigger.FOREGROUND) return null
+        // A public server that stops answering is reported as a connectivity edge: look for a better one at once.
+        if (trigger != SwitchTrigger.FOREGROUND && trigger != SwitchTrigger.CONNECTIVITY) return null
         val current = persistableWalletProvider.getPersistableWallet()?.endpoint ?: return null
         val candidates = lightWalletEndpointProvider.getFallbackEndpoints()
         if (candidates.isEmpty()) return null
@@ -549,10 +555,21 @@ class AutomaticServerRepositoryImpl(
     private suspend fun applyServerSwitch(candidate: LightWalletEndpoint) {
         if (!isServerAutomatic() || isAppInTransactionState) return
         if (candidate !in lightWalletEndpointProvider.getEndpoints()) return
+        // The candidate was chosen for the mode the wallet was in when the evaluation started, and the user can
+        // change the mode while it runs (a benchmark plus the snapshot wait takes a while). Apply it only if it
+        // still fits: Private never moves to clearnet, and a deliberate Public never returns to the gateway.
+        val returningToPrivate = lightWalletEndpointProvider.isOhttpGateway(candidate)
+        val isPublic = isPublicConnectionProvider.get()
+        if (!returningToPrivate && !isPublic) {
+            Twig.warn { "Automatic server: dropped a clearnet candidate, the wallet is no longer Public" }
+            return
+        }
+        if (returningToPrivate && isPublic && !isOhttpFallbackActiveProvider.get()) {
+            Twig.warn { "Automatic server: dropped a gateway candidate, Public was chosen on purpose" }
+            return
+        }
         val synchronizer: Synchronizer? = synchronizerProvider.getSynchronizerOrNull()
         Twig.info { "Automatic server: switching to ${candidate.host}:${candidate.port}" }
-        // A gateway candidate while Public can only be the return to Private after an outage.
-        val returningToPrivate = lightWalletEndpointProvider.isOhttpGateway(candidate)
         if (returningToPrivate) isPublicConnectionProvider.store(false)
         walletRepository.updateWalletEndpoint(candidate)
         // Public runs on clearnet by choice; only Private marks being off the gateway as the OHTTP fallback.

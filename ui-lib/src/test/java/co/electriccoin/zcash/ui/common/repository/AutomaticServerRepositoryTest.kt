@@ -112,8 +112,12 @@ class AutomaticServerRepositoryTest {
     /** A relaxed mock returns a bare Object for the suspend Boolean getter; back it with a real value. */
     private var fallbackActive = false
     private val fallbackActiveFlow = MutableStateFlow(false)
+    private val isPublicFlow = MutableStateFlow(false)
     private val isPublicProvider =
-        mockk<IsPublicConnectionProvider>(relaxed = true).also { coEvery { it.get() } returns false }
+        mockk<IsPublicConnectionProvider>(relaxed = true).also {
+            coEvery { it.get() } returns false
+            every { it.observe() } returns isPublicFlow
+        }
 
     private val fallbackFlag =
         mockk<IsOhttpFallbackActiveProvider>(relaxed = true) {
@@ -274,15 +278,75 @@ class AutomaticServerRepositoryTest {
         }
 
     @Test
-    fun publicIgnoresTheGatewayHealthAndConnectivityTriggers() =
+    fun publicIgnoresTheGatewayHealthAndRecoveryTriggers() =
         runTest {
             stubPublic(current = fallbacks[0])
 
             assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
-            assertNull(repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
             assertNull(repository.evaluateServerSwitch(SwitchTrigger.RECOVERY))
 
             coVerify(exactly = 0) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun publicLooksForABetterServerWhenTheCurrentOneStopsAnswering() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns fallbacks[1]
+
+            assertEquals(fallbacks[1], repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
+        }
+
+    @Test
+    fun aClearnetCandidateIsDroppedWhenTheUserMovedToPrivateMeanwhile() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            localBalances.value = emptyMap()
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } coAnswers {
+                // Private is chosen and saved while the benchmark is still running.
+                coEvery { isPublicProvider.get() } returns false
+                fallbacks[1]
+            }
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.FOREGROUND).launchIn(backgroundScope)
+            runCurrent()
+            edges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
+            assertEquals(false, fallbackActive)
+        }
+
+    @Test
+    fun aGatewayCandidateIsDroppedWhenThePublicChoiceWasDeliberate() =
+        runTest {
+            stubSwitchDecision(balances = null)
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.CONNECTIVITY).launchIn(backgroundScope)
+            runCurrent()
+            edges.emit(Unit)
+            runCurrent()
+            // The gateway candidate waits for the balance snapshot; Public is chosen on purpose meanwhile.
+            coEvery { isPublicProvider.get() } returns true
+            fallbackActive = false
+            localBalances.value = emptyMap()
+            runCurrent()
+
+            coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
+        }
+
+    @Test
+    fun noHealthTicksInADeliberatePublic() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            val ticks = mutableListOf<SwitchTrigger>()
+            repository.healthTicks().onEach { ticks += it }.launchIn(backgroundScope)
+            runCurrent()
+
+            advanceTimeBy(10.minutes)
+
+            assertEquals(emptyList(), ticks)
         }
 
     @Test
@@ -841,6 +905,7 @@ class AutomaticServerRepositoryTest {
         val wallet = wallet(current)
         coEvery { isAutomaticProvider.get() } returns true
         coEvery { isPublicProvider.get() } returns true
+        isPublicFlow.value = true
         coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet
         persistedWallet.value = wallet
     }
