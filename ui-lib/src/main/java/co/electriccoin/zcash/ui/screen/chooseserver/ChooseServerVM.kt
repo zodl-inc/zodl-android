@@ -69,7 +69,14 @@ class ChooseServerVM(
             val local = inner.requireLocal()
             val persisted = inner.requirePersisted()
             ChooseServerState(
-                connectionMode = createConnectionMode(local, persisted, fastest, isOhttpUnavailable),
+                connectionMode =
+                    createConnectionMode(
+                        local = local,
+                        persisted = persisted,
+                        fastestServers = fastest,
+                        isOhttpUnavailable = isOhttpUnavailable,
+                        gatewayRelayIndependence = inner.gatewayRelayIndependence,
+                    ),
                 fastest = createFastest(local, persisted, fastest),
                 other = createOther(local, persisted, fastest),
                 saveButton = createSaveButton(local, persisted, fastest),
@@ -87,6 +94,7 @@ class ChooseServerVM(
         persisted: InnerState.Persisted,
         fastestServers: FastestServersState,
         isOhttpUnavailable: Boolean,
+        gatewayRelayIndependence: Map<String, Boolean>,
     ): ServerConnectionModeState {
         val isTesting = fastestServers.isLoading
         val testingBadge =
@@ -99,7 +107,7 @@ class ChooseServerVM(
             private =
                 RadioButtonState(
                     text = stringRes(R.string.serverSetup_private),
-                    subtitle = privateSubtitle(),
+                    subtitle = privateSubtitle(gatewayRelayIndependence),
                     isChecked = local.mode == ServerConnectionMode.PRIVATE,
                     onClick = ::onPrivateModeClicked,
                     hapticFeedbackType =
@@ -402,9 +410,9 @@ class ChooseServerVM(
      * "ZODL servers", unless this build reaches the gateway through a relay the gateway operator also runs (the
      * relay simulator), which gives no unlinkability, so it must not read as private.
      */
-    private fun privateSubtitle(): StringResource {
+    private fun privateSubtitle(gatewayRelayIndependence: Map<String, Boolean>): StringResource {
         val gatewayHost = lightWalletEndpointProvider.getDefaultEndpoint().host
-        return when (innerState.value.gatewayRelayIndependence[gatewayHost]) {
+        return when (gatewayRelayIndependence[gatewayHost]) {
             false -> stringRes(R.string.serverSetup_ohttpTestRelayNotPrivate)
             else -> stringRes(R.string.serverSetup_privateSubtitle)
         }
@@ -508,7 +516,13 @@ class ChooseServerVM(
                 if (local.mode == ServerConnectionMode.PRIVATE) {
                     persistServerSelection.persistPrivate()
                 } else if (local.mode == ServerConnectionMode.PUBLIC) {
-                    persistServerSelection.persistPublic(fastest = fastestPublicServer(fastestServersFlow.value))
+                    val persisted = innerState.value.requirePersisted()
+                    persistServerSelection.persistPublic(
+                        // Confirming Public as deliberate must not also hop servers (it rebuilds the Synchronizer).
+                        fastest =
+                            persisted.endpoint.takeIf { persisted.mode == ServerConnectionMode.PUBLIC }
+                                ?: fastestPublicServer(fastestServersFlow.value)
+                    )
                 } else {
                     val ep = if (local.isCustomSelected) local.customEndpoint.endpoint else local.selectedEndpoint
                     if (ep == null) {

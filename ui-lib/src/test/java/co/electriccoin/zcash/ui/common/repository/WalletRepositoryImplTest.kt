@@ -245,6 +245,9 @@ class WalletRepositoryImplTest {
             advanceUntilIdle()
 
             assertEquals(GATEWAY, harness.walletProvider.getPersistableWallet()?.endpoint)
+            // On the gateway it must be Private, not "Manual on the gateway".
+            coVerify(exactly = 1) { harness.isAutomaticProvider.store(true) }
+            coVerify(exactly = 1) { harness.isPublicProvider.store(false) }
         }
 
     @Test

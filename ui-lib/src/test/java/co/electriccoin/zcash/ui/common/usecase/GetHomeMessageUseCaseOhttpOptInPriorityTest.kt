@@ -4,6 +4,7 @@ import co.electriccoin.zcash.ui.common.repository.HomeMessageData
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * The private connection opt-in has no close button, so it ranks below every opt-in message the user can dismiss:
@@ -54,8 +55,8 @@ class GetHomeMessageUseCaseOhttpOptInPriorityTest {
                 HomeMessageData.CoinholderPolling,
                 HomeMessageData.Backup,
             )
-        assert(others.all { it.priority > HomeMessageData.OhttpOptIn.priority })
-        assert(HomeMessageData.OhttpOptIn.priority > 0)
+        assertTrue(others.all { it.priority > HomeMessageData.OhttpOptIn.priority })
+        assertTrue(HomeMessageData.OhttpOptIn.priority > 0)
     }
 
     @Test

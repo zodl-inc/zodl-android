@@ -90,6 +90,9 @@ class MainActivity : FragmentActivity() {
 
         setAllowedScreenOrientation()
 
+        // A recreated Activity starts locked: the first composition of AuthenticationForAppAccess decides.
+        appAccessLockProvider.setLocked(true)
+
         setupSplashScreen()
 
         setupUiContent()

@@ -304,6 +304,11 @@ class WalletRepositoryImpl(
                     ?.firstOrNull()
                     ?: lightWalletEndpointProvider.getDefaultEndpoint()
             persistWalletInternal(wallet.copy(endpoint = replacement))
+            if (lightWalletEndpointProvider.isOhttpGateway(replacement)) {
+                // Manual on the gateway is Private (see above); the move must leave the wallet in that mode.
+                isServerSelectionAutomaticProvider.store(true)
+                isPublicConnectionProvider.store(false)
+            }
         }
     }
 

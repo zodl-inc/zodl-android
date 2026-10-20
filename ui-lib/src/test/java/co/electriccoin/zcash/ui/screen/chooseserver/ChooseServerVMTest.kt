@@ -265,6 +265,8 @@ class ChooseServerVMTest {
             mode.value = ServerConnectionMode.PUBLIC
             selectedEndpoint.value = clearnet
             fallbackActive.value = true
+            // The speed test prefers another server, but confirming Public must keep the current one.
+            fastest.value = FastestServersState(servers = listOf(otherClearnet, clearnet), isLoading = false)
             val vm = createVm()
             val job = launchCollector(vm)
             advanceUntilIdle()
@@ -272,7 +274,7 @@ class ChooseServerVMTest {
             assertTrue(state.saveButton.isEnabled)
             state.saveButton.onClick()
             advanceUntilIdle()
-            coVerify(exactly = 1) { persist.persistPublic(afterPrivateUnavailable = false, fastest = null) }
+            coVerify(exactly = 1) { persist.persistPublic(afterPrivateUnavailable = false, fastest = clearnet) }
             job.cancel()
         }
 

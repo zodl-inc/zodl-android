@@ -15,6 +15,7 @@ import co.electriccoin.zcash.preference.model.entry.BooleanPreferenceDefault
 import co.electriccoin.zcash.spackle.AndroidApiVersion
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.provider.AppAccessLockProvider
 import co.electriccoin.zcash.ui.common.provider.GetMonotonicTimeProvider
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.preference.StandardPreferenceKeys
@@ -45,6 +46,7 @@ class AuthenticationViewModel(
     private val getVersionInfo: GetVersionInfoProvider,
     private val standardPreferenceProvider: StandardPreferenceProvider,
     private val walletViewModel: WalletViewModel,
+    private val appAccessLockProvider: AppAccessLockProvider,
 ) : AndroidViewModel(application) {
     private val executor: Executor by lazy { ContextCompat.getMainExecutor(application) }
     private lateinit var biometricPrompt: BiometricPrompt
@@ -143,6 +145,9 @@ class AuthenticationViewModel(
     private fun resetEntireAuthenticationState() {
         appAccessAuthentication.value = AuthenticationUIState.Initial
         showWelcomeAnimation.value = true
+        // Locked right here, not from the UI layer a recomposition later: the app is foregrounded straight after
+        // this check, and nothing may open in front of the lock screen in between.
+        if (isAppAccessAuthenticationRequired.value == true) appAccessLockProvider.setLocked(true)
     }
 
     private var latestAppBackgroundedElapsedRealtimeMillis: Long? = null

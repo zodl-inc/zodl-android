@@ -573,8 +573,9 @@ class AutomaticServerRepositoryImpl(
         }
         val synchronizer: Synchronizer? = synchronizerProvider.getSynchronizerOrNull()
         Twig.info { "Automatic server: switching to ${candidate.host}:${candidate.port}" }
-        if (returningToPrivate) isPublicConnectionProvider.store(false)
+        // The endpoint first: if this write fails the wallet must not already read as Private while on clearnet.
         walletRepository.updateWalletEndpoint(candidate)
+        if (returningToPrivate) isPublicConnectionProvider.store(false)
         // Public runs on clearnet by choice; only Private marks being off the gateway as the OHTTP fallback.
         if (returningToPrivate || !isPublicConnectionProvider.get()) syncFallbackFlag(candidate)
         synchronizer?.confirmServerSwitch(candidate)
