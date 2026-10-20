@@ -230,7 +230,6 @@
     <string name="serverSetup_refresh">Actualizar</string>
     <string name="serverSetup_active">Activo</string>
     <string name="serverSetup_testing">Probando</string>
-    <string name="serverSetup_ohttpPrivate">Privado · OHTTP (predeterminado)</string>
     <string name="serverSetup_clearnetNotPrivate">Clearnet · no privado</string>
     <string name="serverSetup_customNotPrivate">Personalizado · no privado</string>
     <string name="serverSetup_ohttpTestRelayNotPrivate">OHTTP · relay de prueba, no privado</string>

@@ -5,6 +5,7 @@ import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.model.ServerConnectionMode
+import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedEndpointUseCase
@@ -47,6 +48,7 @@ class ChooseServerVMTest {
     private val selectedEndpoint = MutableStateFlow<LightWalletEndpoint?>(gateway)
     private val fastest = MutableStateFlow(FastestServersState(servers = null, isLoading = false))
     private val ohttpUnavailable = MutableStateFlow(false)
+    private val fallbackActive = MutableStateFlow(false)
 
     private val persist = mockk<PersistServerSelectionUseCase>(relaxed = true)
     private val navigationRouter = mockk<NavigationRouter>(relaxed = true)
@@ -69,6 +71,7 @@ class ChooseServerVMTest {
         return ChooseServerVM(
             application = mockk<Application>(relaxed = true),
             observeFastestServers = mockk<ObserveFastestServersUseCase> { every { this@mockk.invoke() } returns fastest },
+            isOhttpFallbackActive = mockk<IsOhttpFallbackActiveProvider> { every { observe() } returns fallbackActive },
             getSelectedEndpoint = mockk<GetSelectedEndpointUseCase> { every { observe() } returns selectedEndpoint },
             observeServerConnectionMode = mockk<ObserveServerConnectionModeUseCase> { every { this@mockk.invoke() } returns mode },
             automaticServerRepository =
@@ -138,7 +141,7 @@ class ChooseServerVMTest {
             assertTrue(state.saveButton.isEnabled)
             state.saveButton.onClick()
             advanceUntilIdle()
-            coVerify(exactly = 1) { persist.persistPublic() }
+            coVerify(exactly = 1) { persist.persistPublic(afterPrivateUnavailable = false, fastest = null) }
             job.cancel()
         }
 
@@ -207,6 +210,66 @@ class ChooseServerVMTest {
                 .connectionMode
                 .onPrivateInfoClick()
             verify { navigationRouter.forward(OhttpInfoArgs) }
+            job.cancel()
+        }
+
+    @Test
+    fun savingPublicStartsFromTheFastestPublicServerOfTheTest() =
+        runTest(dispatcher) {
+            fastest.value = FastestServersState(servers = listOf(gateway, otherClearnet, clearnet), isLoading = false)
+            val vm = createVm()
+            val job = launchCollector(vm)
+            advanceUntilIdle()
+            vm.state.value!!.connectionMode.public.onClick()
+            advanceUntilIdle()
+            vm.state.value!!.saveButton.onClick()
+            advanceUntilIdle()
+            coVerify(exactly = 1) { persist.persistPublic(afterPrivateUnavailable = false, fastest = otherClearnet) }
+            job.cancel()
+        }
+
+    @Test
+    fun manualFromPrivateNeedsAServerBeforeItCanBeSaved() =
+        runTest(dispatcher) {
+            val vm = createVm()
+            val job = launchCollector(vm)
+            advanceUntilIdle()
+            vm.state.value!!.connectionMode.manual.onClick()
+            advanceUntilIdle()
+            val state = vm.state.value!!
+            assertTrue(state.connectionMode.isManualSelected)
+            // Nothing is preselected (the gateway is Private's) and nothing can be saved yet.
+            assertFalse(state.saveButton.isEnabled)
+            assertTrue(state.other.servers.filterIsInstance<ServerState.Default>().none { it.radioButtonState.isChecked })
+            job.cancel()
+        }
+
+    @Test
+    fun anOutageInducedPublicCanBeConfirmedAsDeliberate() =
+        runTest(dispatcher) {
+            mode.value = ServerConnectionMode.PUBLIC
+            selectedEndpoint.value = clearnet
+            fallbackActive.value = true
+            val vm = createVm()
+            val job = launchCollector(vm)
+            advanceUntilIdle()
+            val state = vm.state.value!!
+            assertTrue(state.saveButton.isEnabled)
+            state.saveButton.onClick()
+            advanceUntilIdle()
+            coVerify(exactly = 1) { persist.persistPublic(afterPrivateUnavailable = false, fastest = null) }
+            job.cancel()
+        }
+
+    @Test
+    fun aDeliberatePublicHasNothingToSave() =
+        runTest(dispatcher) {
+            mode.value = ServerConnectionMode.PUBLIC
+            selectedEndpoint.value = clearnet
+            val vm = createVm()
+            val job = launchCollector(vm)
+            advanceUntilIdle()
+            assertFalse(vm.state.value!!.saveButton.isEnabled)
             job.cancel()
         }
 

@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import kotlin.test.BeforeTest
@@ -28,6 +29,7 @@ import kotlin.test.assertFailsWith
 class PersistServerSelectionUseCaseTest {
     private val endpoint = LightWalletEndpoint(host = "manual.example.com", port = 443, isSecure = true)
     private val fastest = LightWalletEndpoint(host = "fastest.example.com", port = 443, isSecure = true)
+    private val gateway = LightWalletEndpoint(host = "ohttp-gateway.example", port = 443, isSecure = true)
 
     private val synchronizer = mockk<Synchronizer>()
     private val synchronizerProvider = mockk<SynchronizerProvider>()
@@ -52,6 +54,7 @@ class PersistServerSelectionUseCaseTest {
     @BeforeTest
     fun setUp() {
         coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
+        every { lightWalletEndpointProvider.isOhttpGateway(any()) } answers { firstArg<LightWalletEndpoint>() == gateway }
     }
 
     @Test
@@ -131,5 +134,50 @@ class PersistServerSelectionUseCaseTest {
             useCase.persistManual(endpoint)
 
             coVerify(exactly = 1) { isPublicProvider.store(false) }
+        }
+
+    @Test
+    fun manualPinOfTheGatewayIsPrivate() =
+        runTest {
+            coEvery { getAutomaticEndpoint() } returns gateway
+
+            useCase.persistManual(gateway)
+
+            coVerify(exactly = 1) { isAutomaticProvider.store(true) }
+            coVerify(exactly = 0) { isAutomaticProvider.store(false) }
+            coVerify(exactly = 1) { isPublicProvider.store(false) }
+            coVerify(exactly = 0) { synchronizer.validateServerEndpoint(any(), any()) }
+        }
+
+    @Test
+    fun publicAfterAnOutageMarksTheFallbackAndADeliberatePublicDoesNot() =
+        runTest {
+            every { lightWalletEndpointProvider.getFallbackEndpoints() } returns listOf(endpoint, fastest)
+
+            useCase.persistPublic(afterPrivateUnavailable = true)
+            coVerify(exactly = 1) { isOhttpFallbackActiveProvider.store(true) }
+
+            useCase.persistPublic()
+            coVerify(exactly = 1) { isOhttpFallbackActiveProvider.store(false) }
+        }
+
+    @Test
+    fun publicStartsFromTheFastestServerOfTheSpeedTest() =
+        runTest {
+            every { lightWalletEndpointProvider.getFallbackEndpoints() } returns listOf(endpoint, fastest)
+
+            useCase.persistPublic(fastest = fastest)
+
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(fastest) }
+        }
+
+    @Test
+    fun publicIgnoresAFastestServerThatIsNotAPublicServer() =
+        runTest {
+            every { lightWalletEndpointProvider.getFallbackEndpoints() } returns listOf(endpoint)
+
+            useCase.persistPublic(fastest = gateway)
+
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(endpoint) }
         }
 }

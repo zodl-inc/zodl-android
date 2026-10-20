@@ -13,6 +13,7 @@ import co.electriccoin.zcash.ui.common.component.EndpointTextFieldState
 import co.electriccoin.zcash.ui.common.datasource.resolveIsEndpointCustom
 import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.model.ServerConnectionMode
+import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedEndpointUseCase
@@ -24,6 +25,7 @@ import co.electriccoin.zcash.ui.common.usecase.RefreshFastestServersUseCase
 import co.electriccoin.zcash.ui.design.component.AlertDialogState
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.RadioButtonState
+import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.chooseserver.ohttpinfo.OhttpInfoArgs
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +44,7 @@ import kotlinx.coroutines.launch
 class ChooseServerVM(
     application: Application,
     observeFastestServers: ObserveFastestServersUseCase,
+    isOhttpFallbackActive: IsOhttpFallbackActiveProvider,
     getSelectedEndpoint: GetSelectedEndpointUseCase,
     observeServerConnectionMode: ObserveServerConnectionModeUseCase,
     automaticServerRepository: AutomaticServerRepository,
@@ -50,6 +53,8 @@ class ChooseServerVM(
     private val persistServerSelection: PersistServerSelectionUseCase,
     private val navigationRouter: NavigationRouter,
 ) : AndroidViewModel(application) {
+    private val fastestServersFlow = observeFastestServers()
+
     private val innerState =
         MutableStateFlow(InnerState(availableServers = lightWalletEndpointProvider.getEndpoints()))
 
@@ -57,17 +62,17 @@ class ChooseServerVM(
 
     val state =
         combine(
-            observeFastestServers(),
+            fastestServersFlow,
             innerStateSafe,
             automaticServerRepository.ohttpUnavailable
-        ) { fastestServers, inner, isOhttpUnavailable ->
+        ) { fastest, inner, isOhttpUnavailable ->
             val local = inner.requireLocal()
             val persisted = inner.requirePersisted()
             ChooseServerState(
-                connectionMode = createConnectionMode(local, persisted, fastestServers, isOhttpUnavailable),
-                fastest = createFastest(local, persisted, fastestServers),
-                other = createOther(local, persisted, fastestServers),
-                saveButton = createSaveButton(local, persisted, fastestServers),
+                connectionMode = createConnectionMode(local, persisted, fastest, isOhttpUnavailable),
+                fastest = createFastest(local, persisted, fastest),
+                other = createOther(local, persisted, fastest),
+                saveButton = createSaveButton(local, persisted, fastest),
                 dialogState = inner.dialogState,
                 onBack = ::onBack
             )
@@ -94,7 +99,7 @@ class ChooseServerVM(
             private =
                 RadioButtonState(
                     text = stringRes(R.string.serverSetup_private),
-                    subtitle = stringRes(R.string.serverSetup_privateSubtitle),
+                    subtitle = privateSubtitle(),
                     isChecked = local.mode == ServerConnectionMode.PRIVATE,
                     onClick = ::onPrivateModeClicked,
                     hapticFeedbackType =
@@ -109,7 +114,8 @@ class ChooseServerVM(
                                 if (persisted.mode == ServerConnectionMode.PUBLIC) {
                                     persisted.endpoint
                                 } else {
-                                    lightWalletEndpointProvider.getFallbackEndpoints().firstOrNull()
+                                    fastestPublicServer(fastestServers)
+                                        ?: lightWalletEndpointProvider.getFallbackEndpoints().firstOrNull()
                                         ?: persisted.endpoint
                                 }
                             )
@@ -264,14 +270,16 @@ class ChooseServerVM(
 
         combine(
             observeServerConnectionMode(),
-            getSelectedEndpoint.observe().filterNotNull()
-        ) { mode, endpoint -> mode to endpoint }
-            .onEach { (mode, endpoint) ->
+            getSelectedEndpoint.observe().filterNotNull(),
+            isOhttpFallbackActive.observe(),
+        ) { mode, endpoint, isFallback -> Triple(mode, endpoint, isFallback) }
+            .onEach { (mode, endpoint, isFallback) ->
                 innerState.update { inner ->
                     val persisted =
                         InnerState.Persisted(
                             endpoint = endpoint,
                             mode = mode,
+                            isOutageSwitch = mode == ServerConnectionMode.PUBLIC && isFallback,
                             isCustomEndpoint = resolveIsEndpointCustom(endpoint, inner.availableServers),
                         )
                     inner.copy(
@@ -295,22 +303,21 @@ class ChooseServerVM(
         )
     }
 
-    private fun hasUnsavedChanges(local: InnerState.Local, persisted: InnerState.Persisted): Boolean =
-        when {
-            local.mode != persisted.mode -> {
-                true
+    private fun hasUnsavedChanges(local: InnerState.Local, persisted: InnerState.Persisted): Boolean {
+        // Manual needs a server to pin: right after tapping it from Private nothing is selected yet.
+        val manualEndpoint = if (local.isCustomSelected) local.customEndpoint.endpoint else local.selectedEndpoint
+        return when {
+            local.mode == ServerConnectionMode.MANUAL -> {
+                manualEndpoint != null &&
+                    (persisted.mode != ServerConnectionMode.MANUAL || manualEndpoint != persisted.endpoint)
             }
 
-            local.mode != ServerConnectionMode.MANUAL -> {
-                false
-            }
+            local.mode != persisted.mode -> true
 
-            else -> {
-                val effectiveEndpoint =
-                    if (local.isCustomSelected) local.customEndpoint.endpoint else local.selectedEndpoint
-                effectiveEndpoint != null && effectiveEndpoint != persisted.endpoint
-            }
+            // Saving Public again after an outage-induced switch makes it a deliberate choice.
+            else -> local.mode == ServerConnectionMode.PUBLIC && persisted.isOutageSwitch
         }
+    }
 
     private fun onBack() {
         if (canUpdateSelection()) {
@@ -334,12 +341,7 @@ class ChooseServerVM(
                         },
                     isChecked = isChecked,
                     onClick = ::onCustomEndpointClicked,
-                    subtitle =
-                        if (isPersistedEndpointCustom && isGateway(persisted.endpoint)) {
-                            ohttpSubtitle(persisted.endpoint)
-                        } else {
-                            stringRes(R.string.serverSetup_customNotPrivate)
-                        },
+                    subtitle = stringRes(R.string.serverSetup_customNotPrivate),
                     hapticFeedbackType = if (isChecked) null else HapticFeedbackType.SegmentTick,
                 ),
             newServerTextFieldState =
@@ -360,7 +362,6 @@ class ChooseServerVM(
         persistedEndpoint: LightWalletEndpoint,
         isManualSelected: Boolean,
     ): ServerState.Default {
-        val defaultEndpoint = lightWalletEndpointProvider.getDefaultEndpoint()
         val isEndpointChecked =
             isManualSelected && !local.isCustomSelected && local.selectedEndpoint == endpoint
         return ServerState.Default(
@@ -370,12 +371,8 @@ class ChooseServerVM(
                     text = endpointLabel(endpoint),
                     isChecked = isEndpointChecked,
                     onClick = { onEndpointClicked(endpoint) },
-                    // Clearnet lightwalletd rows (the automatic fallback tier) are flagged as not private.
-                    subtitle =
-                        when {
-                            endpoint == defaultEndpoint -> ohttpSubtitle(endpoint)
-                            else -> stringRes(R.string.serverSetup_clearnetNotPrivate)
-                        },
+                    // Manual lists only hold clearnet servers (the gateway is chosen with Private).
+                    subtitle = stringRes(R.string.serverSetup_clearnetNotPrivate),
                     hapticFeedbackType = if (isEndpointChecked) null else HapticFeedbackType.SegmentTick,
                 ),
             badge = if (endpoint == persistedEndpoint) stringRes(R.string.serverSetup_active) else null,
@@ -388,12 +385,23 @@ class ChooseServerVM(
      */
     private fun isGateway(endpoint: LightWalletEndpoint) = lightWalletEndpointProvider.isOhttpGateway(endpoint)
 
-    private fun ohttpSubtitle(endpoint: LightWalletEndpoint) =
-        when (innerState.value.gatewayRelayIndependence[endpoint.host]) {
-            true -> stringRes(R.string.serverSetup_ohttpPrivate)
+    /**
+     * "ZODL servers", unless this build reaches the gateway through a relay the gateway operator also runs (the
+     * relay simulator), which gives no unlinkability, so it must not read as private.
+     */
+    private fun privateSubtitle(): StringResource {
+        val gatewayHost = lightWalletEndpointProvider.getDefaultEndpoint().host
+        return when (innerState.value.gatewayRelayIndependence[gatewayHost]) {
             false -> stringRes(R.string.serverSetup_ohttpTestRelayNotPrivate)
-            null -> null
+            else -> stringRes(R.string.serverSetup_privateSubtitle)
         }
+    }
+
+    /** The public server a finished speed test ranked first, if any. */
+    private fun fastestPublicServer(state: FastestServersState): LightWalletEndpoint? =
+        state.servers
+            ?.takeIf { !state.isLoading }
+            ?.firstOrNull { !isGateway(it) }
 
     private fun onRefreshClicked() {
         if (!canUpdateSelection()) return
@@ -437,7 +445,8 @@ class ChooseServerVM(
                 local =
                     inner.requireLocal().copy(
                         mode = ServerConnectionMode.MANUAL,
-                        selectedEndpoint = if (!pickCustom) persisted.endpoint else null,
+                        // The gateway is Private's, not a Manual choice: nothing is preselected for it.
+                        selectedEndpoint = persisted.endpoint.takeIf { !pickCustom && !isGateway(it) },
                         isCustomSelected = pickCustom,
                     )
             )
@@ -486,7 +495,7 @@ class ChooseServerVM(
                 if (local.mode == ServerConnectionMode.PRIVATE) {
                     persistServerSelection.persistPrivate()
                 } else if (local.mode == ServerConnectionMode.PUBLIC) {
-                    persistServerSelection.persistPublic()
+                    persistServerSelection.persistPublic(fastest = fastestPublicServer(fastestServersFlow.value))
                 } else {
                     val ep = if (local.isCustomSelected) local.customEndpoint.endpoint else local.selectedEndpoint
                     if (ep == null) {
@@ -570,6 +579,8 @@ private data class InnerState(
     data class Persisted(
         val endpoint: LightWalletEndpoint,
         val mode: ServerConnectionMode,
+        /** Public entered from the "private connection unavailable" prompt, so it is still a temporary switch. */
+        val isOutageSwitch: Boolean,
         val isCustomEndpoint: Boolean,
     )
 }
