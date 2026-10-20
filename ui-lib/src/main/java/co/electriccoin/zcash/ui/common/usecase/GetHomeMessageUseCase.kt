@@ -66,8 +66,13 @@ class GetHomeMessageUseCase(
                     combine(
                         votingHomeMessageSource.observeIsCoinholderPollingMessageVisible(),
                         crashReportingStorageProvider.observe().map { it == null },
-                    ) { isCoinholderPollingVisible, isCrashReportingVisible ->
-                        TrailingPrioritizedInputs(isCoinholderPollingVisible, isCrashReportingVisible)
+                        observeOhttpOptInVisible(),
+                    ) { isCoinholderPollingVisible, isCrashReportingVisible, isOhttpOptInVisible ->
+                        TrailingPrioritizedInputs(
+                            isCoinholderPollingVisible,
+                            isCrashReportingVisible,
+                            isOhttpOptInVisible,
+                        )
                     },
                 ) { runtimeMessage, backup, isTorAvailable, isCCAvailable, trailing ->
                     createHomeMessage(
@@ -77,6 +82,7 @@ class GetHomeMessageUseCase(
                         isCurrencyConversionEnabled = isCCAvailable,
                         isCoinholderPollingVisible = trailing.isCoinholderPollingVisible,
                         isCrashReportingVisible = trailing.isCrashReportingVisible,
+                        isOhttpOptInVisible = trailing.isOhttpOptInVisible,
                     )
                 }
 
@@ -133,11 +139,10 @@ class GetHomeMessageUseCase(
         val walletSnapshot: WalletSnapshot,
         /** [WalletSnapshot.status] DISCONNECTED for the shared grace (see [observeRuntimeMessage]). */
         val isDisconnectedSustained: Boolean,
-        val isOhttpOptInVisible: Boolean,
     )
 
     /**
-     * [HomeMessageData.CoinholderPolling] and [HomeMessageData.CrashReport] bundled together into
+     * [HomeMessageData.CoinholderPolling], [HomeMessageData.CrashReport] and [HomeMessageData.OhttpOptIn] bundled into
      * one flow purely so the outer `observe()` combine (already at kotlinx's 5-flow overload
      * ceiling) doesn't need a 6th argument — same "bundle inputs into a data class" trick as
      * [RuntimeMessageInputs] above.
@@ -145,6 +150,7 @@ class GetHomeMessageUseCase(
     private data class TrailingPrioritizedInputs(
         val isCoinholderPollingVisible: Boolean,
         val isCrashReportingVisible: Boolean,
+        val isOhttpOptInVisible: Boolean,
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -167,9 +173,8 @@ class GetHomeMessageUseCase(
                 migrationHomeMessageSource.observe(),
                 accountDataSource.selectedAccount,
                 snapshotsWithGrace,
-                observeOhttpOptInVisible()
-            ) { sf, mig, acc, (ws, disconnectedSustained), optInVisible ->
-                RuntimeMessageInputs(sf, mig, acc, ws, disconnectedSustained, optInVisible)
+            ) { sf, mig, acc, (ws, disconnectedSustained) ->
+                RuntimeMessageInputs(sf, mig, acc, ws, disconnectedSustained)
             }.collect { inputs ->
                 val shieldFundsMessage = inputs.shieldFunds
                 val migrationMessage = inputs.migration
@@ -196,7 +201,6 @@ class GetHomeMessageUseCase(
                             someBalance = (account?.spendableShieldedBalance?.value ?: 0) > 0
                         )
                         ?: migrationMessage
-                        ?: HomeMessageData.OhttpOptIn.takeIf { inputs.isOhttpOptInVisible }
                         ?: shieldFundsMessage
 
                 if (message is HomeMessageData.Syncing && firstSyncingMessage == null) {
@@ -282,6 +286,7 @@ internal fun createHomeMessage(
     isCurrencyConversionEnabled: Boolean,
     isCoinholderPollingVisible: Boolean,
     isCrashReportingVisible: Boolean,
+    isOhttpOptInVisible: Boolean = false,
 ): HomeMessageData? =
     when {
         backup is WalletBackupData.Available -> HomeMessageData.Backup
@@ -290,6 +295,7 @@ internal fun createHomeMessage(
         isTorVisible -> HomeMessageData.EnableTor
         isCurrencyConversionEnabled -> HomeMessageData.EnableCurrencyConversion
         isCrashReportingVisible -> HomeMessageData.CrashReport
+        isOhttpOptInVisible -> HomeMessageData.OhttpOptIn
         else -> null
     }
 

@@ -54,7 +54,7 @@ fun OhttpOptInMessage(
     )
 }
 
-class OhttpOptInMessageState(
+data class OhttpOptInMessageState(
     val onClick: () -> Unit,
     val onButtonClick: () -> Unit,
 ) : HomeMessageState
