@@ -146,8 +146,13 @@ class AuthenticationViewModel(
         appAccessAuthentication.value = AuthenticationUIState.Initial
         showWelcomeAnimation.value = true
         // Locked right here, not from the UI layer a recomposition later: the app is foregrounded straight after
-        // this check, and nothing may open in front of the lock screen in between.
-        if (isAppAccessAuthenticationRequired.value == true) appAccessLockProvider.setLocked(true)
+        // this check, and nothing may open in front of the lock screen in between. Only when the state will really
+        // resolve to Required (see appAccessAuthenticationResultState): otherwise nothing would ever unlock it.
+        val willRequireAuthentication =
+            isAppAccessAuthenticationRequired.value == true &&
+                walletViewModel.secretState.value == SecretState.READY &&
+                !versionInfo.isRunningUnderTestService
+        if (willRequireAuthentication) appAccessLockProvider.setLocked(true)
     }
 
     private var latestAppBackgroundedElapsedRealtimeMillis: Long? = null

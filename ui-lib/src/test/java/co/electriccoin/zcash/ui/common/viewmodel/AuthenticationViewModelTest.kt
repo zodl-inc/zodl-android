@@ -221,6 +221,24 @@ class AuthenticationViewModelTest {
         }
 
     @Test
+    fun backgroundTimeoutDoesNotLockAWalletlessSession() =
+        runTest {
+            // Authentication is on by default, but without a wallet nothing would ever unlock the app again.
+            val lock = mockk<AppAccessLockProvider>(relaxed = true)
+            val (viewModel, _, setMonotonicTimeMillis) =
+                newViewModel(secretState = SecretState.NONE, appAccessLockProvider = lock)
+            backgroundScope.launch { viewModel.appAccessAuthenticationResultState.collect { } }
+            advanceUntilIdle()
+
+            setMonotonicTimeMillis(0L)
+            viewModel.onEnteredBackground()
+            setMonotonicTimeMillis(16.minutes.inWholeMilliseconds)
+            viewModel.runAuthenticationRequiredCheck()
+
+            verify(exactly = 0) { lock.setLocked(true) }
+        }
+
+    @Test
     fun authenticationCheckWithoutRecordedBackgroundTimeIsNoOp() =
         runTest {
             val (viewModel, _, _) = newViewModel(secretState = SecretState.READY)
