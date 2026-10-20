@@ -205,6 +205,45 @@ class WalletRepositoryImplTest {
             advanceUntilIdle()
 
             coVerify(exactly = 1) { harness.isAutomaticProvider.store(true) }
+            coVerify(exactly = 1) { harness.isPublicProvider.store(false) }
+            assertEquals(GATEWAY, harness.walletProvider.getPersistableWallet()?.endpoint)
+        }
+
+    @Test
+    fun initMovesAPublicWalletOffADecommissionedHostToAnotherPublicServer() =
+        runTest {
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(DECOMMISSIONED),
+                    isAutomaticPreference = true,
+                    isPublic = true,
+                    decommissionedHosts = setOf(DECOMMISSIONED.host),
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            // Never the gateway: that would leave the wallet "Public" on the Private server.
+            assertEquals(ZEC_ROCKS, harness.walletProvider.getPersistableWallet()?.endpoint)
+        }
+
+    @Test
+    fun initMovesANonPublicWalletOffADecommissionedHostToTheGateway() =
+        runTest {
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(DECOMMISSIONED),
+                    isAutomaticPreference = false,
+                    decommissionedHosts = setOf(DECOMMISSIONED.host),
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
             assertEquals(GATEWAY, harness.walletProvider.getPersistableWallet()?.endpoint)
         }
 
@@ -340,6 +379,8 @@ class WalletRepositoryImplTest {
         initialWallet: PersistableWallet?,
         persistableWalletProviderOverride: PersistableWalletProvider? = null,
         isAutomaticPreference: Boolean? = null,
+        isPublic: Boolean = false,
+        decommissionedHosts: Set<String> = emptySet(),
     ): Pair<WalletRepositoryImpl, TestHarness> {
         val events = mutableListOf<String>()
 
@@ -360,7 +401,8 @@ class WalletRepositoryImplTest {
                 every { getDefaultEndpoint() } returns GATEWAY
                 every { getEndpoints() } returns listOf(GATEWAY, ZEC_ROCKS)
                 every { isOhttpGateway(any()) } answers { firstArg<LightWalletEndpoint>() == GATEWAY }
-                every { getDecommissionedHosts() } returns emptySet()
+                every { getFallbackEndpoints() } returns listOf(ZEC_ROCKS)
+                every { getDecommissionedHosts() } returns decommissionedHosts
             }
 
         val isServerSelectionAutomaticProvider =
@@ -369,7 +411,7 @@ class WalletRepositoryImplTest {
             }
 
         val isPublicConnectionProvider =
-            mockk<IsPublicConnectionProvider>(relaxed = true).also { coEvery { it.get() } returns false }
+            mockk<IsPublicConnectionProvider>(relaxed = true).also { coEvery { it.get() } returns isPublic }
 
         val persistableWalletProvider =
             persistableWalletProviderOverride ?: FakePersistableWalletProvider(initialWallet, events)
@@ -421,7 +463,13 @@ class WalletRepositoryImplTest {
         scopes += repository.sharingScope
 
         return repository to
-            TestHarness(events, fakePrefs, persistableWalletProvider, isServerSelectionAutomaticProvider)
+            TestHarness(
+                events,
+                fakePrefs,
+                persistableWalletProvider,
+                isServerSelectionAutomaticProvider,
+                isPublicConnectionProvider,
+            )
     }
 
     private fun walletOn(endpoint: LightWalletEndpoint) =
@@ -438,11 +486,13 @@ class WalletRepositoryImplTest {
         val fakePrefs: RecordingPreferenceProvider,
         val walletProvider: PersistableWalletProvider,
         val isAutomaticProvider: IsServerSelectionAutomaticProvider,
+        val isPublicProvider: IsPublicConnectionProvider,
     )
 }
 
 private val GATEWAY = LightWalletEndpoint("ohttp-gateway.example", 443, true)
 private val ZEC_ROCKS = LightWalletEndpoint("zec.rocks", 443, true)
+private val DECOMMISSIONED = LightWalletEndpoint("decommissioned.example.com", 443, true)
 
 /**
  * Records `"sdkRepair"` into the shared events list, so tests can assert where the SDK secret

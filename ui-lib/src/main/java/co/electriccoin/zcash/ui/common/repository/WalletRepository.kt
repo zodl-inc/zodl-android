@@ -296,7 +296,14 @@ class WalletRepositoryImpl(
                     knownEndpoints = lightWalletEndpointProvider.getEndpoints(),
                 )
         if (isDecommissioned || isAutomaticOffGateway) {
-            persistWalletInternal(wallet.copy(endpoint = lightWalletEndpointProvider.getDefaultEndpoint()))
+            // Public stays on public servers: moving it to the gateway would leave it "Public" on the Private server.
+            val replacement =
+                lightWalletEndpointProvider
+                    .takeIf { isPublicConnectionProvider.get() }
+                    ?.getFallbackEndpoints()
+                    ?.firstOrNull()
+                    ?: lightWalletEndpointProvider.getDefaultEndpoint()
+            persistWalletInternal(wallet.copy(endpoint = replacement))
         }
     }
 
