@@ -3,8 +3,10 @@ package co.electriccoin.zcash.ui.screen.ohttpoptin
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.usecase.OptOutOfOhttpUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
+import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -17,6 +19,28 @@ class OhttpOptInVM(
     val state: StateFlow<OhttpOptInState> =
         MutableStateFlow(
             OhttpOptInState(
+                title = stringRes(R.string.ohttpOptIn_title),
+                body = stringRes(R.string.ohttpOptIn_body),
+                items =
+                    listOf(
+                        OhttpOptInItemState(
+                            icon = R.drawable.ic_ohttp_lock,
+                            title = stringRes(R.string.ohttpInfo_item1Title),
+                            subtitle = stringRes(R.string.ohttpInfo_item1Body),
+                        ),
+                        OhttpOptInItemState(
+                            icon = R.drawable.ic_ohttp_shield,
+                            title = stringRes(R.string.ohttpInfo_item2Title),
+                            subtitle = stringRes(R.string.ohttpInfo_item2Body),
+                        ),
+                        OhttpOptInItemState(
+                            icon = R.drawable.ic_ohttp_check_circle,
+                            title = stringRes(R.string.ohttpInfo_item3Title),
+                            subtitle = stringRes(R.string.ohttpInfo_item3Body),
+                        ),
+                    ),
+                notNowText = stringRes(R.string.ohttpOptIn_notNow),
+                turnOnText = stringRes(R.string.ohttpOptIn_turnOn),
                 onTurnOn = ::onTurnOn,
                 onNotNow = ::onNotNow,
                 onBack = ::onBack,
@@ -29,7 +53,7 @@ class OhttpOptInVM(
             navigationRouter.back()
         }
 
-    // The only opt-out: the home widget is gone for good. Closing the screen (X / back) keeps it.
+    /** The only opt-out: the home widget is gone for good. Closing the screen (X / back) keeps it. */
     private fun onNotNow() =
         viewModelScope.launch {
             optOutOfOhttp()

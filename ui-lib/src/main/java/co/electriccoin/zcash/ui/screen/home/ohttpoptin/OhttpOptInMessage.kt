@@ -8,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.BlankSurface
@@ -16,6 +15,8 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
+import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.HomeMessageState
 import co.electriccoin.zcash.ui.screen.home.HomeMessageWrapper
@@ -39,15 +40,15 @@ fun OhttpOptInMessage(
                 colorFilter = ColorFilter.tint(LocalContentColor.current)
             )
         },
-        title = { Text(stringResource(R.string.ohttpOptIn_widgetTitle)) },
-        subtitle = { Text(stringResource(R.string.ohttpOptIn_widgetSubtitle)) },
+        title = { Text(state.title.getValue()) },
+        subtitle = { Text(state.subtitle.getValue()) },
         end = {
             ZashiButton(
                 minHeight = 36.dp,
                 state =
                     ButtonState(
                         onClick = state.onButtonClick,
-                        text = stringRes(stringResource(R.string.ohttpOptIn_widgetView))
+                        text = state.buttonText
                     )
             )
         }
@@ -55,6 +56,9 @@ fun OhttpOptInMessage(
 }
 
 data class OhttpOptInMessageState(
+    val title: StringResource,
+    val subtitle: StringResource,
+    val buttonText: StringResource,
     val onClick: () -> Unit,
     val onButtonClick: () -> Unit,
 ) : HomeMessageState
@@ -65,7 +69,14 @@ private fun Preview() =
     ZcashTheme {
         BlankSurface {
             OhttpOptInMessage(
-                state = OhttpOptInMessageState(onClick = {}, onButtonClick = {}),
+                state =
+                    OhttpOptInMessageState(
+                        title = stringRes(R.string.ohttpOptIn_widgetTitle),
+                        subtitle = stringRes(R.string.ohttpOptIn_widgetSubtitle),
+                        buttonText = stringRes(R.string.ohttpOptIn_widgetView),
+                        onClick = {},
+                        onButtonClick = {},
+                    ),
                 contentPadding = PaddingValues()
             )
         }

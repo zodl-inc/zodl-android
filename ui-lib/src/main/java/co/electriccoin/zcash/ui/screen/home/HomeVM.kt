@@ -229,6 +229,9 @@ class HomeVM(
 
             HomeMessageData.OhttpOptIn -> {
                 OhttpOptInMessageState(
+                    title = stringRes(R.string.ohttpOptIn_widgetTitle),
+                    subtitle = stringRes(R.string.ohttpOptIn_widgetSubtitle),
+                    buttonText = stringRes(R.string.ohttpOptIn_widgetView),
                     onClick = ::onOhttpOptInClick,
                     onButtonClick = ::onOhttpOptInClick
                 )

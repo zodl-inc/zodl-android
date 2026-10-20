@@ -6,7 +6,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,6 +22,8 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
 
@@ -40,34 +41,24 @@ data object OhttpOptInArgs
 @Composable
 fun OhttpOptInView(state: OhttpOptInState) {
     ZashiBaseSettingsOptIn(
-        header = stringResource(R.string.ohttpOptIn_title),
+        header = state.title.getValue(),
         image = R.drawable.ic_ohttp_incognito,
         onDismiss = state.onBack,
         content = {
             Spacer(20.dp)
             Text(
-                text = stringResource(R.string.ohttpOptIn_body),
+                text = state.body.getValue(),
                 color = ZashiColors.Text.textTertiary,
                 fontSize = 14.sp,
             )
-            Spacer(24.dp)
-            ZashiInfoRow(
-                icon = R.drawable.ic_ohttp_lock,
-                title = stringResource(R.string.ohttpInfo_item1Title),
-                subtitle = stringResource(R.string.ohttpInfo_item1Body),
-            )
-            Spacer(20.dp)
-            ZashiInfoRow(
-                icon = R.drawable.ic_ohttp_shield,
-                title = stringResource(R.string.ohttpInfo_item2Title),
-                subtitle = stringResource(R.string.ohttpInfo_item2Body),
-            )
-            Spacer(20.dp)
-            ZashiInfoRow(
-                icon = R.drawable.ic_ohttp_check_circle,
-                title = stringResource(R.string.ohttpInfo_item3Title),
-                subtitle = stringResource(R.string.ohttpInfo_item3Body),
-            )
+            state.items.forEachIndexed { index, item ->
+                Spacer(if (index == 0) 24.dp else 20.dp)
+                ZashiInfoRow(
+                    icon = item.icon,
+                    title = item.title.getValue(),
+                    subtitle = item.subtitle.getValue(),
+                )
+            }
         },
         info = null,
         footer = {
@@ -76,7 +67,7 @@ fun OhttpOptInView(state: OhttpOptInState) {
                 onClick = state.onNotNow,
             ) {
                 Text(
-                    text = stringResource(R.string.ohttpOptIn_notNow),
+                    text = state.notNowText.getValue(),
                     style = ZashiTypography.textMd,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -84,7 +75,7 @@ fun OhttpOptInView(state: OhttpOptInState) {
             Spacer(4.dp)
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
-                text = stringResource(R.string.ohttpOptIn_turnOn),
+                text = state.turnOnText.getValue(),
                 onClick = state.onTurnOn,
                 colors = ZashiButtonDefaults.primaryColors()
             )
@@ -97,6 +88,25 @@ fun OhttpOptInView(state: OhttpOptInState) {
 private fun Preview() =
     ZcashTheme {
         BlankSurface {
-            OhttpOptInView(state = OhttpOptInState(onTurnOn = {}, onNotNow = {}, onBack = {}))
+            OhttpOptInView(
+                state =
+                    OhttpOptInState(
+                        title = stringRes(R.string.ohttpOptIn_title),
+                        body = stringRes(R.string.ohttpOptIn_body),
+                        items =
+                            listOf(
+                                OhttpOptInItemState(
+                                    icon = R.drawable.ic_ohttp_lock,
+                                    title = stringRes(R.string.ohttpInfo_item1Title),
+                                    subtitle = stringRes(R.string.ohttpInfo_item1Body),
+                                ),
+                            ),
+                        notNowText = stringRes(R.string.ohttpOptIn_notNow),
+                        turnOnText = stringRes(R.string.ohttpOptIn_turnOn),
+                        onTurnOn = {},
+                        onNotNow = {},
+                        onBack = {},
+                    )
+            )
         }
     }

@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.ui.common.model.ServerConnectionMode
+import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.IsOhttpOptInDismissedProvider
 import io.mockk.every
 import io.mockk.mockk
@@ -13,12 +14,15 @@ import kotlin.test.assertEquals
 class ObserveOhttpOptInVisibleUseCaseTest {
     private val mode = MutableStateFlow(ServerConnectionMode.MANUAL)
     private val dismissed = MutableStateFlow(false)
+    private val outageFallback = MutableStateFlow(false)
 
     private val useCase =
         ObserveOhttpOptInVisibleUseCase(
             observeServerConnectionMode = mockk { every { this@mockk.invoke() } returns mode },
             isOhttpOptInDismissedProvider =
                 mockk<IsOhttpOptInDismissedProvider> { every { observe() } returns dismissed },
+            isOhttpFallbackActiveProvider =
+                mockk<IsOhttpFallbackActiveProvider> { every { observe() } returns outageFallback },
         )
 
     @Test
@@ -29,6 +33,18 @@ class ObserveOhttpOptInVisibleUseCaseTest {
             assertEquals(true, useCase().first())
             dismissed.value = true
             assertEquals(false, useCase().first())
+        }
+
+    @Test
+    fun hiddenWhilePublicIsOnlyTheOutageFallback() =
+        runTest {
+            mode.value = ServerConnectionMode.PUBLIC
+            outageFallback.value = true
+            assertEquals(false, useCase().first())
+
+            // Back to a deliberate Public (or Manual): offered again.
+            outageFallback.value = false
+            assertEquals(true, useCase().first())
         }
 
     @Test
