@@ -32,9 +32,7 @@ import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -47,8 +45,6 @@ class ChooseServerVM(
     getSelectedEndpoint: GetSelectedEndpointUseCase,
     observeServerConnectionMode: ObserveServerConnectionModeUseCase,
     automaticServerRepository: AutomaticServerRepository,
-    private val preselectFastestClearnet: Boolean,
-    private val autoStartProbing: Boolean,
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
     private val refreshFastestServersUseCase: RefreshFastestServersUseCase,
     private val persistServerSelection: PersistServerSelectionUseCase,
@@ -73,12 +69,6 @@ class ChooseServerVM(
                 other = createOther(local, persisted, fastestServers),
                 saveButton = createSaveButton(local, persisted, fastestServers),
                 dialogState = inner.dialogState,
-                explanatoryMessage =
-                    if (preselectFastestClearnet) {
-                        stringRes(R.string.choose_server_clearnet_preselection_message)
-                    } else {
-                        null
-                    },
                 onBack = ::onBack
             )
         }.stateIn(
@@ -199,12 +189,7 @@ class ChooseServerVM(
             isLoading = fastestServers.isLoading,
             retryButton =
                 ButtonState(
-                    text =
-                        if (preselectFastestClearnet && !autoStartProbing && fastestServers.servers == null) {
-                            stringRes(R.string.serverSetup_measure_servers)
-                        } else {
-                            stringRes(R.string.serverSetup_refresh)
-                        },
+                    text = stringRes(R.string.serverSetup_refresh),
                     isEnabled = !local.isSaveInProgress,
                     onClick = ::onRefreshClicked
                 )
@@ -295,34 +280,6 @@ class ChooseServerVM(
                     )
                 }
             }.launchIn(viewModelScope)
-
-        if (preselectFastestClearnet) {
-            if (autoStartProbing) {
-                refreshFastestServersUseCase()
-            }
-            // Preselect once per ViewModel: the first finished result with a clearnet candidate. Later
-            // emissions (e.g. a refresh) and any selection the user has already made are never overwritten.
-            viewModelScope.launch {
-                val clearnetEndpoints = lightWalletEndpointProvider.getFallbackEndpoints()
-                val fastestClearnet =
-                    observeFastestServers()
-                        .mapNotNull { fastestServers ->
-                            fastestServers.servers
-                                ?.takeIf { !fastestServers.isLoading }
-                                ?.firstOrNull { it in clearnetEndpoints }
-                        }.first()
-                innerState.first { it.local != null }
-                innerState.update { inner ->
-                    inner.local?.let { local ->
-                        if (!local.hasUserSelection && local.selectedEndpoint == inner.persisted?.endpoint) {
-                            inner.copy(local = local.copy(mode = ServerConnectionMode.MANUAL, selectedEndpoint = fastestClearnet))
-                        } else {
-                            inner
-                        }
-                    } ?: inner
-                }
-            }
-        }
     }
 
     private fun createInitialLocalState(persisted: InnerState.Persisted): InnerState.Local {
@@ -453,7 +410,6 @@ class ChooseServerVM(
                         mode = ServerConnectionMode.MANUAL,
                         isCustomSelected = true,
                         selectedEndpoint = null,
-                        hasUserSelection = true,
                     )
             )
         }
@@ -468,7 +424,7 @@ class ChooseServerVM(
     private fun onAutomaticModeClicked(mode: ServerConnectionMode) {
         if (!canUpdateSelection()) return
         innerState.update { inner ->
-            inner.copy(local = inner.requireLocal().copy(mode = mode, hasUserSelection = true))
+            inner.copy(local = inner.requireLocal().copy(mode = mode))
         }
     }
 
@@ -483,7 +439,6 @@ class ChooseServerVM(
                         mode = ServerConnectionMode.MANUAL,
                         selectedEndpoint = if (!pickCustom) persisted.endpoint else null,
                         isCustomSelected = pickCustom,
-                        hasUserSelection = true
                     )
             )
         }
@@ -498,7 +453,6 @@ class ChooseServerVM(
                         mode = ServerConnectionMode.MANUAL,
                         selectedEndpoint = endpoint,
                         isCustomSelected = false,
-                        hasUserSelection = true,
                     )
             )
         }
@@ -513,7 +467,6 @@ class ChooseServerVM(
                         mode = ServerConnectionMode.MANUAL,
                         isCustomSelected = true,
                         selectedEndpoint = null,
-                        hasUserSelection = true,
                     )
             )
         }
@@ -612,7 +565,6 @@ private data class InnerState(
         val isCustomSelected: Boolean,
         val isSaveInProgress: Boolean,
         val customEndpoint: EndpointTextFieldInnerState,
-        val hasUserSelection: Boolean = false,
     )
 
     data class Persisted(

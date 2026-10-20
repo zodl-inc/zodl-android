@@ -52,7 +52,6 @@ class GetHomeMessageUseCase(
     private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider,
     private val migrationHomeMessageSource: MigrationHomeMessageSource,
     private val votingHomeMessageSource: VotingHomeMessageSource,
-    private val automaticServerRepository: co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository,
     private val observeOhttpOptInVisible: ObserveOhttpOptInVisibleUseCase,
 ) {
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
@@ -132,7 +131,6 @@ class GetHomeMessageUseCase(
         val migration: MigrationHomeMessage?,
         val account: WalletAccount?,
         val walletSnapshot: WalletSnapshot,
-        val isOhttpUnavailable: Boolean,
         /** [WalletSnapshot.status] DISCONNECTED for the shared grace (see [observeRuntimeMessage]). */
         val isDisconnectedSustained: Boolean,
         val isOhttpOptInVisible: Boolean,
@@ -169,18 +167,14 @@ class GetHomeMessageUseCase(
                 migrationHomeMessageSource.observe(),
                 accountDataSource.selectedAccount,
                 snapshotsWithGrace,
-                combine(
-                    automaticServerRepository.ohttpUnavailable,
-                    observeOhttpOptInVisible()
-                ) { unavailable, optInVisible -> unavailable to optInVisible }
-            ) { sf, mig, acc, (ws, disconnectedSustained), ohttp ->
-                RuntimeMessageInputs(sf, mig, acc, ws, ohttp.first, disconnectedSustained, ohttp.second)
+                observeOhttpOptInVisible()
+            ) { sf, mig, acc, (ws, disconnectedSustained), optInVisible ->
+                RuntimeMessageInputs(sf, mig, acc, ws, disconnectedSustained, optInVisible)
             }.collect { inputs ->
                 val shieldFundsMessage = inputs.shieldFunds
                 val migrationMessage = inputs.migration
                 val account = inputs.account
                 val walletSnapshot = inputs.walletSnapshot
-                val isOhttpUnavailable = inputs.isOhttpUnavailable
 
                 if (walletSnapshot.status in
                     listOf(
@@ -194,8 +188,7 @@ class GetHomeMessageUseCase(
                 // Connectivity/sync states outrank migration: a user can't act on the migration banner
                 // while the wallet is disconnected, erroring, or still syncing.
                 val message =
-                    createOhttpUnavailableMessage(isOhttpUnavailable)
-                        ?: createDisconnectedMessage(inputs.isDisconnectedSustained)
+                    createDisconnectedMessage(inputs.isDisconnectedSustained)
                         ?: createSynchronizerErrorMessage(walletSnapshot)
                         ?: createSyncingMessage(
                             walletSnapshot,
@@ -266,13 +259,6 @@ class GetHomeMessageUseCase(
     /** Only a DISCONNECTED status sustained for the shared grace shows the banner (a blip shows nothing). */
     private fun createDisconnectedMessage(isDisconnectedSustained: Boolean): HomeMessageData.Disconnected? =
         if (isDisconnectedSustained) HomeMessageData.Disconnected else null
-
-    private fun createOhttpUnavailableMessage(isOhttpUnavailable: Boolean): HomeMessageData.OhttpUnavailable? =
-        if (isOhttpUnavailable) {
-            HomeMessageData.OhttpUnavailable
-        } else {
-            null
-        }
 
     private fun createSyncingMessage(
         walletSnapshot: WalletSnapshot,

@@ -35,7 +35,6 @@ import co.electriccoin.zcash.ui.screen.home.disconnected.WalletDisconnectedInfo
 import co.electriccoin.zcash.ui.screen.home.disconnected.WalletDisconnectedMessageState
 import co.electriccoin.zcash.ui.screen.home.error.WalletErrorMessageState
 import co.electriccoin.zcash.ui.screen.home.ohttpoptin.OhttpOptInMessageState
-import co.electriccoin.zcash.ui.screen.home.ohttpunavailable.OhttpUnavailableMessageState
 import co.electriccoin.zcash.ui.screen.home.reporting.CrashReportMessageState
 import co.electriccoin.zcash.ui.screen.home.reporting.CrashReportOptIn
 import co.electriccoin.zcash.ui.screen.home.restoring.WalletRestoringInfo
@@ -228,12 +227,6 @@ class HomeVM(
                 )
             }
 
-            HomeMessageData.OhttpUnavailable -> {
-                OhttpUnavailableMessageState(
-                    onChooseServer = ::onOhttpUnavailableChooseServerClick
-                )
-            }
-
             HomeMessageData.OhttpOptIn -> {
                 OhttpOptInMessageState(
                     onClick = ::onOhttpOptInClick,
@@ -354,12 +347,6 @@ class HomeVM(
 
     private fun onWalletDisconnectedMessageClick() =
         navigationRouter.forward(WalletDisconnectedInfo)
-
-    private fun onOhttpUnavailableChooseServerClick() =
-        navigationRouter
-            .forward(
-                ChooseServerArgs(preselectFastestClearnet = true, autoStartProbing = false)
-            )
 
     private fun onWalletBackupMessageClick() = navigationRouter.forward(SeedBackupInfo)
 

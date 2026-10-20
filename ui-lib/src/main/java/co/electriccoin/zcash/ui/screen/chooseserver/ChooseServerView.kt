@@ -140,15 +140,6 @@ fun ChooseServerView(state: ChooseServerState?) {
                     ConnectionModeSection(state.connectionMode)
                 }
 
-                if (state.explanatoryMessage != null) {
-                    item(
-                        key = "explanatory_message",
-                        contentType = "explanatory_message"
-                    ) {
-                        ExplanatoryMessage(message = state.explanatoryMessage)
-                    }
-                }
-
                 if (state.connectionMode.isManualSelected) {
                     if (state.fastest.servers.isNotEmpty()) {
                         serverListItems(state.fastest)
@@ -702,7 +693,6 @@ private fun ChooseServerPreview(
                         onClick = {},
                     ),
                 dialogState = dialogState,
-                explanatoryMessage = null,
                 onBack = {}
             ),
     )
@@ -725,21 +715,6 @@ private fun ChooseServerPreviewValidationDialog() =
                 )
         )
     }
-
-@Suppress("UnusedPrivateMember")
-@PreviewScreens
-@Composable
-private fun ExplanatoryMessage(message: StringResource) {
-    Column(
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
-    ) {
-        Text(
-            text = message.getValue(),
-            style = ZashiTypography.textSm,
-            color = ZashiColors.Text.textPrimary
-        )
-    }
-}
 
 @Suppress("UnusedPrivateMember")
 @Composable
