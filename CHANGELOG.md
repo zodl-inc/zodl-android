@@ -10,9 +10,17 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ### Changed:
 
 - The app now connects to Zcash servers through OHTTP relays by default for private network
-  connections. The server picker shows which servers support OHTTP, and displays a message when OHTTP
-  becomes unavailable with an option to manually choose a server. Exchange rate updates also route
-  through OHTTP without requiring a build-time API key.
+  connections. Exchange rate updates also route through OHTTP without requiring a build-time API key.
+- Choose a Server now offers three connection modes: Private (Zodl servers over OHTTP, the default for
+  new wallets and for users who were on Automatic), Public (the fastest public server, switched
+  automatically) and Manual (a server of your choice, including a custom one). Private has an
+  info sheet explaining how it protects your IP address.
+- When the private connection is unavailable, a bottom sheet lets you keep waiting or switch to public
+  servers, with a Tor Protection toggle to hide your IP address on public servers. After a switch made
+  from that sheet, the wallet returns to Private on its own once the private connection works again.
+  A Public or Manual choice made on purpose is never changed automatically.
+- Users on Public or Manual see a Home message offering the private connection, with a screen that
+  explains it and a "Not now" option that hides the message for good.
 - Flexa's API calls go through OHTTP to the gateway, which holds the publishable key, so Flexa no
   longer sees the user's IP address for them and the app no longer needs a build-time Flexa key. The
   Flexa SDK is built from source (`third-party/flexa`). Its web pages and images still load directly.
