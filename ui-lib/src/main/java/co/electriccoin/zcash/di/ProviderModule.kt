@@ -1,5 +1,7 @@
 package co.electriccoin.zcash.di
 
+import co.electriccoin.zcash.ui.common.provider.AppAccessLockProvider
+import co.electriccoin.zcash.ui.common.provider.AppAccessLockProviderImpl
 import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProvider
 import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
@@ -112,6 +114,7 @@ val providerModule =
             )
         } bind SynchronizerProvider::class
         singleOf(::ApplicationStateProviderImpl) bind ApplicationStateProvider::class
+        singleOf(::AppAccessLockProviderImpl) bind AppAccessLockProvider::class
         singleOf(::RestoreTimestampStorageProviderImpl) bind RestoreTimestampStorageProvider::class
         singleOf(::WalletBackupRemindMeCountStorageProviderImpl) bind
             WalletBackupRemindMeCountStorageProvider::class

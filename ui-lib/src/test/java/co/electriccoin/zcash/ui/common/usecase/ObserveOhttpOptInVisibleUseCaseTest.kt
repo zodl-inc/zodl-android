@@ -17,7 +17,8 @@ class ObserveOhttpOptInVisibleUseCaseTest {
     private val useCase =
         ObserveOhttpOptInVisibleUseCase(
             observeServerConnectionMode = mockk { every { this@mockk.invoke() } returns mode },
-            isOhttpOptInDismissedProvider = mockk<IsOhttpOptInDismissedProvider> { every { observe() } returns dismissed },
+            isOhttpOptInDismissedProvider =
+                mockk<IsOhttpOptInDismissedProvider> { every { observe() } returns dismissed },
         )
 
     @Test

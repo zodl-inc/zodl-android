@@ -31,6 +31,7 @@ import co.electriccoin.zcash.ui.common.compose.BindCompLocalProvider
 import co.electriccoin.zcash.ui.common.compose.DisableScreenTimeout
 import co.electriccoin.zcash.ui.common.extension.setContentCompat
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
+import co.electriccoin.zcash.ui.common.provider.AppAccessLockProvider
 import co.electriccoin.zcash.ui.common.usecase.HandleExternalLinkUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationUIState
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
@@ -81,6 +82,7 @@ class MainActivity : FragmentActivity() {
 
     private val migrationAppHooks: MigrationAppHooks by inject()
     private val handleExternalLink: HandleExternalLinkUseCase by inject()
+    private val appAccessLockProvider: AppAccessLockProvider by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -231,6 +233,13 @@ class MainActivity : FragmentActivity() {
         val authState = authenticationViewModel.appAccessAuthenticationResultState.collectAsStateWithLifecycle().value
         val animateAppAccess = authenticationViewModel.showWelcomeAnimation.collectAsStateWithLifecycle().value
         val authFailed = authenticationViewModel.authFailed.collectAsStateWithLifecycle().value
+
+        // Global dialogs opened from application scope (e.g. the private connection prompt) wait for the unlock.
+        LaunchedEffect(authState) {
+            appAccessLockProvider.setLocked(
+                authState == AuthenticationUIState.Initial || authState == AuthenticationUIState.Required
+            )
+        }
 
         if (animateAppAccess) {
             WelcomeAnimationAutostart(
