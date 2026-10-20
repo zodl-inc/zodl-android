@@ -239,6 +239,16 @@ class AuthenticationViewModelTest {
         }
 
     @Test
+    fun aCachedSuccessfulStateDoesNotUnlockAfterAReset() {
+        // A recreated Activity composes with the cached derived state while the reset already changed the raw one.
+        assertTrue(isAppAccessLocked(AuthenticationUIState.Successful, rawState = AuthenticationUIState.Initial))
+        assertFalse(isAppAccessLocked(AuthenticationUIState.Successful, rawState = AuthenticationUIState.Successful))
+        assertFalse(isAppAccessLocked(AuthenticationUIState.NotRequired, rawState = AuthenticationUIState.Initial))
+        assertTrue(isAppAccessLocked(AuthenticationUIState.Required, rawState = AuthenticationUIState.Successful))
+        assertTrue(isAppAccessLocked(AuthenticationUIState.Initial, rawState = AuthenticationUIState.Successful))
+    }
+
+    @Test
     fun authenticationCheckWithoutRecordedBackgroundTimeIsNoOp() =
         runTest {
             val (viewModel, _, _) = newViewModel(secretState = SecretState.READY)

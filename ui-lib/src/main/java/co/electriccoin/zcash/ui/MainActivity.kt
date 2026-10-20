@@ -38,6 +38,7 @@ import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.SecretState
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
+import co.electriccoin.zcash.ui.common.viewmodel.isAppAccessLocked
 import co.electriccoin.zcash.ui.design.component.BlankSurface
 import co.electriccoin.zcash.ui.design.component.ConfigurationOverride
 import co.electriccoin.zcash.ui.design.component.Override
@@ -237,10 +238,9 @@ class MainActivity : FragmentActivity() {
         val animateAppAccess = authenticationViewModel.showWelcomeAnimation.collectAsStateWithLifecycle().value
         val authFailed = authenticationViewModel.authFailed.collectAsStateWithLifecycle().value
 
-        // Global dialogs opened from application scope (e.g. the private connection prompt) wait for the unlock.
         LaunchedEffect(authState) {
             appAccessLockProvider.setLocked(
-                authState == AuthenticationUIState.Initial || authState == AuthenticationUIState.Required
+                isAppAccessLocked(authState, authenticationViewModel.appAccessAuthentication.value)
             )
         }
 
