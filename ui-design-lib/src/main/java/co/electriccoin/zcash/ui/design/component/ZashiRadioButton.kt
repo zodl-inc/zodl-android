@@ -117,7 +117,6 @@ fun ZashiRadioButton(
                                 end = if (titleTrailingContent == null) ZcashTheme.dimens.spacingDefault else 0.dp
                             )
                     )
-                    // Own clickable inside the row: a tap on it is consumed here and does not select the row.
                     titleTrailingContent?.invoke()
                 }
 

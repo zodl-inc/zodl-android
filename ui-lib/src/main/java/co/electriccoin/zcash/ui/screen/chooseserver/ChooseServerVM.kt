@@ -234,7 +234,6 @@ class ChooseServerVM(
                 },
             servers =
                 innerState.value.availableServers
-                    // The Zodl OHTTP gateway is chosen with the Private radio, not from the Manual list.
                     .filterNot { isGateway(it) }
                     .filter { !fastestServers.servers.orEmpty().contains(it) }
                     .map<LightWalletEndpoint, ServerState> { endpoint ->
@@ -333,7 +332,6 @@ class ChooseServerVM(
                 true
             }
 
-            // Saving Public again after an outage-induced switch makes it a deliberate choice.
             else -> {
                 local.mode == ServerConnectionMode.PUBLIC && persisted.isOutageSwitch
             }
@@ -392,7 +390,6 @@ class ChooseServerVM(
                     text = endpointLabel(endpoint),
                     isChecked = isEndpointChecked,
                     onClick = { onEndpointClicked(endpoint) },
-                    // Manual lists only hold clearnet servers (the gateway is chosen with Private).
                     subtitle = stringRes(R.string.serverSetup_clearnetNotPrivate),
                     hapticFeedbackType = if (isEndpointChecked) null else HapticFeedbackType.SegmentTick,
                 ),
@@ -466,7 +463,6 @@ class ChooseServerVM(
                 local =
                     inner.requireLocal().copy(
                         mode = ServerConnectionMode.MANUAL,
-                        // The gateway is Private's, not a Manual choice: nothing is preselected for it.
                         selectedEndpoint = persisted.endpoint.takeIf { !pickCustom && !isGateway(it) },
                         isCustomSelected = pickCustom,
                     )

@@ -226,8 +226,6 @@ private fun ConnectionModeRow(
             RadioButtonUncheckedContent(radio)
         },
         trailingContent = {
-            // A badge describes the persisted/tested state; it is shown on the selected row only while
-            // testing, and otherwise wherever the state says so.
             if (badge != null && (radio.isChecked || !badge.showsProgress)) {
                 ZashiBadge(
                     text = badge.text,

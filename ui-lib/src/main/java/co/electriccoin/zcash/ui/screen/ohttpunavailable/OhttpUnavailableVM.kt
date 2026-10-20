@@ -31,14 +31,14 @@ class OhttpUnavailableVM(
                 )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
 
-    // The wallet keeps trying the private connection in the background; closing the sheet is all there is to do.
+    /** The wallet keeps trying the private connection in the background; closing the sheet is all there is to do. */
     private fun onBack() = navigationRouter.back()
 
     private fun onTorToggle(enabled: Boolean) = viewModelScope.launch { setTorEnabled(enabled) }
 
+    /** Marked as outage-induced, so the wallet returns to Private by itself once the relay answers. */
     private fun onSwitchToPublic() =
         viewModelScope.launch {
-            // Marked as outage-induced so the wallet returns to Private by itself once the relay answers.
             persistServerSelection.persistPublic(afterPrivateUnavailable = true)
             navigationRouter.back()
         }
