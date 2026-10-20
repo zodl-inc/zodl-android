@@ -450,6 +450,7 @@ class AutomaticServerRepositoryImpl(
      * foreground edge the SDK benchmarks them through its hysteresis policy and names a better server, if
      * any; the gateway is never a candidate. Health, recovery and connectivity triggers belong to Private.
      */
+    @Suppress("ReturnCount")
     private suspend fun evaluatePublicServerSwitch(trigger: SwitchTrigger): LightWalletEndpoint? {
         if (isAppInTransactionState) return null
         if (isOhttpFallbackActiveProvider.get() && trigger.probesGatewayRecovery) {
@@ -475,6 +476,7 @@ class AutomaticServerRepositoryImpl(
         }
     }
 
+    @Suppress("ReturnCount")
     private suspend fun evaluateReturnToPrivate(): LightWalletEndpoint? {
         val gateways = lightWalletEndpointProvider.getEndpoints().filter(lightWalletEndpointProvider::isOhttpGateway)
         if (gateways.isEmpty()) return null
@@ -552,6 +554,7 @@ class AutomaticServerRepositoryImpl(
      * Synchronizer down and rebuilds it. Which instance receives the confirmation does not matter - the
      * hysteresis state it updates is process-wide and outlives any single Synchronizer.
      */
+    @Suppress("ReturnCount")
     private suspend fun applyServerSwitch(candidate: LightWalletEndpoint) {
         if (!isServerAutomatic() || isAppInTransactionState) return
         if (candidate !in lightWalletEndpointProvider.getEndpoints()) return

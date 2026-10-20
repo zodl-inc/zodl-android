@@ -141,38 +141,47 @@ class ChooseServerVM(
                     hapticFeedbackType =
                         if (local.mode == ServerConnectionMode.MANUAL) null else HapticFeedbackType.SegmentTick
                 ),
-            privateBadge =
-                when {
-                    persisted.mode != ServerConnectionMode.PRIVATE -> {
-                        null
-                    }
-
-                    isOhttpUnavailable -> {
-                        ModeBadgeState(stringRes(R.string.serverSetup_unavailable), ModeBadgeStyle.ERROR)
-                    }
-
-                    else -> {
-                        ModeBadgeState(stringRes(R.string.serverSetup_active), ModeBadgeStyle.SUCCESS)
-                    }
-                },
-            publicBadge =
-                when {
-                    local.mode == ServerConnectionMode.PUBLIC && isTesting -> {
-                        testingBadge
-                    }
-
-                    persisted.mode == ServerConnectionMode.PUBLIC -> {
-                        ModeBadgeState(stringRes(R.string.serverSetup_active), ModeBadgeStyle.SUCCESS)
-                    }
-
-                    else -> {
-                        null
-                    }
-                },
+            privateBadge = createPrivateBadge(persisted, isOhttpUnavailable),
+            publicBadge = createPublicBadge(local, persisted, testingBadge, isTesting),
             manualBadge = if (local.mode == ServerConnectionMode.MANUAL && isTesting) testingBadge else null,
             onPrivateInfoClick = ::onPrivateInfoClicked,
         )
     }
+
+    private fun createPrivateBadge(persisted: InnerState.Persisted, isOhttpUnavailable: Boolean): ModeBadgeState? =
+        when {
+            persisted.mode != ServerConnectionMode.PRIVATE -> {
+                null
+            }
+
+            isOhttpUnavailable -> {
+                ModeBadgeState(stringRes(R.string.serverSetup_unavailable), ModeBadgeStyle.ERROR)
+            }
+
+            else -> {
+                ModeBadgeState(stringRes(R.string.serverSetup_active), ModeBadgeStyle.SUCCESS)
+            }
+        }
+
+    private fun createPublicBadge(
+        local: InnerState.Local,
+        persisted: InnerState.Persisted,
+        testingBadge: ModeBadgeState,
+        isTesting: Boolean,
+    ): ModeBadgeState? =
+        when {
+            local.mode == ServerConnectionMode.PUBLIC && isTesting -> {
+                testingBadge
+            }
+
+            persisted.mode == ServerConnectionMode.PUBLIC -> {
+                ModeBadgeState(stringRes(R.string.serverSetup_active), ModeBadgeStyle.SUCCESS)
+            }
+
+            else -> {
+                null
+            }
+        }
 
     private fun createFastest(
         local: InnerState.Local,
@@ -312,10 +321,14 @@ class ChooseServerVM(
                     (persisted.mode != ServerConnectionMode.MANUAL || manualEndpoint != persisted.endpoint)
             }
 
-            local.mode != persisted.mode -> true
+            local.mode != persisted.mode -> {
+                true
+            }
 
             // Saving Public again after an outage-induced switch makes it a deliberate choice.
-            else -> local.mode == ServerConnectionMode.PUBLIC && persisted.isOutageSwitch
+            else -> {
+                local.mode == ServerConnectionMode.PUBLIC && persisted.isOutageSwitch
+            }
         }
     }
 

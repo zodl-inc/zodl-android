@@ -70,12 +70,16 @@ class ChooseServerVMTest {
             }
         return ChooseServerVM(
             application = mockk<Application>(relaxed = true),
-            observeFastestServers = mockk<ObserveFastestServersUseCase> { every { this@mockk.invoke() } returns fastest },
+            observeFastestServers =
+                mockk<ObserveFastestServersUseCase> { every { this@mockk.invoke() } returns fastest },
             isOhttpFallbackActive = mockk<IsOhttpFallbackActiveProvider> { every { observe() } returns fallbackActive },
             getSelectedEndpoint = mockk<GetSelectedEndpointUseCase> { every { observe() } returns selectedEndpoint },
-            observeServerConnectionMode = mockk<ObserveServerConnectionModeUseCase> { every { this@mockk.invoke() } returns mode },
+            observeServerConnectionMode =
+                mockk<ObserveServerConnectionModeUseCase> { every { this@mockk.invoke() } returns mode },
             automaticServerRepository =
-                mockk<AutomaticServerRepository> { every { ohttpUnavailable } returns this@ChooseServerVMTest.ohttpUnavailable },
+                mockk<AutomaticServerRepository> {
+                    every { ohttpUnavailable } returns this@ChooseServerVMTest.ohttpUnavailable
+                },
             lightWalletEndpointProvider = endpointProvider,
             refreshFastestServersUseCase = mockk<RefreshFastestServersUseCase>(relaxed = true),
             persistServerSelection = persist,
@@ -120,7 +124,8 @@ class ChooseServerVMTest {
             val job = launchCollector(vm)
             advanceUntilIdle()
             val state = vm.state.value!!
-            val keys = (state.fastest.servers + state.other.servers.filterIsInstance<ServerState.Default>()).map { it.key }
+            val keys =
+                (state.fastest.servers + state.other.servers.filterIsInstance<ServerState.Default>()).map { it.key }
             assertTrue(keys.none { it.toString().contains("ohttp-gateway") })
             assertTrue(keys.any { it.toString().contains("zec.rocks") })
             job.cancel()
@@ -220,9 +225,13 @@ class ChooseServerVMTest {
             val vm = createVm()
             val job = launchCollector(vm)
             advanceUntilIdle()
-            vm.state.value!!.connectionMode.public.onClick()
+            vm.state.value!!
+                .connectionMode.public
+                .onClick()
             advanceUntilIdle()
-            vm.state.value!!.saveButton.onClick()
+            vm.state.value!!
+                .saveButton
+                .onClick()
             advanceUntilIdle()
             coVerify(exactly = 1) { persist.persistPublic(afterPrivateUnavailable = false, fastest = otherClearnet) }
             job.cancel()
@@ -234,13 +243,19 @@ class ChooseServerVMTest {
             val vm = createVm()
             val job = launchCollector(vm)
             advanceUntilIdle()
-            vm.state.value!!.connectionMode.manual.onClick()
+            vm.state.value!!
+                .connectionMode.manual
+                .onClick()
             advanceUntilIdle()
             val state = vm.state.value!!
             assertTrue(state.connectionMode.isManualSelected)
             // Nothing is preselected (the gateway is Private's) and nothing can be saved yet.
             assertFalse(state.saveButton.isEnabled)
-            assertTrue(state.other.servers.filterIsInstance<ServerState.Default>().none { it.radioButtonState.isChecked })
+            assertTrue(
+                state.other.servers
+                    .filterIsInstance<ServerState.Default>()
+                    .none { it.radioButtonState.isChecked }
+            )
             job.cancel()
         }
 
@@ -269,7 +284,10 @@ class ChooseServerVMTest {
             val vm = createVm()
             val job = launchCollector(vm)
             advanceUntilIdle()
-            assertFalse(vm.state.value!!.saveButton.isEnabled)
+            assertFalse(
+                vm.state.value!!
+                    .saveButton.isEnabled
+            )
             job.cancel()
         }
 

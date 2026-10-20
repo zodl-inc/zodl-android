@@ -57,6 +57,7 @@ import kotlin.time.TestTimeSource
  * `observeSwitchCandidates` - the lane `init()` launches - on the test scope instead. Wiring `init()` to
  * the real foreground signal is exercised by the `ChooseServerSelectionTest` instrumentation test.
  */
+@Suppress("LargeClass")
 @OptIn(ExperimentalCoroutinesApi::class)
 class AutomaticServerRepositoryTest {
     private val gateway = endpoint("ohttp-gateway.example")

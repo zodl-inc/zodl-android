@@ -54,7 +54,9 @@ class PersistServerSelectionUseCaseTest {
     @BeforeTest
     fun setUp() {
         coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
-        every { lightWalletEndpointProvider.isOhttpGateway(any()) } answers { firstArg<LightWalletEndpoint>() == gateway }
+        every { lightWalletEndpointProvider.isOhttpGateway(any()) } answers {
+            firstArg<LightWalletEndpoint>() == gateway
+        }
     }
 
     @Test

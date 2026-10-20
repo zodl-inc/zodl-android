@@ -263,7 +263,7 @@ fun NavGraphBuilder.walletNavGraph(
         composable<IronwoodAnnouncementArgs> { IronwoodAnnouncementScreen() }
         composable<MoreArgs> { MoreScreen() }
         composable<AdvancedSettingsArgs> { AdvancedSettingsScreen() }
-        composable<ChooseServerArgs> { ChooseServerScreen(it.toRoute()) }
+        composable<ChooseServerArgs> { ChooseServerScreen() }
         dialogComposable<OhttpInfoArgs> { OhttpInfoScreen() }
         dialogComposable<OhttpUnavailableArgs> { OhttpUnavailableScreen() }
         composable<OhttpOptInArgs> { OhttpOptInScreen() }

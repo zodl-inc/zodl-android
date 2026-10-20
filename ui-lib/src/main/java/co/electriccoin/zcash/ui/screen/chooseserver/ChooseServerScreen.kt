@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
-internal fun ChooseServerScreen(args: ChooseServerArgs) {
+internal fun ChooseServerScreen() {
     val vm = koinViewModel<ChooseServerVM>()
     val state by vm.state.collectAsStateWithLifecycle()
     BackHandler(state != null) { state?.onBack() }
