@@ -4,7 +4,7 @@ description: >-
   the SDK repository named by sdk-repo, installs its Rust/NDK toolchain, and points
   Gradle's composite build at it via ORG_GRADLE_PROJECT_SDK_INCLUDED_BUILD_PATH — so a
   co-developed app PR can build/lint/test against unreleased SDK changes without waiting on
-  a Maven publish. Supported on main, maint/* branches, and branches targeting either.
+  a Maven publish. Not allowed on release/*, review/* or candidate/* branches (or PRs targeting them).
   No-ops (does nothing) whenever the pin is blank, which is the default, normal case for
   every branch that isn't actively co-developing against an SDK PR.
 outputs:
@@ -58,8 +58,8 @@ runs:
           exit 1
         fi
         TARGET="${{ github.event.pull_request.base.ref || github.base_ref || github.ref_name }}"
-        if [ -n "${PIN}" ] && [ "${TARGET}" != "main" ] && [[ "${TARGET}" != maint/* ]]; then
-          echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but this workflow's target branch is '${TARGET}'. SDK_COMMIT_PIN is only supported on main, maint/* branches, and branches targeting them — clear it before merging into release/review branches, which must always build against a real published SDK version." >&2
+        if [ -n "${PIN}" ] && [[ "${TARGET}" == release/* || "${TARGET}" == review/* || "${TARGET}" == candidate/* ]]; then
+          echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but this workflow's target branch is '${TARGET}'. SDK_COMMIT_PIN is not allowed on release/*, review/* or candidate/* branches, which must always build against a real published SDK version — clear it before merging into them." >&2
           exit 1
         fi
         if [ -z "${SDK_REPO}" ]; then
