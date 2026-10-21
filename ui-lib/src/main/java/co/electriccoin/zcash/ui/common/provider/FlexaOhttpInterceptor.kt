@@ -33,8 +33,10 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 /**
- * Where [FlexaOhttpInterceptor] sends the Flexa API calls: the OHTTP client of [HttpClientProvider], whose
- * relay leg goes over Tor when the user turned Tor on.
+ * Where [FlexaOhttpInterceptor] sends the Flexa API calls: an OHTTP client of [HttpClientProvider] per call,
+ * whose relay leg goes over Tor when the user turned Tor on. The calls carry the wallet's commerce sessions
+ * and transactions, so with Tor on each one gets a Tor circuit of its own (ZIP #10 "Circuit isolation
+ * policy"), as the NEAR calls do.
  */
 interface FlexaOhttpTransport {
     suspend fun execute(
@@ -55,13 +57,13 @@ class FlexaOhttpTransportImpl(
     override suspend fun execute(
         request: OhttpHttpClient.Request,
         timeoutMs: Int
-    ) = httpClientProvider.createOhttp().execute(request, timeoutMs)
+    ) = httpClientProvider.withIsolatedOhttp { it.execute(request, timeoutMs) }
 
     override suspend fun executeStreaming(
         request: OhttpHttpClient.Request,
         timeoutMs: Int,
         listener: OhttpHttpClient.ResponseListener
-    ) = httpClientProvider.createOhttp().executeStreaming(request, timeoutMs, listener)
+    ) = httpClientProvider.withIsolatedOhttp { it.executeStreaming(request, timeoutMs, listener) }
 }
 
 /**
