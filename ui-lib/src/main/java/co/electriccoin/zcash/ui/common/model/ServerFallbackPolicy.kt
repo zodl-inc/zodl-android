@@ -50,6 +50,8 @@ object ServerFallbackPolicy {
         val unreachableTarget = configuredGateways.firstOrNull()
         return when {
             gateway != null && !onGateway -> DecisionResult.ReturnToGateway(gateway)
+            // A current gateway that did not answer gives way to one that did.
+            gateway != null && current !in healthyGateways -> DecisionResult.ReturnToGateway(gateway)
             gateway == null && onGateway -> DecisionResult.StayAndReportGatewayUnavailable
             gateway == null && unreachableTarget != null -> DecisionResult.ReturnToGateway(unreachableTarget, false)
             else -> DecisionResult.Stay

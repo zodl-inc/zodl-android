@@ -26,6 +26,15 @@ class ServerFallbackPolicyTest {
     }
 
     @Test
+    fun `an unreachable gateway gives way to a reachable one`() {
+        val other = endpoint("ohttp-gateway-testnet.example")
+        assertEquals(
+            ServerFallbackPolicy.DecisionResult.ReturnToGateway(other),
+            decide(current = gateway, gateways = listOf(other))
+        )
+    }
+
+    @Test
     fun `scenario 3 - OHTTP down on gateway - reports unavailability instead of automatic fallback`() {
         assertEquals(
             ServerFallbackPolicy.DecisionResult.StayAndReportGatewayUnavailable,
