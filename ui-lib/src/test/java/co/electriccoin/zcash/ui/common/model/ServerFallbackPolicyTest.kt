@@ -26,11 +26,14 @@ class ServerFallbackPolicyTest {
     }
 
     @Test
-    fun `an unreachable gateway gives way to a reachable one`() {
-        val other = endpoint("ohttp-gateway-testnet.example")
+    fun `an unreachable gateway gives way to a reachable one of the same network`() {
+        // The policy takes the gateway list as given and has no network check of its own: the list
+        // it is handed (the bundled gateways of the wallet's network) is what keeps it to one network.
+        val other = endpoint("ohttp-gateway-2.example")
+        val isMainnetGateway: (LightWalletEndpoint) -> Boolean = { it == gateway || it == other }
         assertEquals(
             ServerFallbackPolicy.DecisionResult.ReturnToGateway(other),
-            decide(current = gateway, gateways = listOf(other))
+            ServerFallbackPolicy.decide(gateway, listOf(other), isMainnetGateway)
         )
     }
 
