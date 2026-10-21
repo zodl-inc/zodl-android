@@ -1,12 +1,16 @@
 package co.electriccoin.zcash.ui.screen.ohttpunavailable
 
+import androidx.navigation.NavBackStackEntry
+import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
 import co.electriccoin.zcash.ui.common.usecase.IsTorEnabledUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.SetTorEnabledUseCase
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -21,6 +25,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class OhttpUnavailableVMTest {
@@ -29,6 +34,7 @@ class OhttpUnavailableVMTest {
     private val setTorEnabled = mockk<SetTorEnabledUseCase>(relaxed = true)
     private val persist = mockk<PersistServerSelectionUseCase>(relaxed = true)
     private val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+    private val transactionInProgress = MutableStateFlow(false)
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -42,6 +48,10 @@ class OhttpUnavailableVMTest {
             setTorEnabled = setTorEnabled,
             persistServerSelection = persist,
             navigationRouter = navigationRouter,
+            automaticServerRepository =
+                mockk<AutomaticServerRepository> {
+                    every { isTransactionInProgress } returns transactionInProgress
+                },
         )
 
     private fun kotlinx.coroutines.test.TestScope.stateOf(vm: OhttpUnavailableVM): OhttpUnavailableState {
@@ -85,5 +95,27 @@ class OhttpUnavailableVMTest {
             advanceUntilIdle()
             coVerify(exactly = 1) { persist.persistPublic(afterPrivateUnavailable = true) }
             verify(exactly = 1) { navigationRouter.back() }
+        }
+
+    @Test
+    fun aTransactionStartingWhileTheSheetIsOpenAsksToCloseIt() =
+        runTest(dispatcher) {
+            stateOf(createVm())
+            verify(exactly = 0) { navigationRouter.custom(any()) }
+            transactionInProgress.value = true
+            advanceUntilIdle()
+            verify(exactly = 1) { navigationRouter.custom(any()) }
+        }
+
+    @Test
+    fun aTransactionDoesNotPopAScreenThatIsNotTheSheet() =
+        runTest(dispatcher) {
+            val block = slot<(NavBackStackEntry?) -> NavigationCommand?>()
+            every { navigationRouter.custom(capture(block)) } returns Unit
+            stateOf(createVm())
+            transactionInProgress.value = true
+            advanceUntilIdle()
+            // Popping with the send flow on top would cancel that flow instead of the sheet.
+            assertNull(block.captured(null))
         }
 }
