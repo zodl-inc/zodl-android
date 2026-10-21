@@ -17,6 +17,12 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   longer sees the user's IP address for them and the app no longer needs a build-time Flexa key. The
   Flexa SDK is built from source (`third-party/flexa`). Its web pages and images still load directly.
 
+## [3.17.2 (3157)] - 2026-10-20
+
+### Fixed:
+
+- Updated the Zcash SDK to 5.2.2, which refreshes the bundled Rust TLS root certificates (`rustls-webpki`, `webpki-roots`), so connections made from the Rust layer (including Tor) no longer trust the revoked eMudhra roots.
+
 ## [3.17.1 (3155)] - 2026-10-14
 
 ### Changed:

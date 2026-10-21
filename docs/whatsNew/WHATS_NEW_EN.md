@@ -14,6 +14,12 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.17.2 (3157)] - 2026-10-20
+
+### Fixed:
+
+- We've updated how Zodl verifies secure server connections in response to a recently disclosed, industry-wide security issue. We recommend updating to the latest version as soon as possible.
+
 ## [3.17.1 (3155)] - 2026-10-14
 
 ### Changed:

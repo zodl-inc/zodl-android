@@ -14,6 +14,12 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.17.2 (3157)] - 2026-10-20
+
+### Corregido:
+
+- Actualizamos la forma en que Zodl verifica las conexiones seguras con los servidores, en respuesta a un problema de seguridad que afecta a toda la industria y que se dio a conocer recientemente. Te recomendamos actualizar a la última versión lo antes posible.
+
 ## [3.17.1 (3155)] - 2026-10-14
 
 ### Cambiado:
