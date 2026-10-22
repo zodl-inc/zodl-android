@@ -17,6 +17,7 @@ import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageData
 import co.electriccoin.zcash.ui.common.repository.MigrationHomeMessage
 import co.electriccoin.zcash.ui.common.repository.RuntimeMessage
+import co.electriccoin.zcash.ui.common.repository.isDisconnectedFor
 import co.electriccoin.zcash.ui.common.voting.VotingHomeMessageSource
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import kotlinx.coroutines.CancellationException
@@ -130,8 +131,23 @@ class GetHomeMessageUseCase(
         val migration: MigrationHomeMessage?,
         val account: WalletAccount?,
         val walletSnapshot: WalletSnapshot,
-        val isOhttpUnavailable: Boolean
+        val isOhttpUnavailable: Boolean,
+        /** [WalletSnapshot.status] DISCONNECTED for the shared grace (see [observeWalletSnapshotWithGrace]). */
+        val isDisconnectedSustained: Boolean,
     )
+
+    /**
+     * The wallet snapshot alongside [isDisconnectedFor] of its status: a status that is DISCONNECTED for less
+     * than [co.electriccoin.zcash.ui.common.repository.DISCONNECTED_GRACE] - one failed call, the blip around
+     * a lifecycle change - shows no banner. The same grace the automatic server selection applies before it
+     * treats the status as a connectivity edge.
+     */
+    private fun observeWalletSnapshotWithGrace(): Flow<Pair<WalletSnapshot, Boolean>> {
+        val snapshots = walletSnapshotDataSource.observe().filterNotNull()
+        return combine(snapshots, snapshots.map { it.status }.isDisconnectedFor()) { snapshot, sustained ->
+            snapshot to sustained
+        }
+    }
 
     /**
      * [HomeMessageData.CoinholderPolling] and [HomeMessageData.CrashReport] bundled together into
@@ -152,10 +168,10 @@ class GetHomeMessageUseCase(
                 observeShieldFundsMessage(),
                 migrationHomeMessageSource.observe(),
                 accountDataSource.selectedAccount,
-                walletSnapshotDataSource.observe().filterNotNull(),
+                observeWalletSnapshotWithGrace(),
                 automaticServerRepository.ohttpUnavailable
-            ) { sf, mig, acc, ws, ohttpUnavailable ->
-                RuntimeMessageInputs(sf, mig, acc, ws, ohttpUnavailable)
+            ) { sf, mig, acc, (ws, disconnectedSustained), ohttpUnavailable ->
+                RuntimeMessageInputs(sf, mig, acc, ws, ohttpUnavailable, disconnectedSustained)
             }.collect { inputs ->
                 val shieldFundsMessage = inputs.shieldFunds
                 val migrationMessage = inputs.migration
@@ -176,7 +192,7 @@ class GetHomeMessageUseCase(
                 // while the wallet is disconnected, erroring, or still syncing.
                 val message =
                     createOhttpUnavailableMessage(isOhttpUnavailable)
-                        ?: createDisconnectedMessage(walletSnapshot)
+                        ?: createDisconnectedMessage(inputs.isDisconnectedSustained)
                         ?: createSynchronizerErrorMessage(walletSnapshot)
                         ?: createSyncingMessage(
                             walletSnapshot,
@@ -243,12 +259,9 @@ class GetHomeMessageUseCase(
         return HomeMessageData.Error(walletSnapshot.synchronizerError)
     }
 
-    private fun createDisconnectedMessage(walletSnapshot: WalletSnapshot): HomeMessageData.Disconnected? =
-        if (walletSnapshot.status == Synchronizer.Status.DISCONNECTED) {
-            HomeMessageData.Disconnected
-        } else {
-            null
-        }
+    /** Only a DISCONNECTED status sustained for the shared grace shows the banner (a blip shows nothing). */
+    private fun createDisconnectedMessage(isDisconnectedSustained: Boolean): HomeMessageData.Disconnected? =
+        if (isDisconnectedSustained) HomeMessageData.Disconnected else null
 
     private fun createOhttpUnavailableMessage(isOhttpUnavailable: Boolean): HomeMessageData.OhttpUnavailable? =
         if (isOhttpUnavailable) {

@@ -224,23 +224,16 @@ class AutomaticServerRepositoryImpl(
                 guarded("switch to ${candidate.host}:${candidate.port}") { applyServerSwitch(candidate) }
             }
 
-    /** A synchronizer error, or a DISCONNECTED status that lasts [DISCONNECTED_GRACE]. */
+    /** A synchronizer error, or a DISCONNECTED status that lasts [DISCONNECTED_GRACE] ([isDisconnectedFor]). */
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun connectivityEdges(): Flow<SwitchTrigger> =
         merge(
             synchronizerProvider.error.filterNotNull().map { SwitchTrigger.CONNECTIVITY },
             synchronizerProvider.synchronizer
                 .flatMapLatest { it?.status ?: emptyFlow() }
-                .mapLatest { status ->
-                    // mapLatest cancels the delay when the status changes, so only a status that STAYS
-                    // disconnected for the grace period fires.
-                    if (status == Synchronizer.Status.DISCONNECTED) {
-                        delay(DISCONNECTED_GRACE)
-                        SwitchTrigger.CONNECTIVITY
-                    } else {
-                        null
-                    }
-                }.filterNotNull(),
+                .isDisconnectedFor()
+                .filter { it }
+                .map { SwitchTrigger.CONNECTIVITY },
         )
 
     /**
@@ -531,9 +524,6 @@ private val GATEWAY_HEALTH_INTERVAL = 2.minutes
 
 /** Cap on one plain validation of a fallback candidate. */
 private val VALIDATION_TIMEOUT = 20.seconds
-
-/** How long a DISCONNECTED status must last before it counts as a connectivity edge. */
-private val DISCONNECTED_GRACE = 20.seconds
 
 /** How often, while on a clearnet fallback, to check whether the OHTTP gateway is back. */
 private val FALLBACK_RECOVERY_INTERVAL = 5.minutes
