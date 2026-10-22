@@ -9,6 +9,9 @@
     <string name="general_maxHintShield">Shield</string>
     <string name="general_maxHintConfirming">Max will be available once your funds confirm.</string>
     <string name="general_maxFeeBufferHint">Max keeps %s ZEC for the network fee.</string>
+    <string name="general_maxFeeSlippageHint">Max leaves room for fees and slippage, and updates with each new quote.</string>
+    <string name="general_maxUnavailableSend">Max isn\'t available right now. Enter the amount you want to send.</string>
+    <string name="general_maxUnavailableSwap">Max isn\'t available right now. Enter the amount you want to swap.</string>
     <string name="general_maxTooManyNotesTitle">Too many notes to send at once</string>
     <string name="general_maxTooManyNotesBody">Your balance is split into many small pieces, so it can\'t all go in one transaction. Try sending a smaller amount.</string>
     <string name="general_maxTooManyNotesCta">Send a smaller amount</string>

@@ -8,6 +8,9 @@
     <string name="general_maxHintShield">Proteger</string>
     <string name="general_maxHintConfirming">Máx. estará disponible cuando se confirmen tus fondos.</string>
     <string name="general_maxFeeBufferHint">Máx. reserva %s ZEC para la comisión de red.</string>
+    <string name="general_maxFeeSlippageHint">Máx. deja margen para comisiones y slippage, y se actualiza con cada nueva cotización.</string>
+    <string name="general_maxUnavailableSend">Máx. no está disponible en este momento. Ingresa el monto que quieres enviar.</string>
+    <string name="general_maxUnavailableSwap">Máx. no está disponible en este momento. Ingresa el monto del swap que quieres hacer.</string>
     <string name="general_maxTooManyNotesTitle">Demasiadas notas para enviar a la vez</string>
     <string name="general_maxTooManyNotesBody">Tu saldo está dividido en muchas partes pequeñas, así que no se puede enviar todo en una sola transacción. Intenta enviar un monto menor.</string>
     <string name="general_maxTooManyNotesCta">Enviar un monto menor</string>

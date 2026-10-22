@@ -4,7 +4,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -15,11 +14,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
-import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
@@ -31,14 +30,13 @@ fun ZashiMaxChip(
     state: SendMaxChipState,
     modifier: Modifier = Modifier,
 ) {
-    val clickable = state.isEnabled && !state.isLoading
     val interactionSource = remember { MutableInteractionSource() }
-    // Loading is a tertiary icon button (Figma 9096:3324 / 9043:408): default tertiary colors, square, spinner only.
+    // Figma 9162:1715: enabled keeps the tertiary fill; disabled has no fill and a lighter label. No spinner (D2).
     val containerColor by animateColorAsState(
-        if (state.isEnabled || state.isLoading) {
+        if (state.isEnabled) {
             ZashiColors.Btns.Tertiary.btnTertiaryBg
         } else {
-            ZashiColors.Btns.Tertiary.btnTertiaryBgDisabled
+            Color.Transparent
         }
     )
     val contentColor by animateColorAsState(
@@ -58,27 +56,17 @@ fun ZashiMaxChip(
                 Modifier
                     .clickable(
                         onClick = state.onClick,
-                        enabled = clickable,
+                        enabled = state.isEnabled,
                         interactionSource = interactionSource,
                         indication = ripple()
-                    ).padding(
-                        if (state.isLoading) {
-                            ZashiMaxChipDefaults.loadingPadding
-                        } else {
-                            ZashiChipButtonDefaults.contentPadding
-                        }
-                    ),
+                    ).padding(ZashiChipButtonDefaults.contentPadding),
             contentAlignment = Alignment.Center
         ) {
-            if (state.isLoading) {
-                LottieProgress(modifier = Modifier.testTag(ZashiMaxChipTags.PROGRESS))
-            } else {
-                Text(
-                    text = stringResource(R.string.general_max),
-                    style = ZashiChipButtonDefaults.textStyle,
-                    color = contentColor
-                )
-            }
+            Text(
+                text = stringResource(R.string.general_max),
+                style = ZashiChipButtonDefaults.textStyle,
+                color = contentColor
+            )
         }
     }
 }
@@ -86,27 +74,18 @@ fun ZashiMaxChip(
 @Immutable
 data class SendMaxChipState(
     val isEnabled: Boolean,
-    val isLoading: Boolean,
     val onClick: () -> Unit,
 )
 
-object ZashiMaxChipDefaults {
-    /** 16dp spinner + 10dp on each side = 36dp square, the same height as the text chip (20dp line + 2 x 8dp). */
-    val loadingPadding: PaddingValues
-        get() = PaddingValues(10.dp)
-}
-
 object ZashiMaxChipTags {
     const val CHIP = "zashi_max_chip"
-    const val PROGRESS = "zashi_max_chip_progress"
 }
 
 private class SendMaxChipStatePreviewProvider : PreviewParameterProvider<SendMaxChipState> {
     override val values =
         sequenceOf(
-            SendMaxChipState(isEnabled = true, isLoading = false, onClick = {}),
-            SendMaxChipState(isEnabled = false, isLoading = false, onClick = {}),
-            SendMaxChipState(isEnabled = true, isLoading = true, onClick = {}),
+            SendMaxChipState(isEnabled = true, onClick = {}),
+            SendMaxChipState(isEnabled = false, onClick = {}),
         )
 }
 
