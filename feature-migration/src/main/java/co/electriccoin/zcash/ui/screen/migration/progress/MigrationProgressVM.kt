@@ -76,6 +76,7 @@ class MigrationProgressVM(
                     estimatedTip = if (est >= 0) est else liveStates.tipHeight,
                     secondsPerBlock = secondsPerBlock,
                     nowEpochSeconds = Clock.System.now().epochSeconds,
+                    nu7ActivationHeight = readout.nu7ActivationHeight,
                 )?.let { createState(it, rate) }
         }.withLce(sendLce, errorStateMapper::mapToState)
             .stateIn(this)

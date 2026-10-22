@@ -45,7 +45,11 @@ class LiveMigrationSnapshotTest {
     @Test
     fun `characterization pin of pre-NU7 75s - expiryAt projects at 75s per block and null stays null`() {
         // NU7: revisit - spans activation once helper is height-aware
-        val s = snapshot(transfer(id = 1, scheduled = tip + 10, expiry = tip + 40), transfer(id = 2, scheduled = tip + 20))
+        val s =
+            snapshot(
+                transfer(id = 1, scheduled = tip + 10, expiry = tip + 40),
+                transfer(id = 2, scheduled = tip + 20),
+            )
         assertEquals(now + 40L * 75L, s.transfers[0].expiryAt?.epochSeconds)
         assertNull(s.transfers[1].expiryAt)
     }
@@ -53,7 +57,11 @@ class LiveMigrationSnapshotTest {
     @Test
     fun `characterization pin of pre-NU7 75s - minedAt projects at 75s per block and null until mined`() {
         // NU7: revisit - spans activation once helper is height-aware
-        val s = snapshot(transfer(id = 1, scheduled = tip - 30, mined = tip - 20), transfer(id = 2, scheduled = tip + 5))
+        val s =
+            snapshot(
+                transfer(id = 1, scheduled = tip - 30, mined = tip - 20),
+                transfer(id = 2, scheduled = tip + 5),
+            )
         assertEquals(now - 20L * 75L, s.transfers[0].minedAt?.epochSeconds)
         assertNull(s.transfers[1].minedAt)
     }
@@ -76,5 +84,33 @@ class LiveMigrationSnapshotTest {
         // NU7: revisit - spans activation once helper is height-aware
         val p = snapshot(transfer(id = 1, scheduled = tip + 7, isTransfer = false)).preparations.single()
         assertEquals(now + 7L * 75L, p.scheduledAt.epochSeconds)
+    }
+
+    @Test
+    fun `NU7 - scheduledAt splits the projection at the activation height`() {
+        val nu7 = tip + 40
+        val s =
+            MigrationTransferStates(transfers = listOf(transfer(1, scheduled = tip + 100)), tipHeight = tip)
+                .toSnapshot(estimatedTip = tip, secondsPerBlock = 75L, nowEpochSeconds = now, nu7ActivationHeight = nu7)
+        // (tip, tip+100]: 39 heights below activation at 75 s, 61 from it at 25 s.
+        assertEquals(
+            now + 39 * 75L + 61 * 25L,
+            s.transfers
+                .single()
+                .scheduledAt.epochSeconds
+        )
+    }
+
+    @Test
+    fun `NU7 - without an activation height the projection is unchanged`() {
+        val s =
+            MigrationTransferStates(transfers = listOf(transfer(1, scheduled = tip + 100)), tipHeight = tip)
+                .toSnapshot(estimatedTip = tip, secondsPerBlock = 75L, nowEpochSeconds = now)
+        assertEquals(
+            now + 100 * 75L,
+            s.transfers
+                .single()
+                .scheduledAt.epochSeconds
+        )
     }
 }

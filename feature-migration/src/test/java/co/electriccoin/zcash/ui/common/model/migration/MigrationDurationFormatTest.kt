@@ -140,7 +140,12 @@ class MigrationDurationFormatTest {
     @Test
     fun `characterization pin of pre-NU7 75s - 1152 blocks is exactly 24 hours`() {
         // NU7: revisit - spans activation once helper is height-aware
-        val seconds = estimatedSecondsBetweenHeights(fromHeight = 5_000_000L, toHeight = 5_001_152L, secondsPerBlock = 75L)
+        val seconds =
+            estimatedSecondsBetweenHeights(
+                fromHeight = 5_000_000L,
+                toHeight = 5_001_152L,
+                secondsPerBlock = 75L,
+            )
         assertEquals(24L * 3600L, seconds)
         assertEquals("~24 hours", formatMigrationDuration(seconds, fineGrained = false))
         assertEquals("~24 h", formatMigrationDuration(seconds, fineGrained = true))
@@ -165,5 +170,96 @@ class MigrationDurationFormatTest {
         val fortyEightBlocks = estimatedSecondsBetweenHeights(fromHeight = 100L, toHeight = 148L, secondsPerBlock = 75L)
         assertEquals(3_600L, fortyEightBlocks)
         assertEquals("~1 hour", formatMigrationDuration(fortyEightBlocks, fineGrained = false))
+    }
+
+    // ── NU7 (MOB-2287): height ranges that span the activation height are converted in two segments. ──
+
+    private val nu7 = 3_543_405L
+
+    @Test
+    fun `NU7 - a range entirely before activation keeps the measured rate`() {
+        val s =
+            estimatedSecondsBetweenHeights(
+                nu7 - 2_000,
+                nu7 - 1_000,
+                secondsPerBlock = 75L,
+                nu7ActivationHeight = nu7,
+            )
+        assertEquals(1_000 * 75L, s)
+    }
+
+    @Test
+    fun `NU7 - a range entirely after activation is three times faster than the pre-NU7 rate`() {
+        // The rate was measured post-NU7 (rateHeight defaults to fromHeight, which is after activation).
+        val s = estimatedSecondsBetweenHeights(nu7 + 100, nu7 + 1_100, secondsPerBlock = 25L, nu7ActivationHeight = nu7)
+        assertEquals(1_000 * 25L, s)
+    }
+
+    @Test
+    fun `NU7 - a range that spans activation uses 75s before it and 25s from it`() {
+        // (nu7-40, nu7+60]: 39 heights below activation at 75 s and 61 heights from it at 25 s.
+        val s = estimatedSecondsBetweenHeights(nu7 - 40, nu7 + 60, secondsPerBlock = 75L, nu7ActivationHeight = nu7)
+        assertEquals(39 * 75L + 61 * 25L, s)
+    }
+
+    @Test
+    fun `NU7 - a pre-NU7 rate measured at a post-NU7 tip is scaled back up for earlier heights`() {
+        // Tip is after activation (rate 25 s), the range starts before it: the early part runs at 75 s.
+        val s =
+            estimatedSecondsBetweenHeights(
+                nu7 - 40,
+                nu7 + 60,
+                secondsPerBlock = 25L,
+                nu7ActivationHeight = nu7,
+                rateHeight = nu7 + 60
+            )
+        assertEquals(39 * 75L + 61 * 25L, s)
+    }
+
+    @Test
+    fun `NU7 - a range ending exactly below activation is all pre-NU7`() {
+        val s = estimatedSecondsBetweenHeights(nu7 - 10, nu7 - 1, secondsPerBlock = 75L, nu7ActivationHeight = nu7)
+        assertEquals(9 * 75L, s)
+    }
+
+    @Test
+    fun `NU7 - past heights are the negation of the forward range`() {
+        val forward =
+            estimatedSecondsBetweenHeights(
+                nu7 - 40,
+                nu7 + 60,
+                secondsPerBlock = 75L,
+                nu7ActivationHeight = nu7,
+            )
+        val past =
+            estimatedSecondsBetweenHeights(
+                fromHeight = nu7 + 60,
+                toHeight = nu7 - 40,
+                secondsPerBlock = 75L,
+                nu7ActivationHeight = nu7,
+                rateHeight = nu7 - 40
+            )
+        assertEquals(-forward, past)
+    }
+
+    @Test
+    fun `NU7 - an unknown activation height keeps the single-rate math`() {
+        assertEquals(
+            100 * 75L,
+            estimatedSecondsBetweenHeights(0L, 100L, secondsPerBlock = 75L, nu7ActivationHeight = null)
+        )
+    }
+
+    @Test
+    fun `NU7 - a 24 hour plan after activation reads as 8 hours`() {
+        // 1152 blocks pre-NU7 is 24 h; the same 1152 blocks from activation are 8 h.
+        val s =
+            estimatedSecondsBetweenHeights(
+                nu7 + 10,
+                nu7 + 10 + 1_152,
+                secondsPerBlock = 25L,
+                nu7ActivationHeight = nu7,
+            )
+        assertEquals(8L * 3600L, s)
     }
 }

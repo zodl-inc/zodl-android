@@ -123,4 +123,29 @@ class FinalizeMigrationScheduleUseCaseTest {
         val empty = MigrationSchedule(transfers = emptyList(), estimatedDurationHours = 0, proposalHandle = 0L)
         assertEquals(0.seconds, useCase().delayUntilFirstStep(empty, secondsPerBlock = 75L, tipHeight = 0L))
     }
+
+    @Test
+    fun `NU7 - delay splits at the activation height`() {
+        // schedule(): anchor 100, first step at 200. Activation at 140: 39 blocks at 75 s, 61 at 25 s.
+        val d =
+            useCase().delayUntilFirstStep(
+                schedule(),
+                secondsPerBlock = 75L,
+                tipHeight = 100L,
+                nu7ActivationHeight = 140L,
+            )
+        assertEquals((39 * 75 + 61 * 25).seconds, d)
+    }
+
+    @Test
+    fun `NU7 - delay after activation uses the post-NU7 rate`() {
+        val d =
+            useCase().delayUntilFirstStep(
+                schedule(),
+                secondsPerBlock = 25L,
+                tipHeight = 100L,
+                nu7ActivationHeight = 50L,
+            )
+        assertEquals((100 * 25).seconds, d)
+    }
 }

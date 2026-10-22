@@ -443,4 +443,26 @@ class MigrationDriveOnceTest {
         val cadence = migrationCadence()
         assertTrue(cadence == 300.seconds || cadence == 3_600.seconds, "unexpected cadence $cadence")
     }
+
+    @Test
+    fun `NU7 - engine wake delay splits at the activation height`() {
+        // est 1_000, peek 1_100, activation 1_040: 39 blocks at 75 s then 61 at 25 s.
+        val delay =
+            computeEngineWakeDelay(
+                est = 1_000,
+                secondsPerBlock = 75,
+                peek = MigrationPeek(height = 1_100, kind = MigrationStepKind.BROADCAST),
+                nu7ActivationHeight = 1_040,
+            )
+        assertEquals((39 * 75 + 61 * 25).seconds, delay)
+    }
+
+    @Test
+    fun `NU7 - engine wake delay still floors at 60s`() {
+        val peek = MigrationPeek(height = 1_001, kind = MigrationStepKind.PROVE)
+        assertEquals(
+            60.seconds,
+            computeEngineWakeDelay(est = 1_000, secondsPerBlock = 25, peek = peek, nu7ActivationHeight = 500)
+        )
+    }
 }

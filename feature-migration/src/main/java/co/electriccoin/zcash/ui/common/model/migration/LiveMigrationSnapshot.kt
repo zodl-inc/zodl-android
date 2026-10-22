@@ -75,9 +75,13 @@ fun MigrationTransferStates.toSnapshot(
     estimatedTip: Long,
     secondsPerBlock: Long,
     nowEpochSeconds: Long,
+    nu7ActivationHeight: Long? = null,
 ): LiveMigrationSnapshot {
     fun at(height: Long): Instant =
-        Instant.fromEpochSeconds(nowEpochSeconds + (height - estimatedTip) * secondsPerBlock)
+        Instant.fromEpochSeconds(
+            nowEpochSeconds +
+                estimatedSecondsBetweenHeights(estimatedTip, height, secondsPerBlock, nu7ActivationHeight)
+        )
     val sorted = transfers.sortedWith(compareBy({ it.scheduledHeight }, { it.id }))
     return LiveMigrationSnapshot(
         transfers =

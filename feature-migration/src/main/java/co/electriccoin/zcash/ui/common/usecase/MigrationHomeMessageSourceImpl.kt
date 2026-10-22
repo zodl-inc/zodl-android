@@ -103,6 +103,7 @@ class MigrationHomeMessageSourceImpl(
                             states = it,
                             estimatedTip = if (readout.estimatedTip >= 0) readout.estimatedTip else it.tipHeight,
                             secondsPerBlock = readout.estimatedSecondsPerBlock,
+                            nu7ActivationHeight = readout.nu7ActivationHeight,
                         )
                     }
                 // UNPROVABLE ANCHOR → immediate, deterministic "Update migration plan" attention

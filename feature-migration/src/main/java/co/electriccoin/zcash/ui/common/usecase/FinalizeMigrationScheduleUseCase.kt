@@ -61,13 +61,17 @@ class FinalizeMigrationScheduleUseCase(
     ) {
         // Measured block rate — the 75s constant grossly overestimates on the bursty testnet,
         // scheduling the first worker run far past the real due heights.
-        val secondsPerBlock = getOrchardMigrationSdk().estimatedSecondsPerBlock()
+        val sdk = getOrchardMigrationSdk()
+        val secondsPerBlock = sdk.estimatedSecondsPerBlock()
         val accountKeyId = getSelectedWalletAccount().sdkAccount.accountUuid.toStorageKeyId()
         logCommittedBoundaries()
         val tipHeight =
             sched.transfers.minOfOrNull { it.anchorHeight }
                 ?: (sched.preparations.minOfOrNull { it.broadcastHeight } ?: 0L)
-        migrationScheduler.schedule(accountKeyId, delayUntilFirstStep(sched, secondsPerBlock, tipHeight))
+        migrationScheduler.schedule(
+            accountKeyId,
+            delayUntilFirstStep(sched, secondsPerBlock, tipHeight, sdk.nu7ActivationHeight)
+        )
         // The engine's anchor-retention floor is session-scoped and was computed BEFORE this plan
         // existed — restart the sync session now, before the chain crosses the plan's first
         // boundary, or that boundary's checkpoint is never created and its transfer can never be
@@ -141,14 +145,19 @@ class FinalizeMigrationScheduleUseCase(
     // SDK always draws from the same committed chain tip). Preparations and transfers share this
     // one origin, so the delay to a preparation's broadcastHeight and the delay to a transfer's
     // nextExecutableAfterHeight are comparable block-count deltas from the same point.
-    internal fun delayUntilFirstStep(sched: MigrationSchedule, secondsPerBlock: Long, tipHeight: Long): Duration {
+    internal fun delayUntilFirstStep(
+        sched: MigrationSchedule,
+        secondsPerBlock: Long,
+        tipHeight: Long,
+        nu7ActivationHeight: Long? = null,
+    ): Duration {
         val earliest =
             (
                 sched.preparations.map { it.broadcastHeight } +
                     sched.transfers.map { it.nextExecutableAfterHeight }
             ).minOrNull()
                 ?: return 0.seconds
-        val remaining = estimatedSecondsBetweenHeights(tipHeight, earliest, secondsPerBlock)
+        val remaining = estimatedSecondsBetweenHeights(tipHeight, earliest, secondsPerBlock, nu7ActivationHeight)
         return if (remaining <= 0) 0.seconds else remaining.seconds
     }
 }

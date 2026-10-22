@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.model.migration
 
 import cash.z.ecc.android.sdk.ext.ZcashSdk
+import cash.z.ecc.android.sdk.model.BlockSpacing
 import co.electriccoin.zcash.migration.BuildConfig
 
 /**
@@ -71,6 +72,43 @@ fun estimatedSecondsBetweenHeights(
     // wherever an SDK is in reach — testnet's minimum-difficulty bursts make the constant a
     // large overestimate (observed live: "~1 h" plans coming due within minutes).
     secondsPerBlock: Long = ZcashSdk.BLOCK_INTERVAL_MILLIS / MILLIS_PER_SECOND,
-): Long = (toHeight - fromHeight) * secondsPerBlock
+    // From this height blocks come NU7_RATIO times as often (ZIP 218: 75s -> 25s), so a range that spans
+    // it cannot use one rate. null (no activation known, or not passed) keeps the single-rate math.
+    nu7ActivationHeight: Long? = null,
+    // The height the measured [secondsPerBlock] belongs to (the chain tip it was measured at). Defaults
+    // to [fromHeight], which is the tip for every "from now" projection.
+    rateHeight: Long = fromHeight,
+): Long =
+    when {
+        nu7ActivationHeight == null -> {
+            (toHeight - fromHeight) * secondsPerBlock
+        }
+
+        // Past ranges (to < from, "scheduled 2h ago") are the negation of the forward range.
+        toHeight < fromHeight -> {
+            -estimatedSecondsBetweenHeights(toHeight, fromHeight, secondsPerBlock, nu7ActivationHeight, rateHeight)
+        }
+
+        else -> {
+            forwardSecondsAcrossNu7(fromHeight, toHeight, secondsPerBlock, nu7ActivationHeight, rateHeight)
+        }
+    }
+
+private fun forwardSecondsAcrossNu7(
+    fromHeight: Long,
+    toHeight: Long,
+    secondsPerBlock: Long,
+    nu7ActivationHeight: Long,
+    rateHeight: Long,
+): Long {
+    val ratio = BlockSpacing.NU7_RATIO
+    val rateIsPostNu7 = rateHeight >= nu7ActivationHeight
+    val preNu7Rate = if (rateIsPostNu7) secondsPerBlock * ratio else secondsPerBlock
+    val postNu7Rate = if (rateIsPostNu7) secondsPerBlock else (secondsPerBlock / ratio).coerceAtLeast(1L)
+    // Heights in (from, to] that are below the activation height are the pre-NU7 blocks.
+    val preNu7Blocks = (minOf(toHeight, nu7ActivationHeight - 1) - fromHeight).coerceIn(0L, toHeight - fromHeight)
+    val postNu7Blocks = (toHeight - fromHeight) - preNu7Blocks
+    return preNu7Blocks * preNu7Rate + postNu7Blocks * postNu7Rate
+}
 
 private const val MILLIS_PER_SECOND = 1000L
