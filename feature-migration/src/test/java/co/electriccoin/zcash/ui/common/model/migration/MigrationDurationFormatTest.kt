@@ -1,6 +1,6 @@
 package co.electriccoin.zcash.ui.common.model.migration
 
-import cash.z.ecc.android.sdk.ext.ZcashSdk
+import cash.z.ecc.android.sdk.model.BlockSpacing
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -14,7 +14,7 @@ class MigrationDurationFormatTest {
     @Test
     fun estimatedSecondsBetweenHeights_converts_block_delta_using_the_network_block_time() {
         val blocksApart = 288L // one ZIP-318-style transfer-scheduling step
-        val expectedSeconds = blocksApart * (ZcashSdk.BLOCK_INTERVAL_MILLIS / 1000)
+        val expectedSeconds = blocksApart * (BlockSpacing.POST_BLOSSOM_SECONDS)
 
         val actual = estimatedSecondsBetweenHeights(fromHeight = 4_180_000L, toHeight = 4_180_000L + blocksApart)
 
@@ -33,7 +33,7 @@ class MigrationDurationFormatTest {
         // is responsible for clamping to zero/"overdue", this function must not do so itself.
         val actual = estimatedSecondsBetweenHeights(fromHeight = 4_180_100L, toHeight = 4_180_000L)
 
-        assertEquals(-100L * (ZcashSdk.BLOCK_INTERVAL_MILLIS / 1000), actual)
+        assertEquals(-100L * (BlockSpacing.POST_BLOSSOM_SECONDS), actual)
     }
 
     @Test
@@ -45,7 +45,7 @@ class MigrationDurationFormatTest {
 
         val secondsFromGenesis = estimatedSecondsBetweenHeights(fromHeight = 0L, toHeight = height)
 
-        assertEquals(height * (ZcashSdk.BLOCK_INTERVAL_MILLIS / 1000), secondsFromGenesis)
+        assertEquals(height * (BlockSpacing.POST_BLOSSOM_SECONDS), secondsFromGenesis)
         assertEquals(height * 75L, secondsFromGenesis)
     }
 
@@ -114,7 +114,7 @@ class MigrationDurationFormatTest {
 
     @Test
     fun `characterization pin of pre-NU7 75s - default rate is 75 seconds per block`() {
-        assertEquals(75L, ZcashSdk.BLOCK_INTERVAL_MILLIS / 1000)
+        assertEquals(75L, BlockSpacing.POST_BLOSSOM_SECONDS)
         assertEquals(75L, estimatedSecondsBetweenHeights(fromHeight = 1_000L, toHeight = 1_001L))
     }
 

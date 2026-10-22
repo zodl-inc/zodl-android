@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.common.model.migration
 
-import cash.z.ecc.android.sdk.ext.ZcashSdk
 import cash.z.ecc.android.sdk.model.BlockSpacing
 import co.electriccoin.zcash.migration.BuildConfig
 
@@ -71,7 +70,7 @@ fun estimatedSecondsBetweenHeights(
     // 75s protocol target as fallback. Pass OrchardMigrationSdk.estimatedSecondsPerBlock()
     // wherever an SDK is in reach — testnet's minimum-difficulty bursts make the constant a
     // large overestimate (observed live: "~1 h" plans coming due within minutes).
-    secondsPerBlock: Long = ZcashSdk.BLOCK_INTERVAL_MILLIS / MILLIS_PER_SECOND,
+    secondsPerBlock: Long = BlockSpacing.POST_BLOSSOM_SECONDS,
     // From this height blocks come NU7_RATIO times as often (ZIP 218: 75s -> 25s), so a range that spans
     // it cannot use one rate. null (no activation known, or not passed) keeps the single-rate math.
     nu7ActivationHeight: Long? = null,
@@ -110,5 +109,3 @@ private fun forwardSecondsAcrossNu7(
     val postNu7Blocks = (toHeight - fromHeight) - preNu7Blocks
     return preNu7Blocks * preNu7Rate + postNu7Blocks * postNu7Rate
 }
-
-private const val MILLIS_PER_SECOND = 1000L
