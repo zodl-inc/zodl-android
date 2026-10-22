@@ -99,35 +99,33 @@ class VotingApiProviderOhttpRoutingTest {
         }
 
     @Test
-    fun postShareUsesOhttpForCustomChainTypedAsTheBundledSource() =
+    fun customChainTypedAsTheBundledSourceFetchesItsConfigThroughOhttp() =
         runBlocking {
             val ohttpRequests = mutableListOf<String>()
+            val directRequests = mutableListOf<String>()
             val provider =
                 providerWithOhttpTracking(
                     ohttpRequests = ohttpRequests,
+                    directRequests = directRequests,
                     torEnabled = false,
                     isCustomServer = true,
                     customPinnedSource = StaticVotingConfig.BUNDLED_PINNED_SOURCE,
                     ohttpCanHandle = { true }
                 )
 
-            val share =
-                SharePayload(
-                    sharesHash = ByteArray(32) { 1 },
-                    proposalId = 3,
-                    voteDecision = 1,
-                    encShare = EncryptedShare(c1 = ByteArray(32) { 2 }, c2 = ByteArray(32) { 3 }, shareIndex = 0),
-                    treePosition = 42L,
-                    voteRoundId = "01".repeat(32)
-                )
-
+            // The bundled checksum does not match the fake config, so the fetch fails: the routing of the
+            // fetch is what is checked here.
             runCatching {
-                provider.delegateShares(listOf(share))
+                provider.fetchServiceConfig()
             }
 
             assertTrue(
-                ohttpRequests.any { it.contains("/shielded-vote/v1/shares") },
-                "a custom chain whose source is the bundled one counts as predefined: OHTTP with Tor off"
+                ohttpRequests.any { it.contains("/pins/prod/") && it.contains("static-voting-config.json") },
+                "a custom chain typed as the bundled source counts as predefined: its config goes through the gateway"
+            )
+            assertTrue(
+                directRequests.none { it.contains("voting-config.json") },
+                "the predefined config is never fetched direct with Tor off"
             )
         }
 
