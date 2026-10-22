@@ -12,4 +12,6 @@ data class WalletSnapshot(
     val isSpendable: Boolean,
     val restoringState: WalletRestoringState,
     val blocksRemaining: Long = -1L,
+    // Target time (ZIP 208/218, so 25 s per block from NU7) of the blocks not yet scanned; -1 if unknown.
+    val behindSeconds: Long = -1L,
 )

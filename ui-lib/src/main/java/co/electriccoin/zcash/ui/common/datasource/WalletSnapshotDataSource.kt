@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.datasource
 
+import cash.z.ecc.android.sdk.model.BlockSpacing
 import co.electriccoin.zcash.ui.common.model.WalletSnapshot
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -41,9 +42,17 @@ class WalletSnapshotDataSourceImpl(
                             synchronizer.fullyScannedHeight,
                         ) { networkHeight, fullyScannedHeight ->
                             if (networkHeight != null && fullyScannedHeight != null) {
-                                (networkHeight.value - fullyScannedHeight.value).coerceAtLeast(0L)
+                                val blocks = (networkHeight.value - fullyScannedHeight.value).coerceAtLeast(0L)
+                                // The same gap in target time: one block is 75 s before NU7 and 25 s from it.
+                                val seconds =
+                                    BlockSpacing.targetSecondsBetween(
+                                        synchronizer.network,
+                                        fullyScannedHeight,
+                                        networkHeight
+                                    )
+                                blocks to seconds
                             } else {
-                                -1L
+                                -1L to -1L
                             }
                         }
                     combine(
@@ -60,8 +69,8 @@ class WalletSnapshotDataSourceImpl(
                             isSpendable = isSpendable,
                             restoringState = restoringState,
                         )
-                    }.combine(blocksRemainingFlow) { snapshot, blocksRemaining ->
-                        snapshot.copy(blocksRemaining = blocksRemaining)
+                    }.combine(blocksRemainingFlow) { snapshot, (blocksRemaining, behindSeconds) ->
+                        snapshot.copy(blocksRemaining = blocksRemaining, behindSeconds = behindSeconds)
                     }
                 }
             }.retainWhileWalletExists(persistableWalletProvider)

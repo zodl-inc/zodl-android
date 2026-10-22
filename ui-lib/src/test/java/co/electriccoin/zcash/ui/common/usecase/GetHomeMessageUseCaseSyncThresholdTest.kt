@@ -14,6 +14,7 @@ class GetHomeMessageUseCaseSyncThresholdTest {
         blocksRemaining: Long,
         restoringState: WalletRestoringState = WalletRestoringState.SYNCING,
         progress: Float = 0.5f,
+        behindSeconds: Long = -1L,
     ) = WalletSnapshot(
         status = Synchronizer.Status.SYNCING,
         progress = PercentDecimal(progress),
@@ -21,6 +22,7 @@ class GetHomeMessageUseCaseSyncThresholdTest {
         isSpendable = false,
         restoringState = restoringState,
         blocksRemaining = blocksRemaining,
+        behindSeconds = behindSeconds,
     )
 
     @Test
@@ -145,5 +147,46 @@ class GetHomeMessageUseCaseSyncThresholdTest {
                 someBalance = false,
             )
         )
+    }
+
+    // ── NU7 (MOB-2287): the threshold is three days of target block time, not a fixed block count. ──
+
+    @Test
+    fun `NU7 - 10000 blocks at 25s is under three days and hides the banner`() {
+        // 10_000 * 25 s = 250_000 s, below 259_200 s. In blocks alone it would be well above 3456.
+        val result =
+            syncingMessageFor(
+                snapshot(blocksRemaining = 10_000, behindSeconds = 10_000L * 25L),
+                syncMessageShownBefore = false,
+                someBalance = false,
+            )
+        assertNull(result)
+    }
+
+    @Test
+    fun `NU7 - 10368 blocks at 25s is exactly three days and shows the banner`() {
+        val result =
+            syncingMessageFor(
+                snapshot(blocksRemaining = 10_368, behindSeconds = 10_368L * 25L),
+                syncMessageShownBefore = false,
+                someBalance = false,
+            )
+        assertEquals(HomeMessageData.Syncing(progress = 50f), result)
+    }
+
+    @Test
+    fun `NU7 - threshold in seconds equals the pre-NU7 3456 blocks at 75s`() {
+        assertEquals(3456L * 75L, SYNCING_BANNER_HIDE_BELOW_SECONDS)
+    }
+
+    @Test
+    fun `NU7 - an unknown behind time falls back to the block count`() {
+        val result =
+            syncingMessageFor(
+                snapshot(blocksRemaining = SYNCING_BANNER_HIDE_BELOW_BLOCKS - 1, behindSeconds = -1L),
+                syncMessageShownBefore = false,
+                someBalance = false,
+            )
+        assertNull(result)
     }
 }
