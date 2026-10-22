@@ -39,9 +39,22 @@ class ConfigurationRepositoryFlexaTest {
         }
 
     @Test
-    fun theFDroidBuildDoesNotOfferFlexaYet() =
+    fun aMainnetFDroidBuildOffersFlexaLikeTheStoreBuild() =
         runTest {
-            assertFalse(repository(ZcashNetwork.Mainnet, DistributionDimension.FOSS).isFlexaAvailable())
+            assertTrue(repository(ZcashNetwork.Mainnet, DistributionDimension.FOSS).isFlexaAvailable())
+        }
+
+    @Test
+    fun aTestnetFDroidBuildDoesNotOfferFlexa() =
+        runTest {
+            assertFalse(repository(ZcashNetwork.Testnet, DistributionDimension.FOSS).isFlexaAvailable())
+        }
+
+    @Test
+    fun theRemoteSwitchTurnsFlexaOffOnTheFDroidBuildToo() =
+        runTest {
+            val off = persistentMapOf("is_flexa_available" to "false")
+            assertFalse(repository(ZcashNetwork.Mainnet, DistributionDimension.FOSS, off).isFlexaAvailable())
         }
 
     private fun repository(
