@@ -132,22 +132,9 @@ class GetHomeMessageUseCase(
         val account: WalletAccount?,
         val walletSnapshot: WalletSnapshot,
         val isOhttpUnavailable: Boolean,
-        /** [WalletSnapshot.status] DISCONNECTED for the shared grace (see [observeWalletSnapshotWithGrace]). */
+        /** [WalletSnapshot.status] DISCONNECTED for the shared grace (see [observeRuntimeMessage]). */
         val isDisconnectedSustained: Boolean,
     )
-
-    /**
-     * The wallet snapshot alongside [isDisconnectedFor] of its status: a status that is DISCONNECTED for less
-     * than [co.electriccoin.zcash.ui.common.repository.DISCONNECTED_GRACE] - one failed call, the blip around
-     * a lifecycle change - shows no banner. The same grace the automatic server selection applies before it
-     * treats the status as a connectivity edge.
-     */
-    private fun observeWalletSnapshotWithGrace(): Flow<Pair<WalletSnapshot, Boolean>> {
-        val snapshots = walletSnapshotDataSource.observe().filterNotNull()
-        return combine(snapshots, snapshots.map { it.status }.isDisconnectedFor()) { snapshot, sustained ->
-            snapshot to sustained
-        }
-    }
 
     /**
      * [HomeMessageData.CoinholderPolling] and [HomeMessageData.CrashReport] bundled together into
@@ -162,13 +149,24 @@ class GetHomeMessageUseCase(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeRuntimeMessage(): Flow<RuntimeMessage?> {
+        /*
+         * The wallet snapshot alongside [isDisconnectedFor] of its status: a status that is DISCONNECTED for less
+         * than [co.electriccoin.zcash.ui.common.repository.DISCONNECTED_GRACE] - one failed call, the blip around
+         * a lifecycle change - shows no banner. The same grace the automatic server selection applies before it
+         * treats the status as a connectivity edge.
+         */
+        val snapshots = walletSnapshotDataSource.observe().filterNotNull()
+        val snapshotsWithGrace =
+            combine(snapshots, snapshots.map { it.status }.isDisconnectedFor()) { snapshot, sustained ->
+                snapshot to sustained
+            }
         return channelFlow {
             var firstSyncingMessage: HomeMessageData.Syncing? = null
             combine(
                 observeShieldFundsMessage(),
                 migrationHomeMessageSource.observe(),
                 accountDataSource.selectedAccount,
-                observeWalletSnapshotWithGrace(),
+                snapshotsWithGrace,
                 automaticServerRepository.ohttpUnavailable
             ) { sf, mig, acc, (ws, disconnectedSustained), ohttpUnavailable ->
                 RuntimeMessageInputs(sf, mig, acc, ws, ohttpUnavailable, disconnectedSustained)
