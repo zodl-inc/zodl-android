@@ -224,14 +224,18 @@ class AutomaticServerRepositoryImpl(
                 guarded("switch to ${candidate.host}:${candidate.port}") { applyServerSwitch(candidate) }
             }
 
-    /** A synchronizer error, or a DISCONNECTED status that lasts [DISCONNECTED_GRACE] ([isDisconnectedFor]). */
+    /**
+     * A synchronizer error, or a DISCONNECTED status that lasts [DISCONNECTED_GRACE] ([isDisconnectedFor]).
+     * The grace detector is built inside the `flatMapLatest` lambda, so each synchronizer gets its own: a
+     * new synchronizer whose first status is DISCONNECTED (after the previous one ended DISCONNECTED) starts
+     * a fresh 20 s timer instead of inheriting the old edge state.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun connectivityEdges(): Flow<SwitchTrigger> =
         merge(
             synchronizerProvider.error.filterNotNull().map { SwitchTrigger.CONNECTIVITY },
             synchronizerProvider.synchronizer
-                .flatMapLatest { it?.status ?: emptyFlow() }
-                .isDisconnectedFor()
+                .flatMapLatest { it?.status?.isDisconnectedFor() ?: emptyFlow() }
                 .filter { it }
                 .map { SwitchTrigger.CONNECTIVITY },
         )

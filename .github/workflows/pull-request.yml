@@ -563,6 +563,21 @@ jobs:
         run: |
           ./gradlew clean :app:assembleZcashmainnetFossRelease
 
+      # The FOSS runtime classpath must resolve nothing F-Droid's inclusion policy forbids (the vendored
+      # Flexa SDK is offered on every distribution since the perf/status round of 2026-10-22, so the
+      # check runs here, on the branch the F-Droid build is made from, not only on feature/fdroid-parity).
+      - name: Check FOSS dependencies
+        timeout-minutes: 10
+        run: |
+          ./scripts/check-foss-dependencies.sh --self-test
+          ./scripts/check-foss-dependencies.sh zcashmainnetFossReleaseRuntimeClasspath
+
+      - name: F-Droid scanner
+        timeout-minutes: 10
+        run: |
+          pipx run --spec fdroidserver fdroid scanner --exit-code --verbose \
+            app/build/outputs/apk/zcashmainnetFoss/release/app-zcashmainnet-foss-release.apk
+
       - name: Check APK size
         timeout-minutes: 1
         run: |

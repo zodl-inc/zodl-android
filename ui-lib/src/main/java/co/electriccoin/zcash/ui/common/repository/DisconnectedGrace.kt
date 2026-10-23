@@ -15,6 +15,14 @@ import kotlin.time.Duration.Companion.seconds
  * connectivity edge of the automatic server selection ([AutomaticServerRepository]) and the
  * "Disconnected" home message (`GetHomeMessageUseCase`) both wait this long, so one failed call or a
  * status blip around a lifecycle change neither probes the gateway nor flashes the banner.
+ *
+ * The timer is uninterrupted on purpose, which relies on the SDK reporting a sustained outage as a
+ * steady DISCONNECTED: the slipstream engine retrying a failed initial pass alternates state 1 (an
+ * attempt) and idle (a backoff of 3, 6, 12, 24, 30 s) and the SDK keeps the status DISCONNECTED across
+ * those attempts until a snapshot shows the server was reached (`nextStatus`/`serverReached` in
+ * `slipstream-lib`), so the flapping never resets this grace; a failed engine restart reads as
+ * DISCONNECTED too (`hostWantsRunning`). Were the SDK to flap, an outage shorter than the next idle gap
+ * would never be shown - keep the two in step.
  */
 internal val DISCONNECTED_GRACE = 20.seconds
 
