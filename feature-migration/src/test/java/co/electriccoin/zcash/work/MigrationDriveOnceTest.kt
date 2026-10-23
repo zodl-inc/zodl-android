@@ -229,6 +229,7 @@ class MigrationDriveOnceTest {
             computeEngineWakeDelay(
                 est = 100,
                 secondsPerBlock = 10,
+                nu7ActivationHeight = null,
                 peek = MigrationPeek(height = 250, kind = MigrationStepKind.BROADCAST),
             )
         // (250-100)*10 = 1500s.
@@ -241,6 +242,7 @@ class MigrationDriveOnceTest {
             computeEngineWakeDelay(
                 est = 100,
                 secondsPerBlock = 10,
+                nu7ActivationHeight = null,
                 peek = MigrationPeek(height = 90, kind = MigrationStepKind.PROVE),
             )
         assertEquals(MIN_REARM_SECONDS.seconds, delay)
@@ -252,6 +254,7 @@ class MigrationDriveOnceTest {
             computeEngineWakeDelay(
                 est = -1,
                 secondsPerBlock = 10,
+                nu7ActivationHeight = null,
                 peek = MigrationPeek(height = 300, kind = MigrationStepKind.BROADCAST),
             )
         )
@@ -259,7 +262,7 @@ class MigrationDriveOnceTest {
 
     @Test
     fun `no peek falls back to the cadence`() {
-        assertNull(computeEngineWakeDelay(est = 100, secondsPerBlock = 10, peek = null))
+        assertNull(computeEngineWakeDelay(est = 100, secondsPerBlock = 10, nu7ActivationHeight = null, peek = null))
     }
 
     // ── nextWake (engine peek folded with the app privacy gap; §3's gap term is untouched by
@@ -276,6 +279,7 @@ class MigrationDriveOnceTest {
                 lastActivityEpochSeconds = 1_000_000L,
                 privacyBufferSeconds = 180L,
                 nowEpochSeconds = 1_000_060L,
+                nu7ActivationHeight = null,
                 peek = null,
             )
         assertEquals(120.seconds, delay)
@@ -291,6 +295,7 @@ class MigrationDriveOnceTest {
                 lastActivityEpochSeconds = 1_000_000L,
                 privacyBufferSeconds = 600L,
                 nowEpochSeconds = 1_000_100L,
+                nu7ActivationHeight = null,
                 peek = MigrationPeek(height = 1100, kind = MigrationStepKind.PROVE),
             )
         // engine peek at 1100: (1100-1000)*1 = 100s < 500s gap remaining -> 100s wins.
@@ -307,6 +312,7 @@ class MigrationDriveOnceTest {
                 lastActivityEpochSeconds = 1_000_000L,
                 privacyBufferSeconds = 180L,
                 nowEpochSeconds = 1_000_178L, // if the gap applied, only 2s would remain
+                nu7ActivationHeight = null,
                 peek = MigrationPeek(height = 2000, kind = MigrationStepKind.PROVE),
             )
         // Unproved -> not broadcast-ready -> gap term is inert; falls through to the engine
@@ -324,6 +330,7 @@ class MigrationDriveOnceTest {
                 lastActivityEpochSeconds = 1_000_000L,
                 privacyBufferSeconds = 180L,
                 nowEpochSeconds = 1_000_500L, // 500s since last activity, buffer only 180s
+                nu7ActivationHeight = null,
                 peek = null,
             )
         assertEquals(0.seconds, delay)
@@ -402,6 +409,7 @@ class MigrationDriveOnceTest {
             computeEngineWakeDelay(
                 est = 1_000,
                 secondsPerBlock = 75,
+                nu7ActivationHeight = null,
                 peek = MigrationPeek(height = 1_100, kind = MigrationStepKind.BROADCAST),
             )
         assertEquals((100 * 75).seconds, delay)
@@ -412,9 +420,25 @@ class MigrationDriveOnceTest {
         // NU7: revisit - spans activation once helper is height-aware
         // 1 block * 75 s = 75 s is above the floor; 0 blocks (due now) and past peeks floor to 60 s.
         val peekNow = MigrationPeek(height = 1_000, kind = MigrationStepKind.PROVE)
-        assertEquals(60.seconds, computeEngineWakeDelay(est = 1_000, secondsPerBlock = 75, peek = peekNow))
+        assertEquals(
+            60.seconds,
+            computeEngineWakeDelay(
+                est = 1_000,
+                secondsPerBlock = 75,
+                nu7ActivationHeight = null,
+                peek = peekNow
+            )
+        )
         val peekNext = MigrationPeek(height = 1_001, kind = MigrationStepKind.PROVE)
-        assertEquals(75.seconds, computeEngineWakeDelay(est = 1_000, secondsPerBlock = 75, peek = peekNext))
+        assertEquals(
+            75.seconds,
+            computeEngineWakeDelay(
+                est = 1_000,
+                secondsPerBlock = 75,
+                nu7ActivationHeight = null,
+                peek = peekNext
+            )
+        )
     }
 
     @Test
@@ -428,6 +452,7 @@ class MigrationDriveOnceTest {
                 lastActivityEpochSeconds = null,
                 privacyBufferSeconds = 180L,
                 nowEpochSeconds = 1_000_000L,
+                nu7ActivationHeight = null,
                 peek = MigrationPeek(height = 1_010, kind = MigrationStepKind.PROVE),
             )
         assertEquals((10 * 75).seconds, delay)

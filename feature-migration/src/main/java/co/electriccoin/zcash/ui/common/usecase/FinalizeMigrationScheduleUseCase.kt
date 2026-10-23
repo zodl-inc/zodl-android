@@ -149,7 +149,7 @@ class FinalizeMigrationScheduleUseCase(
         sched: MigrationSchedule,
         secondsPerBlock: Long,
         tipHeight: Long,
-        nu7ActivationHeight: Long? = null,
+        nu7ActivationHeight: Long?,
     ): Duration {
         val earliest =
             (

@@ -33,7 +33,7 @@ class LiveMigrationSnapshotTest {
 
     private fun snapshot(vararg states: MigrationTransferState) =
         MigrationTransferStates(transfers = states.toList(), tipHeight = tip)
-            .toSnapshot(estimatedTip = tip, secondsPerBlock = 75L, nowEpochSeconds = now)
+            .toSnapshot(estimatedTip = tip, secondsPerBlock = 75L, nu7ActivationHeight = null, nowEpochSeconds = now)
 
     @Test
     fun `characterization pin of pre-NU7 75s - scheduledAt is now plus block delta times 75`() {
@@ -105,7 +105,12 @@ class LiveMigrationSnapshotTest {
     fun `NU7 - without an activation height the projection is unchanged`() {
         val s =
             MigrationTransferStates(transfers = listOf(transfer(1, scheduled = tip + 100)), tipHeight = tip)
-                .toSnapshot(estimatedTip = tip, secondsPerBlock = 75L, nowEpochSeconds = now)
+                .toSnapshot(
+                    estimatedTip = tip,
+                    secondsPerBlock = 75L,
+                    nu7ActivationHeight = null,
+                    nowEpochSeconds = now
+                )
         assertEquals(
             now + 100 * 75L,
             s.transfers

@@ -45,7 +45,7 @@ fun migrationSnapshotFrom(
     states: MigrationTransferStates,
     estimatedTip: Long,
     secondsPerBlock: Long,
-    nu7ActivationHeight: Long? = null,
+    nu7ActivationHeight: Long?,
 ): LiveMigrationSnapshot =
     states.toSnapshot(
         estimatedTip = estimatedTip,

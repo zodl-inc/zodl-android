@@ -976,7 +976,7 @@ internal fun computeEngineWakeDelay(
     est: Long,
     secondsPerBlock: Long,
     peek: MigrationPeek?,
-    nu7ActivationHeight: Long? = null,
+    nu7ActivationHeight: Long?,
 ): Duration? {
     if (est < 0L || peek == null) return null
     return estimatedSecondsBetweenHeights(est, maxOf(peek.height, est), secondsPerBlock, nu7ActivationHeight)
@@ -1005,7 +1005,7 @@ internal fun nextWake(
     privacyBufferSeconds: Long,
     nowEpochSeconds: Long,
     peek: MigrationPeek?,
-    nu7ActivationHeight: Long? = null,
+    nu7ActivationHeight: Long?,
 ): Duration? {
     val broadcastReadyGapped = states != null && broadcastDueByEstimate(states, est)
     val gapDelay =

@@ -83,7 +83,13 @@ class FinalizeMigrationScheduleUseCaseTest {
                 estimatedDurationHours = 1,
                 proposalHandle = 1,
             )
-        val d = useCase().delayUntilFirstStep(sched, secondsPerBlock = 28, tipHeight = 4219036)
+        val d =
+            useCase().delayUntilFirstStep(
+                sched,
+                secondsPerBlock = 28,
+                nu7ActivationHeight = null,
+                tipHeight = 4219036
+            )
         assertEquals((7 * 28).seconds, d) // 4219043-4219036 = 7 blocks
     }
 
@@ -93,7 +99,13 @@ class FinalizeMigrationScheduleUseCaseTest {
     fun `characterization pin of pre-NU7 75s - delay is block delta times 75 for a transfer-only schedule`() {
         // NU7: revisit - spans activation once helper is height-aware
         // schedule(): anchor 100, nextExecutableAfter 200 -> 100 blocks * 75 s.
-        val d = useCase().delayUntilFirstStep(schedule(), secondsPerBlock = 75L, tipHeight = 100L)
+        val d =
+            useCase().delayUntilFirstStep(
+                schedule(),
+                secondsPerBlock = 75L,
+                nu7ActivationHeight = null,
+                tipHeight = 100L
+            )
         assertEquals((100 * 75).seconds, d)
     }
 
@@ -107,21 +119,41 @@ class FinalizeMigrationScheduleUseCaseTest {
                         PreparationStep(id = 1, layer = 0, index = 0, broadcastHeight = 110L, dependsOn = emptyList())
                     )
             )
-        val d = useCase().delayUntilFirstStep(sched, secondsPerBlock = 75L, tipHeight = 100L)
+        val d =
+            useCase().delayUntilFirstStep(
+                sched,
+                secondsPerBlock = 75L,
+                nu7ActivationHeight = null,
+                tipHeight = 100L
+            )
         assertEquals((10 * 75).seconds, d)
     }
 
     @Test
     fun `characterization pin of pre-NU7 75s - earliest step already due yields zero delay`() {
         // NU7: revisit - spans activation once helper is height-aware
-        val d = useCase().delayUntilFirstStep(schedule(), secondsPerBlock = 75L, tipHeight = 250L)
+        val d =
+            useCase().delayUntilFirstStep(
+                schedule(),
+                secondsPerBlock = 75L,
+                nu7ActivationHeight = null,
+                tipHeight = 250L
+            )
         assertEquals(0.seconds, d)
     }
 
     @Test
     fun `characterization pin of pre-NU7 75s - empty schedule yields zero delay`() {
         val empty = MigrationSchedule(transfers = emptyList(), estimatedDurationHours = 0, proposalHandle = 0L)
-        assertEquals(0.seconds, useCase().delayUntilFirstStep(empty, secondsPerBlock = 75L, tipHeight = 0L))
+        assertEquals(
+            0.seconds,
+            useCase().delayUntilFirstStep(
+                empty,
+                secondsPerBlock = 75L,
+                nu7ActivationHeight = null,
+                tipHeight = 0L
+            )
+        )
     }
 
     @Test

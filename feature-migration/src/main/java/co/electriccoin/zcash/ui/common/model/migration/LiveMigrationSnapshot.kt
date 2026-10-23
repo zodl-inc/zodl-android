@@ -75,7 +75,7 @@ fun MigrationTransferStates.toSnapshot(
     estimatedTip: Long,
     secondsPerBlock: Long,
     nowEpochSeconds: Long,
-    nu7ActivationHeight: Long? = null,
+    nu7ActivationHeight: Long?,
 ): LiveMigrationSnapshot {
     fun at(height: Long): Instant =
         Instant.fromEpochSeconds(
