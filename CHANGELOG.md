@@ -7,6 +7,15 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Changed:
+
+- Migration time estimates, the plan's total duration and the Syncing banner follow NU7's 25-second target block
+  spacing. An estimate that reaches past the NU7 activation height counts each side at its own spacing, and the
+  Syncing banner still opens at three days behind.
+- A new Ironwood migration is not offered until the chain reaches the NU7 activation height. A migration that is
+  already running continues, and a transfer signed for the old consensus branch is no longer sent after NU7 but
+  reported as expired, so the user can migrate what is left.
+
 ## [3.17.2 (3157)] - 2026-10-20
 
 ### Fixed:
