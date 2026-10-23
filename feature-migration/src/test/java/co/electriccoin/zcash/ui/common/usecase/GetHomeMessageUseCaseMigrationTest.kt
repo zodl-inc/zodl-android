@@ -423,4 +423,52 @@ class GetHomeMessageUseCaseMigrationTest {
             )
         assertEquals(MigrationHomeMessageData(isRunActive = false), result)
     }
+
+    @Test
+    fun migratableBalanceBeforeNu7ShowsNoMigrateBanner() {
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI,
+                isStartBlockedBeforeNu7 = true,
+            )
+        assertNull(result)
+    }
+
+    @Test
+    fun residueBeforeNu7ShowsNoBanner() {
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI - 1L,
+                migratableOrchardTotalZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI - 1L,
+                isStartBlockedBeforeNu7 = true,
+            )
+        assertNull(result)
+    }
+
+    @Test
+    fun runInProgressIsStillShownBeforeNu7() {
+        val result =
+            migrationMessageFor(
+                sdkState = MigrationState.InProgress(MigrationProgress(0, 1, null)),
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI,
+                isStartBlockedBeforeNu7 = true,
+            )
+        assertEquals(MigrationHomeMessageData(isRunActive = true), result)
+    }
+
+    @Test
+    fun startIsBlockedOnlyBeforeNu7Activation() {
+        assertEquals(true, isMigrationStartBlockedBeforeNu7(tipHeight = 99L, nu7ActivationHeight = 100L))
+        assertEquals(false, isMigrationStartBlockedBeforeNu7(tipHeight = 100L, nu7ActivationHeight = 100L))
+        assertEquals(false, isMigrationStartBlockedBeforeNu7(tipHeight = null, nu7ActivationHeight = 100L))
+        assertEquals(false, isMigrationStartBlockedBeforeNu7(tipHeight = 99L, nu7ActivationHeight = null))
+    }
 }

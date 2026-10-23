@@ -153,6 +153,11 @@ class MigrationHomeMessageSourceImpl(
                     hasOverdueTransfers = readout?.hasOverdueTransfers ?: false,
                     attentionKind = attentionKind,
                     attentionRangeText = attentionRangeText,
+                    isStartBlockedBeforeNu7 =
+                        isMigrationStartBlockedBeforeNu7(
+                            tipHeight = readout?.takeIf { it.estimatedTip >= 0 }?.estimatedTip ?: states?.tipHeight,
+                            nu7ActivationHeight = readout?.nu7ActivationHeight,
+                        ),
                 )
             }
         }
@@ -352,6 +357,7 @@ internal fun migrationMessageFor(
     now: Instant = Clock.System.now(),
     attentionKind: MigrationAttentionKind? = null,
     attentionRangeText: String? = null,
+    isStartBlockedBeforeNu7: Boolean = false,
 ): MigrationHomeMessageData? {
     val next = snapshot?.nextPending
     // A RequiresAttention state WITH live run statuses is still a mid-run condition (e.g. the
@@ -443,6 +449,7 @@ internal fun migrationMessageFor(
         // "Migrate anyway" propose a transfer against notes that no longer existed by the time the
         // proposal ran (Slack repro, 2026-08-24).
         !midRunAttention &&
+            !isStartBlockedBeforeNu7 &&
             isFullySynced &&
             orchardBalanceZatoshi != null &&
             migratableOrchardTotalZatoshi > dustThresholdZatoshi &&
@@ -459,6 +466,7 @@ internal fun migrationMessageFor(
         // finished, residual needs another round" (engine still reports Complete), and "campaign
         // done but new funds arrived". All three correctly say "Migrate now".
         !midRunAttention &&
+            !isStartBlockedBeforeNu7 &&
             orchardBalanceZatoshi != null &&
             orchardBalanceZatoshi >= MIGRATION_RESIDUAL_MIN_ZATOSHI -> {
             MigrationHomeMessageData(isRunActive = false)
@@ -469,3 +477,16 @@ internal fun migrationMessageFor(
         }
     }
 }
+
+/**
+ * Whether a NEW migration must not be offered yet because the chain has not reached the NU7
+ * activation height. A migration signs its whole schedule up front, so one started now could still
+ * be running at activation, and its remaining transactions (signed for the old consensus branch)
+ * would be invalid from that block on. Runs already in progress are not affected: they keep going,
+ * and the SDK refuses to submit a transaction that went stale. Unknown tip or activation height
+ * (for example a network without NU7) does not block.
+ */
+internal fun isMigrationStartBlockedBeforeNu7(
+    tipHeight: Long?,
+    nu7ActivationHeight: Long?,
+): Boolean = tipHeight != null && nu7ActivationHeight != null && tipHeight < nu7ActivationHeight
