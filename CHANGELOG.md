@@ -7,6 +7,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.18.0 (3206)] - 2026-10-23
+
 ### Added:
 
 - You can now add a view-only account by importing a Unified Full Viewing Key: tap Add Account in
