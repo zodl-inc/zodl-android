@@ -47,7 +47,7 @@ Start by making sure the command line with Gradle works first, because **all the
     1. To check out a git repo from GitHub, there are three authentication methods: SSH, HTTPS, and GitHub API.  We recommend SSH.
     1. Create a new SSH key, following [GitHub's instructions](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent)
     1. Add the SSH key under [GitHub account settings](https://github.com/settings/keys)
-    1. Clone repo in a terminal on your computer `git clone git@github.com:Electric-Coin-Company/zashi-android.git`
+    1. Clone repo in a terminal on your computer `git clone git@github.com:zodl-inc/zodl-android.git`
 1. Compile from the command line
     1. Navigate to the repo checkout in a terminal
     1. Compile the application with the gradle command `./gradlew assemble`
@@ -129,13 +129,13 @@ This section is optional.
 To simplify implementation of Zcash SDK or BIP-39 features in conjunction with changes to the app, a Gradle [Included Build](https://docs.gradle.org/current/userguide/composite_builds.html) can be configured.
 
 1. Check out the SDK 
-1. Verify that the `zcash-android-wallet-sdk` builds correctly on its own (e.g. `./gradlew assemble`)
-1. In the `secant-android-wallet` repo, modify property `SDK_INCLUDED_BUILD_PATH` to be the absolute path to the `zcash-android-wallet-sdk` checkout.  (You can also use a relative path, but it will be relative to the root of `secant-android-wallet`).  A similar property also exists for BIP-39 `BIP_39_INCLUDED_BUILD_PATH`
-1. Build `secant-android-wallet`
+1. Verify that the `zodl-android-wallet-sdk` builds correctly on its own (e.g. `./gradlew assemble`)
+1. In the `zodl-android` repo, modify property `SDK_INCLUDED_BUILD_PATH` to be the absolute path to the `zodl-android-wallet-sdk` checkout.  (You can also use a relative path, but it will be relative to the root of `zodl-android`).  A similar property also exists for BIP-39 `BIP_39_INCLUDED_BUILD_PATH`
+1. Build `zodl-android`
 
 There are some limitations of included builds:
-1. If `secant-android-wallet` is using a newer version of the Android Gradle plugin compared to `zcash-android-wallet-sdk`, the build will fail.  If this happens, you may need to modify the `zcash-android-wallet-sdk` gradle.properties so that the Android Gradle Plugin version matches that of `secant-android-wallet`.  After making this change, it will be necessary to run a build from the command line with the flag `--write-locks` e.g. `./gradlew assemble --write-locks` in order to update the dependency locks.  Similar problems can occur if projects are using different versions of Kotlin or different versions of Gradle
-1. Modules in each project cannot share the same name.  For this reason, build-conventions have different names in each repo (`zcash-android-wallet-sdk/build-conventions` vs `secant-android-wallet/build-conventions-secant`)
+1. If `zodl-android` is using a newer version of the Android Gradle plugin compared to `zodl-android-wallet-sdk`, the build will fail.  If this happens, you may need to modify the `zodl-android-wallet-sdk` gradle.properties so that the Android Gradle Plugin version matches that of `zodl-android`.  After making this change, it will be necessary to run a build from the command line with the flag `--write-locks` e.g. `./gradlew assemble --write-locks` in order to update the dependency locks.  Similar problems can occur if projects are using different versions of Kotlin or different versions of Gradle
+1. Modules in each project cannot share the same name.  For this reason, build-conventions have different names in each repo (`zodl-android-wallet-sdk/build-conventions` vs `zodl-android/build-conventions-secant`)
 
 ### Firebase Test Lab
 This section is optional.
