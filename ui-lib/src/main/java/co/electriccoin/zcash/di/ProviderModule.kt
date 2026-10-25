@@ -1,5 +1,7 @@
 package co.electriccoin.zcash.di
 
+import co.electriccoin.zcash.ui.common.provider.AppAccessLockProvider
+import co.electriccoin.zcash.ui.common.provider.AppAccessLockProviderImpl
 import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProvider
 import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
@@ -30,8 +32,12 @@ import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProvi
 import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProviderImpl
+import co.electriccoin.zcash.ui.common.provider.IsOhttpOptInDismissedProvider
+import co.electriccoin.zcash.ui.common.provider.IsOhttpOptInDismissedProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsOledEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.IsOledEnabledStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
+import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsSwapRefundWarningDismissedStorageProvider
@@ -59,6 +65,7 @@ import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryPr
 import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProviderImpl
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProvider
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProviderImpl
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProvider
 import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProviderImpl
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
@@ -97,6 +104,8 @@ val providerModule =
         singleOf(::PreferredFiatProviderImpl) bind PreferredFiatProvider::class
         singleOf(::IsServerSelectionAutomaticProviderImpl) bind IsServerSelectionAutomaticProvider::class
         singleOf(::IsOhttpFallbackActiveProviderImpl) bind IsOhttpFallbackActiveProvider::class
+        singleOf(::IsPublicConnectionProviderImpl) bind IsPublicConnectionProvider::class
+        singleOf(::IsOhttpOptInDismissedProviderImpl) bind IsOhttpOptInDismissedProvider::class
         single {
             SynchronizerProviderImpl(
                 walletCoordinator = get(),
@@ -106,6 +115,8 @@ val providerModule =
             )
         } bind SynchronizerProvider::class
         singleOf(::ApplicationStateProviderImpl) bind ApplicationStateProvider::class
+        singleOf(::AppAccessLockProviderImpl) bind AppAccessLockProvider::class
+        singleOf(::ServerSelectionMutex)
         singleOf(::RestoreTimestampStorageProviderImpl) bind RestoreTimestampStorageProvider::class
         singleOf(::WalletBackupRemindMeCountStorageProviderImpl) bind
             WalletBackupRemindMeCountStorageProvider::class

@@ -35,7 +35,7 @@ import co.electriccoin.zcash.ui.screen.home.currency.EnableCurrencyConversionMes
 import co.electriccoin.zcash.ui.screen.home.disconnected.WalletDisconnectedInfo
 import co.electriccoin.zcash.ui.screen.home.disconnected.WalletDisconnectedMessageState
 import co.electriccoin.zcash.ui.screen.home.error.WalletErrorMessageState
-import co.electriccoin.zcash.ui.screen.home.ohttpunavailable.OhttpUnavailableMessageState
+import co.electriccoin.zcash.ui.screen.home.ohttpoptin.OhttpOptInMessageState
 import co.electriccoin.zcash.ui.screen.home.reporting.CrashReportMessageState
 import co.electriccoin.zcash.ui.screen.home.reporting.CrashReportOptIn
 import co.electriccoin.zcash.ui.screen.home.restoring.WalletRestoringInfo
@@ -49,6 +49,7 @@ import co.electriccoin.zcash.ui.screen.home.updating.WalletUpdatingInfo
 import co.electriccoin.zcash.ui.screen.home.updating.WalletUpdatingMessageState
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenArgs
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenFlow
+import co.electriccoin.zcash.ui.screen.ohttpoptin.OhttpOptInArgs
 import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInArgs
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -246,9 +247,13 @@ class HomeVM(
                 )
             }
 
-            HomeMessageData.OhttpUnavailable -> {
-                OhttpUnavailableMessageState(
-                    onChooseServer = ::onOhttpUnavailableChooseServerClick
+            HomeMessageData.OhttpOptIn -> {
+                OhttpOptInMessageState(
+                    title = stringRes(R.string.ohttpOptIn_widgetTitle),
+                    subtitle = stringRes(R.string.ohttpOptIn_widgetSubtitle),
+                    buttonText = stringRes(R.string.ohttpOptIn_widgetView),
+                    onClick = ::onOhttpOptInClick,
+                    onButtonClick = ::onOhttpOptInClick
                 )
             }
 
@@ -357,18 +362,14 @@ class HomeVM(
 
     private fun onEnableTorClick() = navigationRouter.forward(TorOptInArgs)
 
+    private fun onOhttpOptInClick() = navigationRouter.forward(OhttpOptInArgs)
+
     private fun onCoinholderPollingMessageClick() = viewModelScope.launch { navigateToVoting() }
 
     private fun onEnableCurrencyConversionClick() = navigationRouter.forward(ExchangeRateOptInArgs)
 
     private fun onWalletDisconnectedMessageClick() =
         navigationRouter.forward(WalletDisconnectedInfo)
-
-    private fun onOhttpUnavailableChooseServerClick() =
-        navigationRouter
-            .forward(
-                ChooseServerArgs(preselectFastestClearnet = true, autoStartProbing = false)
-            )
 
     private fun onWalletBackupMessageClick() = navigationRouter.forward(SeedBackupInfo)
 

@@ -15,6 +15,7 @@ import co.electriccoin.zcash.preference.model.entry.BooleanPreferenceDefault
 import co.electriccoin.zcash.spackle.AndroidApiVersion
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.provider.AppAccessLockProvider
 import co.electriccoin.zcash.ui.common.provider.GetMonotonicTimeProvider
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.preference.StandardPreferenceKeys
@@ -45,6 +46,7 @@ class AuthenticationViewModel(
     private val getVersionInfo: GetVersionInfoProvider,
     private val standardPreferenceProvider: StandardPreferenceProvider,
     private val walletViewModel: WalletViewModel,
+    private val appAccessLockProvider: AppAccessLockProvider,
 ) : AndroidViewModel(application) {
     private val executor: Executor by lazy { ContextCompat.getMainExecutor(application) }
     private lateinit var biometricPrompt: BiometricPrompt
@@ -140,9 +142,19 @@ class AuthenticationViewModel(
             AuthenticationUIState.Initial
         )
 
+    /**
+     * Also locks the app right here, not from the UI layer a recomposition later: the app is foregrounded straight
+     * after this check and nothing may open in front of the lock screen in between. Only when the state will really
+     * resolve to Required (see [appAccessAuthenticationResultState]), otherwise nothing would ever unlock it.
+     */
     private fun resetEntireAuthenticationState() {
         appAccessAuthentication.value = AuthenticationUIState.Initial
         showWelcomeAnimation.value = true
+        val willRequireAuthentication =
+            isAppAccessAuthenticationRequired.value == true &&
+                walletViewModel.secretState.value == SecretState.READY &&
+                !versionInfo.isRunningUnderTestService
+        if (willRequireAuthentication) appAccessLockProvider.setLocked(true)
     }
 
     private var latestAppBackgroundedElapsedRealtimeMillis: Long? = null
@@ -418,6 +430,18 @@ class AuthenticationViewModel(
             null
         )
 }
+
+/**
+ * Whether the app waits for the user to authenticate. [authState] is the derived state the UI collects and can still
+ * be a cached `Successful` right after a reset (a recreated Activity composes before the new value arrives), so
+ * `Successful` only counts as unlocked while [rawState], which a reset changes synchronously, agrees.
+ */
+internal fun isAppAccessLocked(authState: AuthenticationUIState, rawState: AuthenticationUIState): Boolean =
+    when (authState) {
+        AuthenticationUIState.Initial, AuthenticationUIState.Required -> true
+        AuthenticationUIState.NotRequired -> false
+        AuthenticationUIState.Successful -> rawState != AuthenticationUIState.Successful
+    }
 
 sealed class AuthenticationUIState {
     data object Initial : AuthenticationUIState()

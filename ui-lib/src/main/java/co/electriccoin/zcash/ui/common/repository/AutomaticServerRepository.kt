@@ -13,9 +13,11 @@ import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.ServerFallbackPolicy
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
+import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.rawWalletBalances
 import co.electriccoin.zcash.ui.common.provider.retainWhileWalletExists
@@ -58,6 +60,9 @@ interface AutomaticServerRepository {
 
     val ohttpUnavailable: Flow<Boolean>
 
+    /** True while a send, shield or signing flow is in progress; the wallet's server must not change then. */
+    val isTransactionInProgress: Flow<Boolean>
+
     suspend fun isServerAutomatic(): Boolean
 
     suspend fun isServerCustom(): Boolean
@@ -78,6 +83,8 @@ class AutomaticServerRepositoryImpl(
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
     private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
     private val isOhttpFallbackActiveProvider: IsOhttpFallbackActiveProvider,
+    private val isPublicConnectionProvider: IsPublicConnectionProvider,
+    private val serverSelectionMutex: ServerSelectionMutex,
     private val evaluationInterval: EvaluationInterval,
 ) : AutomaticServerRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -106,6 +113,18 @@ class AutomaticServerRepositoryImpl(
                 keystoneProposalRepository.submitState.value != null ||
                 ledgerProposalPipeline.transactionProposal.value != null ||
                 ledgerProposalPipeline.submitState.value != null
+
+    override val isTransactionInProgress: Flow<Boolean> =
+        combine(
+            listOf<Flow<Any?>>(
+                zashiProposalRepository.transactionProposal,
+                zashiProposalRepository.submitState,
+                keystoneProposalRepository.transactionProposal,
+                keystoneProposalRepository.submitState,
+                ledgerProposalPipeline.transactionProposal,
+                ledgerProposalPipeline.submitState,
+            )
+        ) { states -> states.any { it != null } }.distinctUntilChanged()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val walletBalances =
@@ -258,12 +277,16 @@ class AutomaticServerRepositoryImpl(
                 if (!automatic) {
                     emptyFlow()
                 } else {
-                    isOhttpFallbackActiveProvider
-                        .observe()
+                    combine(
+                        isOhttpFallbackActiveProvider.observe(),
+                        isPublicConnectionProvider.observe(),
+                    ) { fallbackActive, isPublic -> fallbackActive to isPublic }
                         .distinctUntilChanged()
-                        .flatMapLatest { fallbackActive ->
+                        .flatMapLatest { (fallbackActive, isPublic) ->
                             if (fallbackActive) {
                                 ticks(FALLBACK_RECOVERY_INTERVAL, SwitchTrigger.RECOVERY)
+                            } else if (isPublic) {
+                                emptyFlow()
                             } else {
                                 applicationStateProvider
                                     .isInForeground
@@ -343,6 +366,10 @@ class AutomaticServerRepositoryImpl(
         if (!isServerAutomatic()) {
             _ohttpUnavailable.value = false
             return null
+        }
+        if (isPublicConnectionProvider.get()) {
+            _ohttpUnavailable.value = false
+            return evaluatePublicServerSwitch(trigger)
         }
         if (isAppInTransactionState) return null
         val current = persistableWalletProvider.getPersistableWallet()?.endpoint ?: return null
@@ -433,6 +460,46 @@ class AutomaticServerRepositoryImpl(
         }
     }
 
+    /**
+     * Public mode: the original automatic server switch, restricted to the public (clearnet) servers. On a
+     * foreground edge the SDK benchmarks them through its hysteresis policy and names a better server, if
+     * any; the gateway is never a candidate. Health, recovery and connectivity triggers belong to Private.
+     */
+    @Suppress("ReturnCount")
+    private suspend fun evaluatePublicServerSwitch(trigger: SwitchTrigger): LightWalletEndpoint? {
+        if (isAppInTransactionState) return null
+        if (isOhttpFallbackActiveProvider.get() && trigger.probesGatewayRecovery) {
+            evaluateReturnToPrivate()?.let { return it }
+        }
+        if (trigger != SwitchTrigger.FOREGROUND && trigger != SwitchTrigger.CONNECTIVITY) return null
+        val current = persistableWalletProvider.getPersistableWallet()?.endpoint ?: return null
+        val candidates = lightWalletEndpointProvider.getFallbackEndpoints()
+        if (candidates.isEmpty()) return null
+        val synchronizer = synchronizerProvider.getSynchronizerOrNull() ?: return null
+        return try {
+            synchronizer.evaluateServerSwitch(
+                current = current,
+                candidates = candidates,
+                fetchThreshold = PUBLIC_FETCH_THRESHOLD,
+                blocksToFetch = 1
+            )
+        } finally {
+            evaluationInterval.markAttempted()
+        }
+    }
+
+    @Suppress("ReturnCount")
+    private suspend fun evaluateReturnToPrivate(): LightWalletEndpoint? {
+        val gateways = lightWalletEndpointProvider.getEndpoints().filter(lightWalletEndpointProvider::isOhttpGateway)
+        if (gateways.isEmpty()) return null
+        val synchronizer = synchronizerProvider.getSynchronizerOrNull() ?: return null
+        return try {
+            rankValidated(synchronizer, gateways).firstOrNull()
+        } finally {
+            evaluationInterval.markAttempted()
+        }
+    }
+
     private suspend fun reportGatewayUnavailable(clearsAtStart: Long) {
         if (manualModeClears.get() == clearsAtStart && isServerAutomatic()) {
             _ohttpUnavailable.value = true
@@ -499,13 +566,34 @@ class AutomaticServerRepositoryImpl(
      * Synchronizer down and rebuilds it. Which instance receives the confirmation does not matter - the
      * hysteresis state it updates is process-wide and outlives any single Synchronizer.
      */
-    private suspend fun applyServerSwitch(candidate: LightWalletEndpoint) {
+    private suspend fun applyServerSwitch(candidate: LightWalletEndpoint) =
+        serverSelectionMutex.withLock { applyServerSwitchLocked(candidate) }
+
+    @Suppress("ReturnCount")
+    private suspend fun applyServerSwitchLocked(candidate: LightWalletEndpoint) {
         if (!isServerAutomatic() || isAppInTransactionState) return
         if (candidate !in lightWalletEndpointProvider.getEndpoints()) return
+        // The candidate was chosen for the mode the wallet was in when the evaluation started, and the user can
+        // change the mode while it runs (a benchmark plus the snapshot wait takes a while). Apply it only if it
+        // still fits: Private never moves to clearnet, and a deliberate Public never returns to the gateway.
+        // The user's save takes the same lock, so the mode cannot change between this check and the writes below.
+        val returningToPrivate = lightWalletEndpointProvider.isOhttpGateway(candidate)
+        val isPublic = isPublicConnectionProvider.get()
+        if (!returningToPrivate && !isPublic) {
+            Twig.warn { "Automatic server: dropped a clearnet candidate, the wallet is no longer Public" }
+            return
+        }
+        if (returningToPrivate && isPublic && !isOhttpFallbackActiveProvider.get()) {
+            Twig.warn { "Automatic server: dropped a gateway candidate, Public was chosen on purpose" }
+            return
+        }
         val synchronizer: Synchronizer? = synchronizerProvider.getSynchronizerOrNull()
         Twig.info { "Automatic server: switching to ${candidate.host}:${candidate.port}" }
+        // The endpoint first: if this write fails the wallet must not already read as Private while on clearnet.
         walletRepository.updateWalletEndpoint(candidate)
-        syncFallbackFlag(candidate)
+        if (returningToPrivate) isPublicConnectionProvider.store(false)
+        // Public runs on clearnet by choice; only Private marks being off the gateway as the OHTTP fallback.
+        if (returningToPrivate || !isPublicConnectionProvider.get()) syncFallbackFlag(candidate)
         synchronizer?.confirmServerSwitch(candidate)
     }
 }
@@ -513,11 +601,12 @@ class AutomaticServerRepositoryImpl(
 /** What woke the automatic-selection lane; connectivity edges skip the foreground rate limit. */
 enum class SwitchTrigger(
     val bypassesInterval: Boolean,
+    val probesGatewayRecovery: Boolean = false,
 ) {
-    FOREGROUND(bypassesInterval = false),
+    FOREGROUND(bypassesInterval = false, probesGatewayRecovery = true),
     CONNECTIVITY(bypassesInterval = true),
     HEALTH(bypassesInterval = true),
-    RECOVERY(bypassesInterval = true),
+    RECOVERY(bypassesInterval = true, probesGatewayRecovery = true),
 }
 
 /** Consecutive failed gateway checks before the outage is reported. */
@@ -528,6 +617,9 @@ private val GATEWAY_HEALTH_INTERVAL = 2.minutes
 
 /** Cap on one plain validation of a fallback candidate. */
 private val VALIDATION_TIMEOUT = 20.seconds
+
+/** Public mode: how long a test block fetch may take before the SDK counts the server as slow. */
+private val PUBLIC_FETCH_THRESHOLD = 5.seconds
 
 /** How often, while on a clearnet fallback, to check whether the OHTTP gateway is back. */
 private val FALLBACK_RECOVERY_INTERVAL = 5.minutes

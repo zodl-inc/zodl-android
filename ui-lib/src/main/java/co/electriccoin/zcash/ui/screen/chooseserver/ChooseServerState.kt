@@ -13,17 +13,29 @@ data class ChooseServerState(
     val other: ServerListState.Other,
     val saveButton: ButtonState,
     val dialogState: ServerDialogState?,
-    val explanatoryMessage: StringResource?,
     val onBack: () -> Unit
 )
 
 data class ServerConnectionModeState(
-    val automatic: RadioButtonState,
+    val private: RadioButtonState,
+    val public: RadioButtonState,
     val manual: RadioButtonState,
-    val automaticBadge: StringResource? = null
+    val privateBadge: ModeBadgeState? = null,
+    val publicBadge: ModeBadgeState? = null,
+    val manualBadge: ModeBadgeState? = null,
+    val onPrivateInfoClick: () -> Unit = {},
 ) {
     val isManualSelected = manual.isChecked
 }
+
+enum class ModeBadgeStyle { SUCCESS, WARNING, ERROR }
+
+/** [showsProgress]: the row is being tested, so its radio is replaced by a progress indicator. */
+data class ModeBadgeState(
+    val text: StringResource,
+    val style: ModeBadgeStyle,
+    val showsProgress: Boolean = false,
+)
 
 sealed interface ServerListState {
     val title: StringResource

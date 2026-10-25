@@ -54,6 +54,7 @@ fun ZashiRadioButton(
     checkedContent: @Composable () -> Unit = { RadioButtonCheckedContent(state) },
     uncheckedContent: @Composable () -> Unit = { RadioButtonUncheckedContent(state) },
     trailingContent: @Composable (RowScope.() -> Unit)? = null,
+    titleTrailingContent: (@Composable () -> Unit)? = null,
     testTag: String? = null,
 ) {
     val haptic = LocalHapticFeedback.current
@@ -98,23 +99,26 @@ fun ZashiRadioButton(
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Text(
-                    text = state.text.getValue(),
-                    style = ZashiTypography.textSm,
-                    color =
-                        if (state.isEnabled) {
-                            ZashiColors.Text.textPrimary
-                        } else {
-                            ZashiColors.Text.textDisabled
-                        },
-                    modifier =
-                        Modifier.padding(
-                            top = if (state.subtitle == null) 14.dp else 6.dp,
-                            bottom = if (state.subtitle == null) 14.dp else 0.dp,
-                            start = 0.dp,
-                            end = ZcashTheme.dimens.spacingDefault
-                        )
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = state.text.getValue(),
+                        style = ZashiTypography.textSm,
+                        color =
+                            if (state.isEnabled) {
+                                ZashiColors.Text.textPrimary
+                            } else {
+                                ZashiColors.Text.textDisabled
+                            },
+                        modifier =
+                            Modifier.padding(
+                                top = if (state.subtitle == null) 14.dp else 6.dp,
+                                bottom = if (state.subtitle == null) 14.dp else 0.dp,
+                                start = 0.dp,
+                                end = if (titleTrailingContent == null) ZcashTheme.dimens.spacingDefault else 0.dp
+                            )
+                    )
+                    titleTrailingContent?.invoke()
+                }
 
                 if (state.subtitle != null) {
                     Text(

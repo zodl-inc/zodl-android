@@ -8,21 +8,14 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
-import org.koin.core.parameter.parametersOf
 
 @Composable
-internal fun ChooseServerScreen(args: ChooseServerArgs) {
-    val vm =
-        koinViewModel<ChooseServerVM> {
-            parametersOf(args.preselectFastestClearnet, args.autoStartProbing)
-        }
+internal fun ChooseServerScreen() {
+    val vm = koinViewModel<ChooseServerVM>()
     val state by vm.state.collectAsStateWithLifecycle()
     BackHandler(state != null) { state?.onBack() }
     ChooseServerView(state = state)
 }
 
 @Serializable
-data class ChooseServerArgs(
-    val preselectFastestClearnet: Boolean = false,
-    val autoStartProbing: Boolean = true
-)
+data object ChooseServerArgs
