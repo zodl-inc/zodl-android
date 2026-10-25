@@ -21,8 +21,9 @@ class NetworkConnectivityProviderImpl(
     private val context: Context
 ) : NetworkConnectivityProvider {
     override fun isOnline(): Boolean {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-            ?: return true // If we can't get the service, assume online (fail open).
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                ?: return true // If we can't get the service, assume online (fail open).
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val network = connectivityManager.activeNetwork ?: return false
