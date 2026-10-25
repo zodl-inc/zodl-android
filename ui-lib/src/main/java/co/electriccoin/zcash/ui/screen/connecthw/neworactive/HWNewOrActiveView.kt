@@ -66,12 +66,14 @@ fun HWNewOrActiveView(state: HWNewOrActiveState) {
                         .verticalScroll(rememberScrollState())
                         .scaffoldPadding(padding),
             ) {
-                Image(
-                    modifier = Modifier.height(32.dp),
-                    painter = painterResource(state.logo),
-                    contentDescription = null,
-                )
-                Spacer(Modifier.height(24.dp))
+                state.logo?.let { logo ->
+                    Image(
+                        modifier = Modifier.height(32.dp),
+                        painter = painterResource(logo),
+                        contentDescription = null,
+                    )
+                    Spacer(Modifier.height(24.dp))
+                }
                 Text(
                     text = state.subtitle.getValue(),
                     style = ZashiTypography.header6,

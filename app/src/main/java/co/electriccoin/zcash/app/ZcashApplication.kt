@@ -30,6 +30,7 @@ import co.electriccoin.zcash.ui.common.repository.WalletSnapshotRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveKeepScreenOnSyncSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSeedMismatchUseCase
 import co.electriccoin.zcash.ui.common.usecase.SweepOrphanedGiftCardWalletsUseCase
+import co.electriccoin.zcash.viewingkey.di.featureViewingKeyModule
 import co.electriccoin.zcash.voting.di.featureVotingModule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -85,7 +86,8 @@ class ZcashApplication : CoroutineApplication() {
                 viewModelModule,
                 featureMigrationModule,
                 featureVotingModule,
-                featureLedgerModule
+                featureLedgerModule,
+                featureViewingKeyModule
             )
         }
 

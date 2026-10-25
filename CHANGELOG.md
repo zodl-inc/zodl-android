@@ -97,6 +97,121 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Changed:
 
+
+## [3.18.0 (3206)] - 2026-10-23
+
+### Added:
+
+- You can now add a view-only account by importing a Unified Full Viewing Key: tap Add Account in
+  the Wallets & Hardware screen, choose Import full viewing key, paste the key or scan its QR code,
+  tell Zodl when the account was created, then name it and pick its colour. A view-only account
+  shows its balance, addresses and activity, receives funds, swaps into ZEC, exports its viewing
+  key and tax file, and is marked View Only under its name at the top of Home. It holds no spending
+  key, so Home offers only Receive and Swap for it, and sending, paying, shielding, swapping from
+  ZEC, voting and migration are refused. A key that is malformed, for another network, or missing
+  its Orchard or transparent part is rejected, a key that is already in the wallet is not added
+  twice, and a name another account already shows is refused.
+- A view-only account can now be edited and removed from the "..." of its row in the Wallets &
+  Hardware screen. Edit Account renames it, up to 12 characters, and changes its colour; Save
+  changes is enabled once the name or the colour is new and the name is not one another account
+  already shows. The new name shows everywhere the account appears, and the account's icon shows
+  in its colour. The name is kept on this device only. Remove Account asks for confirmation and
+  then for your device authentication, and removes the account from Zodl on this device while
+  keeping your address book contacts and the account's other metadata; if it was the selected
+  account, the Zodl account is selected again. The Zodl account's name and colour cannot be edited.
+
+### Changed:
+
+- The account picker opened from the account switch at the top of Home is now the full-screen
+  Wallets & Hardware screen instead of a sheet. It groups the wallets into Zodl, Keystone, Ledger and
+  view-only sections, shows each wallet's balance, which hides with Hide Balances, and marks the
+  selected wallet. Tapping a wallet selects it; the "..." of a Keystone or Ledger wallet opens
+  Wallet Options, from which Disconnect hardware wallet disconnects that wallet even while another
+  one is selected; disconnecting a hardware wallet moved there from Advanced Settings, which no
+  longer offers it. While no Keystone is connected the screen shows the Keystone shop offer again.
+- The Wallets & Hardware screen's Connect Hardware Wallet button is now Add Account, which offers
+  connecting a hardware wallet, while one can still be added, and importing a viewing key.
+
+## [3.17.2 (3157)] - 2026-10-20
+
+### Fixed:
+
+- Updated the Zcash SDK to 5.2.2, which refreshes the bundled Rust TLS root certificates (`rustls-webpki`, `webpki-roots`), so connections made from the Rust layer (including Tor) no longer trust the revoked eMudhra roots.
+
+## [3.17.1 (3155)] - 2026-10-14
+
+### Changed:
+
+- Updated the SDK to 5.2.1, which builds `pasta_curves` with its `asm` feature. Proving, syncing and
+  shielded transactions use the assembly field arithmetic on 64-bit devices (`arm64-v8a`, `x86_64`).
+
+## [3.17.0 (3149)] - 2026-10-10
+
+### Added:
+
+- We added support for Ledger hardware wallets. Connect your Ledger to receive ZEC and to send it with approval on your device. You can choose which Ledger account to connect; one account can be connected at a time.
+
+### Changed:
+
+- We updated our cryptography library for faster performance.
+
+### Added:
+
+- You can now connect a Ledger hardware wallet over Bluetooth: pair a Ledger account, then see it
+  in the new Wallets & Hardware picker, on Home and on Receive. Sending, shielding, swapping,
+  paying and ZIP-321 payments from a Ledger account now sign on the device over Bluetooth, and tax
+  export saves a Ledger account's history as `Ledger_Transaction_History_<year>.csv`; voting and
+  migration do not yet. The connect flow opens with an overview of what it will ask, then goes
+  through four numbered steps: turn on and unlock the Ledger, pick it and confirm the Bluetooth
+  pairing code, open the Zcash app, and approve the account export. It explains what to do when
+  Bluetooth is off, the Zcash app on the Ledger is out of date or needs a restart, or the
+  connection fails, and can turn Bluetooth on for you. It tells a failed pairing apart from a
+  Ledger that disconnected during setup, and stops waiting for the device after five minutes. A
+  Ledger account whose pairing is missing or unusable can be paired again from the signing sheet
+  with Pair Ledger; a different Ledger there shows Wrong Ledger instead of adding a second Ledger
+  account. After the wrong Ledger the signing sheet asks you to pick the device instead of
+  reconnecting to the same one.
+
+### Changed:
+
+- Disconnect Hardware Wallet in Advanced Settings now shows only while a Keystone or Ledger account
+  is selected, and disconnects that account; it used to show whenever the wallet held a Keystone
+  account, whichever account was selected.
+- The integrations sheet no longer lists Connect Keystone; hardware wallets, Keystone or Ledger, are
+  connected from the accounts sheet.
+
+### Fixed:
+
+- Choosing to keep the screen on while Zodl syncs now works after connecting a Ledger or a Keystone,
+  and the screen stays on until that sync has finished after a restore or a resync as well.
+- Notes, bookmarks and swap history of Keystone accounts no longer disappear after a re-import or
+  when stored data can't be read.
+
+## [3.16.0 (2958)] - 2026-10-07
+
+### Added:
+
+- We added gift cards. Go to More → Redeem Gift Card, scan the QR code or paste the link, and the ZEC goes straight into your wallet.
+- You can also redeem gift cards created in other wallets.
+
+### Added:
+
+- Redeem gift cards: scan a gift card QR code or paste its link from the new Redeem Gift Card item in the Home
+  menu or from any address scanner, and the card's funds are swept into the selected account. Opening a
+  `gift.zodl.com` link from another app only opens the in-app gift card scanner, which asks for the card to be
+  scanned with Zodl; the link itself is never redeemed. The redeem screen shows the amount the wallet will
+  receive, net of the network fee, and the sender's message, waits for pending funds, and reports cards that are
+  already redeemed, invalid or for another network; after a redemption it shows the amount received. The
+  redemption runs on its own and is not interrupted by leaving the screen; a card nobody is looking at any more
+  is closed and its temporary wallet erased, as are all cards when the wallet is reset. A card is checked and
+  redeemed over Tor when Tor is turned on for the wallet, and a card holding no more than the network fee is shown
+  as having nothing to redeem.
+  The pasted link and the card's QR code are kept out of screenshots and the recent apps list, a pasted link is
+  cleared from the clipboard (also below Android 9), and links are refused wherever an address is expected, in swaps
+  and contacts, also when disguised with invisible characters, encodings or compatibility forms.
+
+### Changed:
+
 - Buttons are now drawn 48 dp tall by default instead of 40 dp, matching the design system. This changes their
   visible size, not just a minimum: the old 40 dp button already took a 48 dp slot in the layout. Compact buttons,
   such as the ones on the home screen messages and the activity header, keep their smaller size and layout height,

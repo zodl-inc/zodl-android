@@ -17,7 +17,7 @@ import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
@@ -39,7 +39,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.Test
@@ -87,7 +86,7 @@ class RequestSwapQuoteUseCaseTest {
     @Test
     fun exactInputZashiCreatesProposalAndForwards() =
         runBlocking {
-            useCase(swapQuote(originAsset = zec, destinationAsset = btc), zashi()).exactInput()
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc), zodl()).exactInput()
             coVerify { zashiProposalRepository.createExactInputSwapProposal(any(), any()) }
             assertForwardedToQuote()
         }
@@ -115,7 +114,7 @@ class RequestSwapQuoteUseCaseTest {
         runBlocking {
             coEvery { zashiProposalRepository.createExactInputSwapProposal(any(), any()) } throws
                 InsufficientFundsException()
-            useCase(swapQuote(originAsset = zec, destinationAsset = btc), zashi()).exactInput()
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc), zodl()).exactInput()
             assertNavigatedToInsufficientFunds()
         }
 
@@ -163,7 +162,7 @@ class RequestSwapQuoteUseCaseTest {
     fun exactInputZashiGenericError() =
         runBlocking {
             coEvery { zashiProposalRepository.createExactInputSwapProposal(any(), any()) } throws TestException()
-            useCase(swapQuote(originAsset = zec, destinationAsset = btc), zashi()).exactInput()
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc), zodl()).exactInput()
             assertNavigatedToError()
         }
 
@@ -188,7 +187,7 @@ class RequestSwapQuoteUseCaseTest {
     fun exactInputRejectsNonIntegralProposalAmount() =
         runBlocking {
             // The zatoshi conversion happens before the account branch, so it is account-independent.
-            useCase(swapQuote(originAsset = zec, destinationAsset = btc, amountIn = BigDecimal("100.5")), zashi())
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc, amountIn = BigDecimal("100.5")), zodl())
                 .exactInput()
             assertNavigatedToError()
         }
@@ -199,7 +198,7 @@ class RequestSwapQuoteUseCaseTest {
     @Test
     fun exactOutputZashiCreatesProposalAndForwards() =
         runBlocking {
-            useCase(exactOutputQuote(), zashi()).exactOutput()
+            useCase(exactOutputQuote(), zodl()).exactOutput()
             coVerify { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) }
             assertForwardedToQuote()
         }
@@ -227,7 +226,7 @@ class RequestSwapQuoteUseCaseTest {
         runBlocking {
             coEvery { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) } throws
                 InsufficientFundsException()
-            useCase(exactOutputQuote(), zashi()).exactOutput()
+            useCase(exactOutputQuote(), zodl()).exactOutput()
             assertNavigatedToInsufficientFunds()
         }
 
@@ -253,7 +252,7 @@ class RequestSwapQuoteUseCaseTest {
     fun exactOutputZashiGenericError() =
         runBlocking {
             coEvery { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) } throws TestException()
-            useCase(exactOutputQuote(), zashi()).exactOutput()
+            useCase(exactOutputQuote(), zodl()).exactOutput()
             assertNavigatedToError()
         }
 
@@ -268,7 +267,7 @@ class RequestSwapQuoteUseCaseTest {
     @Test
     fun exactOutputRejectsNonIntegralProposalAmount() =
         runBlocking {
-            useCase(exactOutputQuote(amountIn = BigDecimal("100.5")), zashi()).exactOutput()
+            useCase(exactOutputQuote(amountIn = BigDecimal("100.5")), zodl()).exactOutput()
             assertNavigatedToError()
         }
 
@@ -443,11 +442,11 @@ class RequestSwapQuoteUseCaseTest {
         verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
     }
 
-    private fun zashi(): WalletAccount = mockk<ZashiAccount>()
+    private fun zodl(): WalletAccount = mockk<ZodlAccount> { every { isSpendable } returns true }
 
-    private fun keystone(): WalletAccount = mockk<KeystoneAccount>()
+    private fun keystone(): WalletAccount = mockk<KeystoneAccount> { every { isSpendable } returns true }
 
-    private fun ledger(): WalletAccount = mockk<LedgerAccount>()
+    private fun ledger(): WalletAccount = mockk<LedgerAccount> { every { isSpendable } returns true }
 
     private suspend fun RequestSwapQuoteUseCase.exactInput(selectedAsset: SwapAsset = btc) =
         requestExactInput(
@@ -478,12 +477,12 @@ class RequestSwapQuoteUseCaseTest {
 
     private suspend fun useCase(
         swapQuote: SwapQuote,
-        selectedAccount: WalletAccount = zashi()
+        selectedAccount: WalletAccount = zodl()
     ): RequestSwapQuoteUseCase = useCase(SwapQuoteData.Success(swapQuote), selectedAccount)
 
     private suspend fun useCase(
         quoteData: SwapQuoteData,
-        selectedAccount: WalletAccount = zashi()
+        selectedAccount: WalletAccount = zodl()
     ): RequestSwapQuoteUseCase {
         every { swapRepository.quote } returns MutableStateFlow(quoteData)
         every { swapRepository.assets } returns

@@ -82,7 +82,7 @@ private fun ZashiPreview() =
         QrCodeView(
             state =
                 QrCodeState.Prepared(
-                    qrCodeType = QrCodeType.ZASHI,
+                    title = stringRes(R.string.accounts_zashi_shieldedAddress),
                     walletAddress = address,
                     formatterAddress = stringResByAddress(address.address),
                     onAddressCopy = {},
@@ -101,7 +101,7 @@ private fun KeystonePreview() =
         QrCodeView(
             state =
                 QrCodeState.Prepared(
-                    qrCodeType = QrCodeType.KEYSTONE,
+                    title = stringRes(R.string.qr_code_wallet_address_shielded_keystone),
                     walletAddress = address,
                     formatterAddress = stringResByAddress(address.address),
                     onAddressCopy = {},
@@ -287,35 +287,7 @@ private fun QrCodePanel(
         Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingDefault))
 
         Text(
-            text =
-                stringResource(
-                    id =
-                        when (state.walletAddress) {
-                            is WalletAddress.Unified -> {
-                                when (state.qrCodeType) {
-                                    QrCodeType.ZASHI -> R.string.accounts_zashi_shieldedAddress
-                                    QrCodeType.KEYSTONE -> R.string.qr_code_wallet_address_shielded_keystone
-                                    QrCodeType.LEDGER -> R.string.accounts_ledger_shieldedAddress
-                                }
-                            }
-
-                            is WalletAddress.Sapling -> {
-                                when (state.qrCodeType) {
-                                    QrCodeType.ZASHI -> R.string.receive_saplingAddress
-                                    QrCodeType.KEYSTONE -> R.string.qr_code_wallet_address_sapling_keystone
-                                    QrCodeType.LEDGER -> R.string.receive_saplingAddress
-                                }
-                            }
-
-                            is WalletAddress.Transparent -> {
-                                R.string.accounts_zashi_transparentAddress
-                            }
-
-                            else -> {
-                                error("Unsupported address type: ${state.walletAddress}")
-                            }
-                        }
-                ),
+            text = state.title.getValue(),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textXl,
             fontWeight = FontWeight.SemiBold,

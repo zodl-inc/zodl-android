@@ -26,6 +26,7 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.Compose
 import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.StyledStringResource
@@ -61,13 +62,9 @@ private fun ContactItemLeading(
     modifier: Modifier = Modifier,
 ) {
     when (state.bigIcon) {
-        is ImageResource.ByDrawable -> {
+        is ImageResource.ByDrawable, is ImageResource.Layered -> {
             Box(modifier) {
-                Image(
-                    painter = painterResource(state.bigIcon.resource),
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp)
-                )
+                state.bigIcon.Compose(modifier = Modifier.size(40.dp))
                 if (state.smallIcon is ImageResource.ByDrawable) {
                     Image(
                         modifier =

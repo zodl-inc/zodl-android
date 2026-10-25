@@ -10,7 +10,9 @@ import cash.z.ecc.android.sdk.OrchardMigrationSdk
 import cash.z.ecc.android.sdk.fixture.AccountFixture
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.toStorageKeyId
 import co.electriccoin.zcash.ui.common.provider.PendingMigrationTorFailureStorageProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.screen.home.HomeArgs
@@ -38,6 +40,7 @@ class CheckMigrationRecoveryUseCaseTest {
     private val testWalletAccount: WalletAccount =
         mockk(relaxed = true) {
             every { sdkAccount } returns testSdkAccount
+            every { isSpendable } returns true
         }
 
     @kotlin.test.BeforeTest
@@ -71,8 +74,8 @@ class CheckMigrationRecoveryUseCaseTest {
         getWorkerRunState: suspend (String) -> MigrationWorkerRunState = { MigrationWorkerRunState.RUNNING },
         scheduleNow: suspend (String) -> Unit = {},
         migrationLiveDriver: MigrationLiveDriver = mockk(relaxed = true),
-    ) = CheckMigrationRecoveryUseCase(
-        getOrchardMigrationSdk =
+        accounts: List<WalletAccount> = if (sdk != null) listOf(testWalletAccount) else emptyList(),
+        getOrchardMigrationSdk: GetOrchardMigrationSdkUseCase =
             mockk<GetOrchardMigrationSdkUseCase> {
                 if (sdk != null) {
                     coEvery { this@mockk() } returns sdk
@@ -82,6 +85,8 @@ class CheckMigrationRecoveryUseCaseTest {
                     coEvery { this@mockk(any()) } returns sdk
                 }
             },
+    ) = CheckMigrationRecoveryUseCase(
+        getOrchardMigrationSdk = getOrchardMigrationSdk,
         persistableWalletProvider =
             mockk<PersistableWalletProvider>(relaxed = true) {
                 coEvery { getPersistableWallet() } returns if (sdk != null) mockk(relaxed = true) else null
@@ -90,7 +95,7 @@ class CheckMigrationRecoveryUseCaseTest {
         pendingMigrationTorFailureStorageProvider = pendingMigrationTorFailureStorageProvider,
         accountDataSource =
             mockk<AccountDataSource>(relaxed = true) {
-                coEvery { getAllAccounts() } returns if (sdk != null) listOf(testWalletAccount) else emptyList()
+                coEvery { getAllAccounts() } returns accounts
             },
         context = mockk<Context>(relaxed = true),
         getWorkerRunState = getWorkerRunState,
@@ -405,5 +410,50 @@ class CheckMigrationRecoveryUseCaseTest {
             // Revival: an absent worker chain (killed process, cleared WorkManager state) is
             // rescheduled immediately.
             kotlin.test.assertTrue(scheduled)
+        }
+
+    @Test
+    fun viewOnlyAccountsAreNeverReconciled() =
+        runTest {
+            val viewOnlySdkAccount =
+                AccountFixture.new(accountUuid = UUID.fromString("00000000-0000-0000-0000-000000000002"))
+            val viewOnly =
+                mockk<ViewOnlyAccount>(relaxed = true) {
+                    every { sdkAccount } returns viewOnlySdkAccount
+                    every { isSpendable } returns false
+                }
+            val sdk =
+                mockk<OrchardMigrationSdk>(relaxed = true) {
+                    coEvery { getMigrationState() } returns MigrationState.NotStarted
+                    coEvery { getMigrationStateUnreconciled() } returns MigrationState.InProgress(mockk(relaxed = true))
+                    coEvery { hasOverdueTransfers() } returns false
+                }
+            val getOrchardMigrationSdk =
+                mockk<GetOrchardMigrationSdkUseCase> {
+                    coEvery { this@mockk() } returns sdk
+                    coEvery { this@mockk(any()) } returns sdk
+                }
+            val startedAccountKeyIds = mutableListOf<String>()
+            val scheduledAccountKeyIds = mutableListOf<String>()
+            val liveDriver =
+                mockk<MigrationLiveDriver> {
+                    every { startIfNotRunning(any()) } answers { startedAccountKeyIds += firstArg<String>() }
+                }
+
+            useCase(
+                sdk = sdk,
+                navigationRouter = mockk(relaxed = true),
+                getWorkerRunState = { MigrationWorkerRunState.ABSENT },
+                scheduleNow = { scheduledAccountKeyIds += it },
+                migrationLiveDriver = liveDriver,
+                accounts = listOf(testWalletAccount, viewOnly),
+                getOrchardMigrationSdk = getOrchardMigrationSdk,
+            ).invoke()
+
+            val spendableKeyId = testSdkAccount.accountUuid.toStorageKeyId()
+            val viewOnlyKeyId = viewOnlySdkAccount.accountUuid.toStorageKeyId()
+            coVerify(exactly = 0) { getOrchardMigrationSdk(viewOnlyKeyId) }
+            kotlin.test.assertEquals(listOf(spendableKeyId), startedAccountKeyIds)
+            kotlin.test.assertEquals(listOf(spendableKeyId), scheduledAccountKeyIds)
         }
 }

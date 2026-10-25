@@ -8,6 +8,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.usecase.ExportTaxUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
@@ -51,6 +52,7 @@ class TaxExportViewModel(
                     when (selectedAccount) {
                         is KeystoneAccount -> stringRes(R.string.accounts_keystone)
                         is LedgerAccount -> stringRes(R.string.accounts_ledger)
+                        is ViewOnlyAccount -> selectedAccount.name
                         else -> stringRes(R.string.accounts_zashi)
                     }
                 )

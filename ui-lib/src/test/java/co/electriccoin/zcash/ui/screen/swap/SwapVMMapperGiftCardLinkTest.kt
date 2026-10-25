@@ -37,6 +37,7 @@ class SwapVMMapperGiftCardLinkTest {
         mockk<WalletAccount> {
             every { canSpend(any()) } returns true
             every { loadedBalances } returns null
+            every { isSpendable } returns true
         }
 
     @BeforeTest

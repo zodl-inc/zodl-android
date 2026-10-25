@@ -84,7 +84,6 @@ private fun Toolbar(
     ZashiSmallTopAppBar(
         title = "Debug menu",
         modifier = modifier.testTag(AdvancedSettingsTag.ADVANCED_SETTINGS_TOP_APP_BAR),
-        showTitleLogo = true,
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
         },

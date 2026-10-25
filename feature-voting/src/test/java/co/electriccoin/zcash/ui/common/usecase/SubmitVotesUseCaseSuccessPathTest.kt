@@ -13,7 +13,7 @@ import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.android.sdk.model.voting.VotingRoundQuiescence
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
 import cash.z.ecc.android.sdk.model.voting.VotingTorLease
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VoteOption
@@ -314,8 +314,8 @@ class SubmitVotesUseCaseSuccessPathTest {
                 delegationsSignedCount = 0
             )
 
-        private fun zashiAccount(): ZashiAccount =
-            ZashiAccount(
+        private fun zashiAccount(): ZodlAccount =
+            ZodlAccount(
                 sdkAccount = AccountFixture.new(),
                 unifiedAddress = WalletAddressFixture.UNIFIED_ADDRESS_STRING,
                 transparentAddress = WalletAddressFixture.TRANSPARENT_ADDRESS_STRING,

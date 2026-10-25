@@ -7,12 +7,14 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.common.repository.ReceiveTransaction
 import co.electriccoin.zcash.ui.common.repository.SendTransaction
 import co.electriccoin.zcash.ui.common.repository.ShieldTransaction
 import co.electriccoin.zcash.ui.common.repository.TransactionRepository
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyContent
 import co.electriccoin.zcash.ui.design.util.TickerLocation.HIDDEN
 import co.electriccoin.zcash.ui.design.util.getString
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -33,6 +35,7 @@ class ExportTaxUseCase(
     private val versionInfoProvider: GetVersionInfoProvider,
     private val context: Context,
     private val navigationRouter: NavigationRouter,
+    private val viewOnlyContent: ViewOnlyContent,
 ) {
     suspend operator fun invoke() =
         withContext(Dispatchers.IO) {
@@ -49,9 +52,21 @@ class ExportTaxUseCase(
                 File(
                     context.cacheDir,
                     when (accountDataSource.getSelectedAccount()) {
-                        is KeystoneAccount -> "Keystone_Transaction_History_$previousYear.csv"
-                        is LedgerAccount -> "Ledger_Transaction_History_$previousYear.csv"
-                        is ZashiAccount -> "Zodl_Transaction_History_$previousYear.csv"
+                        is KeystoneAccount -> {
+                            "Keystone_Transaction_History_$previousYear.csv"
+                        }
+
+                        is LedgerAccount -> {
+                            "Ledger_Transaction_History_$previousYear.csv"
+                        }
+
+                        is ViewOnlyAccount -> {
+                            "${viewOnlyContent.taxExportFileNamePrefix}_Transaction_History_$previousYear.csv"
+                        }
+
+                        is ZodlAccount -> {
+                            "Zodl_Transaction_History_$previousYear.csv"
+                        }
                     }
                 )
 

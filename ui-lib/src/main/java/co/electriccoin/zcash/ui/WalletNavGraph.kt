@@ -12,11 +12,14 @@ import androidx.navigation.toRoute
 import co.electriccoin.zcash.ui.common.ledger.LedgerNavContributor
 import co.electriccoin.zcash.ui.common.migration.MigrationNavContributor
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyNavContributor
 import co.electriccoin.zcash.ui.common.voting.VotingNavContributor
 import co.electriccoin.zcash.ui.screen.about.AboutArgs
 import co.electriccoin.zcash.ui.screen.about.AboutScreen
 import co.electriccoin.zcash.ui.screen.accountlist.AccountListArgs
 import co.electriccoin.zcash.ui.screen.accountlist.AccountListScreen
+import co.electriccoin.zcash.ui.screen.accountlist.options.WalletOptionsArgs
+import co.electriccoin.zcash.ui.screen.accountlist.options.WalletOptionsScreen
 import co.electriccoin.zcash.ui.screen.addressbook.AddressBookArgs
 import co.electriccoin.zcash.ui.screen.addressbook.AddressBookScreen
 import co.electriccoin.zcash.ui.screen.addressbook.SelectABRecipientArgs
@@ -39,6 +42,8 @@ import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletArgs
 import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletScreen
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerScreen
+import co.electriccoin.zcash.ui.screen.colorpicker.ColorPickerArgs
+import co.electriccoin.zcash.ui.screen.colorpicker.ColorPickerScreen
 import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollmentNavType
 import co.electriccoin.zcash.ui.screen.connecthw.date.HWDateArgs
 import co.electriccoin.zcash.ui.screen.connecthw.date.HWFirstTransactionScreen
@@ -65,6 +70,8 @@ import co.electriccoin.zcash.ui.screen.deletewallet.ResetZashiArgs
 import co.electriccoin.zcash.ui.screen.deletewallet.ResetZashiScreen
 import co.electriccoin.zcash.ui.screen.disconnect.DisconnectArgs
 import co.electriccoin.zcash.ui.screen.disconnect.DisconnectScreen
+import co.electriccoin.zcash.ui.screen.editaccount.EditAccountArgs
+import co.electriccoin.zcash.ui.screen.editaccount.EditAccountScreen
 import co.electriccoin.zcash.ui.screen.error.AndroidErrorBottomSheet
 import co.electriccoin.zcash.ui.screen.error.AndroidErrorDialog
 import co.electriccoin.zcash.ui.screen.error.ErrorBottomSheet
@@ -269,7 +276,9 @@ fun NavGraphBuilder.walletNavGraph(
         composable<ScanKeystoneSignInRequest> { WrapScanKeystoneSignInRequest() }
         composable<ScanKeystonePCZTRequest> { WrapScanKeystonePCZTRequest() }
         composable<SignKeystoneTransactionArgs> { SignKeystoneTransactionScreen() }
-        dialogComposable<AccountListArgs> { AccountListScreen() }
+        composable<AccountListArgs> { AccountListScreen() }
+        dialogComposable<WalletOptionsArgs> { WalletOptionsScreen(it.toRoute()) }
+        composable<EditAccountArgs> { EditAccountScreen(it.toRoute()) }
         composable<ScanArgs> { ScanZashiAddressScreen(it.toRoute()) }
         composable(NavigationTargets.EXPORT_PRIVATE_DATA) { WrapExportPrivateData() }
         composable<ExportVKArgs> { ExportVKScreen() }
@@ -348,6 +357,7 @@ fun NavGraphBuilder.walletNavGraph(
         dialogComposable<CurrencyConversionPickerArgs> { CurrencyConversionPickerScreen(it.toRoute()) }
         composable<SwapArgs> { SwapScreen() }
         dialogComposable<SwapSlippageArgs> { SwapSlippageScreen(it.toRoute()) }
+        dialogComposable<ColorPickerArgs> { ColorPickerScreen(it.toRoute()) }
         dialogComposable<SwapRefundWarningArgs> { SwapRefundWarningScreen(it.toRoute()) }
         dialogComposable<SwapInfoArgs> { SwapInfoScreen() }
         dialogComposable<DepositSwapInfoArgs> { DepositSwapInfoScreen() }
@@ -382,7 +392,7 @@ fun NavGraphBuilder.walletNavGraph(
         composable<ResyncDateArgs> { ResyncDateScreen(it.toRoute()) }
         composable<ResyncEstimationArgs> { ResyncEstimationScreen(it.toRoute()) }
         composable<ResyncHeightArgs> { ResyncHeightScreen() }
-        composable<DisconnectArgs> { DisconnectScreen() }
+        composable<DisconnectArgs> { DisconnectScreen(it.toRoute()) }
         // Migration destinations are contributed by the feature-migration module — see
         // MigrationNavContributor in MigrationContracts.kt (wired via Koin in the app module).
         org.koin.mp.KoinPlatform.getKoin().getAll<MigrationNavContributor>().forEach {
@@ -394,6 +404,9 @@ fun NavGraphBuilder.walletNavGraph(
             it.contribute(this)
         }
         org.koin.mp.KoinPlatform.getKoin().getAll<LedgerNavContributor>().forEach {
+            it.contribute(this)
+        }
+        org.koin.mp.KoinPlatform.getKoin().getAll<ViewOnlyNavContributor>().forEach {
             it.contribute(this)
         }
     }

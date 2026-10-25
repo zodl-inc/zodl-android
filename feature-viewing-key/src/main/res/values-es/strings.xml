@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="view_only_account_default_name">Cuenta de solo lectura</string>
+    <string name="view_only_top_bar_subtitle">Solo lectura</string>
+    <string name="view_only_add_account">Agregar cuenta</string>
+    <string name="view_only_account_list_section">Cuenta de solo lectura</string>
+    <string name="view_only_account_list_section_plural">Cuentas de solo lectura</string>
+    <string name="view_only_unsupported_title">No disponible</string>
+    <string name="view_only_unsupported_message">Esta cuenta se importó con una clave de visualización. Puede ver su saldo y su actividad, pero no puede enviar, proteger, intercambiar, votar ni migrar fondos.</string>
+    <string name="view_only_receive_shielded_title">Dirección protegida de Zcash</string>
+    <string name="view_only_receive_transparent_title">Dirección transparente de Zcash</string>
+    <string name="view_only_integrations_disabled_info">Cambia de una cuenta de solo lectura a Zodl para usar Flexa.</string>
+
+    <string name="view_only_add_account_hardware_title">Conectar billetera de hardware</string>
+    <string name="view_only_add_account_hardware_subtitle">Vincula tu billetera de hardware</string>
+    <string name="view_only_add_account_import_title">Importar clave de visualización completa</string>
+    <string name="view_only_add_account_import_subtitle">Consulta toda la actividad de la cuenta</string>
+    <string name="view_only_add_account_dismiss">Cerrar</string>
+
+    <string name="view_only_import_title">Importar cuenta</string>
+    <string name="view_only_import_subtitle">Clave de visualización completa</string>
+    <string name="view_only_continue">Continuar</string>
+
+    <string name="view_only_paste_heading">Agregar clave de visualización</string>
+    <string name="view_only_paste_message">Pega tu clave de visualización completa unificada (UFVK) para agregar una cuenta de solo lectura.</string>
+    <string name="view_only_paste_label">Clave de visualización</string>
+    <string name="view_only_paste_placeholder">Pega la clave de visualización...</string>
+    <string name="view_only_paste_scan">Escanear código QR</string>
+    <string name="view_only_paste_disclaimer">Esta cuenta solo podrá ver y recibir. Podrás seguir su saldo y su actividad, pero no podrás usarla para gastar fondos.</string>
+
+    <string name="view_only_invalid_key_title">Esta clave no parece correcta</string>
+    <string name="view_only_invalid_key_message">Una clave de visualización completa unificada empieza por “%1$s” y tiene más de 300 caracteres. Comprueba que no falten ni sobren caracteres y vuelve a pegarla.</string>
+    <string name="view_only_invalid_key_scan">Escanear código QR en su lugar</string>
+    <string name="view_only_invalid_key_edit">Editar clave</string>
+
+    <string name="view_only_scan_info">Escanea el código QR de la clave de visualización</string>
+    <string name="view_only_invalid_qr_title">No pudimos leer ese código</string>
+    <string name="view_only_invalid_qr_message">Este código QR no es una clave de visualización completa unificada válida. Asegúrate de escanear el código correcto, mantén el teléfono firme y vuelve a intentarlo con buena luz.</string>
+    <string name="view_only_invalid_qr_paste">Pegar la clave en su lugar</string>
+    <string name="view_only_invalid_qr_scan_again">Escanear de nuevo</string>
+
+    <string name="view_only_already_imported_title">Cuenta ya agregada</string>
+    <string name="view_only_already_imported_message">Esta clave de visualización pertenece a una cuenta que ya está en tu billetera.</string>
+    <string name="view_only_already_imported_close">Cerrar</string>
+
+    <string name="view_only_imported_heading">Cuenta importada</string>
+    <string name="view_only_imported_message">Se agregó tu cuenta de solo lectura. Sigue su saldo y su actividad en cualquier momento.</string>
+    <string name="view_only_imported_done">Listo</string>
+
+    <string name="view_only_birthday_title">Primera transacción de la cuenta</string>
+    <string name="view_only_birthday_subtitle">Elige la fecha aproximada de la primera transacción de esta cuenta. Si no estás seguro/a, elige una fecha anterior.</string>
+    <string name="view_only_birthday_enter_manually">Ingresar altura de bloque</string>
+
+    <string name="view_only_keep_open_description">Zodl está escaneando la cadena de bloques para recuperar las transacciones de esta cuenta. Las billeteras más antiguas pueden tardar horas en sincronizarse. Sigue estos pasos para evitar interrupciones:</string>
+    <string name="view_only_keep_open_subtitle">Tu cuenta se está sincronizando.</string>
+    <string name="view_only_keep_open_warning">El saldo y la actividad de esta cuenta estarán completos cuando termine la sincronización.</string>
+    <string name="view_only_keep_open_checkbox">Mantener la pantalla encendida durante la sincronización</string>
+
+    <string name="view_only_edit_remove_info">Al tocar Eliminar cuenta se te pedirá que lo confirmes</string>
+    <string name="view_only_remove_account">Eliminar cuenta</string>
+
+    <string name="view_only_remove_title">¿Eliminar esta cuenta?</string>
+    <string name="view_only_remove_message">Al eliminar esta cuenta se borran sus datos de Zodl en este dispositivo, pero se conservan tus contactos de la libreta de direcciones y los demás metadatos de la cuenta. Eliminar la cuenta no elimina su historial en la cadena. Puedes recuperarla cuando quieras volviendo a agregar la cuenta.</string>
+    <string name="view_only_remove_cancel">Cancelar</string>
+    <string name="view_only_remove_biometric_message">Confirma para eliminar esta cuenta</string>
+</resources>

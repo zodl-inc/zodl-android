@@ -4,11 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.KeystoneFirmwareVersion
-import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.SubmitResult
+import co.electriccoin.zcash.ui.common.model.errorCopy
 import co.electriccoin.zcash.ui.common.usecase.SendEmailUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.STACKTRACE_LIMIT
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyContent
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlinx.coroutines.NonCancellable
@@ -23,7 +25,8 @@ class ErrorVM(
     args: ErrorArgs,
     private val navigateToErrorBottom: NavigateToErrorUseCase,
     private val navigationRouter: NavigationRouter,
-    private val sendEmailUseCase: SendEmailUseCase
+    private val sendEmailUseCase: SendEmailUseCase,
+    private val viewOnlyContent: ViewOnlyContent,
 ) : ViewModel() {
     val state: StateFlow<ErrorState> = MutableStateFlow(createState(args)).asStateFlow()
 
@@ -152,26 +155,20 @@ class ErrorVM(
         )
 
     /**
-     * [LedgerOperationUnsupportedException] is a product limitation, not a failure — it gets its
-     * own copy instead of the generic title plus a stack trace.
+     * [AccountOperationUnsupportedException] is a product limitation, not a failure — it gets the
+     * copy of its kind instead of the generic title plus a stack trace.
      */
-    private fun createGeneralErrorState(args: ErrorArgs.General) =
-        ErrorState(
-            title =
-                if (args.exception is LedgerOperationUnsupportedException) {
-                    stringRes(R.string.ledger_unsupported_title)
-                } else {
-                    stringRes(R.string.error_general_title)
-                },
+    private fun createGeneralErrorState(args: ErrorArgs.General): ErrorState {
+        val unsupported =
+            (args.exception as? AccountOperationUnsupportedException)?.kind?.errorCopy(viewOnlyContent)
+        return ErrorState(
+            title = unsupported?.title ?: stringRes(R.string.error_general_title),
             message =
-                if (args.exception is LedgerOperationUnsupportedException) {
-                    stringRes(R.string.ledger_unsupported_message)
-                } else {
-                    stringRes(
+                unsupported?.message
+                    ?: stringRes(
                         R.string.error_general_message,
                         stringRes(args.exception.stackTraceToString().take(STACKTRACE_LIMIT))
-                    )
-                },
+                    ),
             positive =
                 ButtonState(
                     text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok),
@@ -184,6 +181,7 @@ class ErrorVM(
                 ),
             onBack = ::onBack,
         )
+    }
 
     private fun createGeneralShieldingErrorState(args: ErrorArgs.ShieldingGeneralError) =
         ErrorState(

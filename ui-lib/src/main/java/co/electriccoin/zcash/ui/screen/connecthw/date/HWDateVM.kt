@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.withLce
 import co.electriccoin.zcash.ui.common.usecase.CreateHWWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyContent
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -31,7 +32,8 @@ import kotlin.time.toKotlinInstant
 
 /**
  * Picks the month the enrolled account first transacted in, and estimates the birthday height from
- * it.
+ * it. The picker starts on Sapling activation for every enrollment. The heading and the text under
+ * it come from the branding when it sets them, as a view-only import does.
  */
 class HWDateVM(
     private val args: HWDateArgs,
@@ -39,8 +41,9 @@ class HWDateVM(
     private val navigationRouter: NavigationRouter,
     private val application: Application,
     private val errorStateMapper: ErrorMapperUseCase,
+    viewOnlyContent: ViewOnlyContent,
 ) : ViewModel() {
-    private val branding = brandingOf(args.enrollment)
+    private val branding = brandingOf(args.enrollment, viewOnlyContent)
     private val selection = MutableStateFlow(WalletFixture.SAPLING_ACTIVATION_YEAR_MONTH)
     private val estimateLce = mutableLce<Unit>()
 
@@ -59,7 +62,8 @@ class HWDateVM(
     private fun createState(yearMonth: YearMonth, isLoading: Boolean) =
         BirthdayPickerState(
             title = null,
-            message = stringRes(R.string.firstWalletTransactionSubtitleHWWallet),
+            subtitle = branding.dateTitle ?: stringRes(R.string.restoreWallet_birthday_estimateDate_title),
+            message = branding.dateSubtitle ?: stringRes(R.string.firstWalletTransactionSubtitleHWWallet),
             logo = branding.logo,
             selection = yearMonth,
             primaryButton =

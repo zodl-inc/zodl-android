@@ -106,7 +106,6 @@ private fun SettingsTopAppBar(
     ZashiSmallTopAppBar(
         title = stringResource(id = R.string.settings_title),
         modifier = modifier.testTag(MoreTags.SETTINGS_TOP_APP_BAR),
-        showTitleLogo = true,
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
         },

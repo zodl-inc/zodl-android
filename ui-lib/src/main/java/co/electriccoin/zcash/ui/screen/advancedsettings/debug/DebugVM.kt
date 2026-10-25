@@ -11,8 +11,8 @@ import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
 import co.electriccoin.zcash.ui.common.migration.MigrationDebugActions
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
-import co.electriccoin.zcash.ui.common.model.toStorageKeyId
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.provider.DebugForceBackgroundExecutionUnavailable
 import co.electriccoin.zcash.ui.common.repository.EphemeralAddressRepository
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
@@ -148,9 +148,10 @@ class DebugVM(
                 accounts.joinToString("\n\n") { account ->
                     val label =
                         when (account) {
-                            is ZashiAccount -> "Zashi"
+                            is ZodlAccount -> "Zodl"
                             is KeystoneAccount -> "Keystone"
                             is LedgerAccount -> "Ledger"
+                            is ViewOnlyAccount -> "View only"
                         }
                     "$label\n${account.unifiedAddress}"
                 }

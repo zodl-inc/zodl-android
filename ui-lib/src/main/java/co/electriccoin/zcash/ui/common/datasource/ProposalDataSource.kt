@@ -23,6 +23,7 @@ import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.VersionInfo
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.requireSpendable
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -90,6 +91,11 @@ class InsufficientFundsException(
 
 class TexUnsupportedOnKSException : Exception("TEX addresses are unsupported on Keystone")
 
+/**
+ * Every proposal it creates is for an account that can spend: a view-only account is refused with
+ * [co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException] before the SDK is
+ * asked, whichever flow got this far.
+ */
 @Suppress("TooManyFunctions")
 class ProposalDataSourceImpl(
     private val synchronizerProvider: SynchronizerProvider,
@@ -97,6 +103,7 @@ class ProposalDataSourceImpl(
 ) : ProposalDataSource {
     override suspend fun createProposal(account: WalletAccount, send: ZecSend): RegularTransactionProposal =
         withContext(Dispatchers.IO) {
+            account.requireSpendable()
             getOrThrow { synchronizer ->
                 RegularTransactionProposal(
                     destination = send.destination,
@@ -109,6 +116,7 @@ class ProposalDataSourceImpl(
 
     override suspend fun createZip321Proposal(account: WalletAccount, zip321Uri: String): Zip321TransactionProposal =
         withContext(Dispatchers.IO) {
+            account.requireSpendable()
             getOrThrow { synchronizer ->
                 val payment =
                     when (
@@ -159,6 +167,7 @@ class ProposalDataSourceImpl(
         quote: SwapQuote,
     ): ExactInputSwapTransactionProposal =
         withContext(Dispatchers.IO) {
+            account.requireSpendable()
             getOrThrow { synchronizer ->
                 ExactInputSwapTransactionProposal(
                     destination = send.destination,
@@ -176,6 +185,7 @@ class ProposalDataSourceImpl(
         quote: SwapQuote,
     ): ExactOutputSwapTransactionProposal =
         withContext(Dispatchers.IO) {
+            account.requireSpendable()
             getOrThrow { synchronizer ->
                 ExactOutputSwapTransactionProposal(
                     destination = send.destination,
@@ -189,6 +199,7 @@ class ProposalDataSourceImpl(
 
     override suspend fun createShieldProposal(account: WalletAccount): ShieldTransactionProposal =
         withContext(Dispatchers.IO) {
+            account.requireSpendable()
             getOrThrow { synchronizer ->
                 val newProposal =
                     synchronizer.proposeShielding(
@@ -208,6 +219,7 @@ class ProposalDataSourceImpl(
 
     override suspend fun createPcztFromProposal(account: WalletAccount, proposal: Proposal): Pczt =
         withContext(Dispatchers.IO) {
+            account.requireSpendable()
             synchronizerProvider.getSynchronizer().createPcztFromProposal(
                 accountUuid = account.sdkAccount.accountUuid,
                 proposal = proposal

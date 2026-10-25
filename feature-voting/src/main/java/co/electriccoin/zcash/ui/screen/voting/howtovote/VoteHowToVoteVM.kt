@@ -35,6 +35,10 @@ class VoteHowToVoteVM(
     init {
         viewModelScope.launch {
             val account = getSelectedWalletAccount()
+            if (!account.isSpendable) {
+                navigationRouter.back()
+                return@launch
+            }
             val isKeystone = account is KeystoneAccount
             val walletName =
                 when (account) {

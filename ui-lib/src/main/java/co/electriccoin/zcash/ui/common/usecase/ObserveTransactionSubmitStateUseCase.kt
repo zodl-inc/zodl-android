@@ -4,12 +4,14 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 
 class ObserveTransactionSubmitStateUseCase(
     private val keystoneProposalRepository: KeystoneProposalRepository,
@@ -25,7 +27,8 @@ class ObserveTransactionSubmitStateUseCase(
                 when (it) {
                     is KeystoneAccount -> keystoneProposalRepository.submitState
                     is LedgerAccount -> ledgerProposalPipeline.submitState
-                    is ZashiAccount -> zashiProposalRepository.submitState
+                    is ViewOnlyAccount -> flowOf(null)
+                    is ZodlAccount -> zashiProposalRepository.submitState
                 }
             }
 }

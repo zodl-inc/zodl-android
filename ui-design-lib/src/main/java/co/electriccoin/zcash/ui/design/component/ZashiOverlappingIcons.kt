@@ -67,7 +67,7 @@ fun ZashiOverlappingIcons(state: OverlappingIconsState) {
             val iconModifier = offset then cutout
 
             when (icon) {
-                is ImageResource.ByDrawable -> {
+                is ImageResource.ByDrawable, is ImageResource.Layered -> {
                     icon.Compose(
                         modifier =
                             iconModifier then
