@@ -16,6 +16,7 @@ import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
+import co.electriccoin.zcash.ui.common.provider.NetworkConnectivityProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -84,6 +85,7 @@ class AutomaticServerRepositoryImpl(
     private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
     private val isOhttpFallbackActiveProvider: IsOhttpFallbackActiveProvider,
     private val isPublicConnectionProvider: IsPublicConnectionProvider,
+    private val networkConnectivityProvider: NetworkConnectivityProvider,
     private val serverSelectionMutex: ServerSelectionMutex,
     private val evaluationInterval: EvaluationInterval,
 ) : AutomaticServerRepository {
@@ -394,6 +396,14 @@ class AutomaticServerRepositoryImpl(
             // checks before the outage is reported (ZIP #10), so one transient failure never raises it.
             val needsConfirmation = onGateway && healthyGateways.isEmpty()
             if (needsConfirmation) {
+                // Offline failures should not count as gateway outages (matches iOS behavior).
+                if (!networkConnectivityProvider.isOnline()) {
+                    Twig.info {
+                        "Automatic server: device is offline, not counting gateway failure (trigger=$trigger)"
+                    }
+                    syncFallbackFlag(current)
+                    return null
+                }
                 consecutiveGatewayFailures++
                 if (consecutiveGatewayFailures < CONFIRMATIONS_TO_REPORT) {
                     Twig.info {

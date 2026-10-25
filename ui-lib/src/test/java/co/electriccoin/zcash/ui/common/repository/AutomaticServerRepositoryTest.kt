@@ -14,6 +14,7 @@ import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
+import co.electriccoin.zcash.ui.common.provider.NetworkConnectivityProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -139,6 +140,11 @@ class AutomaticServerRepositoryTest {
     private val applicationStateProvider =
         mockk<ApplicationStateProvider>(relaxed = true) { every { isInForeground } returns foreground }
 
+    private val networkConnectivityProvider =
+        mockk<NetworkConnectivityProvider>(relaxed = true) {
+            every { isOnline() } returns true // Default to online
+        }
+
     private val serverSelectionMutex = ServerSelectionMutex()
 
     private val repository =
@@ -155,6 +161,7 @@ class AutomaticServerRepositoryTest {
             isServerSelectionAutomaticProvider = isAutomaticProvider,
             isOhttpFallbackActiveProvider = fallbackFlag,
             isPublicConnectionProvider = isPublicProvider,
+            networkConnectivityProvider = networkConnectivityProvider,
             serverSelectionMutex = serverSelectionMutex,
             evaluationInterval = EvaluationInterval(MINIMUM_EVALUATION_INTERVAL, timeSource)
         )
@@ -789,6 +796,70 @@ class AutomaticServerRepositoryTest {
             assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
             assertEquals(true, banner.last())
             coVerify(exactly = 0) { synchronizer.getFastestServers(fallbacks) }
+        }
+
+    @Test
+    fun offlineGatewayFailuresDoNotCountTowardUnavailability() =
+        runTest {
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            stubGatewayProbe(reachable = false)
+            every { networkConnectivityProvider.isOnline() } returns false
+            val banner = collectBanner()
+
+            // Multiple offline failures should not count
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            assertEquals(false, banner.last())
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            assertEquals(false, banner.last())
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            assertEquals(false, banner.last())
+
+            // Gateway unavailable should never be reported
+            coVerify(exactly = 0) { synchronizer.getFastestServers(fallbacks) }
+        }
+
+    @Test
+    fun offlineFailureFollowedByOnlineFailuresStillNeedsTwoOnlineFailures() =
+        runTest {
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            stubGatewayProbe(reachable = false)
+            val banner = collectBanner()
+
+            // First failure while offline (doesn't count)
+            every { networkConnectivityProvider.isOnline() } returns false
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            assertEquals(false, banner.last())
+
+            // Come back online, now failures count
+            every { networkConnectivityProvider.isOnline() } returns true
+
+            // First online failure (counts as first)
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            assertEquals(false, banner.last())
+
+            // Second online failure (counts as second, now report)
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            assertEquals(true, banner.last())
+        }
+
+    @Test
+    fun connectivityTriggerAlsoSkipsOfflineFailures() =
+        runTest {
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            every { networkConnectivityProvider.isOnline() } returns false
+            val banner = collectBanner()
+
+            // Multiple offline connectivity failures should not count
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
+            assertEquals(false, banner.last())
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
+            assertEquals(false, banner.last())
         }
 
     @Test
