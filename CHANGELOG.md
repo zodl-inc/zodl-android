@@ -19,7 +19,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   expired, so the user can migrate what is left.
 - Restarting a migration that has a transfer needing attention, before NU7, ends the run and opens the Setup screen
   (the scheduled migration is shown as available after the upgrade, the one-transaction one now) instead of failing.
-- Internal builds only: Advanced settings has a switch that lifts the NU7 migration pause, so a scheduled migration
+- Debug builds only: the Debug menu has a switch that lifts the NU7 migration pause, so a scheduled migration
   can be tried on mainnet before the activation. The switch is remembered across restarts and cleared by a wallet reset.
 - The Keystone signing and scanning screens explain that a scheduled migration cannot start before NU7 instead of a
   generic error. Spanish copy was added for the new migration messages.

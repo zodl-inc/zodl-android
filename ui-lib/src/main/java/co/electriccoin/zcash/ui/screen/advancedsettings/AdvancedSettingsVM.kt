@@ -54,11 +54,9 @@ class AdvancedSettingsVM(
     private val versionInfo by lazy { getVersionInfo() }
 
     private val restartAvailable = MutableStateFlow(false)
-    private val isGateBypassEnabled = MutableStateFlow(false)
 
     init {
         viewModelScope.launch { restartAvailable.value = migrationGate.isRestartAvailable() }
-        viewModelScope.launch { isGateBypassEnabled.value = migrationGate.isNetworkUpgradeGateBypassEnabled() }
     }
 
     val state: StateFlow<AdvancedSettingsState> =
@@ -66,9 +64,8 @@ class AdvancedSettingsVM(
             getWalletRestoringState.observe(),
             getWalletAccounts.observe(),
             restartAvailable,
-            isGateBypassEnabled,
-        ) { walletState, accounts, isRestartAvailable, isBypassEnabled ->
-            createState(walletState, accounts, isRestartAvailable, isBypassEnabled)
+        ) { walletState, accounts, isRestartAvailable ->
+            createState(walletState, accounts, isRestartAvailable)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
@@ -77,7 +74,6 @@ class AdvancedSettingsVM(
                     getWalletRestoringState.observe().value,
                     getWalletAccounts.observe().value,
                     restartAvailable.value,
-                    isGateBypassEnabled.value,
                 )
         )
 
@@ -85,7 +81,6 @@ class AdvancedSettingsVM(
         walletRestoringState: WalletRestoringState,
         accounts: List<WalletAccount>?,
         isRestartAvailable: Boolean,
-        isBypassEnabled: Boolean,
     ): AdvancedSettingsState {
         val selectedHWAccount = accounts.orEmpty().firstOrNull { it.isSelected } as? HWWalletAccount
         val restoring = walletRestoringState == WalletRestoringState.RESTORING
@@ -157,18 +152,6 @@ class AdvancedSettingsVM(
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_restart_migration),
                         onClick = ::onRestartMigrationClick,
                     ).takeIf { isRestartAvailable },
-                    // Internal builds only, so a scheduled migration can be tried on mainnet before NU7.
-                    ListItemState(
-                        title =
-                            stringRes(
-                                if (isBypassEnabled) {
-                                    "Ignore the network-upgrade migration pause: ON"
-                                } else {
-                                    "Ignore the network-upgrade migration pause: OFF"
-                                }
-                            ),
-                        onClick = ::onGateBypassClick,
-                    ).takeIf { versionInfo.distribution == DistributionDimension.INTERNAL },
                     ListItemState(
                         title = stringRes("Debug menu"),
                         onClick = ::onDebugMenuClick
@@ -206,13 +189,6 @@ class AdvancedSettingsVM(
     private fun onResetWalletClick() = viewModelScope.launch { navigateToResetWallet() }
 
     private fun onDisconnectHwWalletClick() = navigationRouter.forward(DisconnectArgs)
-
-    private fun onGateBypassClick() =
-        viewModelScope.launch {
-            val enabled = !isGateBypassEnabled.value
-            migrationGate.setNetworkUpgradeGateBypass(enabled)
-            isGateBypassEnabled.value = migrationGate.isNetworkUpgradeGateBypassEnabled()
-        }
 
     private fun onRestartMigrationClick() = migrationNavigator.forwardToRestartMigration()
 

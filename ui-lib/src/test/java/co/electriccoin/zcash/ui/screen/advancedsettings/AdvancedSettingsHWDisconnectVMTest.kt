@@ -137,7 +137,6 @@ class AdvancedSettingsHWDisconnectVMTest {
         migrationGate =
             mockk<MigrationGate> {
                 coEvery { isRestartAvailable() } returns false
-                coEvery { isNetworkUpgradeGateBypassEnabled() } returns false
             },
         migrationNavigator = mockk<MigrationNavigator>(relaxed = true),
     )

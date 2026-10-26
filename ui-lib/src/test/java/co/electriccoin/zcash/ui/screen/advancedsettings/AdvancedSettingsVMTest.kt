@@ -124,11 +124,7 @@ class AdvancedSettingsVMTest {
                 getVersionInfo = getVersionInfo,
                 navigateToResetWallet = mockk(relaxed = true),
                 navigateToExportPrivateData = mockk(relaxed = true),
-                migrationGate =
-                    mockk<MigrationGate> {
-                        coEvery { isRestartAvailable() } returns false
-                        coEvery { isNetworkUpgradeGateBypassEnabled() } returns false
-                    },
+                migrationGate = mockk<MigrationGate> { coEvery { isRestartAvailable() } returns false },
                 migrationNavigator = mockk(relaxed = true),
             )
         backgroundScope.launch { vm.state.collect { } }

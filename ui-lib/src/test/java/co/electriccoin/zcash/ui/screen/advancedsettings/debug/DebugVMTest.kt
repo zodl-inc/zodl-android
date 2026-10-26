@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.ui.screen.advancedsettings.debug
 
+import co.electriccoin.zcash.ui.common.migration.MigrationGate
 import co.electriccoin.zcash.ui.design.util.StringResource
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +18,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * MOB-1397 review item 8: "Simulate SeedNotRelevant" irreversibly overwrites the real stored seed
@@ -25,6 +28,7 @@ import kotlin.test.assertNull
 @OptIn(ExperimentalCoroutinesApi::class)
 class DebugVMTest {
     private val simulateSeedNotRelevant = mockk<SimulateSeedNotRelevantUseCase>(relaxed = true)
+    private val migrationGate = mockk<MigrationGate>(relaxed = true)
 
     private fun vm() =
         DebugVM(
@@ -33,6 +37,7 @@ class DebugVMTest {
             accountDataSource = mockk(relaxed = true),
             migrationDebugActions = mockk(relaxed = true),
             migrationAppHooks = mockk(relaxed = true),
+            migrationGate = migrationGate,
             context = mockk(relaxed = true),
             navigationRouter = mockk(relaxed = true),
             simulateSeedNotRelevant = simulateSeedNotRelevant,
@@ -121,6 +126,30 @@ class DebugVMTest {
 
             assertNull(vm.state.value.confirmationDialog)
             coVerify(exactly = 0) { simulateSeedNotRelevant.invoke() }
+            collectJob.cancel()
+        }
+
+    private fun DebugVM.gateBypassItem() =
+        state.value.items.single {
+            (it.title as? StringResource.ByString)?.value?.startsWith("Migration: ignore the NU7 pause") == true
+        }
+
+    @Test
+    fun theGateBypassItemShowsTheStoredValueAndTogglesIt() =
+        runTest {
+            var stored = true
+            coEvery { migrationGate.isNetworkUpgradeGateBypassEnabled() } answers { stored }
+            coEvery { migrationGate.setNetworkUpgradeGateBypass(any()) } answers { stored = firstArg() }
+            val vm = vm()
+            val collectJob = launch { vm.state.collect {} }
+            advanceUntilIdle()
+            assertTrue((vm.gateBypassItem().title as StringResource.ByString).value.endsWith("ON"))
+
+            vm.gateBypassItem().onClick?.invoke()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { migrationGate.setNetworkUpgradeGateBypass(false) }
+            assertTrue((vm.gateBypassItem().title as StringResource.ByString).value.endsWith("OFF"))
             collectJob.cancel()
         }
 }
