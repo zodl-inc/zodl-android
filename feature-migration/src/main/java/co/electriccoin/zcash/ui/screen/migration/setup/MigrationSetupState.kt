@@ -18,7 +18,7 @@ data class MigrationSetupState(
 /**
  * What the NU7 gate allows on the setup screen. The scheduled lane waits for NU7 because its
  * transactions are signed for the consensus branch before it; the single-transaction lane is a
- * normal send and stays open until the last blocks before NU7.
+ * normal send and stays open at every height.
  */
 sealed interface MigrationSetupGate {
     /** Both options are offered. */
@@ -27,10 +27,5 @@ sealed interface MigrationSetupGate {
     /** Only the immediate option is offered; the scheduled one is shown paused with [automaticSubtitle]. */
     data class ScheduledPaused(
         val automaticSubtitle: StringResource,
-    ) : MigrationSetupGate
-
-    /** Neither option is offered: the last blocks before NU7. [notice] explains why. */
-    data class Closed(
-        val notice: StringResource,
     ) : MigrationSetupGate
 }

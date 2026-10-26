@@ -1,11 +1,9 @@
 package co.electriccoin.zcash.ui.screen.migration.progress
 
-import cash.z.ecc.android.sdk.MigrationAvailability
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.common.model.migration.LiveMigrationPreparation
 import co.electriccoin.zcash.ui.common.model.migration.LiveMigrationSnapshot
 import co.electriccoin.zcash.ui.common.model.migration.LiveMigrationTransfer
-import co.electriccoin.zcash.ui.common.model.migration.MigrationGateInfo
 import co.electriccoin.zcash.ui.common.model.migration.MigrationTransferBlocker
 import co.electriccoin.zcash.ui.design.util.StringResource
 import kotlin.test.Test
@@ -407,27 +405,4 @@ class MigrationProgressVMTest {
                 parts.joinToString(separator = "") { it.asString() }
             }
         }
-
-    private fun runSnapshot(vararg sent: Boolean) =
-        LiveMigrationSnapshot(
-            transfers = sent.mapIndexed { i, isSent -> transfer(index = i, id = i + 1L, isSent = isSent) },
-            preparations = emptyList(),
-            tipHeight = 1_000L,
-        )
-
-    @Test
-    fun runWithTransfersLeftIsPausedOnlyInTheCutoffWindow() {
-        val snapshot = runSnapshot(true, false)
-        val cutoff = MigrationGateInfo(MigrationAvailability.NetworkUpgradeCutoff(2_000L), now)
-        val paused = MigrationGateInfo(MigrationAvailability.PausedUntilNetworkUpgrade(2_000L), now)
-        assertTrue(isRunPausedForNetworkUpgrade(cutoff, snapshot))
-        assertFalse(isRunPausedForNetworkUpgrade(paused, snapshot))
-        assertFalse(isRunPausedForNetworkUpgrade(MigrationGateInfo.OPEN, snapshot))
-    }
-
-    @Test
-    fun finishedRunIsNeverShownAsPaused() {
-        val cutoff = MigrationGateInfo(MigrationAvailability.NetworkUpgradeCutoff(2_000L), now)
-        assertFalse(isRunPausedForNetworkUpgrade(cutoff, runSnapshot(true, true)))
-    }
 }

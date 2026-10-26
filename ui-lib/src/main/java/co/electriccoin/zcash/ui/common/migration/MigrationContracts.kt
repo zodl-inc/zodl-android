@@ -33,7 +33,7 @@ interface MigrationGate {
     suspend fun isRestartAvailable(): Boolean
 
     /**
-     * Internal builds only: whether the SDK's NU7 migration pause and cutoff are lifted, so a
+     * Internal builds only: whether the SDK's NU7 pause on new scheduled migrations is lifted, so a
      * scheduled migration can be tried on mainnet before the activation. Off by default and never
      * turned on in store or foss builds.
      */

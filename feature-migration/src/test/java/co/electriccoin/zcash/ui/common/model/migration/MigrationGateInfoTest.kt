@@ -15,7 +15,6 @@ class MigrationGateInfoTest {
     fun activationHeightIsOnlyPresentWhileTheGateIsClosed() {
         assertNull(MigrationAvailability.Available.activationHeightOrNull())
         assertEquals(500L, MigrationAvailability.PausedUntilNetworkUpgrade(500L).activationHeightOrNull())
-        assertEquals(500L, MigrationAvailability.NetworkUpgradeCutoff(500L).activationHeightOrNull())
     }
 
     @Test
@@ -23,17 +22,10 @@ class MigrationGateInfoTest {
         val open = MigrationGateInfo.OPEN
         assertTrue(open.isScheduledLaneAvailable)
         assertTrue(open.isImmediateLaneAvailable)
-        assertFalse(open.isCutoff)
 
         val paused = MigrationGateInfo(MigrationAvailability.PausedUntilNetworkUpgrade(500L), now)
         assertFalse(paused.isScheduledLaneAvailable)
         assertTrue(paused.isImmediateLaneAvailable)
-        assertFalse(paused.isCutoff)
-
-        val cutoff = MigrationGateInfo(MigrationAvailability.NetworkUpgradeCutoff(500L), now)
-        assertFalse(cutoff.isScheduledLaneAvailable)
-        assertFalse(cutoff.isImmediateLaneAvailable)
-        assertTrue(cutoff.isCutoff)
     }
 
     @Test

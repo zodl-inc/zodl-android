@@ -136,7 +136,7 @@ internal fun effectiveMigrationMode(
 ): MigrationMode =
     when (gate) {
         is MigrationSetupGate.ScheduledPaused -> MigrationMode.IMMEDIATE
-        MigrationSetupGate.Open, is MigrationSetupGate.Closed -> selected
+        MigrationSetupGate.Open -> selected
     }
 
 /** Maps what the SDK's NU7 gate allows to the setup screen's gate. */
@@ -149,16 +149,6 @@ internal fun MigrationGateInfo.toSetupGate(): MigrationSetupGate {
             )
         }
     return when {
-        isCutoff -> {
-            MigrationSetupGate.Closed(
-                if (date == null) {
-                    stringRes(DesignR.string.migrationSetup_cutoffNoticeNoDate)
-                } else {
-                    stringRes(DesignR.string.migrationSetup_cutoffNotice, date)
-                }
-            )
-        }
-
         !isScheduledLaneAvailable -> {
             MigrationSetupGate.ScheduledPaused(
                 if (date == null) {

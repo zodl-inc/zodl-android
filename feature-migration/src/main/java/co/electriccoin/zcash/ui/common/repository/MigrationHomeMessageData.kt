@@ -34,10 +34,6 @@ data class MigrationHomeMessageData(
     // The live Orchard balance at decision time. Only meaningful when [isResidueOnly] is true — the
     // home banner needs the amount for its title; the celebration branch's copy is static.
     val residualBalanceZatoshi: Long = 0L,
-    // True while the SDK holds the run's transfers in the last blocks before the NU7 activation;
-    // [networkUpgradeEstimatedAt] is the projected activation time, null while the tip is unknown.
-    val isPausedForNetworkUpgrade: Boolean = false,
-    val networkUpgradeEstimatedAt: Instant? = null,
     // True for the one-time notice that the NU7 upgrade stopped the account's migration and the SDK cancelled it:
     // no money moved, the funds are spendable, and tapping opens the migration entry for what is left.
     val isInterruptedByNetworkUpgrade: Boolean = false,

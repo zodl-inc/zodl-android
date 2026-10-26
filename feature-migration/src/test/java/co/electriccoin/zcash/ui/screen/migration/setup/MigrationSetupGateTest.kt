@@ -43,13 +43,6 @@ class MigrationSetupGateTest {
     }
 
     @Test
-    fun cutoffAvailabilityClosesBothOptionsWithAnExplanation() {
-        val gate = MigrationGateInfo(MigrationAvailability.NetworkUpgradeCutoff(2_000L), estimated).toSetupGate()
-        assertIs<MigrationSetupGate.Closed>(gate)
-        assertEquals(DesignR.string.migrationSetup_cutoffNotice, resourceId(gate.notice))
-    }
-
-    @Test
     fun theImmediateOptionIsActedOnWhileTheScheduledOneIsPaused() {
         val paused = MigrationSetupGate.ScheduledPaused(StringResource.ByString("x"))
         assertEquals(MigrationMode.IMMEDIATE, effectiveMigrationMode(MigrationMode.AUTOMATIC, paused))

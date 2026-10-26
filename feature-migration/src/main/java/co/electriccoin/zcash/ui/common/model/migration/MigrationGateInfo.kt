@@ -1,13 +1,8 @@
 package co.electriccoin.zcash.ui.common.model.migration
 
 import cash.z.ecc.android.sdk.MigrationAvailability
-import co.electriccoin.zcash.ui.design.util.StringResource
-import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.design.util.stringResByDateTime
-import java.time.ZoneId
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
-import co.electriccoin.zcash.ui.design.R as DesignR
 
 /**
  * What the NU7 migration gate allows right now, with the estimated wall-clock time of the NU7
@@ -23,11 +18,8 @@ data class MigrationGateInfo(
     /** The scheduled (private, multi-transfer) lane is closed until NU7 activates. */
     val isScheduledLaneAvailable: Boolean get() = availability.isScheduledLaneAvailable
 
-    /** The single-transaction lane stays open before NU7 and closes only in the cutoff window. */
+    /** The single-transaction lane is a normal send: open at every height. */
     val isImmediateLaneAvailable: Boolean get() = availability.isImmediateLaneAvailable
-
-    /** No migration lane is open: the last blocks before NU7. */
-    val isCutoff: Boolean get() = availability is MigrationAvailability.NetworkUpgradeCutoff
 
     companion object {
         /** Used when the SDK cannot be asked: the SDK still refuses whatever it must refuse. */
@@ -40,7 +32,6 @@ fun MigrationAvailability.activationHeightOrNull(): Long? =
     when (this) {
         MigrationAvailability.Available -> null
         is MigrationAvailability.PausedUntilNetworkUpgrade -> activationHeight
-        is MigrationAvailability.NetworkUpgradeCutoff -> activationHeight
     }
 
 /**
@@ -66,24 +57,4 @@ fun estimateNetworkUpgradeInstant(
                 nu7ActivationHeight = nu7ActivationHeight,
             )
         now + seconds.coerceAtLeast(0L).seconds
-    }
-
-/**
- * The status line of a run the SDK holds for the NU7 upgrade, with the estimated activation date
- * when the chain tip is known.
- */
-fun pausedForNetworkUpgradeRes(estimatedAt: Instant?): StringResource =
-    if (estimatedAt == null) {
-        stringRes(DesignR.string.migrationHome_pausedSubtitleNoDate)
-    } else {
-        stringRes(
-            DesignR.string.migrationHome_pausedSubtitle,
-            stringResByDateTime(
-                zonedDateTime =
-                    java.time.Instant
-                        .ofEpochSecond(estimatedAt.epochSeconds)
-                        .atZone(ZoneId.systemDefault()),
-                useFullFormat = false,
-            ),
-        )
     }

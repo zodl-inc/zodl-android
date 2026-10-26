@@ -154,30 +154,19 @@ fun MigrationSetupView(state: MigrationSetupState) {
                 )
                 Spacer(Modifier.height(20.dp))
                 Spacer(Modifier.weight(1f))
-                when (val gate = state.gate) {
-                    is MigrationSetupGate.Closed -> {
+                when (state.mode) {
+                    MigrationMode.IMMEDIATE -> {
                         MigrationDisclaimerRow(
-                            text = gate.notice.getValue(),
+                            text = stringRes(DesignR.string.migrationSetup_immediateWarning).getValue(),
                             tint = ZashiColors.Utility.WarningYellow.utilityOrange700,
                         )
                     }
 
-                    MigrationSetupGate.Open, is MigrationSetupGate.ScheduledPaused -> {
-                        when (state.mode) {
-                            MigrationMode.IMMEDIATE -> {
-                                MigrationDisclaimerRow(
-                                    text = stringRes(DesignR.string.migrationSetup_immediateWarning).getValue(),
-                                    tint = ZashiColors.Utility.WarningYellow.utilityOrange700,
-                                )
-                            }
-
-                            MigrationMode.AUTOMATIC -> {
-                                MigrationDisclaimerRow(
-                                    text = stringRes(DesignR.string.migrationSetup_automaticWarning).getValue(),
-                                    tint = ZashiColors.Text.textTertiary,
-                                )
-                            }
-                        }
+                    MigrationMode.AUTOMATIC -> {
+                        MigrationDisclaimerRow(
+                            text = stringRes(DesignR.string.migrationSetup_automaticWarning).getValue(),
+                            tint = ZashiColors.Text.textTertiary,
+                        )
                     }
                 }
                 Spacer(Modifier.height(24.dp))
@@ -185,7 +174,6 @@ fun MigrationSetupView(state: MigrationSetupState) {
                     state =
                         ButtonState(
                             text = stringRes(DesignR.string.general_next),
-                            isEnabled = state.gate !is MigrationSetupGate.Closed,
                             onClick = state.onConfirm,
                         ),
                     modifier = Modifier.fillMaxWidth(),
@@ -263,7 +251,7 @@ private fun MigrationModeSelector(
                         gate.automaticSubtitle.getValue()
                     }
 
-                    MigrationSetupGate.Open, is MigrationSetupGate.Closed -> {
+                    MigrationSetupGate.Open -> {
                         stringRes(DesignR.string.migrationSetup_automaticSubtitle).getValue()
                     }
                 },
@@ -277,7 +265,7 @@ private fun MigrationModeSelector(
             title = stringRes(DesignR.string.migrationSetup_immediateTitle).getValue(),
             subtitle = stringRes(DesignR.string.migrationSetup_immediateSubtitle).getValue(),
             isWarning = true,
-            isEnabled = gate !is MigrationSetupGate.Closed,
+            isEnabled = true,
             selected = selected,
             onSelect = onSelect,
         )

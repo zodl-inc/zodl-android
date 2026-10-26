@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import cash.z.ecc.android.sdk.AttentionReason
-import cash.z.ecc.android.sdk.MigrationAvailability
 import cash.z.ecc.android.sdk.MigrationProgress
 import cash.z.ecc.android.sdk.MigrationState
 import co.electriccoin.zcash.ui.common.model.migration.LiveMigrationSnapshot
@@ -425,9 +424,6 @@ class GetHomeMessageUseCaseMigrationTest {
         assertEquals(MigrationHomeMessageData(isRunActive = false), result)
     }
 
-    private val paused = MigrationAvailability.PausedUntilNetworkUpgrade(activationHeight = 2_000L)
-    private val cutoff = MigrationAvailability.NetworkUpgradeCutoff(activationHeight = 2_000L)
-
     @Test
     fun migratableBalanceBeforeNu7StillOffersTheImmediateLane() {
         // The scheduled lane waits for NU7, but a single-transaction migration is a normal send, so the
@@ -438,22 +434,8 @@ class GetHomeMessageUseCaseMigrationTest {
                 snapshot = null,
                 hasSeenComplete = false,
                 orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI,
-                availability = paused,
             )
         assertEquals(MigrationHomeMessageData(isRunActive = false), result)
-    }
-
-    @Test
-    fun migratableBalanceInTheCutoffWindowShowsNoMigrateBanner() {
-        val result =
-            migrationMessageFor(
-                sdkState = null,
-                snapshot = null,
-                hasSeenComplete = false,
-                orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI,
-                availability = cutoff,
-            )
-        assertNull(result)
     }
 
     @Test
@@ -465,7 +447,6 @@ class GetHomeMessageUseCaseMigrationTest {
                 hasSeenComplete = false,
                 orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI - 1L,
                 migratableOrchardTotalZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI - 1L,
-                availability = paused,
             )
         assertEquals(
             MigrationHomeMessageData(
@@ -479,20 +460,6 @@ class GetHomeMessageUseCaseMigrationTest {
     }
 
     @Test
-    fun residueInTheCutoffWindowShowsNoBanner() {
-        val result =
-            migrationMessageFor(
-                sdkState = null,
-                snapshot = null,
-                hasSeenComplete = false,
-                orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI - 1L,
-                migratableOrchardTotalZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI - 1L,
-                availability = cutoff,
-            )
-        assertNull(result)
-    }
-
-    @Test
     fun runInProgressIsStillShownBeforeNu7() {
         val result =
             migrationMessageFor(
@@ -500,62 +467,8 @@ class GetHomeMessageUseCaseMigrationTest {
                 snapshot = null,
                 hasSeenComplete = false,
                 orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI,
-                availability = paused,
             )
         assertEquals(MigrationHomeMessageData(isRunActive = true), result)
-    }
-
-    @Test
-    fun runWithPendingTransfersIsShownAsPausedInTheCutoffWindow() {
-        val estimatedAt = Instant.fromEpochSeconds(1_800_000_000L)
-        val result =
-            migrationMessageFor(
-                sdkState = MigrationState.InProgress(MigrationProgress(1, 3, null)),
-                snapshot = snapshot(),
-                hasSeenComplete = false,
-                orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI,
-                availability = cutoff,
-                networkUpgradeEstimatedAt = estimatedAt,
-            )
-        assertEquals(
-            MigrationHomeMessageData(
-                isRunActive = true,
-                completedCount = 1,
-                totalCount = 3,
-                isPausedForNetworkUpgrade = true,
-                networkUpgradeEstimatedAt = estimatedAt,
-            ),
-            result,
-        )
-    }
-
-    @Test
-    fun pausedRunTakesPriorityOverReadyToSend() {
-        val result =
-            migrationMessageFor(
-                sdkState = MigrationState.InProgress(MigrationProgress(1, 3, null)),
-                snapshot = snapshot(nextScheduledAt = Instant.fromEpochSeconds(0)),
-                hasSeenComplete = false,
-                orchardBalanceZatoshi = 0L,
-                isBackgroundExecutionAvailable = false,
-                availability = cutoff,
-            )
-        assertEquals(true, result?.isPausedForNetworkUpgrade)
-        assertEquals(false, result?.isReadyToSend)
-    }
-
-    @Test
-    fun runIsNotShownAsPausedBeforeTheCutoffWindow() {
-        // Transfers signed before the upgrade still go out until the cutoff window opens.
-        val result =
-            migrationMessageFor(
-                sdkState = MigrationState.InProgress(MigrationProgress(1, 3, null)),
-                snapshot = snapshot(nextScheduledAt = Clock.System.now() + 30.minutes),
-                hasSeenComplete = false,
-                orchardBalanceZatoshi = 0L,
-                availability = paused,
-            )
-        assertEquals(false, result?.isPausedForNetworkUpgrade)
     }
 
     @Test
@@ -595,19 +508,5 @@ class GetHomeMessageUseCaseMigrationTest {
                 isUpgradeNoticePending = true,
             )
         assertEquals(MigrationHomeMessageData(isRunActive = true), result)
-    }
-
-    @Test
-    fun interruptedRunNoticeIsHeldBackInTheCutoffWindow() {
-        val result =
-            migrationMessageFor(
-                sdkState = null,
-                snapshot = null,
-                hasSeenComplete = false,
-                orchardBalanceZatoshi = 0L,
-                availability = cutoff,
-                isUpgradeNoticePending = true,
-            )
-        assertNull(result)
     }
 }

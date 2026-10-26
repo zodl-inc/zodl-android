@@ -1490,8 +1490,6 @@ Your vote can no longer be submitted.</string>
     <string name="migrationSetup_immediateSubtitle">Single transfer · Sends now · Less privacy</string>
     <string name="migrationSetup_automaticPausedSubtitle">Available after the network upgrade (about %1$s)</string>
     <string name="migrationSetup_automaticPausedSubtitleNoDate">Available after the network upgrade</string>
-    <string name="migrationSetup_cutoffNotice">Migration is paused for the network upgrade and reopens right after it (about %1$s).</string>
-    <string name="migrationSetup_cutoffNoticeNoDate">Migration is paused for the network upgrade and reopens right after it.</string>
     <string name="migrationUpgradePaused_title">Migration is paused</string>
     <string name="migrationUpgradePaused_message">A scheduled migration cannot start before the network upgrade. Please try again after it.</string>
 
@@ -1590,8 +1588,6 @@ Your vote can no longer be submitted.</string>
     <string name="migrationHome_defaultSubtitle">Move your funds to Ironwood.</string>
     <string name="migrationHome_residueTitle">%1$s left in Orchard</string>
     <string name="migrationHome_residueSubtitle">Tap to decide what happens to it</string>
-    <string name="migrationHome_pausedSubtitle">Paused for the network upgrade (about %1$s)</string>
-    <string name="migrationHome_pausedSubtitleNoDate">Paused for the network upgrade</string>
     <string name="migrationHome_upgradeStoppedTitle">The network upgrade stopped your migration</string>
     <string name="migrationHome_upgradeStoppedSubtitle">No funds moved and they are spendable. Tap to migrate what is left.</string>
 
