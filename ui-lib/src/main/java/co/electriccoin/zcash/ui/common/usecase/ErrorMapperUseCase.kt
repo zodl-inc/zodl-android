@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
  * A scheduled migration was asked for before the NU7 activation. The SDK refuses it, and the
  * generic failure copy would hide why, so it gets its own message.
  */
-internal fun Throwable?.isMigrationPausedUntilNetworkUpgrade(): Boolean =
+fun Throwable?.isMigrationPausedUntilNetworkUpgrade(): Boolean =
     generateSequence(this) { it.cause }.any { it is MigrationPausedUntilNetworkUpgradeException }
 
 class ErrorMapperUseCase(

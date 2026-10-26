@@ -34,10 +34,10 @@ interface MigrationGate {
 
     /**
      * Internal builds only: whether the SDK's NU7 pause on new scheduled migrations is lifted, so a
-     * scheduled migration can be tried on mainnet before the activation. Off by default and never
-     * turned on in store or foss builds.
+     * scheduled migration can be tried on mainnet before the activation. Remembered across restarts. Off by
+     * default and never turned on in store or foss builds.
      */
-    fun isNetworkUpgradeGateBypassEnabled(): Boolean = false
+    suspend fun isNetworkUpgradeGateBypassEnabled(): Boolean = false
 
     /** See [isNetworkUpgradeGateBypassEnabled]. */
     suspend fun setNetworkUpgradeGateBypass(enabled: Boolean) = Unit

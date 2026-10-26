@@ -1293,4 +1293,10 @@
     <string name="migrationHome_residueSubtitle">Toca para decidir qué hacer con él</string>
     <string name="coinVote_confirmSubmission_detailExcludedWeight">Excluido de esta votación</string>
 
+    <string name="migrationSetup_automaticPausedSubtitle">Disponible tras la actualización de la red (aprox. %1$s)</string>
+    <string name="migrationSetup_automaticPausedSubtitleNoDate">Disponible tras la actualización de la red</string>
+    <string name="migrationUpgradePaused_title">La migración está en pausa</string>
+    <string name="migrationUpgradePaused_message">Una migración programada no puede iniciarse antes de la actualización de la red. Inténtalo de nuevo después.</string>
+    <string name="migrationHome_upgradeStoppedTitle">La actualización de la red detuvo tu migración</string>
+    <string name="migrationHome_upgradeStoppedSubtitle">No se movieron fondos y están disponibles. Toca para migrar lo que queda.</string>
 </resources>

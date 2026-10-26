@@ -14,6 +14,7 @@ import co.electriccoin.zcash.ui.common.migration.MigrationNavContributor
 import co.electriccoin.zcash.ui.common.migration.MigrationNavigator
 import co.electriccoin.zcash.ui.common.migration.MigrationSyncedHook
 import co.electriccoin.zcash.ui.common.model.toStorageKeyId
+import co.electriccoin.zcash.ui.common.provider.MigrationGateBypassStorageProvider
 import co.electriccoin.zcash.ui.common.provider.MigrationNotifier
 import co.electriccoin.zcash.ui.common.provider.PendingMigrationTorFailureStorageProvider
 import co.electriccoin.zcash.ui.common.usecase.CheckMigrationRecoveryUseCase
@@ -67,6 +68,7 @@ import kotlinx.coroutines.launch
 
 class MigrationGateImpl(
     private val getOrchardMigrationSdk: GetOrchardMigrationSdkUseCase,
+    private val gateBypassStorage: MigrationGateBypassStorageProvider,
 ) : MigrationGate {
     // Engine state IS the gate now — no app-side plan marker exists. Selected-account scoped
     // (matches the sync it gates).
@@ -89,15 +91,12 @@ class MigrationGateImpl(
             getOrchardMigrationSdk().getMigrationStateUnreconciled() is cash.z.ecc.android.sdk.MigrationState.InProgress
         }.getOrDefault(false)
 
-    // Process-wide like the SDK's own flag, which has no getter: this mirrors what was last set.
-    @Volatile
-    private var isGateBypassEnabled = false
-
-    override fun isNetworkUpgradeGateBypassEnabled(): Boolean = isGateBypassEnabled
+    // Persisted: GetOrchardMigrationSdkUseCase applies the stored value to every SDK instance it builds.
+    override suspend fun isNetworkUpgradeGateBypassEnabled(): Boolean = gateBypassStorage.isEnabled()
 
     override suspend fun setNetworkUpgradeGateBypass(enabled: Boolean) {
+        gateBypassStorage.setEnabled(enabled)
         getOrchardMigrationSdk().setMigrationNetworkUpgradeGateBypass(enabled)
-        isGateBypassEnabled = enabled
     }
 
     override suspend fun isRestartAvailable(): Boolean =

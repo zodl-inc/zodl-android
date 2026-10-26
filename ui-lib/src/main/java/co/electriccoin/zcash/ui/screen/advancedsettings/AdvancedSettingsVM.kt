@@ -54,10 +54,11 @@ class AdvancedSettingsVM(
     private val versionInfo by lazy { getVersionInfo() }
 
     private val restartAvailable = MutableStateFlow(false)
-    private val isGateBypassEnabled = MutableStateFlow(migrationGate.isNetworkUpgradeGateBypassEnabled())
+    private val isGateBypassEnabled = MutableStateFlow(false)
 
     init {
         viewModelScope.launch { restartAvailable.value = migrationGate.isRestartAvailable() }
+        viewModelScope.launch { isGateBypassEnabled.value = migrationGate.isNetworkUpgradeGateBypassEnabled() }
     }
 
     val state: StateFlow<AdvancedSettingsState> =
