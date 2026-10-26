@@ -17,6 +17,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   stays available at every height, and a migration that is already running keeps sending its valid transfers until
   the activation. A transfer signed for the old consensus branch is no longer sent after NU7 but reported as
   expired, so the user can migrate what is left.
+- Restarting a migration that has a transfer needing attention, before NU7, ends the run and opens the Setup screen
+  (the scheduled migration is shown as available after the upgrade, the one-transaction one now) instead of failing.
 - Internal builds only: Advanced settings has a switch that lifts the NU7 migration pause, so a scheduled migration
   can be tried on mainnet before the activation.
 
