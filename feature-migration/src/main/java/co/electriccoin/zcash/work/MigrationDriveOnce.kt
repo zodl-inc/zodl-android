@@ -21,6 +21,7 @@ import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.IsMigrationTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.LastNetworkActivityStorageProvider
 import co.electriccoin.zcash.ui.common.provider.MigrationNotifier
+import co.electriccoin.zcash.ui.common.provider.MigrationUpgradeNoticeStorageProvider
 import co.electriccoin.zcash.ui.common.provider.PendingMigrationTorFailureStorageProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import kotlinx.coroutines.delay
@@ -83,6 +84,7 @@ class MigrationDriveOnce(
     private val synchronizerProvider: SynchronizerProvider,
     private val lastNetworkActivity: LastNetworkActivityStorageProvider,
     private val applicationStateProvider: ApplicationStateProvider,
+    private val migrationUpgradeNotice: MigrationUpgradeNoticeStorageProvider,
 ) {
     /**
      * @param allowForcedBroadcastWindow Only `true` for [MigrationLiveDriver] — the worker (via
@@ -146,6 +148,17 @@ class MigrationDriveOnce(
 
                 MigrationAdvanceStep.Waiting -> {
                     waitingRun(sdk, accountKeyId)
+                }
+
+                // The SDK holds this run until NU7 activates; nothing to build or send, so re-arm like Waiting.
+                is MigrationAdvanceStep.PausedForNetworkUpgrade -> {
+                    waitingRun(sdk, accountKeyId)
+                }
+
+                // NU7 is active and the run holds a transaction no block accepts any more.
+                is MigrationAdvanceStep.InterruptedByNetworkUpgrade -> {
+                    interruptedRun(sdk, accountKeyId, step.activationHeight)
+                    DriveOnceResult.Terminal
                 }
             }
         } finally {
@@ -626,6 +639,22 @@ class MigrationDriveOnce(
             (snapshot?.nextPending?.index?.plus(1)) ?: 1,
             snapshot?.totalCount ?: 0,
         )
+    }
+
+    /**
+     * The NU7 activation left the run with a transaction built for the old consensus branch, which
+     * no block accepts. Cancelling ends the run and releases its unsent notes (no money moved, the
+     * funds are spendable again), then the one-time Home notice offers a new migration of what is
+     * left. The notice is raised only after the cancel succeeded: a failed cancel throws, so the
+     * next drive sees the same interrupted answer and tries again.
+     */
+    private suspend fun interruptedRun(sdk: OrchardMigrationSdk, accountKeyId: String, activationHeight: Long) {
+        migrationLog(
+            "MigrationDriveOnce: the NU7 activation ($activationHeight) interrupted the run — cancelling it, " +
+                "the user is offered a new migration. (account=$accountKeyId)"
+        )
+        sdk.cancelMigrationRun()
+        migrationUpgradeNotice.markPending(accountKeyId)
     }
 
     /** All transactions mined — nothing left to fold anywhere; just stop the chain. */

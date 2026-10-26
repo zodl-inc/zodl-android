@@ -89,6 +89,17 @@ class MigrationGateImpl(
             getOrchardMigrationSdk().getMigrationStateUnreconciled() is cash.z.ecc.android.sdk.MigrationState.InProgress
         }.getOrDefault(false)
 
+    // Process-wide like the SDK's own flag, which has no getter: this mirrors what was last set.
+    @Volatile
+    private var isGateBypassEnabled = false
+
+    override fun isNetworkUpgradeGateBypassEnabled(): Boolean = isGateBypassEnabled
+
+    override suspend fun setNetworkUpgradeGateBypass(enabled: Boolean) {
+        getOrchardMigrationSdk().setMigrationNetworkUpgradeGateBypass(enabled)
+        isGateBypassEnabled = enabled
+    }
+
     override suspend fun isRestartAvailable(): Boolean =
         runCatching {
             when (getOrchardMigrationSdk().getMigrationStateUnreconciled()) {

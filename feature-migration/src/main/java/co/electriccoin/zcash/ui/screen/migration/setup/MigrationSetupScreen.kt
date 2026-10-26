@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -149,22 +150,34 @@ fun MigrationSetupView(state: MigrationSetupState) {
                 MigrationModeSelector(
                     selected = state.mode,
                     onSelect = state.onModeChange,
+                    gate = state.gate,
                 )
                 Spacer(Modifier.height(20.dp))
                 Spacer(Modifier.weight(1f))
-                when (state.mode) {
-                    MigrationMode.IMMEDIATE -> {
+                when (val gate = state.gate) {
+                    is MigrationSetupGate.Closed -> {
                         MigrationDisclaimerRow(
-                            text = stringRes(DesignR.string.migrationSetup_immediateWarning).getValue(),
+                            text = gate.notice.getValue(),
                             tint = ZashiColors.Utility.WarningYellow.utilityOrange700,
                         )
                     }
 
-                    MigrationMode.AUTOMATIC -> {
-                        MigrationDisclaimerRow(
-                            text = stringRes(DesignR.string.migrationSetup_automaticWarning).getValue(),
-                            tint = ZashiColors.Text.textTertiary,
-                        )
+                    MigrationSetupGate.Open, is MigrationSetupGate.ScheduledPaused -> {
+                        when (state.mode) {
+                            MigrationMode.IMMEDIATE -> {
+                                MigrationDisclaimerRow(
+                                    text = stringRes(DesignR.string.migrationSetup_immediateWarning).getValue(),
+                                    tint = ZashiColors.Utility.WarningYellow.utilityOrange700,
+                                )
+                            }
+
+                            MigrationMode.AUTOMATIC -> {
+                                MigrationDisclaimerRow(
+                                    text = stringRes(DesignR.string.migrationSetup_automaticWarning).getValue(),
+                                    tint = ZashiColors.Text.textTertiary,
+                                )
+                            }
+                        }
                     }
                 }
                 Spacer(Modifier.height(24.dp))
@@ -172,6 +185,7 @@ fun MigrationSetupView(state: MigrationSetupState) {
                     state =
                         ButtonState(
                             text = stringRes(DesignR.string.general_next),
+                            isEnabled = state.gate !is MigrationSetupGate.Closed,
                             onClick = state.onConfirm,
                         ),
                     modifier = Modifier.fillMaxWidth(),
@@ -234,6 +248,7 @@ private fun MigrationDisclaimerRow(
 private fun MigrationModeSelector(
     selected: MigrationMode,
     onSelect: (MigrationMode) -> Unit,
+    gate: MigrationSetupGate,
 ) {
     Column(
         modifier = Modifier.selectableGroup(),
@@ -242,8 +257,18 @@ private fun MigrationModeSelector(
         MigrationModeOption(
             mode = MigrationMode.AUTOMATIC,
             title = stringRes(DesignR.string.migrationSetup_automaticTitle).getValue(),
-            subtitle = stringRes(DesignR.string.migrationSetup_automaticSubtitle).getValue(),
+            subtitle =
+                when (gate) {
+                    is MigrationSetupGate.ScheduledPaused -> {
+                        gate.automaticSubtitle.getValue()
+                    }
+
+                    MigrationSetupGate.Open, is MigrationSetupGate.Closed -> {
+                        stringRes(DesignR.string.migrationSetup_automaticSubtitle).getValue()
+                    }
+                },
             isWarning = false,
+            isEnabled = gate == MigrationSetupGate.Open,
             selected = selected,
             onSelect = onSelect,
         )
@@ -252,6 +277,7 @@ private fun MigrationModeSelector(
             title = stringRes(DesignR.string.migrationSetup_immediateTitle).getValue(),
             subtitle = stringRes(DesignR.string.migrationSetup_immediateSubtitle).getValue(),
             isWarning = true,
+            isEnabled = gate !is MigrationSetupGate.Closed,
             selected = selected,
             onSelect = onSelect,
         )
@@ -265,10 +291,11 @@ private fun MigrationModeOption(
     title: String,
     subtitle: String,
     isWarning: Boolean,
+    isEnabled: Boolean,
     selected: MigrationMode,
     onSelect: (MigrationMode) -> Unit,
 ) {
-    val isSelected = mode == selected
+    val isSelected = mode == selected && isEnabled
     val isWarningSelected = isSelected && isWarning
     val warningBorder = ZashiColors.Utility.WarningYellow.utilityOrange500
     val warningRing = ZashiColors.Utility.WarningYellow.utilityOrange200
@@ -304,9 +331,11 @@ private fun MigrationModeOption(
                     }
                 }.selectable(
                     selected = isSelected,
+                    enabled = isEnabled,
                     onClick = { onSelect(mode) },
                     role = Role.RadioButton,
-                ).padding(horizontal = 16.dp, vertical = 12.dp),
+                ).alpha(if (isEnabled) 1f else DISABLED_OPTION_ALPHA)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
         MigrationRadioIndicator(
@@ -328,6 +357,8 @@ private fun MigrationModeOption(
         }
     }
 }
+
+private const val DISABLED_OPTION_ALPHA = 0.5f
 
 private val MIGRATION_RADIO_SIZE = 20.dp
 

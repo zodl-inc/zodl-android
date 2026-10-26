@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import cash.z.ecc.android.sdk.MigrationPausedUntilNetworkUpgradeException
 import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.model.LceContent
 import co.electriccoin.zcash.ui.common.model.LceError
@@ -10,6 +11,13 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import com.flexa.core.Flexa.scope
 import kotlinx.coroutines.launch
+
+/**
+ * A scheduled migration was asked for before the NU7 activation. The SDK refuses it, and the
+ * generic failure copy would hide why, so it gets its own message.
+ */
+internal fun Throwable?.isMigrationPausedUntilNetworkUpgrade(): Boolean =
+    generateSequence(this) { it.cause }.any { it is MigrationPausedUntilNetworkUpgradeException }
 
 class ErrorMapperUseCase(
     private val sendEmail: SendEmailUseCase,
@@ -26,17 +34,31 @@ class ErrorMapperUseCase(
         primaryStyle: ButtonStyle? = null,
     ): LceError.BottomSheet {
         val isLedgerUnsupported = error.cause is LedgerOperationUnsupportedException
+        val isMigrationPaused = error.cause.isMigrationPausedUntilNetworkUpgrade()
         return mapToBottomSheet(
             error = error,
             title =
                 when {
-                    isLedgerUnsupported -> stringRes(co.electriccoin.zcash.ui.R.string.ledger_unsupported_title)
-                    else -> title ?: stringRes(co.electriccoin.zcash.ui.design.R.string.coinVote_error_title)
+                    isLedgerUnsupported -> {
+                        stringRes(co.electriccoin.zcash.ui.R.string.ledger_unsupported_title)
+                    }
+
+                    isMigrationPaused -> {
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.migrationUpgradePaused_title)
+                    }
+
+                    else -> {
+                        title ?: stringRes(co.electriccoin.zcash.ui.design.R.string.coinVote_error_title)
+                    }
                 },
             message =
                 when {
                     isLedgerUnsupported -> {
                         stringRes(co.electriccoin.zcash.ui.R.string.ledger_unsupported_message)
+                    }
+
+                    isMigrationPaused -> {
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.migrationUpgradePaused_message)
                     }
 
                     else -> {

@@ -12,9 +12,13 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Migration time estimates, the plan's total duration and the Syncing banner follow NU7's 25-second target block
   spacing. An estimate that reaches past the NU7 activation height counts each side at its own spacing, and the
   Syncing banner still opens at three days behind.
-- A new Ironwood migration is not offered until the chain reaches the NU7 activation height. A migration that is
-  already running continues, and a transfer signed for the old consensus branch is no longer sent after NU7 but
-  reported as expired, so the user can migrate what is left.
+- The scheduled (private) Ironwood migration is not offered until the chain reaches the NU7 activation height, and
+  the Setup screen shows it as available after the upgrade with the estimated date. The one-transaction migration
+  stays available before NU7. In the last blocks before NU7 neither is offered, and a migration that is already
+  running shows "Paused for the network upgrade" on the Home banner and the Progress screen. A transfer signed for
+  the old consensus branch is no longer sent after NU7 but reported as expired, so the user can migrate what is left.
+- Internal builds only: Advanced settings has a switch that lifts the NU7 migration pause, so a scheduled migration
+  can be tried on mainnet before the activation.
 
 ## [3.17.2 (3157)] - 2026-10-20
 

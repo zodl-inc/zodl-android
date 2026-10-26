@@ -31,6 +31,16 @@ interface MigrationGate {
      * Gates the Advanced-settings "Restart Migration" item.
      */
     suspend fun isRestartAvailable(): Boolean
+
+    /**
+     * Internal builds only: whether the SDK's NU7 migration pause and cutoff are lifted, so a
+     * scheduled migration can be tried on mainnet before the activation. Off by default and never
+     * turned on in store or foss builds.
+     */
+    fun isNetworkUpgradeGateBypassEnabled(): Boolean = false
+
+    /** See [isNetworkUpgradeGateBypassEnabled]. */
+    suspend fun setNetworkUpgradeGateBypass(enabled: Boolean) = Unit
 }
 
 /**

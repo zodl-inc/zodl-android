@@ -9,11 +9,13 @@ import co.electriccoin.zcash.ui.common.model.guardLoading
 import co.electriccoin.zcash.ui.common.model.migration.LiveMigrationPreparation
 import co.electriccoin.zcash.ui.common.model.migration.LiveMigrationSnapshot
 import co.electriccoin.zcash.ui.common.model.migration.LiveMigrationTransfer
+import co.electriccoin.zcash.ui.common.model.migration.MigrationGateInfo
 import co.electriccoin.zcash.ui.common.model.migration.MigrationPreparationDetails
 import co.electriccoin.zcash.ui.common.model.migration.MigrationPreparationStepDetail
 import co.electriccoin.zcash.ui.common.model.migration.MigrationTransferBlocker
 import co.electriccoin.zcash.ui.common.model.migration.formatMigrationDuration
 import co.electriccoin.zcash.ui.common.model.migration.isTestnetBuildFlavor
+import co.electriccoin.zcash.ui.common.model.migration.pausedForNetworkUpgradeRes
 import co.electriccoin.zcash.ui.common.model.migration.preparationStepStatus
 import co.electriccoin.zcash.ui.common.model.migration.preparationStepTimeLabel
 import co.electriccoin.zcash.ui.common.model.migration.preparationStepTitle
@@ -25,6 +27,7 @@ import co.electriccoin.zcash.ui.common.model.withLce
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.repository.MigrationLiveReadout
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetMigrationGateInfoUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveMigrationLiveReadoutUseCase
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
@@ -36,6 +39,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import java.math.BigDecimal
 import java.math.MathContext
 import kotlin.time.Clock
@@ -48,6 +52,7 @@ class MigrationProgressVM(
     private val navigationRouter: NavigationRouter,
     private val exchangeRateRepository: ExchangeRateRepository,
     private val errorStateMapper: ErrorMapperUseCase,
+    private val getMigrationGateInfo: GetMigrationGateInfoUseCase,
 ) : ViewModel() {
     private val sendLce = mutableLce<Unit>()
 
@@ -60,8 +65,11 @@ class MigrationProgressVM(
             // Home's equivalent fallback does), so wall-clock-dependent display (the "in ~X minutes"
             // row labels, migrationProgressSubtitle) keeps refreshing without a separate ticker
             // element here.
-            liveReadoutFlow(),
-        ) { rate, readout ->
+            // The NU7 gate is read with every readout beat: it is a cheap read (the SDK's estimated tip),
+            // and it is what turns the header into "Paused for the network upgrade" in the last
+            // blocks before the activation.
+            liveReadoutFlow().map { it to getMigrationGateInfo() },
+        ) { rate, (readout, gate) ->
             // Everything on this screen derives LIVE from the engine's persisted states — no plan
             // cache to diverge, and no app-side "overdue"/countdown: each row renders purely from
             // the engine's per-transaction status (decision with the product owner 2026-07-31). The measured
@@ -77,7 +85,7 @@ class MigrationProgressVM(
                     secondsPerBlock = secondsPerBlock,
                     nowEpochSeconds = Clock.System.now().epochSeconds,
                     nu7ActivationHeight = readout.nu7ActivationHeight,
-                )?.let { createState(it, rate) }
+                )?.let { createState(it, rate, gate) }
         }.withLce(sendLce, errorStateMapper::mapToState)
             .stateIn(this)
 
@@ -103,15 +111,21 @@ class MigrationProgressVM(
     private fun createState(
         snapshot: LiveMigrationSnapshot,
         exchangeRateState: ExchangeRateState,
+        gate: MigrationGateInfo,
     ): MigrationProgressState {
         val now = Clock.System.now()
-        val subtitle = migrationProgressSubtitle(snapshot, now)
+        val subtitle =
+            if (isRunPausedForNetworkUpgrade(gate, snapshot)) {
+                pausedForNetworkUpgradeRes(gate.estimatedActivation)
+            } else {
+                stringRes(migrationProgressSubtitle(snapshot, now))
+            }
 
         val totalZatoshi = snapshot.transfers.sumOf { it.amountZatoshi }
         val totalAmount = stringRes(Zatoshi(totalZatoshi))
         return MigrationProgressState(
             title = stringRes(DesignR.string.migration_common_progressTitle),
-            subtitle = stringRes(subtitle),
+            subtitle = subtitle,
             totalAmount = totalAmount,
             totalFiatAmount = fiatAmount(Zatoshi(totalZatoshi), exchangeRateState),
             // Figma "PR App Designs Q3'26" node 3480:7638: a balance-tracker card showing the
@@ -517,3 +531,12 @@ private fun futureRowDisplay(
     val label = if (isLastRowOverall) "in $relative" else relative
     return MigrationRowDisplay(stringRes(label), isReadyNow = false)
 }
+
+/**
+ * Whether the SDK holds this run for the NU7 upgrade: the last blocks before the activation, with
+ * transfers still to send. Before that window the run keeps going on its own schedule.
+ */
+internal fun isRunPausedForNetworkUpgrade(
+    gate: MigrationGateInfo,
+    snapshot: LiveMigrationSnapshot,
+): Boolean = gate.isCutoff && snapshot.completedCount < snapshot.totalCount

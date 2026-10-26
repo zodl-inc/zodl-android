@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.usecase
 
 import android.content.Context
 import cash.z.ecc.android.sdk.AttentionReason
+import cash.z.ecc.android.sdk.MigrationAvailability
 import cash.z.ecc.android.sdk.MigrationBlocker
 import cash.z.ecc.android.sdk.MigrationState
 import cash.z.ecc.android.sdk.Synchronizer
@@ -15,12 +16,16 @@ import co.electriccoin.zcash.ui.common.model.migration.MIGRATION_DUST_THRESHOLD_
 import co.electriccoin.zcash.ui.common.model.migration.MIGRATION_RESIDUAL_MIN_ZATOSHI
 import co.electriccoin.zcash.ui.common.model.migration.MigrationAttentionKind
 import co.electriccoin.zcash.ui.common.model.migration.MigrationTransferBlocker
+import co.electriccoin.zcash.ui.common.model.migration.activationHeightOrNull
 import co.electriccoin.zcash.ui.common.model.migration.affectedTransferIndices
+import co.electriccoin.zcash.ui.common.model.migration.estimateNetworkUpgradeInstant
+import co.electriccoin.zcash.ui.common.model.migration.pausedForNetworkUpgradeRes
 import co.electriccoin.zcash.ui.common.model.migration.toMigrationRangeText
 import co.electriccoin.zcash.ui.common.model.migration.toUiKind
 import co.electriccoin.zcash.ui.common.model.toStorageKeyId
 import co.electriccoin.zcash.ui.common.provider.HasSeenMigrationCompleteStorageProvider
 import co.electriccoin.zcash.ui.common.provider.IsBackgroundExecutionAvailableProvider
+import co.electriccoin.zcash.ui.common.provider.MigrationUpgradeNoticeStorageProvider
 import co.electriccoin.zcash.ui.common.repository.MigrationHomeMessage
 import co.electriccoin.zcash.ui.common.repository.MigrationHomeMessageData
 import co.electriccoin.zcash.ui.design.util.getString
@@ -67,6 +72,7 @@ class MigrationHomeMessageSourceImpl(
     private val hasSeenMigrationCompleteStorageProvider: HasSeenMigrationCompleteStorageProvider,
     private val isBackgroundExecutionAvailableProvider: IsBackgroundExecutionAvailableProvider,
     private val navigationRouter: NavigationRouter,
+    private val migrationUpgradeNoticeStorageProvider: MigrationUpgradeNoticeStorageProvider,
 ) : MigrationHomeMessageSource {
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun observe(): Flow<MigrationHomeMessage?> =
@@ -93,7 +99,10 @@ class MigrationHomeMessageSourceImpl(
                 // still-changing DB), so it must not fire until the wallet has caught up with
                 // the chain tip. See MOB-1750 mid-sync race investigation.
                 walletSnapshotDataSource.observe(),
-            ) { hasSeenComplete, readout, orchardBalance, walletSnapshot ->
+                // Raised by the drive loop after it cancelled a run the NU7 upgrade interrupted; cleared when
+                // the user opens the migration entry from the notice.
+                migrationUpgradeNoticeStorageProvider.observePendingForSelected(),
+            ) { hasSeenComplete, readout, orchardBalance, walletSnapshot, isUpgradeNoticePending ->
                 val isFullySynced = walletSnapshot?.status == Synchronizer.Status.SYNCED
                 val sdkState = readout?.migrationState
                 val states = readout?.states
@@ -141,6 +150,24 @@ class MigrationHomeMessageSourceImpl(
                 val migratableOrchardTotal =
                     runCatching { getOrchardMigrationSdk().migratableOrchardTotal() }
                         .getOrDefault(orchardBalanceZatoshi ?: 0L)
+                // What the SDK's NU7 gate allows at the wallet's next height. Asking is cheap (the
+                // estimated tip, no network request); if it fails the banner is decided as if open and
+                // the SDK still refuses whatever it must when the user acts.
+                val availability =
+                    runCatching { getOrchardMigrationSdk().migrationAvailability() }
+                        .getOrDefault(MigrationAvailability.Available)
+                val networkUpgradeEstimatedAt =
+                    availability.activationHeightOrNull()?.let { activation ->
+                        readout?.takeIf { it.estimatedTip >= 0 }?.let {
+                            estimateNetworkUpgradeInstant(
+                                now = Clock.System.now(),
+                                tipHeight = it.estimatedTip,
+                                activationHeight = activation,
+                                secondsPerBlock = it.estimatedSecondsPerBlock,
+                                nu7ActivationHeight = it.nu7ActivationHeight,
+                            )
+                        }
+                    }
                 migrationMessageFor(
                     sdkState = sdkState,
                     snapshot = snapshot,
@@ -153,11 +180,9 @@ class MigrationHomeMessageSourceImpl(
                     hasOverdueTransfers = readout?.hasOverdueTransfers ?: false,
                     attentionKind = attentionKind,
                     attentionRangeText = attentionRangeText,
-                    isStartBlockedBeforeNu7 =
-                        isMigrationStartBlockedBeforeNu7(
-                            tipHeight = readout?.takeIf { it.estimatedTip >= 0 }?.estimatedTip ?: states?.tipHeight,
-                            nu7ActivationHeight = readout?.nu7ActivationHeight,
-                        ),
+                    availability = availability,
+                    networkUpgradeEstimatedAt = networkUpgradeEstimatedAt,
+                    isUpgradeNoticePending = isUpgradeNoticePending,
                 )
             }
         }
@@ -189,6 +214,15 @@ class MigrationHomeMessageSourceImpl(
 
                 null -> {
                     when {
+                        data.isInterruptedByNetworkUpgrade -> {
+                            BannerCopy(
+                                phase = MigrationBannerPhase.ATTENTION,
+                                title = stringRes(DesignR.string.migrationHome_upgradeStoppedTitle).getString(context),
+                                subtitle =
+                                    stringRes(DesignR.string.migrationHome_upgradeStoppedSubtitle).getString(context),
+                            )
+                        }
+
                         // MOB-1750: a small leftover Orchard balance not tied to an unseen in-app
                         // migration celebration gets its own "X ZEC left in Orchard" copy instead of
                         // the "Migration complete" celebration title.
@@ -212,6 +246,17 @@ class MigrationHomeMessageSourceImpl(
                                 phase = MigrationBannerPhase.READY_TO_SEND,
                                 title = null,
                                 subtitle = "Transfer ${data.completedCount + 1} is ready to send",
+                            )
+                        }
+
+                        // The SDK holds a run's transfers in the last blocks before NU7: a transaction
+                        // signed for the old consensus branch could not be mined after the activation.
+                        data.isPausedForNetworkUpgrade -> {
+                            BannerCopy(
+                                phase = MigrationBannerPhase.IN_PROGRESS,
+                                title = null,
+                                subtitle =
+                                    pausedForNetworkUpgradeRes(data.networkUpgradeEstimatedAt).getString(context),
                             )
                         }
 
@@ -357,7 +402,9 @@ internal fun migrationMessageFor(
     now: Instant = Clock.System.now(),
     attentionKind: MigrationAttentionKind? = null,
     attentionRangeText: String? = null,
-    isStartBlockedBeforeNu7: Boolean = false,
+    availability: MigrationAvailability = MigrationAvailability.Available,
+    networkUpgradeEstimatedAt: Instant? = null,
+    isUpgradeNoticePending: Boolean = false,
 ): MigrationHomeMessageData? {
     val next = snapshot?.nextPending
     // A RequiresAttention state WITH live run statuses is still a mid-run condition (e.g. the
@@ -398,6 +445,21 @@ internal fun migrationMessageFor(
             )
         }
 
+        // The last blocks before NU7: every transfer of the run waits for the upgrade.
+        sdkState is MigrationState.InProgress &&
+            availability is MigrationAvailability.NetworkUpgradeCutoff &&
+            !hasSignatureBlock &&
+            snapshot != null &&
+            snapshot.completedCount < snapshot.totalCount -> {
+            MigrationHomeMessageData(
+                isRunActive = true,
+                completedCount = snapshot.completedCount,
+                totalCount = snapshot.totalCount,
+                isPausedForNetworkUpgrade = true,
+                networkUpgradeEstimatedAt = networkUpgradeEstimatedAt,
+            )
+        }
+
         sdkState is MigrationState.InProgress &&
             !hasSignatureBlock &&
             next != null &&
@@ -418,6 +480,13 @@ internal fun migrationMessageFor(
                 completedCount = snapshot?.completedCount ?: 0,
                 totalCount = snapshot?.totalCount ?: 0,
             )
+        }
+
+        // The NU7 upgrade stopped this account's run and the SDK cancelled it. Explained once, with the way to
+        // migrate what is left; it needs the single-transaction lane or the scheduled one to be open.
+        isUpgradeNoticePending &&
+            availability.isImmediateLaneAvailable -> {
+            MigrationHomeMessageData(isRunActive = false, isInterruptedByNetworkUpgrade = true)
         }
 
         // Celebration: the campaign is genuinely done (nothing migratable left) and the user
@@ -449,7 +518,7 @@ internal fun migrationMessageFor(
         // "Migrate anyway" propose a transfer against notes that no longer existed by the time the
         // proposal ran (Slack repro, 2026-08-24).
         !midRunAttention &&
-            !isStartBlockedBeforeNu7 &&
+            availability.isImmediateLaneAvailable &&
             isFullySynced &&
             orchardBalanceZatoshi != null &&
             migratableOrchardTotalZatoshi > dustThresholdZatoshi &&
@@ -466,7 +535,7 @@ internal fun migrationMessageFor(
         // finished, residual needs another round" (engine still reports Complete), and "campaign
         // done but new funds arrived". All three correctly say "Migrate now".
         !midRunAttention &&
-            !isStartBlockedBeforeNu7 &&
+            availability.isImmediateLaneAvailable &&
             orchardBalanceZatoshi != null &&
             orchardBalanceZatoshi >= MIGRATION_RESIDUAL_MIN_ZATOSHI -> {
             MigrationHomeMessageData(isRunActive = false)
@@ -477,16 +546,3 @@ internal fun migrationMessageFor(
         }
     }
 }
-
-/**
- * Whether a NEW migration must not be offered yet because the chain has not reached the NU7
- * activation height. A migration signs its whole schedule up front, so one started now could still
- * be running at activation, and its remaining transactions (signed for the old consensus branch)
- * would be invalid from that block on. Runs already in progress are not affected: they keep going,
- * and the SDK refuses to submit a transaction that went stale. Unknown tip or activation height
- * (for example a network without NU7) does not block.
- */
-internal fun isMigrationStartBlockedBeforeNu7(
-    tipHeight: Long?,
-    nu7ActivationHeight: Long?,
-): Boolean = tipHeight != null && nu7ActivationHeight != null && tipHeight < nu7ActivationHeight

@@ -39,6 +39,7 @@ import co.electriccoin.zcash.ui.common.provider.HasSeenMigrationCompleteStorageP
 import co.electriccoin.zcash.ui.common.provider.IsBackgroundExecutionAvailableProvider
 import co.electriccoin.zcash.ui.common.provider.IsMigrationTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.LastNetworkActivityStorageProvider
+import co.electriccoin.zcash.ui.common.provider.MigrationUpgradeNoticeStorageProvider
 import co.electriccoin.zcash.ui.common.provider.PendingMigrationTorFailureStorageProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
@@ -156,6 +157,7 @@ class MigrationKoinGraphSmokeTest {
                 single<IsMigrationTorEnabledStorageProvider> { mockk(relaxed = true) }
                 single<PendingMigrationTorFailureStorageProvider> { mockk(relaxed = true) }
                 single<HasSeenMigrationCompleteStorageProvider> { mockk(relaxed = true) }
+                single<MigrationUpgradeNoticeStorageProvider> { mockk(relaxed = true) }
                 single<HasLockedOrchardDustStorageProvider> { mockk(relaxed = true) }
                 single<IsBackgroundExecutionAvailableProvider> { mockk(relaxed = true) }
                 single<ApplicationStateProvider> { mockk(relaxed = true) }
