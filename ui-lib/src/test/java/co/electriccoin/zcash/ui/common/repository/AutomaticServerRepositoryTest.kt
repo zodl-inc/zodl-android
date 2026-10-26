@@ -383,6 +383,7 @@ class AutomaticServerRepositoryTest {
                     isServerSelectionAutomaticProvider = isAutomaticProvider,
                     isOhttpFallbackActiveProvider = fallbackFlag,
                     isPublicConnectionProvider = isPublicProvider,
+                    networkConnectivityProvider = networkConnectivityProvider,
                     serverSelectionMutex = serverSelectionMutex,
                     evaluationInterval = EvaluationInterval(MINIMUM_EVALUATION_INTERVAL, timeSource)
                 )

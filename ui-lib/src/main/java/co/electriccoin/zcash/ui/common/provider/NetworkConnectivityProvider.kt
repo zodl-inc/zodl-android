@@ -25,14 +25,16 @@ class NetworkConnectivityProviderImpl(
             context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
                 ?: return true // If we can't get the service, assume online (fail open).
 
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val network = connectivityManager.activeNetwork ?: return false
-            val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
-            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val network = connectivityManager.activeNetwork
+            val capabilities = network?.let { connectivityManager.getNetworkCapabilities(it) }
+            return capabilities?.let {
+                it.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                    it.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            } ?: false
         } else {
             @Suppress("DEPRECATION")
-            connectivityManager.activeNetworkInfo?.isConnected == true
+            return connectivityManager.activeNetworkInfo?.isConnected == true
         }
     }
 }
