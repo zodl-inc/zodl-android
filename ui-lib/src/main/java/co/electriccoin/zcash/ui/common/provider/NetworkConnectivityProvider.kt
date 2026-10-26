@@ -23,18 +23,21 @@ class NetworkConnectivityProviderImpl(
     override fun isOnline(): Boolean {
         val connectivityManager =
             context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-                ?: return true // If we can't get the service, assume online (fail open).
+        if (connectivityManager == null) {
+            // If we can't get the service, assume online (fail open).
+            return true
+        }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val network = connectivityManager.activeNetwork
             val capabilities = network?.let { connectivityManager.getNetworkCapabilities(it) }
-            return capabilities?.let {
+            capabilities?.let {
                 it.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                     it.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
             } ?: false
         } else {
             @Suppress("DEPRECATION")
-            return connectivityManager.activeNetworkInfo?.isConnected == true
+            connectivityManager.activeNetworkInfo?.isConnected == true
         }
     }
 }
