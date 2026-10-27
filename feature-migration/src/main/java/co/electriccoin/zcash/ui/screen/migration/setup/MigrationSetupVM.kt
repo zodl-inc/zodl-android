@@ -51,7 +51,10 @@ class MigrationSetupVM(
 ) : ViewModel() {
     private val accountLce = mutableLce<Zatoshi>()
     private val selectedMode = MutableStateFlow(MigrationMode.AUTOMATIC)
-    private val gate = MutableStateFlow<MigrationSetupGate>(MigrationSetupGate.Open)
+
+    // null until the SDK has answered: the screen is loading then, so the scheduled option never shows as selectable
+    // for a moment and then turns paused.
+    private val gate = MutableStateFlow<MigrationSetupGate?>(null)
     private val isKeystoneAccount = getSelectedWalletAccount.observe().map { it is KeystoneAccount }
 
     init {
@@ -73,7 +76,9 @@ class MigrationSetupVM(
             gate,
         ) { lce, mode, isKeystone, rate, currentGate ->
             lce.success?.let { balance ->
-                createState(balance, effectiveMigrationMode(mode, currentGate), isKeystone, rate, currentGate)
+                currentGate?.let {
+                    createState(balance, effectiveMigrationMode(mode, it), isKeystone, rate, it)
+                }
             }
         }.withLce(accountLce, errorStateMapper::mapToState)
             .stateIn(this)
@@ -111,8 +116,9 @@ class MigrationSetupVM(
     private fun onFindOutMore() =
         navigationRouter.forward(ExternalUrl("https://support.zodl.com/article/42-moving-your-funds-to-ironwood"))
 
-    private fun onConfirm() =
-        when (effectiveMigrationMode(selectedMode.value, gate.value)) {
+    private fun onConfirm() {
+        val currentGate = gate.value ?: return
+        when (effectiveMigrationMode(selectedMode.value, currentGate)) {
             MigrationMode.IMMEDIATE -> {
                 viewModelScope.launch {
                     navigationRouter.forward(
@@ -125,6 +131,7 @@ class MigrationSetupVM(
                 navigationRouter.forward(MigrationHowItWorksArgs)
             }
         }
+    }
 
     private fun onBack() = navigationRouter.back()
 }

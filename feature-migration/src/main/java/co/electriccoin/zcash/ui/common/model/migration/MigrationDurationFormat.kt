@@ -106,6 +106,12 @@ fun rateReferenceHeight(
     fallbackHeight: Long?,
 ): Long? = estimatedTip.takeIf { it > 0L } ?: fallbackHeight
 
+/** [rateReferenceHeight] for a caller that always has a fallback, so the answer is never null. */
+fun rateReferenceHeight(
+    estimatedTip: Long,
+    fallbackHeight: Long,
+): Long = estimatedTip.takeIf { it > 0L } ?: fallbackHeight
+
 private fun forwardSecondsAcrossNu7(
     fromHeight: Long,
     toHeight: Long,

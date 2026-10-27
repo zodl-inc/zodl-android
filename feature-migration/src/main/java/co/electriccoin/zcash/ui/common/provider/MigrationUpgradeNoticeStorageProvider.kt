@@ -15,8 +15,8 @@ import kotlinx.coroutines.flow.flowOf
 /**
  * Tracks the one-time Home notice that the NU7 network upgrade stopped an account's migration: its
  * remaining transactions were built for the consensus branch before the upgrade, so the run was
- * cancelled (no funds moved, the reserved notes are spendable again) and the user is offered a new
- * migration of what is left.
+ * cancelled (confirmed transfers are unaffected, unconfirmed ones can stay reserved until they expire
+ * and the wallet syncs) and the user is offered a new migration of what is left.
  *
  * Keyed per account, like [HasSeenMigrationCompleteStorageProvider]: the drive loop marks the
  * account it ran for, which need not be the selected one, and the notice is shown for the selected

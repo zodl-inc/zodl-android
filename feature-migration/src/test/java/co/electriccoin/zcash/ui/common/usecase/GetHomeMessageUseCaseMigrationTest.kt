@@ -498,6 +498,20 @@ class GetHomeMessageUseCaseMigrationTest {
     }
 
     @Test
+    fun interruptedRunNoticeIsNotHiddenByTheAttentionBannerOfTheCancelledRun() {
+        // A cancelled run stays persisted as failed, so the SDK can still report RequiresAttention with a snapshot.
+        val result =
+            migrationMessageFor(
+                sdkState = MigrationState.RequiresAttention(AttentionReason.TransferExpired),
+                snapshot = snapshot(),
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI,
+                isUpgradeNoticePending = true,
+            )
+        assertEquals(MigrationHomeMessageData(isRunActive = false, isInterruptedByNetworkUpgrade = true), result)
+    }
+
+    @Test
     fun interruptedRunNoticeWaitsWhileANewRunIsInProgress() {
         val result =
             migrationMessageFor(

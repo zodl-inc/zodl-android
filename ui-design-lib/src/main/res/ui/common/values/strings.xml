@@ -1504,6 +1504,8 @@ Your vote can no longer be submitted.</string>
     <string name="migrationSetup_automaticPausedSubtitleNoDate">Available after the network upgrade</string>
     <string name="migrationUpgradePaused_title">Migration is paused</string>
     <string name="migrationUpgradePaused_message">A scheduled migration cannot start before the network upgrade. Please try again after it.</string>
+    <string name="migrationTipUnavailable_title">Zodl is still syncing</string>
+    <string name="migrationTipUnavailable_message">Zodl needs to finish syncing before it can plan a migration. Please try again in a moment.</string>
 
     <string name="migrationLockExplainer_title">What does locking do?</string>
     <string name="migrationLockExplainer_bullet1Prefix">Locking marks this balance as </string>

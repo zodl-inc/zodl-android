@@ -118,12 +118,12 @@ class MigrationReviewVM(
     // up to 287 blocks below it. Without it the rate would be attributed to each range's start, and a plan anchored
     // just before NU7 would price its post-NU7 blocks as if the rate were a pre-NU7 one.
     @Volatile
-    private var rateReferenceHeight: Long? = null
+    private var rateReferenceTip: Long? = null
 
     private fun secondsBetween(
         fromHeight: Long,
         toHeight: Long,
-        rateHeight: Long = rateReferenceHeight ?: fromHeight,
+        rateHeight: Long = rateReferenceTip ?: fromHeight,
     ): Long = estimatedSecondsBetweenHeights(fromHeight, toHeight, secondsPerBlock, nu7ActivationHeight, rateHeight)
 
     private val proposeLce = mutableLce<ReviewProposal>()
@@ -197,7 +197,7 @@ class MigrationReviewVM(
                         val t0 = SystemClock.elapsedRealtime()
                         secondsPerBlock = sdk.estimatedSecondsPerBlock()
                         nu7ActivationHeight = sdk.nu7ActivationHeight
-                        rateReferenceHeight =
+                        rateReferenceTip =
                             rateReferenceHeight(
                                 estimatedTip = sdk.estimatedChainTip(),
                                 fallbackHeight = schedule.transfers.maxOfOrNull { it.anchorHeight },

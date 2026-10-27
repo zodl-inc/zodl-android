@@ -1,7 +1,9 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import android.content.Context
+import cash.z.ecc.android.sdk.InternalTestingApi
 import cash.z.ecc.android.sdk.OrchardMigrationSdk
+import co.electriccoin.zcash.migration.BuildConfig
 import co.electriccoin.zcash.migration.migrationLog
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.WalletAccount
@@ -77,6 +79,7 @@ class GetOrchardMigrationSdkUseCase(
         return buildFor(account)
     }
 
+    @OptIn(InternalTestingApi::class)
     private suspend fun buildFor(account: WalletAccount): OrchardMigrationSdk {
         val wallet = persistableWalletProvider.requirePersistableWallet()
         return OrchardMigrationSdk
@@ -88,7 +91,10 @@ class GetOrchardMigrationSdkUseCase(
             ).also {
                 // The SDK's flag is process-wide: re-apply the stored switch so a restart, or a wallet reset that
                 // cleared it, never leaves a stale value behind.
-                it.setMigrationNetworkUpgradeGateBypass(gateBypassStorage.isEnabled())
+                // Debug builds only, even though only the Debug menu ever stores a value.
+                if (BuildConfig.DEBUG) {
+                    it.setMigrationNetworkUpgradeGateBypass(gateBypassStorage.isEnabled())
+                }
             }
     }
 }

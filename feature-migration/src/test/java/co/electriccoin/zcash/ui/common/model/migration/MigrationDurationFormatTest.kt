@@ -230,7 +230,7 @@ class MigrationDurationFormatTest {
                 toHeight = nu7 + 200,
                 secondsPerBlock = 25L,
                 nu7ActivationHeight = nu7,
-                rateHeight = rateHeight!!
+                rateHeight = rateHeight
             )
         assertEquals(99 * 75L + 201 * 25L, priced)
         val misattributed =

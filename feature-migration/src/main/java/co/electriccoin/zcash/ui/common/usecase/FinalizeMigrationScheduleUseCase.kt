@@ -76,7 +76,7 @@ class FinalizeMigrationScheduleUseCase(
                 secondsPerBlock = secondsPerBlock,
                 tipHeight = tipHeight,
                 nu7ActivationHeight = sdk.nu7ActivationHeight,
-                rateHeight = rateReferenceHeight(sdk.estimatedChainTip(), tipHeight) ?: tipHeight,
+                rateHeight = rateReferenceHeight(sdk.estimatedChainTip(), tipHeight),
             )
         )
         // The engine's anchor-retention floor is session-scoped and was computed BEFORE this plan

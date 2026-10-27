@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import cash.z.ecc.android.sdk.InternalTestingApi
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
@@ -94,6 +95,7 @@ class MigrationGateImpl(
     // Persisted: GetOrchardMigrationSdkUseCase applies the stored value to every SDK instance it builds.
     override suspend fun isNetworkUpgradeGateBypassEnabled(): Boolean = gateBypassStorage.isEnabled()
 
+    @OptIn(InternalTestingApi::class)
     override suspend fun setNetworkUpgradeGateBypass(enabled: Boolean) {
         gateBypassStorage.setEnabled(enabled)
         // Without a wallet there is no SDK to tell yet; the stored value is applied when one is built.

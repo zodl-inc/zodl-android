@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.usecase
 
 import androidx.annotation.DrawableRes
 import cash.z.ecc.android.sdk.MigrationPausedUntilNetworkUpgradeException
+import cash.z.ecc.android.sdk.MigrationWalletTipUnavailableException
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
@@ -22,6 +23,13 @@ import kotlinx.coroutines.launch
  */
 fun Throwable?.isMigrationPausedUntilNetworkUpgrade(): Boolean =
     generateSequence(this) { it.cause }.any { it is MigrationPausedUntilNetworkUpgradeException }
+
+/**
+ * A scheduled migration was asked for while the wallet has no chain tip yet, so whether NU7 has activated is not known.
+ * Syncing fixes it, and the pause copy would be the wrong reason once the upgrade has happened.
+ */
+fun Throwable?.isMigrationWalletTipUnavailable(): Boolean =
+    generateSequence(this) { it.cause }.any { it is MigrationWalletTipUnavailableException }
 
 class ErrorMapperUseCase(
     private val sendEmail: SendEmailUseCase,
@@ -47,6 +55,7 @@ class ErrorMapperUseCase(
     ): LceError.BottomSheet {
         val unsupported = (error.cause as? AccountOperationUnsupportedException)?.kind?.errorCopy(viewOnlyContent)
         val isMigrationPaused = error.cause.isMigrationPausedUntilNetworkUpgrade()
+        val isMigrationTipUnavailable = error.cause.isMigrationWalletTipUnavailable()
         return mapToBottomSheet(
             error = error,
             title =
@@ -57,6 +66,10 @@ class ErrorMapperUseCase(
 
                     isMigrationPaused -> {
                         stringRes(co.electriccoin.zcash.ui.design.R.string.migrationUpgradePaused_title)
+                    }
+
+                    isMigrationTipUnavailable -> {
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.migrationTipUnavailable_title)
                     }
 
                     else -> {
@@ -71,6 +84,10 @@ class ErrorMapperUseCase(
 
                     isMigrationPaused -> {
                         stringRes(co.electriccoin.zcash.ui.design.R.string.migrationUpgradePaused_message)
+                    }
+
+                    isMigrationTipUnavailable -> {
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.migrationTipUnavailable_message)
                     }
 
                     else -> {

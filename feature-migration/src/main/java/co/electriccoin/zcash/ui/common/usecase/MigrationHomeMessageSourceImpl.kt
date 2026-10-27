@@ -393,6 +393,14 @@ internal fun migrationMessageFor(
                 s.preparations.any { it.blocker == MigrationTransferBlocker.SIGNATURE }
         } ?: false
     return when {
+        // The NU7 upgrade stopped this account's run and the SDK cancelled it. Explained once, with the way to
+        // migrate what is left. Ahead of the attention branch, because the cancelled run stays persisted as failed,
+        // so that branch would otherwise hide this notice behind "Update migration plan". A new run in progress
+        // still wins.
+        isUpgradeNoticePending && sdkState !is MigrationState.InProgress -> {
+            MigrationHomeMessageData(isRunActive = false, isInterruptedByNetworkUpgrade = true)
+        }
+
         // Spec §6.2/§6.3 — takes priority over InProgress/Complete below.
         // SyncRequiredBeforeNext is explicitly excluded (a transient "keep syncing" condition,
         // not a user-action-required expiry) — falls through to the ordinary branches.
@@ -428,12 +436,6 @@ internal fun migrationMessageFor(
                 completedCount = snapshot?.completedCount ?: 0,
                 totalCount = snapshot?.totalCount ?: 0,
             )
-        }
-
-        // The NU7 upgrade stopped this account's run and the SDK cancelled it. Explained once, with the way to
-        // migrate what is left.
-        isUpgradeNoticePending -> {
-            MigrationHomeMessageData(isRunActive = false, isInterruptedByNetworkUpgrade = true)
         }
 
         // Celebration: the campaign is genuinely done (nothing migratable left) and the user
