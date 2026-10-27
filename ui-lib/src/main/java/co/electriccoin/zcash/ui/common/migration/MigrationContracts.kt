@@ -33,9 +33,10 @@ interface MigrationGate {
     suspend fun isRestartAvailable(): Boolean
 
     /**
-     * Internal builds only: whether the SDK's NU7 pause on new scheduled migrations is lifted, so a
-     * scheduled migration can be tried on mainnet before the activation. Remembered across restarts. Off by
-     * default and never turned on in store or foss builds.
+     * Debug builds only (the Debug menu is the one place that sets it): whether the SDK's NU7 pause on new
+     * scheduled migrations is lifted, so a scheduled migration can be tried on mainnet before the activation.
+     * Remembered across restarts and off by default. It lifts nothing else: a transaction built for the wrong
+     * consensus branch, or an expired one, is still never submitted.
      */
     suspend fun isNetworkUpgradeGateBypassEnabled(): Boolean = false
 

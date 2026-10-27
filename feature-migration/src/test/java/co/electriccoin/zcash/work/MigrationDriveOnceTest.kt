@@ -404,7 +404,7 @@ class MigrationDriveOnceTest {
 
     @Test
     fun `characterization pin of pre-NU7 75s - engine wake delay is block delta times 75`() {
-        // NU7: revisit - spans activation once helper is height-aware
+        // No activation height is passed, so this is the single pre-NU7 rate; the era-spanning case is below.
         val delay =
             computeEngineWakeDelay(
                 est = 1_000,
@@ -417,7 +417,7 @@ class MigrationDriveOnceTest {
 
     @Test
     fun `characterization pin of pre-NU7 75s - engine wake delay floors at 60s for 0 and 1 block`() {
-        // NU7: revisit - spans activation once helper is height-aware
+        // No activation height is passed, so this is the single pre-NU7 rate; the era-spanning case is below.
         // 1 block * 75 s = 75 s is above the floor; 0 blocks (due now) and past peeks floor to 60 s.
         val peekNow = MigrationPeek(height = 1_000, kind = MigrationStepKind.PROVE)
         assertEquals(
@@ -443,7 +443,7 @@ class MigrationDriveOnceTest {
 
     @Test
     fun `characterization pin of pre-NU7 75s - nextWake takes the engine peek at 75s per block when no gap`() {
-        // NU7: revisit - spans activation once helper is height-aware
+        // No activation height is passed, so this is the single pre-NU7 rate; the era-spanning case is below.
         val delay =
             nextWake(
                 states = states(tx(1, scheduled = 5_000)),

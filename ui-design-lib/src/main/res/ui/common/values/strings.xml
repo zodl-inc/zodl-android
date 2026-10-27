@@ -1589,6 +1589,6 @@ Your vote can no longer be submitted.</string>
     <string name="migrationHome_residueTitle">%1$s left in Orchard</string>
     <string name="migrationHome_residueSubtitle">Tap to decide what happens to it</string>
     <string name="migrationHome_upgradeStoppedTitle">The network upgrade stopped your migration</string>
-    <string name="migrationHome_upgradeStoppedSubtitle">No funds moved and they are spendable. Tap to migrate what is left.</string>
+    <string name="migrationHome_upgradeStoppedSubtitle">The network upgrade stopped your migration before it finished. Confirmed transfers are unaffected. Funds in unconfirmed transfers may stay unavailable until those transactions expire and your wallet syncs. Tap to migrate what is left.</string>
 
 </resources>

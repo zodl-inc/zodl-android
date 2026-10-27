@@ -22,7 +22,6 @@ import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.design.util.stringResByDateTime
 import co.electriccoin.zcash.ui.design.util.stringResByDynamicCurrencyNumber
 import co.electriccoin.zcash.ui.screen.ExternalUrl
 import co.electriccoin.zcash.ui.screen.migration.howitworks.MigrationHowItWorksArgs
@@ -35,6 +34,8 @@ import java.math.BigDecimal
 import java.math.MathContext
 import java.time.Instant
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import co.electriccoin.zcash.ui.design.R as DesignR
 
 class MigrationSetupVM(
@@ -141,11 +142,14 @@ internal fun effectiveMigrationMode(
 
 /** Maps what the SDK's NU7 gate allows to the setup screen's gate. */
 internal fun MigrationGateInfo.toSetupGate(): MigrationSetupGate {
+    // The date only: the estimate can be weeks away, so a time of day would claim precision it does not have.
     val date =
         estimatedActivation?.let {
-            stringResByDateTime(
-                zonedDateTime = Instant.ofEpochSecond(it.epochSeconds).atZone(ZoneId.systemDefault()),
-                useFullFormat = false,
+            stringRes(
+                DateTimeFormatter
+                    .ofLocalizedDate(FormatStyle.MEDIUM)
+                    .withZone(ZoneId.systemDefault())
+                    .format(Instant.ofEpochSecond(it.epochSeconds))
             )
         }
     return when {

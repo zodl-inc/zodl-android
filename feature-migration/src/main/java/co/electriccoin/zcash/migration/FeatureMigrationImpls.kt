@@ -96,7 +96,8 @@ class MigrationGateImpl(
 
     override suspend fun setNetworkUpgradeGateBypass(enabled: Boolean) {
         gateBypassStorage.setEnabled(enabled)
-        getOrchardMigrationSdk().setMigrationNetworkUpgradeGateBypass(enabled)
+        // Without a wallet there is no SDK to tell yet; the stored value is applied when one is built.
+        runCatching { getOrchardMigrationSdk().setMigrationNetworkUpgradeGateBypass(enabled) }
     }
 
     override suspend fun isRestartAvailable(): Boolean =

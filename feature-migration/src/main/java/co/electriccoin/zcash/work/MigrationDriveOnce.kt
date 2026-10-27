@@ -299,6 +299,13 @@ class MigrationDriveOnce(
                 DriveOnceResult.Terminal
             }
 
+            // The sync itself carried the wallet across the activation: stop the run now rather than waiting for
+            // the next cycle (the re-arm below would fall back to the slow cadence for an hour).
+            is MigrationAdvanceStep.InterruptedByNetworkUpgrade -> {
+                interruptedRun(sdk, accountKeyId, nextStep.activationHeight)
+                DriveOnceResult.Terminal
+            }
+
             else -> {
                 // Prove again (boundary not yet settled at the new tip) or Waiting.
                 migrationLog("MigrationDriveOnce: sync done, next=$nextStep — re-arming.")
@@ -643,8 +650,9 @@ class MigrationDriveOnce(
 
     /**
      * The NU7 activation left the run with a transaction built for the old consensus branch, which
-     * no block accepts. Cancelling ends the run and releases its unsent notes (no money moved, the
-     * funds are spendable again), then the one-time Home notice offers a new migration of what is
+     * no block accepts. Cancelling ends the run and releases its unsent notes (transfers already
+     * confirmed stay migrated; funds in sent but unconfirmed ones can stay reserved until they expire
+     * and the wallet syncs), then the one-time Home notice offers a new migration of what is
      * left. The notice is raised only after the cancel succeeded: a failed cancel throws, so the
      * next drive sees the same interrupted answer and tries again.
      */
