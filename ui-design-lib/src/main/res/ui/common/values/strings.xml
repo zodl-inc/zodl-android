@@ -1500,7 +1500,7 @@ Your vote can no longer be submitted.</string>
     <string name="migrationSetup_automaticSubtitle">Split transfers over time · Scheduled in background · Maximum privacy</string>
     <string name="migrationSetup_immediateTitle">Migrate Immediately</string>
     <string name="migrationSetup_immediateSubtitle">Single transfer · Sends now · Less privacy</string>
-    <string name="migrationSetup_automaticPausedSubtitle">Available after the network upgrade (about %1$s)</string>
+    <string name="migrationSetup_automaticPausedSubtitle">Available after the network upgrade, about %1$s</string>
     <string name="migrationSetup_automaticPausedSubtitleNoDate">Available after the network upgrade</string>
     <string name="migrationUpgradePaused_title">Migration is paused</string>
     <string name="migrationUpgradePaused_message">A scheduled migration cannot start before the network upgrade. Please try again after it.</string>
@@ -1600,8 +1600,8 @@ Your vote can no longer be submitted.</string>
     <string name="migrationHome_defaultSubtitle">Move your funds to Ironwood.</string>
     <string name="migrationHome_residueTitle">%1$s left in Orchard</string>
     <string name="migrationHome_residueSubtitle">Tap to decide what happens to it</string>
-    <string name="migrationHome_upgradeStoppedTitle">The network upgrade stopped your migration</string>
-    <string name="migrationHome_upgradeStoppedSubtitle">The network upgrade stopped your migration before it finished. Confirmed transfers are unaffected. Funds in unconfirmed transfers may stay unavailable until those transactions expire and your wallet syncs. Tap to migrate what is left.</string>
+    <string name="migrationHome_upgradeStoppedTitle">Migration Stopped</string>
+    <string name="migrationHome_upgradeStoppedSubtitle">The Zcash network upgrade stopped your migration before it finished. Confirmed transfers are unaffected. Funds in unconfirmed transfers may remain unavailable until those transactions expire and your wallet synchronizes. Tap to migrate what is left.</string>
 
     <string name="colorPicker_title">Colors</string>
     <string name="colorPicker_grid">Grid</string>
