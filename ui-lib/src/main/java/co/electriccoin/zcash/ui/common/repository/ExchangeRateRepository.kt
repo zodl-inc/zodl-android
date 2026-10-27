@@ -101,7 +101,7 @@ class ExchangeRateRepositoryImpl(
                                             )
                                         )
                                     }.catch { error ->
-                                        if (shouldFallBackToSynchronizerRoute(VersionInfo.IS_CMC_AVAILABLE, fiat)) {
+                                        if (shouldFallBackToSynchronizerRoute(VersionInfo.IS_CMC_AVAILABLE)) {
                                             synchronizerProvider.getSynchronizer().refreshExchangeRateUsd()
                                             emitAll(
                                                 exchangeRateDataSource
@@ -218,17 +218,13 @@ class ExchangeRateRepositoryImpl(
 }
 
 /**
- * Decides whether to fall back to the SDK synchronizer route when the CMC exchange-rate lookup
- * fails or is unavailable. The synchronizer route only provides a USD rate.
+ * Decides whether to use the SDK synchronizer route (its own USD fetch, over Tor straight to public
+ * exchanges) instead of the CMC lookup through the OHTTP gateway.
  *
- * - When CMC is not available it is the only rate source, so always fall back regardless of [fiat].
- * - When CMC is available, only fall back for USD; for any other fiat the synchronizer route
- *   cannot provide a matching rate.
+ * Only when CMC is not available at all, as it is then the only rate source. A failed CMC lookup
+ * never falls back around the gateway (ZIP #10): the failure is shown instead.
  */
-internal fun shouldFallBackToSynchronizerRoute(
-    isCmcAvailable: Boolean,
-    fiat: FiatCurrency,
-): Boolean = !isCmcAvailable || fiat == FiatCurrency.USD
+internal fun shouldFallBackToSynchronizerRoute(isCmcAvailable: Boolean): Boolean = !isCmcAvailable
 
 /**
  * Maps a CMC exchange-rate failure to the user-facing [ExchangeRateError], or `null` when the

@@ -57,6 +57,9 @@ class VotingKeystoneSessionHolder(
     // one that issued it.
     private var torLease: VotingTorLease? = null
 
+    /** isCustomServer at open time, so a mid-round custom/default switch reopens with the right OHTTP route. */
+    private var openedWithIsCustomServer: Boolean? = null
+
     /**
      * Ensures a delegation-enabled [VotingRoundSession.run] pass has completed for [roundId] on
      * a session this holder retains, caching the resulting delegation pipeline so
@@ -82,14 +85,16 @@ class VotingKeystoneSessionHolder(
         chainEndpoints: List<String>,
         ceremonyStartSeconds: Long,
         voteEndTimeSeconds: Long,
-        delegationInputs: VotingDelegationInputs
+        delegationInputs: VotingDelegationInputs,
+        isCustomServer: Boolean
     ) = mutex.withLock {
         val lease = synchronizerProvider.getSynchronizer().acquireVotingTorLeaseOrNull()
         val reusable =
             openRoundId == roundId &&
                 openAccountUuidString == accountUuidString &&
                 roundSession != null &&
-                (torLease == null) == (lease == null)
+                (torLease == null) == (lease == null) &&
+                openedWithIsCustomServer == isCustomServer
         if (reusable) {
             lease?.release()
             return@withLock
@@ -129,7 +134,8 @@ class VotingKeystoneSessionHolder(
                     configuredHelperUrls = chainEndpoints,
                     voteTreeNodeUrls = chainEndpoints,
                     ceremonyStartSeconds = ceremonyStartSeconds,
-                    voteEndTimeSeconds = voteEndTimeSeconds
+                    voteEndTimeSeconds = voteEndTimeSeconds,
+                    isCustomServer = isCustomServer
                 )
             // A delegation-enabled run() call caches the DelegationPipeline this session's
             // getKeystoneSigningRequests needs -- see VotingRoundSession.run's doc comment. This
@@ -151,6 +157,7 @@ class VotingKeystoneSessionHolder(
         openRoundId = roundId
         openAccountUuidString = accountUuidString
         torLease = lease
+        openedWithIsCustomServer = isCustomServer
     }
 
     suspend fun getKeystoneSigningRequests(
@@ -217,6 +224,7 @@ class VotingKeystoneSessionHolder(
         openRoundId = null
         openAccountUuidString = null
         torLease = null
+        openedWithIsCustomServer = null
         closeResources(session, handle, lease)
     }
 

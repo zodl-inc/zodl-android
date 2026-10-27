@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import co.electriccoin.lightwallet.client.OhttpHttpClient
 import co.electriccoin.zcash.configuration.model.map.Configuration
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfig
@@ -579,6 +580,10 @@ class VotingConfigWalkTest {
                 KtorVotingApiProvider(
                     httpClientProvider =
                         object : HttpClientProvider {
+                            override suspend fun isTorEnabled(): Boolean = false
+
+                            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = true
 
                             override suspend fun createTor(): HttpClient = create()
@@ -664,6 +669,10 @@ class VotingConfigWalkTest {
                 KtorVotingApiProvider(
                     httpClientProvider =
                         object : HttpClientProvider {
+                            override suspend fun isTorEnabled(): Boolean = false
+
+                            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = true
 
                             override suspend fun createTor(): HttpClient = create()
@@ -713,6 +722,10 @@ class VotingConfigWalkTest {
         KtorVotingApiProvider(
             httpClientProvider =
                 object : HttpClientProvider {
+                    override suspend fun isTorEnabled(): Boolean = false
+
+                    override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                     override suspend fun supportsKtorTimeouts(): Boolean = true
 
                     override suspend fun createTor(): HttpClient = create()
@@ -749,6 +762,10 @@ class VotingConfigWalkTest {
         KtorVotingApiProvider(
             httpClientProvider =
                 object : HttpClientProvider {
+                    override suspend fun isTorEnabled(): Boolean = false
+
+                    override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                     override suspend fun supportsKtorTimeouts(): Boolean = true
 
                     override suspend fun createTor(): HttpClient = create()

@@ -1,5 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import co.electriccoin.lightwallet.client.OhttpHttpClient
+import co.electriccoin.zcash.configuration.model.entry.ConfigKey
 import co.electriccoin.zcash.configuration.model.map.Configuration
 import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLatestResponse
 import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLeavesResponse
@@ -14,6 +16,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
 import co.electriccoin.zcash.ui.common.repository.VotingCustomChainConfig
+import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -25,12 +28,14 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import java.lang.reflect.Proxy
 import java.util.concurrent.atomic.AtomicInteger
@@ -39,17 +44,19 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 class KtorVotingApiProviderTest {
     @Test
     fun commitmentTreePathsAreRoundScoped() {
         assertEquals(
             "/shielded-vote/v1/commitment-tree/round-id/latest",
-            commitmentTreeLatestPath("round-id")
+            commitmentTreeLatestPath("round-id"),
         )
         assertEquals(
             "/shielded-vote/v1/commitment-tree/round-id/leaves?from_height=11&to_height=20",
-            commitmentTreeLeavesPath("round-id", fromHeight = 11, toHeight = 20)
+            commitmentTreeLeavesPath("round-id", fromHeight = 11, toHeight = 20),
         )
     }
 
@@ -57,7 +64,7 @@ class KtorVotingApiProviderTest {
     fun commitmentTreeResponsesParseLatestHeightAndAbsoluteIndices() {
         val latest =
             Json.decodeFromString<ChainCommitmentTreeLatestResponse>(
-                """{"tree":{"height":123,"next_index":2,"root":"ignored"}}"""
+                """{"tree":{"height":123,"next_index":2,"root":"ignored"}}""",
             )
         val leaves =
             Json.decodeFromString<ChainCommitmentTreeLeavesResponse>(
@@ -69,7 +76,7 @@ class KtorVotingApiProviderTest {
                   ],
                   "next_from_height": 124
                 }
-                """.trimIndent()
+                """.trimIndent(),
             )
 
         assertEquals(123, latest.tree.height)
@@ -84,7 +91,7 @@ class KtorVotingApiProviderTest {
     fun emptyCommitmentTreeDefaultsOmittedProtoFieldsToZero() {
         val latest =
             Json.decodeFromString<ChainCommitmentTreeLatestResponse>(
-                """{"tree":{}}"""
+                """{"tree":{}}""",
             )
 
         assertEquals(0, latest.tree.height)
@@ -104,58 +111,28 @@ class KtorVotingApiProviderTest {
                             "/shielded-vote/v1/commitment-tree/round-id/latest" to
                                 TestResponse("""{"tree":{"height":20,"next_index":2}}"""),
                             "/shielded-vote/v1/commitment-tree/round-id/leaves?from_height=11&to_height=20" to
-                                TestResponse("""{"blocks":[],"next_from_height":0}""")
-                        )
+                                TestResponse("""{"blocks":[],"next_from_height":0}"""),
+                        ),
                 )
 
             assertEquals(
                 CommitmentTreeLatest(height = 20, nextIndex = 2),
-                provider.fetchCommitmentTreeLatest("round-id")
+                provider.fetchCommitmentTreeLatest("round-id"),
             )
             assertEquals(
                 CommitmentTreeLeafPage(blocks = emptyList(), nextFromHeight = 0),
-                provider.fetchCommitmentTreeLeafPage("round-id", fromHeight = 11, toHeight = 20)
+                provider.fetchCommitmentTreeLeafPage("round-id", fromHeight = 11, toHeight = 20),
             )
             assertEquals(
                 listOf(
                     "/static-voting-config.json",
                     "/dynamic-voting-config.json",
                     "/shielded-vote/v1/commitment-tree/round-id/latest",
-                    "/shielded-vote/v1/commitment-tree/round-id/leaves?from_height=11&to_height=20"
+                    "/shielded-vote/v1/commitment-tree/round-id/leaves?from_height=11&to_height=20",
                 ),
-                requests
+                requests,
             )
         }
-
-    @Test
-    fun rejectedTransactionParserPreservesHashCodeAndLog() {
-        val result =
-            """
-            {
-              "tx_hash": "duplicate-tx",
-              "code": 1,
-              "log": "nullifier already spent: abc123"
-            }
-            """.trimIndent().toTxResult()
-
-        assertEquals("duplicate-tx", result.txHash)
-        assertEquals(1, result.code)
-        assertEquals("nullifier already spent: abc123", result.log)
-    }
-
-    @Test
-    fun rejectedTransactionParserRepresentsMissingHashAsEmpty() {
-        val result =
-            """
-            {
-              "code": 1,
-              "log": "nullifier already spent: abc123"
-            }
-            """.trimIndent().toTxResult()
-
-        assertEquals("", result.txHash)
-        assertEquals(1, result.code)
-    }
 
     @Test
     fun transactionConfirmationParserPreservesSuccessfulEvents() {
@@ -235,18 +212,18 @@ class KtorVotingApiProviderTest {
                                     content =
                                         staticConfigJsonV2(
                                             dynamicConfigUrls =
-                                                listOf(FIRST_DYNAMIC_CONFIG_URL, SECOND_DYNAMIC_CONFIG_URL)
+                                                listOf(FIRST_DYNAMIC_CONFIG_URL, SECOND_DYNAMIC_CONFIG_URL),
                                         ),
-                                    status = HttpStatusCode.OK
+                                    status = HttpStatusCode.OK,
                                 ),
                             "/first-dynamic-voting-config.json" to
                                 MockResponse(
                                     content = "temporary dynamic config failure",
-                                    status = HttpStatusCode.InternalServerError
+                                    status = HttpStatusCode.InternalServerError,
                                 ),
                             "/second-dynamic-voting-config.json" to
-                                MockResponse(content = validDynamicServiceConfigJson(), status = HttpStatusCode.OK)
-                        )
+                                MockResponse(content = validDynamicServiceConfigJson(), status = HttpStatusCode.OK),
+                        ),
                 )
 
             val serviceConfig = provider.fetchServiceConfig()
@@ -255,9 +232,9 @@ class KtorVotingApiProviderTest {
                 listOf(
                     "/static-voting-config.json",
                     "/first-dynamic-voting-config.json",
-                    "/second-dynamic-voting-config.json"
+                    "/second-dynamic-voting-config.json",
                 ),
-                requests
+                requests,
             )
             assertEquals(1, serviceConfig.voteServers.size)
         }
@@ -276,21 +253,21 @@ class KtorVotingApiProviderTest {
                                     content =
                                         staticConfigJsonV2(
                                             dynamicConfigUrls =
-                                                listOf(FIRST_DYNAMIC_CONFIG_URL, SECOND_DYNAMIC_CONFIG_URL)
+                                                listOf(FIRST_DYNAMIC_CONFIG_URL, SECOND_DYNAMIC_CONFIG_URL),
                                         ),
-                                    status = HttpStatusCode.OK
+                                    status = HttpStatusCode.OK,
                                 ),
                             "/first-dynamic-voting-config.json" to
                                 MockResponse(
                                     content = "temporary dynamic config failure",
-                                    status = HttpStatusCode.InternalServerError
+                                    status = HttpStatusCode.InternalServerError,
                                 ),
                             "/second-dynamic-voting-config.json" to
                                 MockResponse(
                                     content = "temporary dynamic config failure",
-                                    status = HttpStatusCode.InternalServerError
-                                )
-                        )
+                                    status = HttpStatusCode.InternalServerError,
+                                ),
+                        ),
                 )
 
             assertFailsWith<VotingConfigException> {
@@ -301,74 +278,58 @@ class KtorVotingApiProviderTest {
                 listOf(
                     "/static-voting-config.json",
                     "/first-dynamic-voting-config.json",
-                    "/second-dynamic-voting-config.json"
+                    "/second-dynamic-voting-config.json",
                 ),
-                requests
+                requests,
             )
         }
 
-    @Test
-    fun fetchShareStatusUsesHelperTimeoutWhenSupported() =
-        runBlocking {
-            val requests = mutableListOf<String>()
-            val requestTimeoutCapabilities = mutableListOf<Boolean>()
-            val provider =
-                newProvider(
-                    requests = requests,
-                    supportsKtorTimeouts = true,
-                    requestTimeoutCapabilities = requestTimeoutCapabilities
-                )
+    // region config-request timeout capability
 
-            runCatching {
-                provider.fetchShareStatus(
-                    helperBaseUrl = "https://example.com",
-                    roundIdHex = "round-id",
-                    nullifierHex = "nullifier"
-                )
-            }
-
-            assertEquals(listOf("/shielded-vote/v1/share-status/round-id/nullifier"), requests)
-            assertEquals(listOf(true), requestTimeoutCapabilities)
-        }
-
-    @Test
-    fun fetchShareStatusSkipsHelperTimeoutWhenUnsupported() =
-        runBlocking {
-            val requests = mutableListOf<String>()
-            val requestTimeoutCapabilities = mutableListOf<Boolean>()
-            val provider =
-                newProvider(
-                    requests = requests,
-                    supportsKtorTimeouts = false,
-                    requestTimeoutCapabilities = requestTimeoutCapabilities
-                )
-
-            runCatching {
-                provider.fetchShareStatus(
-                    helperBaseUrl = "https://example.com",
-                    roundIdHex = "round-id",
-                    nullifierHex = "nullifier"
-                )
-            }
-
-            assertEquals(listOf("/shielded-vote/v1/share-status/round-id/nullifier"), requests)
-            assertEquals(listOf(false), requestTimeoutCapabilities)
-            assertFalse(requestTimeoutCapabilities.single())
-        }
-
-    // region config-request timeout capability (MOB-1809)
-
+    /**
+     * The Ktor timeout capability only exists on the direct/Tor client. With Tor off the config legs go
+     * through OHTTP instead, where the bound is applied app-side (see the OHTTP tests below).
+     */
     @Test
     fun configRequestsCarryFifteenSecondTimeoutCapabilityWhenSupported() =
         runBlocking {
             val timeoutCapabilities = mutableListOf<Pair<String, Long?>>()
-            val provider = multiEndpointProvider(timeoutCapabilities = timeoutCapabilities)
+            val provider = multiEndpointProvider(timeoutCapabilities = timeoutCapabilities, torEnabled = true)
 
             provider.fetchServiceConfig()
 
             val configPaths = setOf("/static-voting-config.json", "/dynamic-voting-config.json")
             val configCapabilities = timeoutCapabilities.filter { (path, _) -> path in configPaths }
             assertEquals(listOf(15_000L, 15_000L), configCapabilities.map { (_, millis) -> millis })
+        }
+
+    @Test
+    fun ohttpStaticConfigFetchIsBoundedByTheConfigTimeout() =
+        runBlocking {
+            val provider = hangingConfigProvider(hangingPath = "/static-voting-config.json")
+
+            val exception = assertFailsWith<StaticVotingConfigFetchFailedException> { provider.fetchServiceConfig() }
+
+            assertTrue(exception.message.orEmpty().contains("timed out"), exception.message.orEmpty())
+        }
+
+    @Test
+    fun ohttpDynamicConfigFetchIsBoundedByTheConfigTimeoutAndFallsThroughToTheNextMirror() =
+        runBlocking {
+            val requests = mutableListOf<String>()
+            val provider = hangingConfigProvider(hangingPath = "/first-dynamic-voting-config.json", requests = requests)
+
+            val serviceConfig = provider.fetchServiceConfig()
+
+            assertEquals(
+                listOf(
+                    "/static-voting-config.json",
+                    "/first-dynamic-voting-config.json",
+                    "/second-dynamic-voting-config.json",
+                ),
+                requests,
+            )
+            assertEquals(1, serviceConfig.voteServers.size)
         }
 
     @Test
@@ -391,6 +352,10 @@ class KtorVotingApiProviderTest {
                 KtorVotingApiProvider(
                     httpClientProvider =
                         object : HttpClientProvider {
+                            override suspend fun isTorEnabled(): Boolean = false
+
+                            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = false
 
                             override suspend fun createTor(): HttpClient = create()
@@ -405,10 +370,10 @@ class KtorVotingApiProviderTest {
                                                 respond(
                                                     content =
                                                         staticConfigJsonV2(
-                                                            listOf(FIRST_DYNAMIC_CONFIG_URL, SECOND_DYNAMIC_CONFIG_URL)
+                                                            listOf(FIRST_DYNAMIC_CONFIG_URL, SECOND_DYNAMIC_CONFIG_URL),
                                                         ),
                                                     status = HttpStatusCode.OK,
-                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                                 )
                                             }
 
@@ -420,17 +385,17 @@ class KtorVotingApiProviderTest {
                                                 respond(
                                                     content = validDynamicServiceConfigJson(),
                                                     status = HttpStatusCode.OK,
-                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                                 )
                                             }
                                         }
-                                    }
+                                    },
                                 ) { expectSuccess = true }
                         },
                     configurationRepository = TestConfigurationRepository(),
                     votingChainConfigRepository = TestVotingChainConfigRepository(),
                     votingCryptoClient = unusedVotingCryptoClient(),
-                    configRequestTimeoutMillis = TEST_TIMEOUT_MILLIS
+                    configRequestTimeoutMillis = TEST_TIMEOUT_MILLIS,
                 )
 
             val serviceConfig = provider.fetchServiceConfig()
@@ -439,141 +404,11 @@ class KtorVotingApiProviderTest {
                 listOf(
                     "/static-voting-config.json",
                     "/first-dynamic-voting-config.json",
-                    "/second-dynamic-voting-config.json"
+                    "/second-dynamic-voting-config.json",
                 ),
-                requests
+                requests,
             )
             assertEquals(1, serviceConfig.voteServers.size)
-        }
-
-    @Test
-    fun explicitClientOverloadsBypassSharedClient() =
-        runBlocking {
-            val sharedRequests = mutableListOf<String>()
-            val chainRequests = mutableListOf<String>()
-            val provider =
-                KtorVotingApiProvider(
-                    httpClientProvider =
-                        object : HttpClientProvider {
-                            override suspend fun supportsKtorTimeouts(): Boolean = true
-
-                            override suspend fun createTor(): HttpClient = create()
-
-                            override suspend fun create(): HttpClient = configClient(sharedRequests)
-                        },
-                    configurationRepository = TestConfigurationRepository(),
-                    votingChainConfigRepository = TestVotingChainConfigRepository(),
-                    votingCryptoClient = unusedVotingCryptoClient()
-                )
-            val chainClient =
-                HttpClient(
-                    MockEngine { request ->
-                        chainRequests += request.url.encodedPath
-                        respond(
-                            content = """{"height":42,"code":0,"log":"","events":[]}""",
-                            status = HttpStatusCode.OK,
-                            headers = headersOf(HttpHeaders.ContentType, "application/json")
-                        )
-                    }
-                ) { expectSuccess = true }
-
-            val confirmation = provider.fetchTxConfirmation("tx-hash", chainClient)
-
-            assertEquals(42L, confirmation?.height)
-            assertEquals(listOf("/shielded-vote/v1/tx/tx-hash"), chainRequests)
-            // The shared client only resolved the config; the request itself never touched it.
-            assertFalse(sharedRequests.any { path -> path.startsWith("/shielded-vote/v1/tx/") })
-        }
-
-    @Test
-    fun notIndexedOnTheAcceptingServerEndsTheConfirmationWalk() =
-        runBlocking {
-            val confirmationHosts = mutableListOf<String>()
-            val provider =
-                KtorVotingApiProvider(
-                    httpClientProvider =
-                        object : HttpClientProvider {
-                            override suspend fun supportsKtorTimeouts(): Boolean = true
-
-                            override suspend fun createTor(): HttpClient = create()
-
-                            override suspend fun create(): HttpClient =
-                                twoVoteServerClient(confirmationHosts, HttpStatusCode.NotFound)
-                        },
-                    configurationRepository = TestConfigurationRepository(),
-                    votingChainConfigRepository = TestVotingChainConfigRepository(),
-                    votingCryptoClient = unusedVotingCryptoClient()
-                )
-
-            val confirmation =
-                provider.fetchTxConfirmation("tx-hash", preferredServerUrl = SECOND_VOTE_SERVER_URL)
-
-            // The accepting server has simply not indexed the transaction yet, so asking the other
-            // servers could only produce the same answer more slowly.
-            assertNull(confirmation)
-            assertEquals(listOf("vote-b.example.com"), confirmationHosts)
-        }
-
-    /**
-     * The accepting server's indexer may be the stuck one, so its 404 no longer ends the walk and
-     * the sibling's confirmation is taken instead.
-     */
-    @Test
-    fun consultingTheOtherServersLooksPastTheAcceptingServersNotIndexedAnswer() =
-        runBlocking {
-            val confirmationHosts = mutableListOf<String>()
-            val provider =
-                KtorVotingApiProvider(
-                    httpClientProvider =
-                        object : HttpClientProvider {
-                            override suspend fun supportsKtorTimeouts(): Boolean = true
-
-                            override suspend fun createTor(): HttpClient = create()
-
-                            override suspend fun create(): HttpClient =
-                                twoVoteServerClient(confirmationHosts, HttpStatusCode.NotFound)
-                        },
-                    configurationRepository = TestConfigurationRepository(),
-                    votingChainConfigRepository = TestVotingChainConfigRepository(),
-                    votingCryptoClient = unusedVotingCryptoClient()
-                )
-
-            val confirmation =
-                provider.fetchTxConfirmation(
-                    "tx-hash",
-                    preferredServerUrl = SECOND_VOTE_SERVER_URL,
-                    consultOthers = true
-                )
-
-            assertEquals(42L, confirmation?.height)
-            assertEquals(listOf("vote-b.example.com", "vote-a.example.com"), confirmationHosts)
-        }
-
-    @Test
-    fun anUnreachableAcceptingServerStillFallsBackToTheOtherVoteServers() =
-        runBlocking {
-            val confirmationHosts = mutableListOf<String>()
-            val provider =
-                KtorVotingApiProvider(
-                    httpClientProvider =
-                        object : HttpClientProvider {
-                            override suspend fun supportsKtorTimeouts(): Boolean = true
-
-                            override suspend fun createTor(): HttpClient = create()
-
-                            override suspend fun create(): HttpClient =
-                                twoVoteServerClient(confirmationHosts, HttpStatusCode.BadGateway)
-                        },
-                    configurationRepository = TestConfigurationRepository(),
-                    votingChainConfigRepository = TestVotingChainConfigRepository(),
-                    votingCryptoClient = unusedVotingCryptoClient()
-                )
-
-            val confirmation =
-                provider.fetchTxConfirmation("tx-hash", preferredServerUrl = SECOND_VOTE_SERVER_URL)
-
-            assertEquals(42L, confirmation?.height)
-            assertEquals(listOf("vote-b.example.com", "vote-a.example.com"), confirmationHosts)
         }
 
     // endregion
@@ -588,6 +423,10 @@ class KtorVotingApiProviderTest {
                 KtorVotingApiProvider(
                     httpClientProvider =
                         object : HttpClientProvider {
+                            override suspend fun isTorEnabled(): Boolean = false
+
+                            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = false
 
                             override suspend fun createTor(): HttpClient = create()
@@ -602,7 +441,7 @@ class KtorVotingApiProviderTest {
                                                 respond(
                                                     content = staticConfigJson(dynamicConfigUrl = DYNAMIC_CONFIG_URL),
                                                     status = HttpStatusCode.OK,
-                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                                 )
                                             }
 
@@ -610,7 +449,7 @@ class KtorVotingApiProviderTest {
                                                 respond(
                                                     content = validDynamicServiceConfigJson(),
                                                     status = HttpStatusCode.OK,
-                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                                 )
                                             }
 
@@ -624,13 +463,13 @@ class KtorVotingApiProviderTest {
                                                 respond(content = "not found", status = HttpStatusCode.NotFound)
                                             }
                                         }
-                                    }
+                                    },
                                 ) { expectSuccess = true }
                         },
                     configurationRepository = TestConfigurationRepository(),
                     votingChainConfigRepository = TestVotingChainConfigRepository(),
                     votingCryptoClient = unusedVotingCryptoClient(),
-                    voteServerFailoverTimeoutMillis = TEST_TIMEOUT_MILLIS
+                    voteServerFailoverTimeoutMillis = TEST_TIMEOUT_MILLIS,
                 )
 
             assertFailsWith<VotingServerFailoverException> {
@@ -639,7 +478,7 @@ class KtorVotingApiProviderTest {
 
             assertEquals(
                 listOf("/static-voting-config.json", "/dynamic-voting-config.json", ROUNDS_TEST_PATH),
-                requests
+                requests,
             )
         }
 
@@ -672,6 +511,10 @@ class KtorVotingApiProviderTest {
                 KtorVotingApiProvider(
                     httpClientProvider =
                         object : HttpClientProvider {
+                            override suspend fun isTorEnabled(): Boolean = false
+
+                            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = true
 
                             override suspend fun createTor(): HttpClient = create()
@@ -686,7 +529,7 @@ class KtorVotingApiProviderTest {
                                                 respond(
                                                     content = staticConfigJson(dynamicConfigUrl = DYNAMIC_CONFIG_URL),
                                                     status = HttpStatusCode.OK,
-                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                                 )
                                             }
 
@@ -694,7 +537,7 @@ class KtorVotingApiProviderTest {
                                                 respond(
                                                     content = validDynamicServiceConfigJson(),
                                                     status = HttpStatusCode.OK,
-                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                                 )
                                             }
 
@@ -702,7 +545,7 @@ class KtorVotingApiProviderTest {
                                                 respond(
                                                     content = """{"rounds": []}""",
                                                     status = HttpStatusCode.OK,
-                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                                 )
                                             }
 
@@ -710,7 +553,7 @@ class KtorVotingApiProviderTest {
                                                 respond(content = "not found", status = HttpStatusCode.NotFound)
                                             }
                                         }
-                                    }
+                                    },
                                 ) {
                                     expectSuccess = true
                                     install(ContentNegotiation) { json() }
@@ -718,7 +561,7 @@ class KtorVotingApiProviderTest {
                         },
                     configurationRepository = TestConfigurationRepository(),
                     votingChainConfigRepository = repository,
-                    votingCryptoClient = unusedVotingCryptoClient()
+                    votingCryptoClient = unusedVotingCryptoClient(),
                 )
 
             provider.fetchAllRounds()
@@ -794,7 +637,7 @@ class KtorVotingApiProviderTest {
             val provider =
                 multiEndpointProvider(
                     requestLog = requestLog,
-                    configCacheTtlMillis = SHORT_CONFIG_CACHE_TTL_MILLIS
+                    configCacheTtlMillis = SHORT_CONFIG_CACHE_TTL_MILLIS,
                 )
 
             provider.fetchServiceConfig()
@@ -819,6 +662,10 @@ class KtorVotingApiProviderTest {
                 KtorVotingApiProvider(
                     httpClientProvider =
                         object : HttpClientProvider {
+                            override suspend fun isTorEnabled(): Boolean = false
+
+                            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = true
 
                             override suspend fun createTor(): HttpClient = create()
@@ -838,7 +685,7 @@ class KtorVotingApiProviderTest {
                                                 respond(
                                                     content = staticConfigJson(dynamicConfigUrl = DYNAMIC_CONFIG_URL),
                                                     status = HttpStatusCode.OK,
-                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                                 )
                                             }
 
@@ -846,7 +693,7 @@ class KtorVotingApiProviderTest {
                                                 respond(
                                                     content = validDynamicServiceConfigJson(),
                                                     status = HttpStatusCode.OK,
-                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                                 )
                                             }
 
@@ -854,7 +701,7 @@ class KtorVotingApiProviderTest {
                                                 respond(content = "not found", status = HttpStatusCode.NotFound)
                                             }
                                         }
-                                    }
+                                    },
                                 ) {
                                     expectSuccess = true
                                     install(ContentNegotiation) { json() }
@@ -862,7 +709,7 @@ class KtorVotingApiProviderTest {
                         },
                     configurationRepository = TestConfigurationRepository(),
                     votingChainConfigRepository = TestVotingChainConfigRepository(),
-                    votingCryptoClient = unusedVotingCryptoClient()
+                    votingCryptoClient = unusedVotingCryptoClient(),
                 )
 
             // Regression pin for the race an earlier review caught alongside the TTL fallthrough bug:
@@ -890,6 +737,10 @@ class KtorVotingApiProviderTest {
                 KtorVotingApiProvider(
                     httpClientProvider =
                         object : HttpClientProvider {
+                            override suspend fun isTorEnabled(): Boolean = false
+
+                            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = false
 
                             override suspend fun createTor(): HttpClient = create()
@@ -902,7 +753,7 @@ class KtorVotingApiProviderTest {
                                                 respond(
                                                     content = staticConfigJson(dynamicConfigUrl = DYNAMIC_CONFIG_URL),
                                                     status = HttpStatusCode.OK,
-                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                                 )
                                             }
 
@@ -910,7 +761,7 @@ class KtorVotingApiProviderTest {
                                                 respond(
                                                     content = validDynamicServiceConfigJson(),
                                                     status = HttpStatusCode.OK,
-                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                                 )
                                             }
 
@@ -926,7 +777,7 @@ class KtorVotingApiProviderTest {
                                                 respond(content = "not found", status = HttpStatusCode.NotFound)
                                             }
                                         }
-                                    }
+                                    },
                                 ) {
                                     expectSuccess = true
                                     install(ContentNegotiation) { json() }
@@ -935,7 +786,7 @@ class KtorVotingApiProviderTest {
                     configurationRepository = TestConfigurationRepository(),
                     votingChainConfigRepository = TestVotingChainConfigRepository(),
                     votingCryptoClient = unusedVotingCryptoClient(),
-                    shareRequestTimeoutMillis = TEST_TIMEOUT_MILLIS
+                    shareRequestTimeoutMillis = TEST_TIMEOUT_MILLIS,
                 )
 
             // Regression pin for the postShare() catch-clause restructuring (MOB-1808 review): the
@@ -957,10 +808,15 @@ class KtorVotingApiProviderTest {
         runBlocking {
             val inFlight = AtomicInteger(0)
             val maxObserved = AtomicInteger(0)
+            val capReached = CompletableDeferred<Unit>()
             val provider =
                 KtorVotingApiProvider(
                     httpClientProvider =
                         object : HttpClientProvider {
+                            override suspend fun isTorEnabled(): Boolean = false
+
+                            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = true
 
                             override suspend fun createTor(): HttpClient = create()
@@ -973,7 +829,7 @@ class KtorVotingApiProviderTest {
                                                 respond(
                                                     content = staticConfigJson(dynamicConfigUrl = DYNAMIC_CONFIG_URL),
                                                     status = HttpStatusCode.OK,
-                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                                 )
                                             }
 
@@ -981,19 +837,24 @@ class KtorVotingApiProviderTest {
                                                 respond(
                                                     content = validDynamicServiceConfigJson(),
                                                     status = HttpStatusCode.OK,
-                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                                 )
                                             }
 
                                             "/shielded-vote/v1/shares" -> {
                                                 val current = inFlight.incrementAndGet()
                                                 maxObserved.updateAndGet { max -> maxOf(max, current) }
-                                                delay(SEMAPHORE_TEST_HOLD_MILLIS)
+                                                // Hold every request until SEMAPHORE_CAP are in flight at once, so
+                                                // a slow runner cannot finish one before the last one starts (a
+                                                // fixed delay flaked on CI). Bounded, so a cap below 16 fails the
+                                                // assertion below instead of hanging.
+                                                if (current >= SEMAPHORE_CAP) capReached.complete(Unit)
+                                                withTimeoutOrNull(SEMAPHORE_TEST_GATE_MILLIS) { capReached.await() }
                                                 inFlight.decrementAndGet()
                                                 respond(
                                                     content = "{}",
                                                     status = HttpStatusCode.OK,
-                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                                 )
                                             }
 
@@ -1001,7 +862,7 @@ class KtorVotingApiProviderTest {
                                                 respond(content = "not found", status = HttpStatusCode.NotFound)
                                             }
                                         }
-                                    }
+                                    },
                                 ) {
                                     expectSuccess = true
                                     install(ContentNegotiation) { json() }
@@ -1009,7 +870,7 @@ class KtorVotingApiProviderTest {
                         },
                     configurationRepository = TestConfigurationRepository(),
                     votingChainConfigRepository = TestVotingChainConfigRepository(),
-                    votingCryptoClient = unusedVotingCryptoClient()
+                    votingCryptoClient = unusedVotingCryptoClient(),
                 )
             val shares = (0 until SHARE_COUNT_ABOVE_SEMAPHORE_CAP).map { index -> makeDelegateSharePayload(index) }
 
@@ -1032,7 +893,7 @@ class KtorVotingApiProviderTest {
             voteDecision = 1,
             encShare = EncryptedShare(c1 = ByteArray(32) { 2 }, c2 = ByteArray(32) { 3 }, shareIndex = shareIndex),
             treePosition = 42L,
-            voteRoundId = "01".repeat(32)
+            voteRoundId = "01".repeat(32),
         )
 
     // region cancellation propagation with the app-side timeout fallback in place (MOB-1809)
@@ -1045,6 +906,10 @@ class KtorVotingApiProviderTest {
                 KtorVotingApiProvider(
                     httpClientProvider =
                         object : HttpClientProvider {
+                            override suspend fun isTorEnabled(): Boolean = false
+
+                            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = false
 
                             override suspend fun createTor(): HttpClient = create()
@@ -1059,10 +924,10 @@ class KtorVotingApiProviderTest {
                                                 respond(
                                                     content =
                                                         staticConfigJsonV2(
-                                                            listOf(FIRST_DYNAMIC_CONFIG_URL, SECOND_DYNAMIC_CONFIG_URL)
+                                                            listOf(FIRST_DYNAMIC_CONFIG_URL, SECOND_DYNAMIC_CONFIG_URL),
                                                         ),
                                                     status = HttpStatusCode.OK,
-                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                                 )
                                             }
 
@@ -1070,13 +935,13 @@ class KtorVotingApiProviderTest {
                                                 awaitCancellation()
                                             }
                                         }
-                                    }
+                                    },
                                 ) { expectSuccess = true }
                         },
                     configurationRepository = TestConfigurationRepository(),
                     votingChainConfigRepository = TestVotingChainConfigRepository(),
                     votingCryptoClient = unusedVotingCryptoClient(),
-                    configRequestTimeoutMillis = TEST_TIMEOUT_MILLIS
+                    configRequestTimeoutMillis = TEST_TIMEOUT_MILLIS,
                 )
 
             val job = async { provider.fetchServiceConfig() }
@@ -1097,10 +962,13 @@ class KtorVotingApiProviderTest {
             val attemptsByPath = mutableMapOf<String, Int>()
             val provider =
                 KtorVotingApiProvider(
-                    httpClientProvider = retryingHttpClientProvider(attemptsByPath),
+                    // The client-level retry exclusion (excludeFromClientRetry) only applies to the
+                    // Ktor leg, which is used when Tor is on; with Tor off the config request goes
+                    // through the OHTTP client instead.
+                    httpClientProvider = retryingHttpClientProvider(attemptsByPath, torEnabled = true),
                     configurationRepository = TestConfigurationRepository(),
                     votingChainConfigRepository = TestVotingChainConfigRepository(),
-                    votingCryptoClient = unusedVotingCryptoClient()
+                    votingCryptoClient = unusedVotingCryptoClient(),
                 )
 
             assertFailsWith<VotingConfigException> { provider.fetchServiceConfig() }
@@ -1117,7 +985,7 @@ class KtorVotingApiProviderTest {
                     httpClientProvider = retryingHttpClientProvider(attemptsByPath, dynamicConfigFails = false),
                     configurationRepository = TestConfigurationRepository(),
                     votingChainConfigRepository = TestVotingChainConfigRepository(),
-                    votingCryptoClient = unusedVotingCryptoClient()
+                    votingCryptoClient = unusedVotingCryptoClient(),
                 )
 
             runCatching { provider.fetchAllRounds() }
@@ -1129,9 +997,14 @@ class KtorVotingApiProviderTest {
 
     private fun retryingHttpClientProvider(
         attemptsByPath: MutableMap<String, Int>,
-        dynamicConfigFails: Boolean = true
+        dynamicConfigFails: Boolean = true,
+        torEnabled: Boolean = false,
     ): HttpClientProvider =
         object : HttpClientProvider {
+            override suspend fun isTorEnabled(): Boolean = torEnabled
+
+            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
             override suspend fun supportsKtorTimeouts(): Boolean = true
 
             override suspend fun createTor(): HttpClient = create()
@@ -1146,7 +1019,7 @@ class KtorVotingApiProviderTest {
                                 respond(
                                     content = staticConfigJson(dynamicConfigUrl = DYNAMIC_CONFIG_URL),
                                     status = HttpStatusCode.OK,
-                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                    headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                 )
                             }
 
@@ -1157,7 +1030,7 @@ class KtorVotingApiProviderTest {
                                     respond(
                                         content = validDynamicServiceConfigJson(),
                                         status = HttpStatusCode.OK,
-                                        headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                     )
                                 }
                             }
@@ -1170,7 +1043,7 @@ class KtorVotingApiProviderTest {
                                 respond(content = "not found", status = HttpStatusCode.NotFound)
                             }
                         }
-                    }
+                    },
                 ) {
                     expectSuccess = true
                     install(ContentNegotiation) { json() }
@@ -1186,11 +1059,16 @@ class KtorVotingApiProviderTest {
     private fun multiEndpointProvider(
         requestLog: MutableList<String> = mutableListOf(),
         timeoutCapabilities: MutableList<Pair<String, Long?>> = mutableListOf(),
-        configCacheTtlMillis: Long? = null
+        configCacheTtlMillis: Long? = null,
+        torEnabled: Boolean = false,
     ): KtorVotingApiProvider =
         KtorVotingApiProvider(
             httpClientProvider =
                 object : HttpClientProvider {
+                    override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
+                    override suspend fun isTorEnabled(): Boolean = torEnabled
+
                     override suspend fun supportsKtorTimeouts(): Boolean = true
 
                     override suspend fun createTor(): HttpClient = create()
@@ -1208,7 +1086,7 @@ class KtorVotingApiProviderTest {
                                         respond(
                                             content = staticConfigJson(dynamicConfigUrl = DYNAMIC_CONFIG_URL),
                                             status = HttpStatusCode.OK,
-                                            headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                         )
                                     }
 
@@ -1216,7 +1094,7 @@ class KtorVotingApiProviderTest {
                                         respond(
                                             content = validDynamicServiceConfigJson(),
                                             status = HttpStatusCode.OK,
-                                            headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                         )
                                     }
 
@@ -1224,7 +1102,7 @@ class KtorVotingApiProviderTest {
                                         respond(
                                             content = """{"rounds": []}""",
                                             status = HttpStatusCode.OK,
-                                            headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
                                         )
                                     }
 
@@ -1232,7 +1110,7 @@ class KtorVotingApiProviderTest {
                                         respond(content = "not found", status = HttpStatusCode.NotFound)
                                     }
                                 }
-                            }
+                            },
                         ) {
                             expectSuccess = true
                             install(ContentNegotiation) { json() }
@@ -1241,16 +1119,74 @@ class KtorVotingApiProviderTest {
             configurationRepository = TestConfigurationRepository(),
             votingChainConfigRepository = TestVotingChainConfigRepository(),
             votingCryptoClient = unusedVotingCryptoClient(),
-            configCacheTtlMillis = configCacheTtlMillis ?: DEFAULT_TEST_CONFIG_CACHE_TTL_MILLIS
+            configCacheTtlMillis = configCacheTtlMillis ?: DEFAULT_TEST_CONFIG_CACHE_TTL_MILLIS,
+        )
+
+    /**
+     * Tor off (so the config legs take the OHTTP path) with Ktor timeouts available, where the request on
+     * [hangingPath] never answers: only the app-side bound in front of the OHTTP call can end it.
+     */
+    private fun hangingConfigProvider(
+        hangingPath: String,
+        requests: MutableList<String> = mutableListOf(),
+    ): KtorVotingApiProvider =
+        KtorVotingApiProvider(
+            httpClientProvider =
+                object : HttpClientProvider {
+                    override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
+                    override suspend fun isTorEnabled(): Boolean = false
+
+                    override suspend fun supportsKtorTimeouts(): Boolean = true
+
+                    override suspend fun createTor(): HttpClient = create()
+
+                    override suspend fun create(): HttpClient =
+                        HttpClient(
+                            MockEngine { request ->
+                                val path = request.url.encodedPath
+                                requests += path
+                                when (path) {
+                                    hangingPath -> {
+                                        awaitCancellation()
+                                    }
+
+                                    "/static-voting-config.json" -> {
+                                        respond(
+                                            content =
+                                                staticConfigJsonV2(
+                                                    listOf(FIRST_DYNAMIC_CONFIG_URL, SECOND_DYNAMIC_CONFIG_URL),
+                                                ),
+                                            status = HttpStatusCode.OK,
+                                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                                        )
+                                    }
+
+                                    else -> {
+                                        respond(
+                                            content = validDynamicServiceConfigJson(),
+                                            status = HttpStatusCode.OK,
+                                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                                        )
+                                    }
+                                }
+                            },
+                        ) { expectSuccess = true }
+                },
+            // The default (non-custom) config: only that one goes through OHTTP with Tor off.
+            configurationRepository = TestConfigurationRepository(votingConfigUrl = STATIC_CONFIG_URL),
+            votingChainConfigRepository = TestVotingChainConfigRepository(VotingChainConfigState()),
+            votingCryptoClient = unusedVotingCryptoClient(),
+            configRequestTimeoutMillis = TEST_TIMEOUT_MILLIS,
         )
 
     private class SwitchableVotingChainConfigRepository(
-        initialPinnedSource: String
+        initialPinnedSource: String,
     ) : VotingChainConfigRepository {
         private var currentState =
             VotingChainConfigState(
                 selected = VotingChainConfigSelection.Custom(SWITCHABLE_CHAIN_ID),
-                customChains = listOf(switchableChain(initialPinnedSource))
+                customChains = listOf(switchableChain(initialPinnedSource)),
             )
 
         override val state: StateFlow<VotingChainConfigState>
@@ -1268,13 +1204,13 @@ class KtorVotingApiProviderTest {
 
         override suspend fun addCustom(
             name: String,
-            pinnedSource: String
+            pinnedSource: String,
         ): VotingCustomChainConfig = error("unused")
 
         override suspend fun updateCustom(
             id: String,
             name: String,
-            pinnedSource: String
+            pinnedSource: String,
         ) = Unit
 
         override suspend fun deleteCustom(id: String) = Unit
@@ -1291,37 +1227,40 @@ class KtorVotingApiProviderTest {
         requests: MutableList<String>,
         supportsKtorTimeouts: Boolean = true,
         requestTimeoutCapabilities: MutableList<Boolean> = mutableListOf(),
-        responseOverrides: Map<String, TestResponse> = emptyMap()
-    ) =
-        KtorVotingApiProvider(
-            httpClientProvider =
-                TestHttpClientProvider(
-                    requests,
-                    supportsKtorTimeouts,
-                    requestTimeoutCapabilities,
-                    responseOverrides
-                ),
-            configurationRepository = TestConfigurationRepository(),
-            votingChainConfigRepository = TestVotingChainConfigRepository(),
-            votingCryptoClient = unusedVotingCryptoClient()
-        )
+        responseOverrides: Map<String, TestResponse> = emptyMap(),
+    ) = KtorVotingApiProvider(
+        httpClientProvider =
+            TestHttpClientProvider(
+                requests,
+                supportsKtorTimeouts,
+                requestTimeoutCapabilities,
+                responseOverrides,
+            ),
+        configurationRepository = TestConfigurationRepository(),
+        votingChainConfigRepository = TestVotingChainConfigRepository(),
+        votingCryptoClient = unusedVotingCryptoClient(),
+    )
 
     private fun newProviderWithResponses(
         requests: MutableList<String>,
-        responses: Map<String, MockResponse>
+        responses: Map<String, MockResponse>,
     ) = KtorVotingApiProvider(
         httpClientProvider = ResponseMapHttpClientProvider(requests, responses),
         configurationRepository = TestConfigurationRepository(),
         votingChainConfigRepository = TestVotingChainConfigRepository(),
-        votingCryptoClient = unusedVotingCryptoClient()
+        votingCryptoClient = unusedVotingCryptoClient(),
     )
 
     private class TestHttpClientProvider(
         private val requests: MutableList<String>,
         private val supportsKtorTimeouts: Boolean,
         private val requestTimeoutCapabilities: MutableList<Boolean>,
-        private val responseOverrides: Map<String, TestResponse>
+        private val responseOverrides: Map<String, TestResponse>,
     ) : HttpClientProvider {
+        override suspend fun isTorEnabled(): Boolean = false
+
+        override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
         override suspend fun supportsKtorTimeouts(): Boolean = supportsKtorTimeouts
 
         override suspend fun createTor(): HttpClient = create()
@@ -1341,7 +1280,7 @@ class KtorVotingApiProviderTest {
                         return@MockEngine respond(
                             content = response.content,
                             status = response.status,
-                            headers = headersOf(HttpHeaders.ContentType, "application/json")
+                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
                         )
                     }
                     when (request.url.encodedPath) {
@@ -1349,14 +1288,14 @@ class KtorVotingApiProviderTest {
                             respond(
                                 content = staticConfigJson(dynamicConfigUrl = DYNAMIC_CONFIG_URL),
                                 status = HttpStatusCode.OK,
-                                headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                headers = headersOf(HttpHeaders.ContentType, "application/json"),
                             )
                         }
 
                         "/dynamic-voting-config.json" -> {
                             respond(
                                 content = "temporary dynamic config failure",
-                                status = HttpStatusCode.InternalServerError
+                                status = HttpStatusCode.InternalServerError,
                             )
                         }
 
@@ -1364,7 +1303,7 @@ class KtorVotingApiProviderTest {
                             respond(
                                 content = """{"status":"confirmed"}""",
                                 status = HttpStatusCode.OK,
-                                headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                headers = headersOf(HttpHeaders.ContentType, "application/json"),
                             )
                         }
 
@@ -1372,7 +1311,7 @@ class KtorVotingApiProviderTest {
                             respond(content = "not found", status = HttpStatusCode.NotFound)
                         }
                     }
-                }
+                },
             ) {
                 expectSuccess = true
                 // Mirrors the production HttpClientProvider's content negotiation.
@@ -1382,8 +1321,12 @@ class KtorVotingApiProviderTest {
 
     private class ResponseMapHttpClientProvider(
         private val requests: MutableList<String>,
-        private val responses: Map<String, MockResponse>
+        private val responses: Map<String, MockResponse>,
     ) : HttpClientProvider {
+        override suspend fun isTorEnabled(): Boolean = false
+
+        override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
         override suspend fun supportsKtorTimeouts(): Boolean = true
 
         override suspend fun createTor(): HttpClient = create()
@@ -1405,10 +1348,10 @@ class KtorVotingApiProviderTest {
                                     headersOf(HttpHeaders.ContentType, "application/json")
                                 } else {
                                     headersOf()
-                                }
+                                },
                         )
                     }
-                }
+                },
             ) {
                 expectSuccess = true
             }
@@ -1416,20 +1359,26 @@ class KtorVotingApiProviderTest {
 
     private data class TestResponse(
         val content: String,
-        val status: HttpStatusCode = HttpStatusCode.OK
+        val status: HttpStatusCode = HttpStatusCode.OK,
     )
 
-    private class TestConfigurationRepository : ConfigurationRepository {
-        override val configurationFlow: StateFlow<Configuration?> = MutableStateFlow(null)
+    /** [votingConfigUrl] set = the remote-config (default, non-custom) voting config source. */
+    private class TestConfigurationRepository(
+        votingConfigUrl: String? = null,
+    ) : ConfigurationRepository {
+        override val configurationFlow: StateFlow<Configuration?> =
+            MutableStateFlow(votingConfigUrl?.let(::votingConfigUrlConfiguration))
         override val isFlexaAvailable: StateFlow<Boolean?> = MutableStateFlow(false)
 
         override suspend fun isFlexaAvailable(): Boolean = false
     }
 
-    private class TestVotingChainConfigRepository : VotingChainConfigRepository {
-        override val state: StateFlow<VotingChainConfigState> = MutableStateFlow(TEST_CHAIN_CONFIG_STATE)
+    private class TestVotingChainConfigRepository(
+        private val chainConfigState: VotingChainConfigState = TEST_CHAIN_CONFIG_STATE,
+    ) : VotingChainConfigRepository {
+        override val state: StateFlow<VotingChainConfigState> = MutableStateFlow(chainConfigState)
 
-        override suspend fun get(): VotingChainConfigState = TEST_CHAIN_CONFIG_STATE
+        override suspend fun get(): VotingChainConfigState = chainConfigState
 
         override suspend fun selectDefault() = Unit
 
@@ -1437,13 +1386,13 @@ class KtorVotingApiProviderTest {
 
         override suspend fun addCustom(
             name: String,
-            pinnedSource: String
+            pinnedSource: String,
         ): VotingCustomChainConfig = error("unused")
 
         override suspend fun updateCustom(
             id: String,
             name: String,
-            pinnedSource: String
+            pinnedSource: String,
         ) = Unit
 
         override suspend fun deleteCustom(id: String) = Unit
@@ -1470,7 +1419,7 @@ class KtorVotingApiProviderTest {
         // duplicated as SEMAPHORE_CAP for delegateSharesBoundsConcurrentShareDelegationToTheSemaphoreCap.
         const val SEMAPHORE_CAP = 16
         const val SHARE_COUNT_ABOVE_SEMAPHORE_CAP = 20
-        const val SEMAPHORE_TEST_HOLD_MILLIS = 40L
+        const val SEMAPHORE_TEST_GATE_MILLIS = 5_000L
         val TEST_CHAIN_CONFIG_STATE =
             VotingChainConfigState(
                 selected = VotingChainConfigSelection.Custom("test-chain"),
@@ -1479,9 +1428,9 @@ class KtorVotingApiProviderTest {
                         VotingCustomChainConfig(
                             id = "test-chain",
                             name = "Test Chain",
-                            pinnedSource = STATIC_CONFIG_URL
-                        )
-                    )
+                            pinnedSource = STATIC_CONFIG_URL,
+                        ),
+                    ),
             )
     }
 }
@@ -1504,98 +1453,6 @@ private fun staticConfigJson(dynamicConfigUrl: String): String =
     """.trimIndent()
 
 private const val DYNAMIC_CONFIG_URL = "https://example.com/first-dynamic-voting-config.json"
-
-private const val FIRST_VOTE_SERVER_URL = "https://vote-a.example.com"
-
-private const val SECOND_VOTE_SERVER_URL = "https://vote-b.example.com"
-
-/**
- * Serves the config legs plus two vote servers, where the first one confirms and the second - the
- * one the preferred-server tests point at - answers with [preferredServerStatus].
- */
-private fun twoVoteServerClient(
-    confirmationHosts: MutableList<String>,
-    preferredServerStatus: HttpStatusCode
-): HttpClient =
-    HttpClient(
-        MockEngine { request ->
-            val path = request.url.encodedPath
-            when {
-                path == "/static-voting-config.json" -> {
-                    respond(
-                        content = staticConfigJsonV2(listOf(DYNAMIC_CONFIG_URL)),
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json")
-                    )
-                }
-
-                path.startsWith("/shielded-vote/v1/tx/") -> {
-                    confirmationHosts += request.url.host
-                    if (request.url.host == "vote-b.example.com") {
-                        respond(content = "", status = preferredServerStatus)
-                    } else {
-                        respond(
-                            content = """{"height":42,"code":0,"log":"","events":[]}""",
-                            status = HttpStatusCode.OK,
-                            headers = headersOf(HttpHeaders.ContentType, "application/json")
-                        )
-                    }
-                }
-
-                else -> {
-                    respond(
-                        content = twoVoteServerDynamicConfigJson(),
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json")
-                    )
-                }
-            }
-        }
-    ) { expectSuccess = true }
-
-private fun twoVoteServerDynamicConfigJson(): String =
-    """
-    {
-      "config_version": 1,
-      "vote_servers": [
-        {"url": "$FIRST_VOTE_SERVER_URL", "label": "vote-a"},
-        {"url": "$SECOND_VOTE_SERVER_URL", "label": "vote-b"}
-      ],
-      "pir_endpoints": [{"url": "https://pir.example.com", "label": "pir"}],
-      "supported_versions": {
-        "pir": ["v0"],
-        "vote_protocol": "v0",
-        "tally": "v0",
-        "vote_server": "v1"
-      },
-      "rounds": {}
-    }
-    """.trimIndent()
-
-private fun configClient(requests: MutableList<String>): HttpClient =
-    HttpClient(
-        MockEngine { request ->
-            val path = request.url.encodedPath
-            requests += path
-            when (path) {
-                "/static-voting-config.json" -> {
-                    respond(
-                        content = staticConfigJsonV2(listOf(DYNAMIC_CONFIG_URL)),
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json")
-                    )
-                }
-
-                else -> {
-                    respond(
-                        content = validDynamicServiceConfigJson(),
-                        status = HttpStatusCode.OK,
-                        headers = headersOf(HttpHeaders.ContentType, "application/json")
-                    )
-                }
-            }
-        }
-    ) { expectSuccess = true }
 
 private fun staticConfigJsonV2(dynamicConfigUrls: List<String>): String =
     """
@@ -1647,13 +1504,36 @@ private fun dynamicVotingConfigJson(): String =
 
 private data class MockResponse(
     val content: String,
-    val status: HttpStatusCode
+    val status: HttpStatusCode,
 )
 
 private fun unusedVotingCryptoClient(): VotingCryptoClient =
     Proxy.newProxyInstance(
         VotingCryptoClient::class.java.classLoader,
-        arrayOf(VotingCryptoClient::class.java)
+        arrayOf(VotingCryptoClient::class.java),
     ) { _, method, _ ->
         error("Unexpected VotingCryptoClient call: ${method.name}")
     } as VotingCryptoClient
+
+/** ConfigKey is a value class, which MockK cannot match with any(), so a tiny fake. */
+private fun votingConfigUrlConfiguration(url: String): Configuration =
+    object : Configuration {
+        override val updatedAt: Instant? = null
+
+        override fun hasKey(key: ConfigKey): Boolean = key == ConfigurationEntries.VOTING_CONFIG_URL.key
+
+        override fun getBoolean(
+            key: ConfigKey,
+            defaultValue: Boolean
+        ): Boolean = defaultValue
+
+        override fun getInt(
+            key: ConfigKey,
+            defaultValue: Int
+        ): Int = defaultValue
+
+        override fun getString(
+            key: ConfigKey,
+            defaultValue: String
+        ): String = if (key == ConfigurationEntries.VOTING_CONFIG_URL.key) url else defaultValue
+    }

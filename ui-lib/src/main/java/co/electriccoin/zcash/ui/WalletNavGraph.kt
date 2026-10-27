@@ -42,6 +42,8 @@ import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletArgs
 import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletScreen
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerScreen
+import co.electriccoin.zcash.ui.screen.chooseserver.ohttpinfo.OhttpInfoArgs
+import co.electriccoin.zcash.ui.screen.chooseserver.ohttpinfo.OhttpInfoScreen
 import co.electriccoin.zcash.ui.screen.colorpicker.ColorPickerArgs
 import co.electriccoin.zcash.ui.screen.colorpicker.ColorPickerScreen
 import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollmentNavType
@@ -131,6 +133,10 @@ import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenArgs
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenScreen
 import co.electriccoin.zcash.ui.screen.more.MoreArgs
 import co.electriccoin.zcash.ui.screen.more.MoreScreen
+import co.electriccoin.zcash.ui.screen.ohttpoptin.OhttpOptInArgs
+import co.electriccoin.zcash.ui.screen.ohttpoptin.OhttpOptInScreen
+import co.electriccoin.zcash.ui.screen.ohttpunavailable.OhttpUnavailableArgs
+import co.electriccoin.zcash.ui.screen.ohttpunavailable.OhttpUnavailableScreen
 import co.electriccoin.zcash.ui.screen.pay.PayArgs
 import co.electriccoin.zcash.ui.screen.pay.PayScreen
 import co.electriccoin.zcash.ui.screen.pay.info.PayInfoArgs
@@ -265,6 +271,9 @@ fun NavGraphBuilder.walletNavGraph(
         composable<MoreArgs> { MoreScreen() }
         composable<AdvancedSettingsArgs> { AdvancedSettingsScreen() }
         composable<ChooseServerArgs> { ChooseServerScreen() }
+        dialogComposable<OhttpInfoArgs> { OhttpInfoScreen() }
+        dialogComposable<OhttpUnavailableArgs> { OhttpUnavailableScreen() }
+        composable<OhttpOptInArgs> { OhttpOptInScreen() }
         composable<WalletBackup> { AndroidWalletBackup(it.toRoute()) }
         composable<FeedbackArgs> { FeedbackScreen() }
         composable<ResetZashiArgs> { ResetZashiScreen() }

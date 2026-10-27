@@ -64,6 +64,15 @@ fun VoteTrustIndicatorView(
             fontWeight = FontWeight.Medium,
             color = params.textColor
         )
+        if (indicator == VoteTrustIndicator.UNVERIFIED) {
+            // UNVERIFIED means a user-selected custom voting config: its servers are reached
+            // without the OHTTP gateway (ZIP #10).
+            Text(
+                text = stringResource(R.string.coinVote_pollsList_customServerNotPrivate),
+                style = ZashiTypography.textSm,
+                color = params.textColor
+            )
+        }
     }
 }
 

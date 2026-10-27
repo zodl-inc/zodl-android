@@ -186,7 +186,6 @@ dependencyResolutionManagement {
             val zxingVersion = extra["ZXING_VERSION"].toString()
             val zxingCppVersion = extra["ZXING_CPP_VERSION"].toString()
             val koinVersion = extra["KOIN_VERSION"].toString()
-            val flexaVersion = extra["FLEXA_VERSION"].toString()
             val keystoneVersion = extra["KEYSTONE_VERSION"].toString()
             val shimmerVersion = extra["SHIMMER_VERSION"].toString()
             val ktorVersion = extra["KTOR_VERSION"].toString()
@@ -257,8 +256,6 @@ dependencyResolutionManagement {
             library("zxingcpp", "io.github.zxing-cpp:android:$zxingCppVersion")
             library("koin", "io.insert-koin:koin-android:$koinVersion")
             library("koin-compose", "io.insert-koin:koin-androidx-compose:$koinVersion")
-            library("flexa-core", "co.flexa:core:$flexaVersion")
-            library("flexa-spend", "co.flexa:spend:$flexaVersion")
             library("keystone", "com.github.KeystoneHQ:keystone-sdk-android:$keystoneVersion")
             library("compose-shimmer", "com.valentinilk.shimmer:compose-shimmer:$shimmerVersion")
             library("haze", "dev.chrisbanes.haze:haze:$hazeVersion")
@@ -359,6 +356,8 @@ include("feature-ledger")
 include("feature-migration")
 include("feature-viewing-key")
 include("feature-voting")
+include("flexa-core")
+include("flexa-spend")
 include("preference-api-lib")
 include("preference-impl-android-lib")
 include("sdk-ext-lib")
@@ -371,6 +370,9 @@ include("ui-integration-test")
 include("ui-lib")
 include("ui-screenshot-test")
 
+project(":flexa-core").projectDir = file("third-party/flexa/core")
+project(":flexa-spend").projectDir = file("third-party/flexa/spend")
+
 val zcashSdkIncludedBuildPath = extra["SDK_INCLUDED_BUILD_PATH"].toString()
 
 if (zcashSdkIncludedBuildPath.isNotEmpty()) {
@@ -380,6 +382,22 @@ if (zcashSdkIncludedBuildPath.isNotEmpty()) {
             substitute(module("com.zodl.android:zcash-android-sdk")).using(project(":sdk-lib"))
             substitute(module("com.zodl.android:zcash-android-backend")).using(project(":backend-lib"))
             substitute(module("com.zodl.android:zcash-android-sdk-incubator")).using(project(":sdk-incubator-lib"))
+        }
+    }
+}
+
+// Substitute only the lightwallet-client module (gRPC transport, incl. the OHTTP channel) with a local
+// SDK checkout while keeping sdk-lib/backend-lib from Maven. Avoids the Rust toolchain build and lets
+// the transport layer be iterated independently. Mutually exclusive with SDK_INCLUDED_BUILD_PATH.
+val lightwalletClientIncludedBuildPath = (extra.properties["LIGHTWALLET_CLIENT_INCLUDED_BUILD_PATH"] ?: "").toString()
+
+if (lightwalletClientIncludedBuildPath.isNotEmpty() && zcashSdkIncludedBuildPath.isEmpty()) {
+    logger.lifecycle(
+        "lightwallet-client will be used from $lightwalletClientIncludedBuildPath instead of Maven Central."
+    )
+    includeBuild(lightwalletClientIncludedBuildPath) {
+        dependencySubstitution {
+            substitute(module("com.zodl.android:lightwallet-client")).using(project(":lightwallet-client-lib"))
         }
     }
 }

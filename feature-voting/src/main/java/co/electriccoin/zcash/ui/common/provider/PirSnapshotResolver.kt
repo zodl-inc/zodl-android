@@ -1,5 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import co.electriccoin.lightwallet.client.OhttpHttpClient
+import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -19,7 +21,8 @@ interface PirSnapshotResolver {
 }
 
 class HttpPirSnapshotResolver(
-    private val httpClientProvider: HttpClientProvider
+    private val httpClientProvider: HttpClientProvider,
+    private val votingChainConfigRepository: VotingChainConfigRepository
 ) : PirSnapshotResolver {
     override suspend fun resolve(
         endpoints: List<String>,
@@ -36,20 +39,21 @@ class HttpPirSnapshotResolver(
             throw PirSnapshotResolverException.NoEndpointsConfigured
         }
 
-        // MOB-1808: probes used to fan out concurrently but all through ONE shared/isolated Tor
-        // HttpClient (built once outside the loop). Confirmed live (via the identical pattern in
-        // VotingApiProvider.delegateShares) that the native Tor engine serializes concurrent
-        // requests on a single isolated client/stream regardless of Kotlin-level concurrency —
-        // so this fan-out was likely no faster than probing endpoints one at a time. Fix: give
-        // each concurrent probe its own freshly-built isolated Tor client instead.
+        // ZIP #10 voting routes: Tor on -> Tor; Tor off -> OHTTP for the predefined config (fail closed
+        // if the gateway cannot reach the host), direct for a user-selected custom config.
+        val route =
+            when {
+                httpClientProvider.isTorEnabled() -> PirProbeRoute.Direct
+                !votingChainConfigRepository.get().isOnDefaultConfig -> PirProbeRoute.Direct
+                else -> PirProbeRoute.Ohttp(httpClientProvider.createOhttp())
+            }
+
         val outcomes =
             coroutineScope {
                 normalizedEndpoints
                     .map { url ->
                         async {
-                            httpClientProvider.create().use { client ->
-                                probe(client, url, expectedSnapshotHeight)
-                            }
+                            probe(route, url, expectedSnapshotHeight)
                         }
                     }.awaitAll()
             }
@@ -64,16 +68,21 @@ class HttpPirSnapshotResolver(
     }
 
     private suspend fun probe(
-        client: io.ktor.client.HttpClient,
+        route: PirProbeRoute,
         url: String,
         expectedSnapshotHeight: Long
     ): PirSnapshotProbeOutcome {
         val status =
             runCatching {
-                val rootInfo =
-                    pirSnapshotJson.decodeFromString<PirRootInfo>(
-                        client.get("$url/root").bodyAsText()
-                    )
+                val rootUrl = "$url/root"
+                val bodyText =
+                    when (route) {
+                        is PirProbeRoute.Ohttp -> fetchViaOhttp(route.client, rootUrl)
+
+                        // A fresh client per probe: under Tor each gets its own circuit (MOB-1808).
+                        PirProbeRoute.Direct -> httpClientProvider.create().use { it.get(rootUrl).bodyAsText() }
+                    }
+                val rootInfo = pirSnapshotJson.decodeFromString<PirRootInfo>(bodyText)
                 val height =
                     rootInfo.height
                         ?: return@runCatching PirSnapshotProbeStatus.MissingHeight
@@ -101,7 +110,41 @@ class HttpPirSnapshotResolver(
             status = status
         )
     }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun fetchViaOhttp(
+        client: OhttpHttpClient,
+        rootUrl: String
+    ): String {
+        check(client.canHandle(rootUrl)) { "PIR server $rootUrl is not reachable through the OHTTP gateway" }
+        val response =
+            try {
+                client.execute(
+                    OhttpHttpClient.Request(
+                        url = rootUrl,
+                        headers = listOf("Cache-Control" to "no-cache")
+                    )
+                )
+            } catch (exception: Exception) {
+                exception.rethrowIfCancellation()
+                error("PIR probe via OHTTP failed: ${exception::class.simpleName}")
+            }
+        check(response.status in HTTP_SUCCESS) { "HTTP ${response.status}" }
+        return response.body.decodeToString()
+    }
 }
+
+private sealed interface PirProbeRoute {
+    data object Direct : PirProbeRoute
+
+    data class Ohttp(
+        val client: OhttpHttpClient
+    ) : PirProbeRoute
+}
+
+private const val HTTP_SUCCESS_MIN = 200
+private const val HTTP_SUCCESS_MAX = 299
+private val HTTP_SUCCESS = HTTP_SUCCESS_MIN..HTTP_SUCCESS_MAX
 
 sealed interface PirSnapshotProbeStatus {
     data class Matching(

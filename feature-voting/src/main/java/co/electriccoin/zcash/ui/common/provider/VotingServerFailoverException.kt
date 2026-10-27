@@ -63,18 +63,33 @@ internal suspend fun <T> withVoteServerFailover(
 }
 
 internal fun shouldTryNextVoteServer(throwable: Throwable): Boolean =
+    shouldTryNextVoteServer(throwable, retryOnTimeout = false)
+
+/**
+ * Safe for idempotent GETs (fetchAllRounds, fetchTallyResults, commitment-tree reads, ...): a
+ * timeout can't have caused a server-side side effect there, so failing over to the next mirror
+ * is always the right call — unlike [shouldTryNextVoteServer]'s default, which exists specifically
+ * to stop that same failover for non-idempotent POSTs (delegate/cast vote).
+ */
+internal fun shouldTryNextVoteServerForRead(throwable: Throwable): Boolean =
+    shouldTryNextVoteServer(throwable, retryOnTimeout = true)
+
+/**
+ * A [TimeoutCancellationException] means the request may have timed out after delivery.
+ * For POSTs (delegate/cast vote), retrying on another server risks a double submission, so the default
+ * ([retryOnTimeout] = false) surfaces the timeout instead of failing over; idempotent GET call sites opt
+ * back in through [shouldTryNextVoteServerForRead]. The timeout branch must precede
+ * [CancellationException], which it extends.
+ */
+private fun shouldTryNextVoteServer(
+    throwable: Throwable,
+    retryOnTimeout: Boolean
+): Boolean =
     when (throwable) {
-        // MOB-1811: must precede the plain CancellationException branch below - a
-        // TimeoutCancellationException is this attempt's own bounded deadline firing, not a
-        // reason to give up on the remaining servers.
-        is TimeoutCancellationException -> true
-
+        is TimeoutCancellationException -> retryOnTimeout
         is CancellationException -> false
-
         is VotingConfigException -> false
-
         is ResponseException -> throwable.response.status.value >= HTTP_BAD_REQUEST
-
         else -> true
     }
 

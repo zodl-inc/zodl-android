@@ -64,6 +64,15 @@ jobs:
             exit 1
           fi
 
+      - name: Refuse to deploy with OHTTP relay URL override
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          if [ -n "$ZODL_OHTTP_RELAY_URL_MAINNET" ] || [ -n "$ZODL_OHTTP_RELAY_URL_TESTNET" ]; then
+            echo '::error::OHTTP relay URL override is set — releases must use production relay URLs from zodl-ohttp-client.'
+            exit 1
+          fi
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
         with:
@@ -124,8 +133,6 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew clean :app:bundleZcashmainnetStoreRelease :app:packageZcashmainnetStoreReleaseUniversalApk
 
@@ -143,8 +150,6 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew clean :app:assembleZcashmainnetFossRelease
 
@@ -152,7 +157,7 @@ jobs:
         run: |
           mv app/build/outputs/apk/zcashmainnetFoss/release/app-zcashmainnet-foss-release.apk artifacts/app-zcashmainnet-foss-release-full-externallibs.apk
 
-      # Second FOSS build with Flexa/CMC keys intentionally NOT injected:
+      # Second FOSS build with the Flexa key intentionally NOT injected:
       # this is the build that f-droid.org's reproducible build farm needs to
       # match (their builders cannot see those secrets). Keep it in sync with
       # the externallibs build above so fdroidserver metadata generation has
@@ -164,7 +169,6 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
           # ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          # ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew clean :app:assembleZcashmainnetFossRelease
 

@@ -99,8 +99,6 @@ class TexUnsupportedOnKSException : Exception("TEX addresses are unsupported on 
 @Suppress("TooManyFunctions")
 class ProposalDataSourceImpl(
     private val synchronizerProvider: SynchronizerProvider,
-    private val lightWalletEndpointProvider: LightWalletEndpointProvider,
-    private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
     private val persistableWalletProvider: PersistableWalletProvider,
 ) : ProposalDataSource {
     override suspend fun createProposal(account: WalletAccount, send: ZecSend): RegularTransactionProposal =
@@ -318,22 +316,19 @@ class ProposalDataSourceImpl(
         )
 
     /**
-     * Resolves which endpoints a created transaction is broadcast to. In automatic server-selection
-     * mode this returns every bundled endpoint: broadcasting to all of them trades a small amount of
-     * privacy (the transaction is sent to each bundled server, not just one) for higher reliability
-     * and faster confirmation. Manual mode honors the user's explicit choice and submits only through
-     * the selected endpoint.
+     * Resolves which endpoint a created transaction is broadcast to. Returns only the current
+     * endpoint - the one the wallet is actively using for sync and queries. In automatic mode this
+     * is the OHTTP gateway when available (chosen by ServerFallbackPolicy), or a manually-selected
+     * fallback when OHTTP is down.
+     *
+     * In automatic mode, submit ONLY to the current endpoint (OHTTP gateway when
+     * available). Never broadcast to multiple servers - that would expose the tx to all operators
+     * and defeat OHTTP's IP hiding. The current endpoint already provides the right privacy/Tor
+     * routing, as determined by ServerFallbackPolicy.
      */
-    private suspend fun getSubmissionEndpoints(): List<LightWalletEndpoint> {
-        val knownEndpoints = lightWalletEndpointProvider.getEndpoints()
+    internal suspend fun getSubmissionEndpoints(): List<LightWalletEndpoint> {
         val currentEndpoint = persistableWalletProvider.requirePersistableWallet().endpoint
-        val isAutomatic =
-            resolveIsServerSelectionAutomatic(
-                isAutomaticPreference = isServerSelectionAutomaticProvider.get(),
-                currentEndpoint = currentEndpoint,
-                knownEndpoints = knownEndpoints
-            )
-        return if (isAutomatic) knownEndpoints else listOf(currentEndpoint)
+        return listOf(currentEndpoint)
     }
 
     @Suppress("TooGenericExceptionCaught")

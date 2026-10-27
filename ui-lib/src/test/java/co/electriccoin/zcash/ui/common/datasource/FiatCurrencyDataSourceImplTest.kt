@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.datasource
 
+import cash.z.ecc.android.sdk.model.FiatCurrency
 import co.electriccoin.zcash.ui.common.model.CMCFiatCurrencyDto
 import co.electriccoin.zcash.ui.common.model.GetCMCFiatMapResponse
 import co.electriccoin.zcash.ui.common.model.GetCMCQuoteResponse
@@ -36,25 +37,14 @@ class FiatCurrencyDataSourceImplTest {
         }
 
     @Test
-    fun blankKeyFailsWithoutCallingTheProvider() =
+    fun callsTheProviderWithoutAnyApiKey() =
         runTest {
             val provider = FakeCMCApiProvider(listOf("USD"))
 
-            assertFailsWith<ExchangeRateUnavailable> {
-                dataSource(provider, apiKey = "  ").getSupportedFiatCurrencies()
-            }
+            val currencies = dataSource(provider).getSupportedFiatCurrencies()
 
-            assertEquals(0, provider.calls)
-        }
-
-    @Test
-    fun passesTheApiKeyThrough() =
-        runTest {
-            val provider = FakeCMCApiProvider(listOf("USD"))
-
-            dataSource(provider, apiKey = "secret").getSupportedFiatCurrencies()
-
-            assertEquals(listOf("secret"), provider.apiKeys)
+            assertEquals(1, provider.calls)
+            assertEquals(listOf(FiatCurrency.USD), currencies)
         }
 
     @Test
@@ -77,8 +67,7 @@ class FiatCurrencyDataSourceImplTest {
             assertEquals(failure, thrown)
         }
 
-    private fun dataSource(provider: CMCApiProvider, apiKey: String = "key") =
-        FiatCurrencyDataSourceImpl(cmcApiProvider = provider, cmcApiKey = apiKey)
+    private fun dataSource(provider: CMCApiProvider) = FiatCurrencyDataSourceImpl(cmcApiProvider = provider)
 }
 
 private class FakeCMCApiProvider(
@@ -87,14 +76,12 @@ private class FakeCMCApiProvider(
 ) : CMCApiProvider {
     var calls = 0
         private set
-    val apiKeys = mutableListOf<String>()
 
-    override suspend fun getExchangeRateQuote(apiKey: String, fiat: String): GetCMCQuoteResponse =
+    override suspend fun getExchangeRateQuote(fiat: String): GetCMCQuoteResponse =
         error("Not used in these tests")
 
-    override suspend fun getFiatMap(apiKey: String): GetCMCFiatMapResponse {
+    override suspend fun getFiatMap(): GetCMCFiatMapResponse {
         calls++
-        apiKeys += apiKey
         failure?.let { throw it }
         return GetCMCFiatMapResponse(
             data = symbols.mapIndexed { index, symbol -> CMCFiatCurrencyDto(id = index, symbol = symbol) }

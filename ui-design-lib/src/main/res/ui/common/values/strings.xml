@@ -217,11 +217,35 @@
     <string name="choose_server_save_success_dialog_title">Server saved</string>
     <string name="choose_server_save_success_dialog_text">The selected server endpoint has been
         successfully saved.</string>
-    <string name="serverSetup_default">Default</string>
+    <string name="serverSetup_clearnetNotPrivate">Clearnet · not private</string>
+    <string name="serverSetup_customNotPrivate">Custom · not private</string>
+    <string name="serverSetup_ohttpTestRelayNotPrivate">OHTTP · test relay, not private</string>
+    <string name="choose_server_ohttp_gateway_mainnet">Zodl Private Server</string>
+    <string name="choose_server_ohttp_gateway_testnet">Zodl Private Server (OHTTP, Testnet)</string>
     <string name="serverSetup_performingTest">Performing server test…</string>
     <string name="serverSetup_couldTakeTime">This may take a moment…</string>
     <string name="serverSetup_connectionMode">Connection mode</string>
-    <string name="serverSetup_automatic">Automatic</string>
+    <string name="serverSetup_private">Private</string>
+    <string name="serverSetup_privateSubtitle">ZODL servers</string>
+    <string name="serverSetup_public">Public</string>
+    <string name="serverSetup_unavailable">Unavailable</string>
+    <string name="serverSetup_privateInfo">Learn more about the private connection</string>
+    <string name="ohttpInfo_title">Private Connection</string>
+    <string name="ohttpInfo_body">Zodl sends its requests through a private relay using Oblivious HTTP (OHTTP), instead of connecting to servers directly.</string>
+    <string name="ohttpInfo_item1Title">Your IP stays yours</string>
+    <string name="ohttpInfo_item1Body">Servers that answer Zodl\'s requests can\'t see where they came from.</string>
+    <string name="ohttpInfo_item2Title">Your requests stay sealed</string>
+    <string name="ohttpInfo_item2Body">The relay in between passes them along without reading them.</string>
+    <string name="ohttpInfo_item3Title">You\'re always asked first</string>
+    <string name="ohttpInfo_item3Body">If the private relay goes down, Zodl won\'t switch to public servers without your OK.</string>
+    <string name="ohttpInfo_gotIt">Got it</string>
+    <string name="ohttpOptIn_widgetTitle">Private connection available</string>
+    <string name="ohttpOptIn_widgetSubtitle">Hide your IP address</string>
+    <string name="ohttpOptIn_widgetView">View</string>
+    <string name="ohttpOptIn_title">Hide Your IP Address</string>
+    <string name="ohttpOptIn_body">Zodl can send its requests through a private relay using Oblivious HTTP (OHTTP) instead of connecting to servers directly.</string>
+    <string name="ohttpOptIn_notNow">Not now</string>
+    <string name="ohttpOptIn_turnOn">Turn on private connection</string>
     <string name="serverSetup_manual">Manual</string>
     <string name="serverSetup_fastestServers">Fastest servers</string>
     <string name="serverSetup_otherServers">Other servers</string>
@@ -230,6 +254,12 @@
     <string name="serverSetup_active">Active</string>
     <string name="serverSetup_testing">Testing</string>
     <string name="choose_server_multi_server_info">We may use multiple servers to optimize performance. To reduce metadata exposure, choose Manual connection mode to select your single server of choice, and ensure Tor is enabled in Advanced Settings.</string>
+    <string name="ohttpUnavailableSheet_title">Private connection unavailable</string>
+    <string name="ohttpUnavailableSheet_body">Zodl can\'t reach its private relay right now. You can keep waiting or switch to public servers, which can see your IP address unless you turn on Tor below or use a VPN. Zodl will switch you back automatically once the relay is available.</string>
+    <string name="ohttpUnavailableSheet_torTitle">Enable Tor Protection</string>
+    <string name="ohttpUnavailableSheet_torBody">Hide your IP address by routing traffic through the Tor network.</string>
+    <string name="ohttpUnavailableSheet_keepWaiting">Keep waiting</string>
+    <string name="ohttpUnavailableSheet_switchToPublic">Switch to public servers</string>
 
     <!-- ===== connect_keystone ===== -->
     <string name="keystone_addHWWallet_scan">Scan your device’s QR code to connect.</string>
@@ -477,6 +507,7 @@
     <string name="integrations_disabled_info">During the Restore process, it is not possible to use payment integrations.</string>
     <string name="settings_flexa">Pay with Flexa</string>
     <string name="settings_flexaDesc">Spend ZEC at thousands of retail locations.</string>
+    <string name="settings_flexaIpDesc">Flexa can see your IP address when it shows merchants and its pages. Zodl can\'t.</string>
     <string name="integrations_flexa_biometric_message">Authenticate yourself to pay with Flexa</string>
     <string name="integrations_disabled_info_flexa">Switch from Keystone to Zodl to use Flexa.</string>
     <string name="integrations_dialog_more_options">More Options</string>
@@ -1186,6 +1217,7 @@
     <string name="coinVote_pollsList_statusClosed" tools:ignore="MissingTranslation">Closed</string>
     <string name="coinVote_pollsList_approvedByZodl" tools:ignore="MissingTranslation">Approved by Zodl</string>
     <string name="coinVote_pollsList_unverifiedSheetTitle" tools:ignore="MissingTranslation">Unverified Poll</string>
+    <string name="coinVote_pollsList_customServerNotPrivate">Custom server · not private</string>
     <string name="coinVote_pollsList_dateCloses" tools:ignore="MissingTranslation">Closes %1$s</string>
     <string name="coinVote_pollsList_dateClosed" tools:ignore="MissingTranslation">Closed %1$s</string>
     <string name="coinVote_pollsList_enterPoll" tools:ignore="MissingTranslation">Enter Poll</string>
