@@ -93,6 +93,19 @@ fun estimatedSecondsBetweenHeights(
         }
     }
 
+/**
+ * The height a measured block rate holds at, for [estimatedSecondsBetweenHeights]'s `rateHeight`.
+ *
+ * The SDK reads the rate at its estimated chain tip, so that is the height to attribute it to. A plan anchor is not: it
+ * is drawn from a bucket up to 287 blocks below the tip, and a rate read just after NU7 would be priced as a pre-NU7
+ * one for a plan anchored just before it, three times too fast. [fallbackHeight] is used only when the tip is unknown
+ * (the SDK answers -1 before any block is scanned).
+ */
+fun rateReferenceHeight(
+    estimatedTip: Long,
+    fallbackHeight: Long?,
+): Long? = estimatedTip.takeIf { it > 0L } ?: fallbackHeight
+
 private fun forwardSecondsAcrossNu7(
     fromHeight: Long,
     toHeight: Long,

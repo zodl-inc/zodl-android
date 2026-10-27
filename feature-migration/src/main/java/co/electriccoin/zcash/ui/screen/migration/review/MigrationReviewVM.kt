@@ -29,6 +29,7 @@ import co.electriccoin.zcash.ui.common.model.migration.migrationFailureMessage
 import co.electriccoin.zcash.ui.common.model.migration.preparationStepStatus
 import co.electriccoin.zcash.ui.common.model.migration.preparationStepTimeLabel
 import co.electriccoin.zcash.ui.common.model.migration.preparationStepTitle
+import co.electriccoin.zcash.ui.common.model.migration.rateReferenceHeight
 import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.requireSpendable
 import co.electriccoin.zcash.ui.common.model.stateIn
@@ -113,9 +114,9 @@ class MigrationReviewVM(
     @Volatile
     private var nu7ActivationHeight: Long? = null
 
-    // The height the measured rate belongs to: the plan's newest anchor, which sits a few blocks below the tip the
-    // rate was read at. Without it the rate would be attributed to each range's start, and a plan anchored just
-    // before NU7 would price its post-NU7 blocks as if the rate were a pre-NU7 one.
+    // The height the measured rate belongs to: the estimated chain tip it was read at, not a plan anchor, which sits
+    // up to 287 blocks below it. Without it the rate would be attributed to each range's start, and a plan anchored
+    // just before NU7 would price its post-NU7 blocks as if the rate were a pre-NU7 one.
     @Volatile
     private var rateReferenceHeight: Long? = null
 
@@ -196,7 +197,11 @@ class MigrationReviewVM(
                         val t0 = SystemClock.elapsedRealtime()
                         secondsPerBlock = sdk.estimatedSecondsPerBlock()
                         nu7ActivationHeight = sdk.nu7ActivationHeight
-                        rateReferenceHeight = schedule.transfers.maxOfOrNull { it.anchorHeight }
+                        rateReferenceHeight =
+                            rateReferenceHeight(
+                                estimatedTip = sdk.estimatedChainTip(),
+                                fallbackHeight = schedule.transfers.maxOfOrNull { it.anchorHeight },
+                            )
                         migrationLog(
                             "MIGRATION_DIAG ReviewVM: estimatedSecondsPerBlock done in " +
                                 "${SystemClock.elapsedRealtime() - t0}ms"
@@ -543,7 +548,7 @@ class MigrationReviewVM(
                 sched.transfers.forEachIndexed { i, t ->
                     val fromNow =
                         secondsBetween(referenceTip, t.nextExecutableAfterHeight)
-                    val gap = secondsBetween(prev, t.nextExecutableAfterHeight, rateHeight = referenceTip)
+                    val gap = secondsBetween(prev, t.nextExecutableAfterHeight)
                     prev = t.nextExecutableAfterHeight
                     appendLine(
                         "MIGRATION_DIAG Plan: transfer[${i + 1}] " +

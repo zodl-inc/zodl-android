@@ -170,6 +170,21 @@ class FinalizeMigrationScheduleUseCaseTest {
     }
 
     @Test
+    fun `NU7 - a rate read past activation is not priced as a pre-NU7 rate for an anchor before it`() {
+        // schedule(): anchor 100, first step at 200. Activation at 150, rate 25 s measured at the tip 160 (post-NU7).
+        // Blocks 101..149 are pre-NU7 at 75 s, blocks 150..200 post-NU7 at 25 s.
+        val d =
+            useCase().delayUntilFirstStep(
+                schedule(),
+                secondsPerBlock = 25L,
+                tipHeight = 100L,
+                nu7ActivationHeight = 150L,
+                rateHeight = 160L,
+            )
+        assertEquals((49 * 75 + 51 * 25).seconds, d)
+    }
+
+    @Test
     fun `NU7 - delay after activation uses the post-NU7 rate`() {
         val d =
             useCase().delayUntilFirstStep(

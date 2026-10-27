@@ -217,6 +217,42 @@ class MigrationDurationFormatTest {
     }
 
     @Test
+    fun `NU7 - a plan anchored before activation is priced at the rate of the tip past it`() {
+        // The anchor is up to 287 blocks below the tip. The SDK's rate (25 s) was read at the tip, past activation,
+        // so it must not be attributed to the anchor: that would price the blocks after activation at 25 / 3 s each.
+        val anchor = nu7 - 100
+        val tip = nu7 + 50
+        val rateHeight = rateReferenceHeight(estimatedTip = tip, fallbackHeight = anchor)
+        assertEquals(tip, rateHeight)
+        val priced =
+            estimatedSecondsBetweenHeights(
+                fromHeight = anchor,
+                toHeight = nu7 + 200,
+                secondsPerBlock = 25L,
+                nu7ActivationHeight = nu7,
+                rateHeight = rateHeight!!
+            )
+        assertEquals(99 * 75L + 201 * 25L, priced)
+        val misattributed =
+            estimatedSecondsBetweenHeights(
+                fromHeight = anchor,
+                toHeight = nu7 + 200,
+                secondsPerBlock = 25L,
+                nu7ActivationHeight = nu7,
+                rateHeight = anchor
+            )
+        // The 25 s rate taken as a pre-NU7 one: 99 blocks at 25 s, then 201 at 25 / 3 s, less than half of 9,033 s.
+        assertEquals(99 * 25L + 201 * 8L, misattributed)
+    }
+
+    @Test
+    fun `NU7 - the rate reference falls back to the plan only when the tip is unknown`() {
+        assertEquals(500L, rateReferenceHeight(estimatedTip = -1L, fallbackHeight = 500L))
+        assertEquals(null, rateReferenceHeight(estimatedTip = -1L, fallbackHeight = null))
+        assertEquals(900L, rateReferenceHeight(estimatedTip = 900L, fallbackHeight = 500L))
+    }
+
+    @Test
     fun `NU7 - a range ending exactly below activation is all pre-NU7`() {
         val s = estimatedSecondsBetweenHeights(nu7 - 10, nu7 - 1, secondsPerBlock = 75L, nu7ActivationHeight = nu7)
         assertEquals(9 * 75L, s)

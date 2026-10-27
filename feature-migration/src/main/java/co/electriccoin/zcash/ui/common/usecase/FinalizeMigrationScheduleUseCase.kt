@@ -4,6 +4,7 @@ import cash.z.ecc.android.sdk.MigrationSchedule
 import co.electriccoin.zcash.migration.migrationLog
 import co.electriccoin.zcash.ui.common.model.migration.MigrationMode
 import co.electriccoin.zcash.ui.common.model.migration.estimatedSecondsBetweenHeights
+import co.electriccoin.zcash.ui.common.model.migration.rateReferenceHeight
 import co.electriccoin.zcash.ui.common.model.toStorageKeyId
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.work.MigrationLiveDriver
@@ -70,7 +71,13 @@ class FinalizeMigrationScheduleUseCase(
                 ?: (sched.preparations.minOfOrNull { it.broadcastHeight } ?: 0L)
         migrationScheduler.schedule(
             accountKeyId,
-            delayUntilFirstStep(sched, secondsPerBlock, tipHeight, sdk.nu7ActivationHeight)
+            delayUntilFirstStep(
+                sched = sched,
+                secondsPerBlock = secondsPerBlock,
+                tipHeight = tipHeight,
+                nu7ActivationHeight = sdk.nu7ActivationHeight,
+                rateHeight = rateReferenceHeight(sdk.estimatedChainTip(), tipHeight) ?: tipHeight,
+            )
         )
         // The engine's anchor-retention floor is session-scoped and was computed BEFORE this plan
         // existed — restart the sync session now, before the chain crosses the plan's first
@@ -150,6 +157,9 @@ class FinalizeMigrationScheduleUseCase(
         secondsPerBlock: Long,
         tipHeight: Long,
         nu7ActivationHeight: Long?,
+        // The height [secondsPerBlock] was measured at: the estimated chain tip, which is above [tipHeight] (the
+        // commit anchor) by up to a bucket. See rateReferenceHeight.
+        rateHeight: Long = tipHeight,
     ): Duration {
         val earliest =
             (
@@ -157,7 +167,8 @@ class FinalizeMigrationScheduleUseCase(
                     sched.transfers.map { it.nextExecutableAfterHeight }
             ).minOrNull()
                 ?: return 0.seconds
-        val remaining = estimatedSecondsBetweenHeights(tipHeight, earliest, secondsPerBlock, nu7ActivationHeight)
+        val remaining =
+            estimatedSecondsBetweenHeights(tipHeight, earliest, secondsPerBlock, nu7ActivationHeight, rateHeight)
         return if (remaining <= 0) 0.seconds else remaining.seconds
     }
 }
