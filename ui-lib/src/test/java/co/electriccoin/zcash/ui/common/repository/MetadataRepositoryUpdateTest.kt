@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import java.io.IOException
@@ -32,6 +33,7 @@ class MetadataRepositoryUpdateTest {
             accountDataSource =
                 mockk<AccountDataSource> {
                     every { selectedAccount } returns flowOf(null)
+                    every { allAccounts } returns MutableStateFlow(null)
                     coEvery { getSelectedAccount() } returns mockk<WalletAccount>(relaxed = true)
                 },
             metadataDataSource = metadataDataSource,

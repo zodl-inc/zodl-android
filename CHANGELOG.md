@@ -23,6 +23,39 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   can be tried on mainnet before the activation. The switch is remembered across restarts and cleared by a wallet reset.
 - The Keystone signing and scanning screens explain that a scheduled migration cannot start before NU7 instead of a
   generic error. Spanish copy was added for the new migration messages.
+## [3.18.0 (3206)] - 2026-10-23
+
+### Added:
+
+- You can now add a view-only account by importing a Unified Full Viewing Key: tap Add Account in
+  the Wallets & Hardware screen, choose Import full viewing key, paste the key or scan its QR code,
+  tell Zodl when the account was created, then name it and pick its colour. A view-only account
+  shows its balance, addresses and activity, receives funds, swaps into ZEC, exports its viewing
+  key and tax file, and is marked View Only under its name at the top of Home. It holds no spending
+  key, so Home offers only Receive and Swap for it, and sending, paying, shielding, swapping from
+  ZEC, voting and migration are refused. A key that is malformed, for another network, or missing
+  its Orchard or transparent part is rejected, a key that is already in the wallet is not added
+  twice, and a name another account already shows is refused.
+- A view-only account can now be edited and removed from the "..." of its row in the Wallets &
+  Hardware screen. Edit Account renames it, up to 12 characters, and changes its colour; Save
+  changes is enabled once the name or the colour is new and the name is not one another account
+  already shows. The new name shows everywhere the account appears, and the account's icon shows
+  in its colour. The name is kept on this device only. Remove Account asks for confirmation and
+  then for your device authentication, and removes the account from Zodl on this device while
+  keeping your address book contacts and the account's other metadata; if it was the selected
+  account, the Zodl account is selected again. The Zodl account's name and colour cannot be edited.
+
+### Changed:
+
+- The account picker opened from the account switch at the top of Home is now the full-screen
+  Wallets & Hardware screen instead of a sheet. It groups the wallets into Zodl, Keystone, Ledger and
+  view-only sections, shows each wallet's balance, which hides with Hide Balances, and marks the
+  selected wallet. Tapping a wallet selects it; the "..." of a Keystone or Ledger wallet opens
+  Wallet Options, from which Disconnect hardware wallet disconnects that wallet even while another
+  one is selected; disconnecting a hardware wallet moved there from Advanced Settings, which no
+  longer offers it. While no Keystone is connected the screen shows the Keystone shop offer again.
+- The Wallets & Hardware screen's Connect Hardware Wallet button is now Add Account, which offers
+  connecting a hardware wallet, while one can still be added, and importing a viewing key.
 
 ## [3.17.2 (3157)] - 2026-10-20
 

@@ -9,10 +9,11 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.VKType
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.usecase.GetVKUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveAccountIconUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.StyledStringStyle
-import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.styledStringResource
 import co.electriccoin.zcash.ui.design.util.withStyle
@@ -29,6 +30,7 @@ internal class ExportVKVM(
     getVK: GetVKUseCase,
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
     private val navigationRouter: NavigationRouter,
+    private val observeAccountIcon: ObserveAccountIconUseCase,
 ) : ViewModel() {
     private val selected = MutableStateFlow<VKType?>(null)
 
@@ -36,9 +38,10 @@ internal class ExportVKVM(
         combine(
             selected,
             getVK.observeAvailability(),
-            observeSelectedWalletAccount.require()
-        ) { selected, availability, account ->
-            createState(selected, availability, account)
+            observeSelectedWalletAccount.require(),
+            observeAccountIcon.observeAll()
+        ) { selected, availability, account, colors ->
+            createState(selected, availability, account, observeAccountIcon.iconOf(colors, account))
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
@@ -49,8 +52,9 @@ internal class ExportVKVM(
         selected: VKType?,
         availability: Map<VKType, Boolean>,
         account: WalletAccount,
+        logo: ImageResource,
     ) = ExportVKState(
-        logo = imageRes(account.icon),
+        logo = logo,
         description =
             styledStringResource(
                 R.string.exportViewingKey_description,

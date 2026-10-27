@@ -4,10 +4,14 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
 import co.electriccoin.zcash.ui.common.provider.KeepScreenOnSyncSessionProvider
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyContent
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyNavigator
 import co.electriccoin.zcash.ui.design.component.ZashiDisclaimerState
+import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectkeystone.connected.KeystoneConnectedArgs
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +26,8 @@ import kotlin.test.assertEquals
 
 /**
  * Both hardware vendors share the keep-open screen, but only Keystone's warning names Keystone;
- * Ledger gets the vendor-neutral wording, and each vendor continues to its own success screen.
+ * Ledger gets the vendor-neutral wording, and each vendor continues to its own success screen. A
+ * view-only import shows the view-only feature's copy and continues to its success screen.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class KeepOpenVMTest {
@@ -73,6 +78,23 @@ class KeepOpenVMTest {
     }
 
     @Test
+    fun aViewOnlyImportShowsTheViewOnlyCopyAndContinuesToItsSuccessScreen() {
+        val viewOnlyNavigator = mockk<ViewOnlyNavigator>(relaxed = true)
+        val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+        val state = vm(KeepOpenFlow.VIEW_ONLY, navigationRouter, viewOnlyNavigator = viewOnlyNavigator).state.value
+
+        assertEquals(VIEW_ONLY_DESCRIPTION, state.description)
+        assertEquals(VIEW_ONLY_SUBTITLE, state.subtitle)
+        assertEquals(ZashiDisclaimerState.warning(VIEW_ONLY_DISCLAIMER), state.disclaimer)
+        assertEquals(VIEW_ONLY_CHECKBOX, state.checkboxLabel)
+
+        state.button.onClick()
+
+        verify(exactly = 1) { viewOnlyNavigator.forwardToImported() }
+        verify(exactly = 0) { navigationRouter.backToRoot() }
+    }
+
+    @Test
     fun theRestoreAndResyncFlowsStillUnwindToTheRoot() {
         listOf(KeepOpenFlow.RESTORE, KeepOpenFlow.RESYNC).forEach { flow ->
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
@@ -113,6 +135,7 @@ class KeepOpenVMTest {
         navigationRouter: NavigationRouter = mockk(relaxed = true),
         session: KeepScreenOnSyncSessionProvider = mockk(relaxed = true),
         ledgerNavigator: LedgerNavigator = mockk(relaxed = true),
+        viewOnlyNavigator: ViewOnlyNavigator = mockk(relaxed = true),
     ) = KeepOpenVM(
         application = mockk(relaxed = true),
         flow = flow,
@@ -120,5 +143,25 @@ class KeepOpenVMTest {
         keepScreenOnSyncSessionProvider = session,
         navigationRouter = navigationRouter,
         ledgerNavigator = ledgerNavigator,
+        viewOnlyNavigator = viewOnlyNavigator,
+        viewOnlyContent =
+            mockk<ViewOnlyContent> {
+                every { keepOpenDescription } returns VIEW_ONLY_DESCRIPTION
+                every { keepOpenSubtitle } returns VIEW_ONLY_SUBTITLE
+                every { keepOpenDisclaimer } returns VIEW_ONLY_DISCLAIMER
+                every { keepOpenCheckboxLabel } returns VIEW_ONLY_CHECKBOX
+            },
     )
 }
+
+/**
+ * Resource-backed texts: mockk cannot return the inline `StringResource.ByString` from a mocked
+ * interface property.
+ */
+private val VIEW_ONLY_DESCRIPTION = StringResource.ByResource(resource = 1, args = emptyList())
+
+private val VIEW_ONLY_SUBTITLE = StringResource.ByResource(resource = 2, args = emptyList())
+
+private val VIEW_ONLY_DISCLAIMER = StringResource.ByResource(resource = 3, args = emptyList())
+
+private val VIEW_ONLY_CHECKBOX = StringResource.ByResource(resource = 4, args = emptyList())

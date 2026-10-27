@@ -9,16 +9,16 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.LedgerAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.provider.GetZcashCurrencyProvider
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
+import co.electriccoin.zcash.ui.common.usecase.ObserveAccountIconUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.ShareQRUseCase
 import co.electriccoin.zcash.ui.common.usecase.Zip321BuildUriUseCase
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
+import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.qrcode.ext.fromReceiveAddressType
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressType
@@ -52,6 +52,7 @@ class RequestVM(
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
     private val navigationRouter: NavigationRouter,
     private val shareQR: ShareQRUseCase,
+    private val observeAccountIcon: ObserveAccountIconUseCase,
 ) : ViewModel() {
     companion object {
         private const val MAX_ZCASH_SUPPLY = 21_000_000
@@ -91,8 +92,9 @@ class RequestVM(
             request,
             stage,
             exchangeRateRepository.state,
-            observeSelectedWalletAccount.require()
-        ) { request, currentStage, exchangeRateUsd, account ->
+            observeSelectedWalletAccount.require(),
+            observeAccountIcon.observeAll()
+        ) { request, currentStage, exchangeRateUsd, account, colors ->
             val walletAddress =
                 account.fromReceiveAddressType(ReceiveAddressType.fromOrdinal(addressTypeOrdinal))
                     ?: return@combine RequestState.Loading
@@ -112,10 +114,10 @@ class RequestVM(
                 RequestStage.MEMO -> {
                     RequestState.Memo(
                         icon =
-                            when (account) {
-                                is KeystoneAccount -> co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone
-                                is LedgerAccount -> co.electriccoin.zcash.ui.design.R.drawable.ic_item_ledger
-                                is ZashiAccount -> R.drawable.ic_zec_round_full
+                            if (account is ZodlAccount) {
+                                imageRes(R.drawable.ic_zec_round_full)
+                            } else {
+                                observeAccountIcon.iconOf(colors, account)
                             },
                         walletAddress = walletAddress,
                         request = request,

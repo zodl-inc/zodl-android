@@ -14,6 +14,7 @@ import co.electriccoin.zcash.di.viewModelModule
 import co.electriccoin.zcash.ledger.di.featureLedgerModule
 import co.electriccoin.zcash.migration.di.featureMigrationModule
 import co.electriccoin.zcash.test.ZcashUiTestRunner
+import co.electriccoin.zcash.viewingkey.di.featureViewingKeyModule
 import co.electriccoin.zcash.voting.di.featureVotingModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -45,7 +46,8 @@ class ZcashUiTestApplication : Application() {
                 viewModelModule,
                 featureMigrationModule,
                 featureVotingModule,
-                featureLedgerModule
+                featureLedgerModule,
+                featureViewingKeyModule
             )
         }
     }

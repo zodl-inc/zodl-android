@@ -88,6 +88,11 @@ import co.electriccoin.zcash.ui.screen.migration.success.MigrationSuccessVM
 import co.electriccoin.zcash.ui.screen.migration.torfailure.MigrationTorFailureVM
 import co.electriccoin.zcash.work.MigrationScheduler
 import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import org.koin.core.KoinApplication
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
@@ -105,12 +110,19 @@ import kotlin.test.Test
  *   MigrationSuccessVM, MigrationScheduledVM, MigrationCompleteVM, MigrationBatteryVM,
  *   MigrationNotificationVM, MigrationPrivacyVM, MigrationLockExplainerVM,
  *   MigrationCustomServerTorVM, MigrationTorFailureVM, MigrationTransferInvalidVM
+ *
+ * The main dispatcher is a standard test dispatcher, as in LedgerKoinGraphSmokeTest, so work the
+ * view models launch at construction never runs: without it viewModelScope falls back to the
+ * default dispatcher, and MigrationCompleteVM's notification cleanup would run against the real
+ * MigrationNotifier and fail a later test with an uncaught exception.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class MigrationKoinGraphSmokeTest {
     private lateinit var koin: KoinApplication
 
     @BeforeTest
     fun setUp() {
+        Dispatchers.setMain(StandardTestDispatcher())
         // The stubs module provides mockk instances for every type the migration VMs inject.
         // Concrete arg data-classes (MigrationReviewArgs, etc.) are provided as real instances
         // since data classes cannot be created lazily by Koin without additional factory setup.
@@ -186,6 +198,7 @@ class MigrationKoinGraphSmokeTest {
     @AfterTest
     fun tearDown() {
         koin.close()
+        Dispatchers.resetMain()
     }
 
     // ── individual VM resolution tests ────────────────────────────────────────

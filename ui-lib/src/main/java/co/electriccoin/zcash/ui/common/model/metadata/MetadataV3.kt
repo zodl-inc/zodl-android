@@ -2,9 +2,11 @@
 
 package co.electriccoin.zcash.ui.common.model.metadata
 
+import androidx.compose.ui.graphics.Color
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.common.model.SwapStatus
 import co.electriccoin.zcash.ui.common.serialization.BigDecimalSerializer
+import co.electriccoin.zcash.ui.common.serialization.ColorSerializer
 import co.electriccoin.zcash.ui.common.serialization.InstantSerializer
 import co.electriccoin.zcash.ui.common.serialization.METADATA_SERIALIZATION_V3
 import co.electriccoin.zcash.ui.common.serialization.SwapStatusSerializer
@@ -43,6 +45,23 @@ data class AccountMetadataV3(
     @EncodeDefault(EncodeDefault.Mode.ALWAYS)
     @SerialName("swaps")
     val swaps: SwapsMetadataV3 = SwapsMetadataV3(swapIds = emptyList(), lastUsedAssetHistory = emptySet()),
+    @SerialName("appearance")
+    val appearance: AccountAppearanceMetadataV3? = null,
+)
+
+/**
+ * How the account looks: [color] is its icon colour, stored as `#RRGGBB` in sRGB. A legacy
+ * `#RRGGBBAA` value is still read, with its alpha ignored.
+ */
+@JsonIgnoreUnknownKeys
+@Serializable
+data class AccountAppearanceMetadataV3(
+    @SerialName("color")
+    @Serializable(ColorSerializer::class)
+    val color: Color,
+    @SerialName("lastUpdated")
+    @Serializable(InstantSerializer::class)
+    val lastUpdated: Instant,
 )
 
 @JsonIgnoreUnknownKeys

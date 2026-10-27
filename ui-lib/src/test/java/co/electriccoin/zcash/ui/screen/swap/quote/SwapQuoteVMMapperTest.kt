@@ -10,7 +10,7 @@ import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.StyledStringResource
 import org.junit.runner.RunWith
@@ -87,7 +87,7 @@ class SwapQuoteVMMapperTest {
     }
 
     private fun zashi(isSelected: Boolean = true) =
-        ZashiAccount(
+        ZodlAccount(
             sdkAccount = sdkAccount,
             unifiedAddress = "u",
             transparentAddress = "t",

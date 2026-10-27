@@ -40,7 +40,6 @@ data class Dimens(
     val circularSmallProgressWidth: Dp,
     val linearProgressHeight: Dp,
     // TopAppBar:
-    val topAppBarZcashLogoHeight: Dp,
     // TextField:
     val textFieldDefaultHeight: Dp,
     val textFieldSeedPanelDefaultHeight: Dp,
@@ -88,7 +87,6 @@ private val defaultDimens =
         circularMidProgressWidth = 22.dp,
         circularSmallProgressWidth = 14.dp,
         linearProgressHeight = 14.dp,
-        topAppBarZcashLogoHeight = 24.dp,
         textFieldDefaultHeight = 40.dp,
         textFieldSeedPanelDefaultHeight = 215.dp,
         textFieldMemoPanelDefaultHeight = 140.dp,

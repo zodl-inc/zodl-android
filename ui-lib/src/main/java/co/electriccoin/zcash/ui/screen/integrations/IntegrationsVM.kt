@@ -7,9 +7,10 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.usecase.GetFlexaStatusUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletRestoringStateUseCase
@@ -17,6 +18,7 @@ import co.electriccoin.zcash.ui.common.usecase.Status
 import co.electriccoin.zcash.ui.common.usecase.Status.DISABLED
 import co.electriccoin.zcash.ui.common.usecase.Status.ENABLED
 import co.electriccoin.zcash.ui.common.usecase.Status.UNAVAILABLE
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyContent
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -34,6 +36,7 @@ class IntegrationsVM(
     getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     getFlexaStatus: GetFlexaStatusUseCase,
     private val navigationRouter: NavigationRouter,
+    private val viewOnlyContent: ViewOnlyContent,
 ) : ViewModel() {
     private val isRestoring = getWalletRestoringState.observe().map { it == WalletRestoringState.RESTORING }
 
@@ -73,6 +76,10 @@ class IntegrationsVM(
                     stringRes(R.string.integrations_disabled_info_flexa_ledger)
                 }
 
+                selectedAccount is ViewOnlyAccount -> {
+                    viewOnlyContent.integrationsDisabledInfo
+                }
+
                 else -> {
                     null
                 }
@@ -83,7 +90,7 @@ class IntegrationsVM(
                 ListItemState(
                     // Set the wallet currency by app build is more future-proof, although we hide it from
                     // the UI in the Testnet build
-                    isEnabled = isRestoring.not() && selectedAccount is ZashiAccount,
+                    isEnabled = isRestoring.not() && selectedAccount is ZodlAccount,
                     bigIcon =
                         imageRes(
                             when (flexaStatus) {

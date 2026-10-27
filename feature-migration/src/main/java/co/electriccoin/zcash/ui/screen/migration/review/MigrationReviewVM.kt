@@ -12,10 +12,10 @@ import co.electriccoin.zcash.migration.migrationLog
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.ZashiSpendingKeyDataSource
+import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
-import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.groupLce
 import co.electriccoin.zcash.ui.common.model.guardLoading
 import co.electriccoin.zcash.ui.common.model.migration.MigrationKeystoneRound
@@ -30,6 +30,7 @@ import co.electriccoin.zcash.ui.common.model.migration.preparationStepStatus
 import co.electriccoin.zcash.ui.common.model.migration.preparationStepTimeLabel
 import co.electriccoin.zcash.ui.common.model.migration.preparationStepTitle
 import co.electriccoin.zcash.ui.common.model.mutableLce
+import co.electriccoin.zcash.ui.common.model.requireSpendable
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.toStorageKeyId
 import co.electriccoin.zcash.ui.common.model.withLce
@@ -378,8 +379,9 @@ class MigrationReviewVM(
 
     private suspend fun confirmAutomatic(sched: MigrationSchedule) {
         if (getSelectedWalletAccount() is LedgerAccount) {
-            throw LedgerOperationUnsupportedException()
+            throw AccountOperationUnsupportedException.ledger()
         }
+        getSelectedWalletAccount().requireSpendable()
         if (getSelectedWalletAccount() is KeystoneAccount) {
             // Keystone can't sign in-process — hand the unsigned schedule off to the QR
             // sign/scan detour; FinalizeMigrationScheduleUseCase runs after a successful scan
@@ -471,8 +473,9 @@ class MigrationReviewVM(
     private fun onConfirmImmediate(proposal: Proposal, amountZatoshi: Zatoshi) =
         confirmLce.execute {
             if (getSelectedWalletAccount() is LedgerAccount) {
-                throw LedgerOperationUnsupportedException()
+                throw AccountOperationUnsupportedException.ledger()
             }
+            getSelectedWalletAccount().requireSpendable()
             if (getSelectedWalletAccount() is KeystoneAccount) {
                 // Keystone can't sign in-process — adopt the already-built send-max proposal into the
                 // app's existing generic external-signer pipeline exactly as an ordinary Keystone

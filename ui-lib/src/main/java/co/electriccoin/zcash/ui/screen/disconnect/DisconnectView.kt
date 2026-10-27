@@ -138,12 +138,16 @@ private fun Content(
     }
 }
 
+/**
+ * Figma's 44 dp hardware wallet avatar with its 14 dp connected badge, whose outline overhangs the
+ * avatar's bottom-right edge by 2 dp.
+ */
 @Composable
 private fun ConnectedIcon(
     @DrawableRes icon: Int
 ) {
     Box(
-        modifier = Modifier.size(40.dp)
+        modifier = Modifier.size(44.dp)
     ) {
         Image(
             painter = painterResource(id = icon),
@@ -154,10 +158,10 @@ private fun ConnectedIcon(
         Box(
             modifier =
                 Modifier
-                    .offset(3.dp, 3.dp)
-                    .border(3.dp, ZashiColors.Surfaces.bgPrimary, CircleShape)
+                    .offset(2.dp, 2.dp)
+                    .border(2.dp, ZashiColors.Surfaces.bgPrimary, CircleShape)
                     .background(ZashiColors.Avatars.avatarStatus, CircleShape)
-                    .size(16.dp)
+                    .size(14.dp)
                     .align(Alignment.BottomEnd)
         )
     }
@@ -217,7 +221,7 @@ private fun ConnectedCard(state: DisconnectState) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_advanced_settings_info),
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(20.dp),
                     colorFilter = ColorFilter.tint(ZashiColors.Text.textTertiary)
                 )
                 Spacer(12.dp)

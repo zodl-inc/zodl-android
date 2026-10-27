@@ -73,7 +73,7 @@ class MigrationHomeMessageSourceImpl(
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun observe(): Flow<MigrationHomeMessage?> =
         accountDataSource.selectedAccount.flatMapLatest { account ->
-            if (account == null) return@flatMapLatest flowOf(null)
+            if (account == null || !account.isSpendable) return@flatMapLatest flowOf(null)
             val accountKeyId = account.sdkAccount.accountUuid.toStorageKeyId()
             combine(
                 hasSeenMigrationCompleteStorageProvider.observe(),

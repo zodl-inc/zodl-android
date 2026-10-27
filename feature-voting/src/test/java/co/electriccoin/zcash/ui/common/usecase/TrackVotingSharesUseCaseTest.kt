@@ -11,7 +11,7 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.android.sdk.model.voting.VotingShareTrackingQuiescence
 import cash.z.ecc.android.sdk.model.voting.VotingShareTrackingReport
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
@@ -175,8 +175,8 @@ class TrackVotingSharesUseCaseTest {
             coVerify(exactly = 1) { votingCryptoClient.closeVotingDb(1L) }
         }
 
-    private fun zashiAccount(): ZashiAccount =
-        ZashiAccount(
+    private fun zashiAccount(): ZodlAccount =
+        ZodlAccount(
             sdkAccount = AccountFixture.new(),
             unifiedAddress = WalletAddressFixture.UNIFIED_ADDRESS_STRING,
             transparentAddress = WalletAddressFixture.TRANSPARENT_ADDRESS_STRING,

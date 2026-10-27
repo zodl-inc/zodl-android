@@ -5,7 +5,7 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.AddressBookDataSource
 import co.electriccoin.zcash.ui.common.model.AddressBookContact
 import co.electriccoin.zcash.ui.common.model.SwapBlockchain
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.provider.AddressBookKeyStorageProvider
 import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -208,7 +208,7 @@ class AddressBookRepositoryImpl(
         }
     }
 
-    private suspend fun getAddressBookKey(zashiAccount: ZashiAccount): AddressBookKey {
+    private suspend fun getAddressBookKey(zashiAccount: ZodlAccount): AddressBookKey {
         val key = addressBookKeyStorageProvider.getAddressBookKey()
 
         return if (key != null) {

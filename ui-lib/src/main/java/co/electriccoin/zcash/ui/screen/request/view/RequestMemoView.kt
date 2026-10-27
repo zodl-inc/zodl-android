@@ -2,7 +2,6 @@ package co.electriccoin.zcash.ui.screen.request.view
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,6 +44,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.Compose
 import co.electriccoin.zcash.ui.screen.request.model.MemoState
 import co.electriccoin.zcash.ui.screen.request.model.RequestState
 
@@ -64,11 +64,7 @@ internal fun RequestMemoView(
     ) {
         Spacer(Modifier.height(ZcashTheme.dimens.spacingDefault))
 
-        Image(
-            modifier = Modifier.size(64.dp),
-            painter = painterResource(id = state.icon),
-            contentDescription = null
-        )
+        state.icon.Compose(modifier = Modifier.size(64.dp))
 
         Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingLarge))
 

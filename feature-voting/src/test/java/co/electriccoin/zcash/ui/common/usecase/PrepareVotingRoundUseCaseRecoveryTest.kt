@@ -8,7 +8,7 @@ import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.RoundPhase
 import co.electriccoin.zcash.ui.common.model.voting.RoundStateInfo
@@ -286,8 +286,8 @@ class PrepareVotingRoundUseCaseRecoveryTest {
         const val NON_EMPTY_NOTES_JSON = "[{\"note\":1}]"
         const val EMPTY_NOTES_JSON = "[]"
 
-        fun zashiAccount(): ZashiAccount =
-            ZashiAccount(
+        fun zashiAccount(): ZodlAccount =
+            ZodlAccount(
                 sdkAccount = AccountFixture.new(),
                 unifiedAddress = WalletAddressFixture.UNIFIED_ADDRESS_STRING,
                 transparentAddress = WalletAddressFixture.TRANSPARENT_ADDRESS_STRING,

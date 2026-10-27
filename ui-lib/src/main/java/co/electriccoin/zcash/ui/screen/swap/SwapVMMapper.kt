@@ -117,7 +117,7 @@ internal class SwapVMMapper {
                     icon = R.drawable.ic_swap_change_mode,
                     onClick = callbacks.onChangeButtonClick,
                     isEnabled = !state.isRequestingQuote
-                ),
+                ).takeIf { state.account?.isSpendable == true },
             onAddressClick =
                 when (state.swapDirection) {
                     SWAP_FROM_ZEC -> null

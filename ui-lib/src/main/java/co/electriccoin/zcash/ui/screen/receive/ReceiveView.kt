@@ -50,7 +50,9 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.Compose
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.scaffoldScrollPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.styledStringResource
@@ -197,11 +199,7 @@ private fun AddressPanel(
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
             Box {
-                Image(
-                    modifier = Modifier.size(40.dp),
-                    painter = painterResource(id = state.icon),
-                    contentDescription = null
-                )
+                state.icon.Compose(modifier = Modifier.size(40.dp))
                 if (state.isShielded) {
                     Image(
                         modifier =
@@ -346,7 +344,7 @@ private fun ZashiPreview() =
                     items =
                         listOf(
                             ReceiveAddressState(
-                                icon = R.drawable.ic_zec_round_full,
+                                icon = imageRes(R.drawable.ic_zec_round_full),
                                 title = stringRes("Zodl"),
                                 subtitle = styledStringResource("subtitle"),
                                 isShielded = true,
@@ -363,7 +361,7 @@ private fun ZashiPreview() =
                                     )
                             ),
                             ReceiveAddressState(
-                                icon = R.drawable.ic_zec_round_full,
+                                icon = imageRes(R.drawable.ic_zec_round_full),
                                 title = stringRes("Zodl"),
                                 subtitle = styledStringResource("subtitle"),
                                 isShielded = false,
@@ -397,7 +395,7 @@ private fun KeystonePreview() =
                     items =
                         listOf(
                             ReceiveAddressState(
-                                icon = co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone,
+                                icon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone),
                                 title = stringRes("Zodl"),
                                 subtitle = styledStringResource("subtitle"),
                                 isShielded = true,
@@ -414,7 +412,7 @@ private fun KeystonePreview() =
                                     )
                             ),
                             ReceiveAddressState(
-                                icon = co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone,
+                                icon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone),
                                 title = stringRes("Zodl"),
                                 subtitle = styledStringResource("subtitle"),
                                 isShielded = false,

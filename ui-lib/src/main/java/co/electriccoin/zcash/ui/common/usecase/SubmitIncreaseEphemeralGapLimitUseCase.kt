@@ -3,11 +3,12 @@ package co.electriccoin.zcash.ui.common.usecase
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
-import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.SubmitResult
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.BiometricRequest
 import co.electriccoin.zcash.ui.common.repository.BiometricsCancelledException
@@ -48,10 +49,14 @@ class SubmitIncreaseEphemeralGapLimitUseCase(
                 }
 
                 is LedgerAccount -> {
-                    throw LedgerOperationUnsupportedException()
+                    throw AccountOperationUnsupportedException.ledger()
                 }
 
-                is ZashiAccount -> {
+                is ViewOnlyAccount -> {
+                    throw AccountOperationUnsupportedException.viewOnly()
+                }
+
+                is ZodlAccount -> {
                     submitZashiProposal()
                     navigationRouter.back()
                 }

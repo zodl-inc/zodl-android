@@ -11,7 +11,7 @@ import co.electriccoin.zcash.ui.common.model.GiftCardException
 import co.electriccoin.zcash.ui.common.model.GiftCardRedemption
 import co.electriccoin.zcash.ui.common.model.GiftCardStatus
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.repository.GiftCardLinkStoreImpl
 import co.electriccoin.zcash.ui.common.repository.GiftCardRepositoryImpl
 import co.electriccoin.zcash.ui.common.usecase.GetGiftCardDestinationAddressUseCase
@@ -784,7 +784,7 @@ class RedeemGiftVMTest {
     }
 
     private fun zashiAccount() =
-        ZashiAccount(
+        ZodlAccount(
             sdkAccount = mockk<Account>(relaxed = true),
             unifiedAddress = "unified",
             transparentAddress = "transparent",

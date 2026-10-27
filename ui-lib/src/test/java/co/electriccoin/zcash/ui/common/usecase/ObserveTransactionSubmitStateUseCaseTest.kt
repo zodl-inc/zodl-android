@@ -5,7 +5,7 @@ import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SubmitProposalState
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
@@ -57,7 +57,7 @@ class ObserveTransactionSubmitStateUseCaseTest {
         runTest {
             val keystonePending = SubmitProposalState.Result(SubmitResult.GrpcFailure(txIds = listOf("ks")))
 
-            val useCase = useCase(account = mockk<ZashiAccount>(), keystone = keystonePending, zashi = zashiSuccess)
+            val useCase = useCase(account = mockk<ZodlAccount>(), keystone = keystonePending, zashi = zashiSuccess)
 
             assertEquals(zashiSuccess, useCase().first())
         }

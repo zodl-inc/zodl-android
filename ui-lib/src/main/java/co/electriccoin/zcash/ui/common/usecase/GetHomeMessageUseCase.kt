@@ -108,7 +108,7 @@ class GetHomeMessageUseCase(
                     flowOf(null)
                 }
 
-                account.isShieldingAvailable == true -> {
+                isShieldFundsMessageEligible(account) -> {
                     messageAvailabilityDataSource.canShowShieldMessage
                         .map { canShowShieldMessage ->
                             when {
@@ -327,6 +327,13 @@ internal fun prioritizeHomeMessage(
         }
     }
 }
+
+/**
+ * Whether [account] may be offered the shield-funds message: it must be able to spend, since
+ * shielding spends its transparent funds, and hold enough of them to be worth shielding.
+ */
+internal fun isShieldFundsMessageEligible(account: WalletAccount): Boolean =
+    account.isSpendable && account.isShieldingAvailable == true
 
 // The first syncing banner stays hidden while the wallet is less than three days (of target block time) behind.
 // 3456 blocks is that span at the pre-NU7 75 s spacing; from NU7 (25 s) it is 10368 blocks, so the threshold is

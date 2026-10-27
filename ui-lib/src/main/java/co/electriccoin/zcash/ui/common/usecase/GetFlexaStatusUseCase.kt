@@ -1,7 +1,7 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -22,7 +22,7 @@ class GetFlexaStatusUseCase(
             .flatMapLatest { isAvailable ->
                 if (isAvailable) {
                     accountDataSource.selectedAccount.map {
-                        if (it is ZashiAccount) {
+                        if (it is ZodlAccount) {
                             Status.ENABLED
                         } else {
                             Status.DISABLED

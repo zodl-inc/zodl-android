@@ -446,9 +446,8 @@ class TransactionDetailVM(
         }
     }
 
-    private fun onSendAgainClick(transaction: DetailedTransactionData) {
-        sendTransactionAgain(transaction)
-    }
+    private fun onSendAgainClick(transaction: DetailedTransactionData) =
+        viewModelScope.launch { sendTransactionAgain(transaction) }
 
     @Suppress("CyclomaticComplexMethod", "NestedBlockDepth")
     private fun createTransactionHeaderState(

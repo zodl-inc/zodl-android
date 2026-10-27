@@ -7,7 +7,7 @@ import cash.z.ecc.android.sdk.TransferProposal
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.ZashiSpendingKeyDataSource
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.model.migration.MigrationMode
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
@@ -379,8 +379,8 @@ class MigrationReviewPlanShapeTest {
                 },
             getSelectedWalletAccount =
                 mockk<GetSelectedWalletAccountUseCase> {
-                    coEvery { this@mockk() } returns mockk<ZashiAccount>(relaxed = true)
-                    every { observe() } returns flowOf(mockk<ZashiAccount>(relaxed = true))
+                    coEvery { this@mockk() } returns mockk<ZodlAccount>(relaxed = true)
+                    every { observe() } returns flowOf(mockk<ZodlAccount>(relaxed = true))
                 },
             getOrchardBalance =
                 mockk<GetOrchardBalanceUseCase> {

@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.screen.redeemgift.paste
 
-import android.view.inputmethod.EditorInfo
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,14 +14,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.InterceptPlatformTextInput
-import androidx.compose.ui.platform.PlatformTextInputInterceptor
-import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
@@ -32,6 +26,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
+import co.electriccoin.zcash.ui.design.component.WithoutPersonalizedLearning
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
@@ -188,30 +183,6 @@ private fun LinkField(state: PasteGiftCardLinkState) {
             )
         }
     }
-}
-
-/**
- * Asks the keyboard not to learn from or personalise on what is typed into [content]: the link carries a spending
- * secret. Compose's keyboard options cannot set [EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING], so it is added to the
- * editor info of every input connection started below.
- */
-@OptIn(ExperimentalComposeUiApi::class)
-@Composable
-private fun WithoutPersonalizedLearning(content: @Composable () -> Unit) {
-    val interceptor =
-        remember {
-            PlatformTextInputInterceptor { request, nextHandler ->
-                nextHandler.startInputMethod(
-                    PlatformTextInputMethodRequest { outAttributes ->
-                        request.createInputConnection(outAttributes).also {
-                            outAttributes.imeOptions =
-                                outAttributes.imeOptions or EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
-                        }
-                    }
-                )
-            }
-        }
-    InterceptPlatformTextInput(interceptor = interceptor, content = content)
 }
 
 object PasteGiftCardLinkTag {

@@ -8,11 +8,14 @@ import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.ShareQRUseCase
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyContent
+import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressType
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
@@ -43,7 +46,8 @@ import kotlin.test.assertIs
 /**
  * The address QR screen: it shows the selected account's address of the requested type, shares that address
  * as a QR with the ZEC share texts and the centre icon matching the address kind, copies it to the clipboard,
- * marks a Keystone account's QR as Keystone, and stays loading for an address the account does not have.
+ * titles a Keystone account's QR as Keystone and a view-only account's addresses with the view-only copy,
+ * and stays loading for an address the account does not have.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class QrCodeVMTest {
@@ -124,8 +128,39 @@ class QrCodeVMTest {
             val zodl = startedVm(account = zashiAccount())
             val keystone = startedVm(account = keystoneAccount())
 
-            assertEquals(QrCodeType.ZASHI, assertIs<QrCodeState.Prepared>(zodl.state.value).qrCodeType)
-            assertEquals(QrCodeType.KEYSTONE, assertIs<QrCodeState.Prepared>(keystone.state.value).qrCodeType)
+            assertEquals(
+                stringRes(R.string.accounts_zashi_shieldedAddress),
+                assertIs<QrCodeState.Prepared>(zodl.state.value).title
+            )
+            assertEquals(
+                stringRes(R.string.qr_code_wallet_address_shielded_keystone),
+                assertIs<QrCodeState.Prepared>(keystone.state.value).title
+            )
+        }
+
+    @Test
+    fun aViewOnlyAccountTitlesItsAddressesWithTheViewOnlyCopy() =
+        runTest(dispatcher) {
+            val viewOnlyContent =
+                mockk<ViewOnlyContent> {
+                    every { receiveShieldedTitle } returns VIEW_ONLY_SHIELDED
+                    every { receiveTransparentTitle } returns VIEW_ONLY_TRANSPARENT
+                }
+            val shielded =
+                startedVm(
+                    account = viewOnlyAccount(),
+                    addressType = ReceiveAddressType.Unified,
+                    viewOnlyContent = viewOnlyContent
+                )
+            val transparent =
+                startedVm(
+                    account = viewOnlyAccount(),
+                    addressType = ReceiveAddressType.Transparent,
+                    viewOnlyContent = viewOnlyContent
+                )
+
+            assertEquals(VIEW_ONLY_SHIELDED, assertIs<QrCodeState.Prepared>(shielded.state.value).title)
+            assertEquals(VIEW_ONLY_TRANSPARENT, assertIs<QrCodeState.Prepared>(transparent.state.value).title)
         }
 
     @Test
@@ -148,7 +183,7 @@ class QrCodeVMTest {
         }
 
     private fun zashiAccount() =
-        ZashiAccount(
+        ZodlAccount(
             sdkAccount = mockk<Account>(relaxed = true),
             unifiedAddress = UNIFIED,
             transparentAddress = TRANSPARENT,
@@ -171,12 +206,28 @@ class QrCodeVMTest {
             isSelected = true,
         )
 
+    private fun viewOnlyAccount() =
+        ViewOnlyAccount(
+            sdkAccount = mockk<Account>(relaxed = true),
+            unifiedAddress = UNIFIED,
+            transparentAddress = TRANSPARENT,
+            orchardBalance = null,
+            saplingBalance = null,
+            ironwoodBalance = null,
+            transparentBalance = null,
+            isSelected = true,
+            name = stringRes("Savings"),
+            customName = "Savings",
+            icon = 0,
+        )
+
     private fun TestScope.startedVm(
         account: WalletAccount = zashiAccount(),
         addressType: ReceiveAddressType = ReceiveAddressType.Unified,
         copyToClipboard: CopyToClipboardUseCase = mockk(relaxed = true),
         shareQR: ShareQRUseCase = mockk(relaxed = true),
         router: FakeNavigationRouter = FakeNavigationRouter(),
+        viewOnlyContent: ViewOnlyContent = mockk(relaxed = true),
     ): QrCodeVM {
         val observeSelectedWalletAccount =
             mockk<ObserveSelectedWalletAccountUseCase> {
@@ -189,6 +240,7 @@ class QrCodeVMTest {
                 copyToClipboard = copyToClipboard,
                 navigationRouter = router,
                 shareQR = shareQR,
+                viewOnlyContent = viewOnlyContent,
             )
         backgroundScope.launch { vm.state.collect { } }
         advanceUntilIdle()
@@ -199,6 +251,14 @@ class QrCodeVMTest {
 private const val UNIFIED = "u1unifiedaddress"
 
 private const val TRANSPARENT = "t1transparentaddress"
+
+/**
+ * Resource-backed texts: mockk cannot return the inline `StringResource.ByString` from a mocked
+ * interface property.
+ */
+private val VIEW_ONLY_SHIELDED = StringResource.ByResource(resource = 11, args = emptyList())
+
+private val VIEW_ONLY_TRANSPARENT = StringResource.ByResource(resource = 12, args = emptyList())
 
 private class FakeNavigationRouter : NavigationRouter {
     var backCount = 0

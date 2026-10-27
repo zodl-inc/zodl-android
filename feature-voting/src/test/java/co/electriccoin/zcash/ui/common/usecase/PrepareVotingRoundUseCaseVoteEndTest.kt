@@ -8,7 +8,7 @@ import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VoteOption
@@ -89,8 +89,8 @@ class PrepareVotingRoundUseCaseVoteEndTest {
             }
         }
 
-    private fun zashiAccount(): ZashiAccount =
-        ZashiAccount(
+    private fun zashiAccount(): ZodlAccount =
+        ZodlAccount(
             sdkAccount = AccountFixture.new(),
             unifiedAddress = WalletAddressFixture.UNIFIED_ADDRESS_STRING,
             transparentAddress = WalletAddressFixture.TRANSPARENT_ADDRESS_STRING,

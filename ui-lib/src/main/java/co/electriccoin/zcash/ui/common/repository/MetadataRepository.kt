@@ -1,5 +1,7 @@
 package co.electriccoin.zcash.ui.common.repository
 
+import androidx.compose.ui.graphics.Color
+import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
@@ -10,14 +12,17 @@ import co.electriccoin.zcash.ui.common.model.SimpleSwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapStatus
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.model.ZecSimpleSwapAsset
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
+import co.electriccoin.zcash.ui.common.model.metadata.MetadataV3
 import co.electriccoin.zcash.ui.common.model.metadata.SwapMetadataV3
 import co.electriccoin.zcash.ui.common.provider.MetadataKeyStorageProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
+import co.electriccoin.zcash.ui.design.util.combineToFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,15 +30,19 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.dropWhile
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -42,6 +51,13 @@ import java.time.Instant
 
 @Suppress("TooManyFunctions")
 interface MetadataRepository {
+    /**
+     * Every account's metadata by its UUID, each read under the account's own key; empty at first,
+     * an account missing until its metadata is read. Shared by all collectors, and the accounts are
+     * subscribed to again only when their set changes, each keeping its entry while it is read again.
+     */
+    val metadata: StateFlow<Map<AccountUuid, MetadataV3>>
+
     /**
      * Returns whether the change was saved. The write finishes in the repository's own scope even
      * when the caller is cancelled, and a false result has already been logged.
@@ -105,6 +121,12 @@ interface MetadataRepository {
 
     fun observeLastUsedAssetHistory(): Flow<Set<SimpleSwapAsset>?>
 
+    /** [accountUuid]'s icon colour from [metadata], null while unread or when it has none. */
+    fun observeColor(accountUuid: AccountUuid): Flow<Color?>
+
+    /** Stores [color] as [account]'s icon colour and returns whether it was saved; see [flipTxBookmark]. */
+    suspend fun setAccountColor(account: WalletAccount, color: Color): Boolean
+
     fun delete()
 }
 
@@ -120,22 +142,33 @@ class MetadataRepositoryImpl(
 
     private val mutex = Mutex()
 
-    @Suppress("TooGenericExceptionCaught")
+    private val keyMutex = Mutex()
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val metadata =
-        accountDataSource
-            .selectedAccount
-            .distinctUntilChangedBy { it?.sdkAccount?.accountUuid }
-            .map { getMetadataKey(it ?: return@map null) }
-            .distinctUntilChanged()
-            .flatMapLatest { if (it == null) flowOf(null) else metadataDataSource.observe(it) }
-            .catch {
-                // do nothing
-            }.shareIn(
+    override val metadata: StateFlow<Map<AccountUuid, MetadataV3>> =
+        accountDataSource.allAccounts
+            .filterNotNull()
+            .distinctUntilChangedBy { accounts -> accounts.map { it.sdkAccount.accountUuid } }
+            .flatMapLatest { accounts ->
+                val previous = metadata.value
+                accounts
+                    .map { account ->
+                        val uuid = account.sdkAccount.accountUuid
+                        observeMetadata(account, initial = previous[uuid]).map { uuid to it }
+                    }.combineToFlow()
+                    .map { entries -> entries.mapNotNull { (uuid, content) -> content?.let { uuid to it } }.toMap() }
+            }.stateIn(
                 scope = scope,
                 started = SharingStarted.WhileSubscribed(0, 0),
-                replay = 1
+                initialValue = emptyMap()
             )
+
+    /** The selected account's entry in [metadata]. */
+    private val selectedMetadata: Flow<MetadataV3?> =
+        combine(
+            accountDataSource.selectedAccount.map { it?.sdkAccount?.accountUuid }.distinctUntilChanged(),
+            metadata
+        ) { uuid, all -> uuid?.let { all[it] } }.distinctUntilChanged()
 
     override suspend fun flipTxBookmark(txId: String) =
         updateMetadataAndAwait {
@@ -223,7 +256,7 @@ class MetadataRepositoryImpl(
         val txId = transaction.id.txIdString()
         val depositAddress = transaction.recipient
 
-        return metadata
+        return selectedMetadata
             .filterNotNull()
             .map { metadata ->
                 val accountMetadata = metadata.accountMetadata
@@ -271,7 +304,7 @@ class MetadataRepositoryImpl(
     }
 
     override fun observeSwapMetadata(): Flow<List<TransactionSwapMetadata>?> =
-        metadata
+        selectedMetadata
             .map { metadata ->
                 metadata
                     ?.accountMetadata
@@ -281,7 +314,7 @@ class MetadataRepositoryImpl(
             }.distinctUntilChanged()
 
     override suspend fun getSwapMetadata(depositAddress: String): TransactionSwapMetadata? =
-        metadata
+        selectedMetadata
             .filterNotNull()
             .first()
             .accountMetadata
@@ -291,7 +324,7 @@ class MetadataRepositoryImpl(
             ?.toBusinessObject()
 
     override fun observeLastUsedAssetHistory(): Flow<Set<SimpleSwapAsset>?> =
-        metadata
+        selectedMetadata
             .map {
                 it
                     ?.accountMetadata
@@ -299,6 +332,24 @@ class MetadataRepositoryImpl(
                     ?.lastUsedAssetHistory
                     ?.toSimpleAssetSet()
             }.distinctUntilChanged()
+
+    override fun observeColor(accountUuid: AccountUuid): Flow<Color?> =
+        metadata.map { it[accountUuid]?.accountMetadata?.appearance?.color }.distinctUntilChanged()
+
+    /**
+     * [account]'s metadata: [initial] first, the content [metadata] already holds or null, so a slow
+     * key never holds back the other accounts and a change of the account set never blanks a known
+     * entry; then the content as it changes, without the data source's leading null. A failure is
+     * logged and keeps the last content.
+     */
+    private fun observeMetadata(account: WalletAccount, initial: MetadataV3?): Flow<MetadataV3?> =
+        flow {
+            emit(initial)
+            emitAll(metadataDataSource.observe(getMetadataKey(account)).dropWhile { it == null })
+        }.catch { e -> Twig.error(e) { "Unable to read Metadata" } }
+
+    override suspend fun setAccountColor(account: WalletAccount, color: Color): Boolean =
+        updateMetadataAndAwait(account) { metadataDataSource.setAccountColor(color = color, key = it) }
 
     @Suppress("TooGenericExceptionCaught")
     override fun delete() {
@@ -317,22 +368,26 @@ class MetadataRepositoryImpl(
     }
 
     private fun updateMetadata(block: suspend (MetadataKey) -> Boolean) {
-        scope.launch { updateMetadataLocked(block) }
+        scope.launch { updateMetadataLocked(block = block) }
     }
 
-    private suspend fun updateMetadataAndAwait(block: suspend (MetadataKey) -> Boolean): Boolean =
-        scope.async { updateMetadataLocked(block) }.await()
+    private suspend fun updateMetadataAndAwait(
+        account: WalletAccount? = null,
+        block: suspend (MetadataKey) -> Boolean
+    ): Boolean = scope.async { updateMetadataLocked(account, block) }.await()
 
     /**
-     * Runs [block] for the selected account's key and returns whether the change was saved,
-     * logging a failure at error.
+     * Runs [block] for [account]'s key, the selected account's without one, and returns whether the
+     * change was saved, logging a failure at error.
      */
     @Suppress("TooGenericExceptionCaught")
-    private suspend fun updateMetadataLocked(block: suspend (MetadataKey) -> Boolean): Boolean =
+    private suspend fun updateMetadataLocked(
+        account: WalletAccount? = null,
+        block: suspend (MetadataKey) -> Boolean
+    ): Boolean =
         mutex.withLock {
             try {
-                val selectedAccount = accountDataSource.getSelectedAccount()
-                val key = getMetadataKey(selectedAccount)
+                val key = getMetadataKey(account ?: accountDataSource.getSelectedAccount())
                 block(key).also { isSaved ->
                     if (!isSaved) Twig.error { "Unable to update Metadata, the change was not saved" }
                 }
@@ -342,30 +397,37 @@ class MetadataRepositoryImpl(
             }
         }
 
-    private suspend fun getMetadataKey(selectedAccount: WalletAccount): MetadataKey {
-        val key = metadataKeyStorageProvider.get(selectedAccount.sdkAccount.accountUuid)
+    /**
+     * [account]'s key from the key storage, read without a lock; or derived from the seed and, for
+     * every account but the Zodl one, the account's viewing key, then stored. Derivations run one at
+     * a time and check the storage again first, so two readers never derive the same key twice.
+     */
+    private suspend fun getMetadataKey(account: WalletAccount): MetadataKey =
+        metadataKeyStorageProvider.get(account.sdkAccount.accountUuid) ?: keyMutex.withLock {
+            val key = metadataKeyStorageProvider.get(account.sdkAccount.accountUuid)
 
-        return if (key != null) {
-            key
-        } else {
-            val persistableWallet = persistableWalletProvider.requirePersistableWallet()
-            val zashiAccount = accountDataSource.getZashiAccount()
-            val newKey =
-                MetadataKey.derive(
-                    seedPhrase = persistableWallet.seedPhrase,
-                    network = persistableWallet.network,
-                    zashiAccount = zashiAccount,
-                    ufvk =
-                        when (selectedAccount) {
-                            is KeystoneAccount -> selectedAccount.sdkAccount.ufvk
-                            is LedgerAccount -> selectedAccount.sdkAccount.ufvk
-                            is ZashiAccount -> null
-                        }
-                )
-            metadataKeyStorageProvider.store(selectedAccount.sdkAccount.accountUuid, newKey)
-            newKey
+            if (key != null) {
+                key
+            } else {
+                val persistableWallet = persistableWalletProvider.requirePersistableWallet()
+                val zashiAccount = accountDataSource.getZashiAccount()
+                val newKey =
+                    MetadataKey.derive(
+                        seedPhrase = persistableWallet.seedPhrase,
+                        network = persistableWallet.network,
+                        zashiAccount = zashiAccount,
+                        ufvk =
+                            when (account) {
+                                is KeystoneAccount -> account.sdkAccount.ufvk
+                                is LedgerAccount -> account.sdkAccount.ufvk
+                                is ViewOnlyAccount -> account.sdkAccount.ufvk
+                                is ZodlAccount -> null
+                            }
+                    )
+                metadataKeyStorageProvider.store(account.sdkAccount.accountUuid, newKey)
+                newKey
+            }
         }
-    }
 
     private fun Set<String>.toSimpleAssetSet() =
         this

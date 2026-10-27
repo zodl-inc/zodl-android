@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.migration.MigrationGateInfo
 import co.electriccoin.zcash.ui.common.model.migration.MigrationMode
 import co.electriccoin.zcash.ui.common.model.mutableLce
+import co.electriccoin.zcash.ui.common.model.requireSpendable
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.withLce
 import co.electriccoin.zcash.ui.common.provider.MigrationUpgradeNoticeStorageProvider
@@ -55,6 +56,7 @@ class MigrationSetupVM(
 
     init {
         accountLce.execute {
+            getSelectedWalletAccount().requireSpendable()
             getOrchardBalance()
         }
         viewModelScope.launch { gate.value = getMigrationGateInfo().toSetupGate() }

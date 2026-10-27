@@ -148,7 +148,6 @@ private fun AdvancedSettingsTopAppBar(
     ZashiSmallTopAppBar(
         title = stringResource(id = R.string.settings_advanced),
         modifier = modifier.testTag(AdvancedSettingsTag.ADVANCED_SETTINGS_TOP_APP_BAR),
-        showTitleLogo = true,
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
         },

@@ -89,6 +89,18 @@
     <!-- ===== account_list ===== -->
     <string name="hwWallet_drawer_title">Billeteras y Dispositivos</string>
     <string name="hwWallet_connect">Conectar Billetera de Hardware</string>
+    <string name="hwWallet_section_zodl">Billetera Zodl</string>
+    <string name="hwWallet_section_keystone">Billetera Keystone</string>
+    <string name="hwWallet_section_keystone_plural">Billeteras Keystone</string>
+    <string name="hwWallet_section_ledger">Billetera Ledger</string>
+    <string name="hwWallet_section_ledger_plural">Billeteras Ledger</string>
+    <string name="hwWallet_walletOptions_contentDescription">Opciones de %1$s</string>
+    <string name="hwWallet_promo_title">Billetera de hardware Keystone</string>
+    <string name="hwWallet_promo_message">Obtén un 5%% de descuento en una billetera de hardware aislada. Código promocional “Zodl”.</string>
+    <string name="hwWallet_options_title">Opciones de billetera</string>
+    <string name="hwWallet_options_disconnect_title">Desconectar billetera de hardware</string>
+    <string name="hwWallet_options_disconnect_keystone">Desvincula tu dispositivo Keystone.</string>
+    <string name="hwWallet_options_disconnect_ledger">Desvincula tu dispositivo Ledger.</string>
 
     <!-- ===== add_contact ===== -->
     <string name="addressBook_addNewContact">Agregar nuevo contacto</string>
@@ -116,7 +128,6 @@
     <string name="settings_deleteZashi">Restablecer Zodl</string>
     <string name="taxExport_taxFile">Exportar archivo fiscal</string>
     <string name="resyncWallet_title">Resincronizar Billetera</string>
-    <string name="disconnectHWWallet_cta">Desconectar Hardware</string>
     <string name="disconnect_hardware_wallet_biometric_message">Confirma para desconectar tu hardware wallet</string>
     <string name="deleteKeystoneTitle">Desconectar Keystone</string>
     <string name="deleteKeystoneDesc">Desconectar tu hardware wallet eliminará permanentemente algunos datos locales que no pueden recuperarse de la blockchain.</string>
@@ -129,6 +140,7 @@
     <string name="connectedHWInfo">Si desconectas ahora, tu Keystone dejará de estar vinculado con tu billetera Zodl.</string>
     <string name="connectedHWInfo_ledger">Si desconectas ahora, tu Ledger dejará de estar vinculado con tu billetera Zodl.</string>
     <string name="disconnectHWWallet_title">Desconectar</string>
+    <string name="disconnectHWWallet_button">Desconectar</string>
     <string name="disconnectHWWallet_sheetDesc">Desconectar el hardware wallet no se puede deshacer.</string>
     <string name="disconnectHWWallet_failureTitle">Error al Desconectar</string>
     <string name="disconnect_hardware_wallet_error_message">No se pudo finalizar la desconexión del hardware wallet. Por favor, inténtalo de nuevo o informa del problema.</string>
@@ -1049,7 +1061,7 @@
 
     <!-- ===== update_contact ===== -->
     <string name="update_contact_title">Contacto</string>
-    <string name="deleteWallet_sheet_title">Are you sure?</string>
+    <string name="deleteWallet_sheet_title">¿Estás seguro?</string>
     <string name="addressBook_alert_message">You are about to delete this contact. This cannot be undone.</string>
 
     <!-- ===== warning ===== -->
@@ -1299,4 +1311,26 @@
     <string name="migrationUpgradePaused_message">Una migración programada no puede iniciarse antes de la actualización de la red. Inténtalo de nuevo después.</string>
     <string name="migrationHome_upgradeStoppedTitle">La actualización de la red detuvo tu migración</string>
     <string name="migrationHome_upgradeStoppedSubtitle">La actualización de la red detuvo tu migración antes de terminar. Las transferencias confirmadas no se ven afectadas. Los fondos en transferencias sin confirmar pueden seguir sin estar disponibles hasta que esas transacciones caduquen y tu billetera se sincronice. Toca para migrar lo que queda.</string>
+    <string name="colorPicker_title">Colores</string>
+    <string name="colorPicker_grid">Cuadrícula</string>
+    <string name="colorPicker_spectrum">Espectro</string>
+    <string name="colorPicker_sliders">Controles</string>
+    <string name="colorPicker_red">Rojo</string>
+    <string name="colorPicker_green">Verde</string>
+    <string name="colorPicker_blue">Azul</string>
+    <string name="colorPicker_hex">Color hex #</string>
+    <string name="colorPicker_done">Listo</string>
+    <string name="colorPicker_edit">Cambiar color</string>
+    <string name="colorPicker_gridDescription">Cuadrícula de colores</string>
+    <string name="colorPicker_spectrumDescription">Espectro de colores</string>
+    <string name="colorPicker_selectedHex">Color seleccionado #%1$s</string>
+    <string name="editAccount_title">Editar cuenta</string>
+    <string name="accountName_heading">Personalizar cuenta</string>
+    <string name="accountName_message">Elige un nombre para distinguirla de tus otras cuentas.</string>
+    <string name="accountName_label">Nombre de la cuenta</string>
+    <string name="accountName_placeholder">Ingresa...</string>
+    <string name="accountName_counter">%1$d/%2$d</string>
+    <string name="accountName_duplicate">Ya existe una cuenta con este nombre</string>
+    <string name="editAccount_save">Guardar cambios</string>
+
 </resources>

@@ -10,7 +10,7 @@ sealed class QrCodeState {
     data object Loading : QrCodeState()
 
     data class Prepared(
-        val qrCodeType: QrCodeType,
+        val title: StringResource,
         val formatterAddress: StyledStringResource,
         val walletAddress: WalletAddress,
         val onAddressCopy: (String) -> Unit,
@@ -26,10 +26,4 @@ sealed class QrCodeState {
             centerImage = centerImageResId
         )
     }
-}
-
-enum class QrCodeType {
-    ZASHI,
-    KEYSTONE,
-    LEDGER
 }

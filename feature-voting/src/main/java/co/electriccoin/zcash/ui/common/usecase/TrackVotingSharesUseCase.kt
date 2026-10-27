@@ -50,6 +50,7 @@ class TrackVotingSharesUseCase(
     suspend operator fun invoke(roundId: String): VotingShareTrackingResult =
         withContext(Dispatchers.IO) {
             val selectedAccount = getSelectedWalletAccount()
+            if (!selectedAccount.isSpendable) return@withContext VotingShareTrackingResult.Completed
             val accountUuidString = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
             val recovery =
                 votingRecoveryRepository.get(accountUuidString, roundId)

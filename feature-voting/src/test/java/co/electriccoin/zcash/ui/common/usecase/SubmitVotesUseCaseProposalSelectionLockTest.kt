@@ -9,7 +9,7 @@ import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VoteOption
@@ -54,7 +54,7 @@ import kotlin.test.assertIs
  * no longer exists; its fixture wiring does not carry over to the current 9-dependency
  * constructor. `PrepareVotingRoundUseCaseVoteEndTest`, by contrast, already mocks the current
  * sibling dependencies (`ResolveVotingRoundSessionUseCase`, `VotingRoundSessionContext`,
- * `ZashiAccount`) against this same rewritten architecture.
+ * `ZodlAccount`) against this same rewritten architecture.
  */
 class SubmitVotesUseCaseProposalSelectionLockTest {
     @Test
@@ -265,8 +265,8 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
             assertEquals(listOf("cancelAndAwaitPrecompute", "openVotingDb"), callOrder)
         }
 
-    private fun zashiAccount(): ZashiAccount =
-        ZashiAccount(
+    private fun zashiAccount(): ZodlAccount =
+        ZodlAccount(
             sdkAccount = AccountFixture.new(),
             unifiedAddress = WalletAddressFixture.UNIFIED_ADDRESS_STRING,
             transparentAddress = WalletAddressFixture.TRANSPARENT_ADDRESS_STRING,

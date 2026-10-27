@@ -14,6 +14,13 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.18.0 (3206)] - 2026-10-23
+
+### Added:
+
+- We added view-only accounts. Import a full viewing key by pasting it or scanning a QR code to follow an account's balance and activity without being able to spend from it.
+- We added the option to rename a view-only account, change its color, or remove it from the app.
+
 ## [3.17.2 (3157)] - 2026-10-20
 
 ### Fixed:

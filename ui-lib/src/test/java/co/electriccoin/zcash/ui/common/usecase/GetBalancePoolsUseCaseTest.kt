@@ -8,7 +8,7 @@ import cash.z.ecc.android.sdk.model.WalletBalance
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import io.mockk.every
@@ -37,7 +37,7 @@ class GetBalancePoolsUseCaseTest {
     private fun zeroBalance() = WalletBalance(Zatoshi(0), Zatoshi(0), Zatoshi(0))
 
     private fun account(uuid: AccountUuid): WalletAccount =
-        ZashiAccount(
+        ZodlAccount(
             sdkAccount = Account.new(uuid),
             unifiedAddress = "unified-$uuid",
             transparentAddress = "transparent-$uuid",

@@ -1,9 +1,11 @@
 package co.electriccoin.zcash.ui.common.datasource
 
+import androidx.compose.ui.graphics.Color
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.common.model.SimpleSwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapStatus
+import co.electriccoin.zcash.ui.common.model.metadata.AccountAppearanceMetadataV3
 import co.electriccoin.zcash.ui.common.model.metadata.AccountMetadataV3
 import co.electriccoin.zcash.ui.common.model.metadata.AnnotationMetadataV3
 import co.electriccoin.zcash.ui.common.model.metadata.BookmarkMetadataV3
@@ -27,6 +29,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import io.mockk.verifyOrder
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -791,6 +794,137 @@ class MetadataDataSourceTest {
         }
 
     @Test
+    fun theAppearanceWithTheNewerOwnTimestampWinsWhateverTheFileTimestamps() =
+        runTest {
+            val result =
+                merge(
+                    canonical = metadata(lastUpdated = 5, appearance = appearance(0xFFFF383C, lastUpdated = 3)),
+                    legacy = metadata(lastUpdated = 1, appearance = appearance(0xFF0088FF, lastUpdated = 4))
+                )
+
+            assertEquals(appearance(0xFF0088FF, lastUpdated = 4), result.accountMetadata.appearance)
+        }
+
+    @Test
+    fun aFileWithoutAnAppearanceNeverRemovesTheOther() =
+        runTest {
+            val result =
+                merge(
+                    canonical = metadata(lastUpdated = 1, appearance = appearance(0xFFFF383C, lastUpdated = 1)),
+                    legacy = metadata(lastUpdated = 9)
+                )
+
+            assertEquals(appearance(0xFFFF383C, lastUpdated = 1), result.accountMetadata.appearance)
+        }
+
+    @Test
+    fun anAppearanceTieKeepsTheCanonicalSide() =
+        runTest {
+            val result =
+                merge(
+                    canonical = metadata(lastUpdated = 1, appearance = appearance(0xFFFF383C, lastUpdated = 4)),
+                    legacy = metadata(lastUpdated = 9, appearance = appearance(0xFF0088FF, lastUpdated = 4))
+                )
+
+            assertEquals(appearance(0xFFFF383C, lastUpdated = 4), result.accountMetadata.appearance)
+        }
+
+    @Test
+    fun aBookmarkFlipKeepsTheStoredAppearance() =
+        runTest {
+            val written = storedWithAppearance()
+
+            assertTrue(dataSource().flipTxAsBookmarked("tx1", key))
+
+            assertEquals(STORED_APPEARANCE, written.captured.accountMetadata.appearance)
+            assertEquals(
+                listOf("tx1"),
+                written.captured.accountMetadata.bookmarked
+                    .filter { it.isBookmarked }
+                    .map { it.txId }
+            )
+        }
+
+    @Test
+    fun aNoteEditKeepsTheStoredAppearance() =
+        runTest {
+            val written = storedWithAppearance()
+
+            assertTrue(dataSource().createOrUpdateTxNote("tx1", "rent", key))
+
+            assertEquals(STORED_APPEARANCE, written.captured.accountMetadata.appearance)
+            assertEquals(
+                listOf("rent"),
+                written.captured.accountMetadata.annotations
+                    .map { it.content }
+            )
+        }
+
+    @Test
+    fun setAccountColorWritesTheColor() =
+        runTest {
+            val written = slot<MetadataV3>()
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile)
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } answers {
+                if (written.isCaptured) written.captured else metadata(lastUpdated = 1, read = listOf("r1"))
+            }
+            every { metadataProvider.writeMetadataToFile(canonicalFile, capture(written), key) } just Runs
+            val dataSource = dataSource()
+
+            assertTrue(dataSource.setAccountColor(Color(0x80BE38F3), key))
+            assertEquals(
+                Color(0x80BE38F3),
+                written.captured.accountMetadata.appearance
+                    ?.color
+            )
+            assertEquals(listOf("r1"), written.captured.accountMetadata.read)
+        }
+
+    /**
+     * The import flow stores the colour just as the account appears and its observer starts: a
+     * write that takes the lock the moment the initial read releases it, before the observer could
+     * start collecting updates, must still reach the observer. The write starts during the initial
+     * read and waits for the lock; the unconfined dispatchers run it to completion inside the read's
+     * unlock, which is exactly that gap.
+     */
+    @Test
+    fun aWriteRightAfterTheInitialReadIsStillObserved() =
+        runTest {
+            val written = slot<MetadataV3>()
+            lateinit var dataSource: MetadataDataSourceImpl
+            var isWriteStarted = false
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile)
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } answers {
+                if (!isWriteStarted) {
+                    isWriteStarted = true
+                    backgroundScope.launch(Dispatchers.Unconfined) {
+                        dataSource.setAccountColor(Color(0x80BE38F3), key)
+                    }
+                }
+                if (written.isCaptured) written.captured else metadata(lastUpdated = 1)
+            }
+            every { metadataProvider.writeMetadataToFile(canonicalFile, capture(written), key) } just Runs
+            dataSource =
+                MetadataDataSourceImpl(
+                    metadataStorageProvider = metadataStorageProvider,
+                    metadataProvider = metadataProvider,
+                    simpleSwapAssetProvider = mockk<SimpleSwapAssetProvider>(),
+                    ioDispatcher = Dispatchers.Unconfined
+                )
+            val colors = mutableListOf<Color?>()
+
+            backgroundScope.launch {
+                dataSource.observe(key).filterNotNull().collect { metadata ->
+                    colors += metadata.accountMetadata.appearance?.color
+                }
+            }
+            runCurrent()
+
+            assertTrue(written.isCaptured)
+            assertEquals(listOf(null, Color(0x80BE38F3)), colors)
+        }
+
+    @Test
     fun aReadOnlyUpdateReportsThatNothingWasSaved() =
         runTest {
             every { metadataStorageProvider.getStorageFiles(key) } throws IOException()
@@ -1050,6 +1184,20 @@ class MetadataDataSourceTest {
         return observe()
     }
 
+    /**
+     * One canonical file holding [STORED_APPEARANCE], read back as whatever was last written to it;
+     * the returned slot holds that last write.
+     */
+    private fun storedWithAppearance(): CapturingSlot<MetadataV3> {
+        val written = slot<MetadataV3>()
+        every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile)
+        every { metadataProvider.readMetadataFromFile(canonicalFile, key) } answers {
+            if (written.isCaptured) written.captured else metadata(lastUpdated = 1, appearance = STORED_APPEARANCE)
+        }
+        every { metadataProvider.writeMetadataToFile(canonicalFile, capture(written), key) } just Runs
+        return written
+    }
+
     private fun MetadataV3.history() = accountMetadata.swaps.lastUsedAssetHistory.toList()
 
     private fun TestScope.dataSource() =
@@ -1066,7 +1214,8 @@ class MetadataDataSourceTest {
         read: List<String> = emptyList(),
         annotations: List<AnnotationMetadataV3> = emptyList(),
         swapIds: List<SwapMetadataV3> = emptyList(),
-        history: Set<String> = emptySet()
+        history: Set<String> = emptySet(),
+        appearance: AccountAppearanceMetadataV3? = null,
     ) = MetadataV3(
         lastUpdated = Instant.ofEpochSecond(lastUpdated),
         accountMetadata =
@@ -1074,9 +1223,13 @@ class MetadataDataSourceTest {
                 bookmarked = bookmarked,
                 read = read,
                 annotations = annotations,
-                swaps = SwapsMetadataV3(swapIds = swapIds, lastUsedAssetHistory = history)
+                swaps = SwapsMetadataV3(swapIds = swapIds, lastUsedAssetHistory = history),
+                appearance = appearance
             )
     )
+
+    private fun appearance(argb: Long, lastUpdated: Long) =
+        AccountAppearanceMetadataV3(color = Color(argb), lastUpdated = Instant.ofEpochSecond(lastUpdated))
 
     private fun bookmark(txId: String, isBookmarked: Boolean, lastUpdated: Long) =
         BookmarkMetadataV3(txId = txId, lastUpdated = Instant.ofEpochSecond(lastUpdated), isBookmarked = isBookmarked)
@@ -1108,5 +1261,7 @@ class MetadataDataSourceTest {
 
     private companion object {
         const val SEED_SIZE = 32
+        val STORED_APPEARANCE =
+            AccountAppearanceMetadataV3(color = Color(0xFFBE38F3), lastUpdated = Instant.ofEpochSecond(2))
     }
 }

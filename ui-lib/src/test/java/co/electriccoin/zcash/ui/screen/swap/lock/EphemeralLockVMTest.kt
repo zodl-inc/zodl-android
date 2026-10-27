@@ -5,12 +5,15 @@ import cash.z.ecc.android.sdk.model.Proposal
 import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.RegularTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.SendTransactionProposal
 import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
-import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
+import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
+import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
+import co.electriccoin.zcash.ui.common.usecase.EditAccountFixtures
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitIncreaseEphemeralGapLimitUseCase
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
@@ -33,11 +36,14 @@ import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 
 /**
  * [EphemeralLockVM.onSubmitClick] wraps a Ledger's not-yet-supported ephemeral-gap-limit
- * increase as a general error rather than crashing the app.
+ * increase as a general error rather than crashing the app, and so does the refusal of a view-only
+ * account, which holds no spend authority, without submitting anything.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class EphemeralLockVMTest {
@@ -54,7 +60,7 @@ class EphemeralLockVMTest {
     @Test
     fun submittingOnALedgerAccountRoutesToTheGeneralErrorScreenInsteadOfCrashing() =
         runTest {
-            val exception = LedgerOperationUnsupportedException()
+            val exception = AccountOperationUnsupportedException.ledger()
             val submitIncreaseEphemeralGapLimit =
                 mockk<SubmitIncreaseEphemeralGapLimitUseCase> {
                     coEvery { this@mockk() } throws exception
@@ -71,6 +77,53 @@ class EphemeralLockVMTest {
             runCurrent()
 
             verify(exactly = 1) { navigateToError(ErrorArgs.General(exception), any()) }
+        }
+
+    @Test
+    fun submittingOnAViewOnlyAccountRoutesToTheGeneralErrorScreen() =
+        runTest {
+            val zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true)
+            val biometricRepository = mockk<BiometricRepository>(relaxed = true)
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val navigateToError = mockk<NavigateToErrorUseCase>(relaxed = true)
+            val submitIncreaseEphemeralGapLimit =
+                SubmitIncreaseEphemeralGapLimitUseCase(
+                    navigationRouter = navigationRouter,
+                    accountDataSource =
+                        mockk<AccountDataSource> {
+                            coEvery { getSelectedAccount() } returns EditAccountFixtures.viewOnly()
+                        },
+                    zashiProposalRepository = zashiProposalRepository,
+                    biometricRepository = biometricRepository,
+                    ephemeralAddressRepository = mockk(relaxed = true),
+                )
+            val vm =
+                vm(
+                    submitIncreaseEphemeralGapLimit = submitIncreaseEphemeralGapLimit,
+                    navigateToError = navigateToError,
+                    navigationRouter = navigationRouter,
+                )
+            collect(vm)
+
+            assertNotNull(vm.state.value).primaryButton.onClick()
+            runCurrent()
+
+            verify(exactly = 1) {
+                navigateToError(
+                    match {
+                        val exception = assertIs<ErrorArgs.General>(it).exception
+                        assertEquals(
+                            AccountOperationUnsupportedException.Kind.VIEW_ONLY,
+                            assertIs<AccountOperationUnsupportedException>(exception).kind
+                        )
+                        true
+                    },
+                    any()
+                )
+            }
+            coVerify(exactly = 0) { zashiProposalRepository.submit() }
+            verify(exactly = 0) { navigationRouter.replace(*anyVararg()) }
+            verify(exactly = 0) { navigationRouter.back() }
         }
 
     @Test

@@ -29,7 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
  * Shaped the same way MigrationContracts.kt and VotingContracts.kt shape their seams: small,
  * single-purpose interfaces, one per call site. What stays in ui-lib is what the rest of the wallet
  * needs to know about a Ledger account — the LedgerAccount model, its binding storage, and the
- * fail-fast LedgerOperationUnsupportedException arms of spend paths a Ledger cannot sign yet; the
+ * fail-fast AccountOperationUnsupportedException arms of spend paths a Ledger cannot sign yet; the
  * device transport, pairing, signing session and the Ledger screens live behind these contracts.
  */
 interface LedgerProposalPipeline {
@@ -82,8 +82,13 @@ interface LedgerAccountImporter {
      * Imports and selects the paired account at [birthday], then moves on to the connected screen.
      *
      * @throws LedgerPairingMissingException if the pending pairing is gone.
+     * @throws InitializeException.ImportAccountCollisionException if the wallet already holds an
+     *         account sharing a viewing key component with the paired one.
      */
-    @Throws(InitializeException.ImportAccountException::class)
+    @Throws(
+        InitializeException.ImportAccountException::class,
+        InitializeException.ImportAccountCollisionException::class,
+    )
     suspend fun importAccount(birthday: BlockHeight?)
 }
 

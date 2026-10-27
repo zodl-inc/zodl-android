@@ -38,12 +38,12 @@ data class DisconnectState(
                         stringRes(R.string.disconnectHWWallet_bullet3),
                     ),
                 icon = co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone,
-                connectedTitle = stringRes(R.string.keystoneHW),
+                connectedTitle = stringRes(R.string.accounts_keystone),
                 connectedStatus = stringRes(R.string.currentlyConnected),
                 infoText = stringRes(R.string.connectedHWInfo),
                 disconnectButton =
                     ButtonState(
-                        stringRes(R.string.disconnectHWWallet_title),
+                        stringRes(R.string.disconnectHWWallet_button),
                         style = ButtonStyle.DESTRUCTIVE1
                     ) {},
                 confirmationDialog = null,

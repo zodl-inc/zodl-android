@@ -88,7 +88,9 @@ class VotingHomeHooksImpl(
     @Suppress("ReturnCount", "SpreadOperator")
     override suspend fun recoverPendingRouteIfNeeded(): Boolean {
         if (!VOTING_ENABLED) return false
-        val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
+        val account = getSelectedWalletAccount()
+        if (!account.isSpendable) return false
+        val accountUuid = account.sdkAccount.accountUuid.toVotingAccountScopeId()
 
         // Purely local check - most home-screen opens have no pending Keystone request at all,
         // so skip the network refresh entirely rather than fetching service config + all rounds
@@ -224,6 +226,7 @@ class VotingHomeMessageSourceImpl(
 
                 when {
                     accountUuid == null || activeEntry == null -> null
+                    !account.isSpendable -> null
                     !Instant.now().isBefore(activeEntry.value.voteEndTime) -> null
                     else -> ActiveScope(accountUuid, activeEntry.key)
                 }

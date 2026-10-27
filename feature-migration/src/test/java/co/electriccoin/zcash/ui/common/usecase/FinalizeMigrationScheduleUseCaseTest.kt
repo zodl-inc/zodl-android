@@ -3,7 +3,7 @@ package co.electriccoin.zcash.ui.common.usecase
 import cash.z.ecc.android.sdk.MigrationSchedule
 import cash.z.ecc.android.sdk.PreparationStep
 import cash.z.ecc.android.sdk.TransferProposal
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.model.migration.MigrationMode
 import co.electriccoin.zcash.work.MigrationScheduler
 import io.mockk.coEvery
@@ -37,7 +37,7 @@ class FinalizeMigrationScheduleUseCaseTest {
             getOrchardMigrationSdk = mockk<GetOrchardMigrationSdkUseCase>(relaxed = true),
             getSelectedWalletAccount =
                 mockk<GetSelectedWalletAccountUseCase> {
-                    coEvery { this@mockk() } returns mockk<ZashiAccount>(relaxed = true)
+                    coEvery { this@mockk() } returns mockk<ZodlAccount>(relaxed = true)
                 },
             synchronizerProvider = mockk(relaxed = true),
             migrationLiveDriver = mockk(relaxed = true),

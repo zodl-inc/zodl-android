@@ -3,7 +3,7 @@ package co.electriccoin.zcash.ui.common.usecase
 import androidx.annotation.StringRes
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.provider.WalletBackupFlagStorageProvider
 import co.electriccoin.zcash.ui.common.provider.WalletBackupRemindMeCountStorageProvider
 import co.electriccoin.zcash.ui.common.provider.WalletBackupRemindMeTimestampStorageProvider
@@ -77,7 +77,7 @@ class WalletBackupMessageUseCaseImpl(
                 transactionRepository.transactions,
             ) { account, transactions ->
                 if (backup is WalletBackupData.Available &&
-                    account is ZashiAccount &&
+                    account is ZodlAccount &&
                     transactions.orEmpty().any { it is ReceiveTransaction }
                 ) {
                     backup

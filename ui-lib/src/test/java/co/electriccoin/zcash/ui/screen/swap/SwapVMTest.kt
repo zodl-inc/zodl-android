@@ -115,6 +115,60 @@ class SwapVMTest {
         }
 
     @Test
+    fun changeButtonIgnoredForViewOnlyAccount() =
+        runTest {
+            val harness = harness(account = account(isSpendable = false))
+            harness.collectState(this)
+
+            harness.onChangeButtonClick()
+
+            assertEquals(SwapDirection.SWAP_INTO_ZEC, harness.capturedState.swapDirection)
+        }
+
+    @Test
+    fun changeButtonIgnoredWhileAccountLoading() =
+        runTest {
+            val harness = harness(account = null)
+            harness.collectState(this)
+
+            harness.onChangeButtonClick()
+
+            assertEquals(SwapDirection.SWAP_INTO_ZEC, harness.capturedState.swapDirection)
+        }
+
+    @Test
+    fun switchingToViewOnlyAccountResetsModeToIntoZec() =
+        runTest {
+            val asset = SwapAssetTestFixture.asset(tokenTicker = "btc")
+            val harness = harness(preselect = asset)
+            harness.collectState(this)
+            harness.onChangeButtonClick()
+            assertEquals(SwapDirection.SWAP_FROM_ZEC, harness.capturedState.swapDirection)
+
+            harness.selectedAccount.value = account(isSpendable = false)
+
+            assertEquals(SwapDirection.SWAP_INTO_ZEC, harness.capturedState.swapDirection)
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
+            coVerify(exactly = 0) { harness.requestSwapQuote.requestExactInput(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 1) {
+                harness.requestSwapQuote.requestFlexInputIntoZec(any(), "refund-address", asset, any(), any())
+            }
+        }
+
+    @Test
+    fun switchingBackToSpendableAccountKeepsIntoZecAndAllowsToggle() =
+        runTest {
+            val harness = harness(account = account(isSpendable = false))
+            harness.collectState(this)
+
+            harness.selectedAccount.value = account(isSpendable = true)
+            assertEquals(SwapDirection.SWAP_INTO_ZEC, harness.capturedState.swapDirection)
+
+            harness.onChangeButtonClick()
+            assertEquals(SwapDirection.SWAP_FROM_ZEC, harness.capturedState.swapDirection)
+        }
+
+    @Test
     fun requestQuotePinsSelectedAssetAndSlippage() =
         runTest {
             val asset = SwapAssetTestFixture.asset(tokenTicker = "btc")
@@ -496,6 +550,10 @@ class SwapVMTest {
 
     // endregion
 
+    /** A relaxed account mock reports `isSpendable = false`, so the spend authority is always stubbed explicitly. */
+    private fun account(isSpendable: Boolean): WalletAccount =
+        mockk(relaxed = true) { every { this@mockk.isSpendable } returns isSpendable }
+
     private fun contactOnChain(chainTicker: String): EnhancedABContact =
         mockk(relaxed = true) { every { blockchain } returns SwapAssetTestFixture.blockchain(chainTicker) }
 
@@ -507,7 +565,8 @@ class SwapVMTest {
         recipient: EnhancedABContact? = null,
         scanResult: ScanResult? = null,
         assets: SwapAssetsData = SwapAssetTestFixture.assetsData(),
-        refundWarningResult: Boolean = true
+        refundWarningResult: Boolean = true,
+        account: WalletAccount? = account(isSpendable = true)
     ): Harness {
         val navigateToSlippage =
             mockk<NavigateToSlippageUseCase> {
@@ -543,9 +602,10 @@ class SwapVMTest {
                 every { observe() } returns MutableStateFlow(assets)
                 every { this@mockk() } returns assets
             }
+        val selectedAccount = MutableStateFlow(account)
         val getSelectedWalletAccount =
             mockk<GetSelectedWalletAccountUseCase> {
-                every { observe() } returns MutableStateFlow<WalletAccount?>(null)
+                every { observe() } returns selectedAccount
             }
         val mapper = mockk<SwapVMMapper>()
         val swapRepository =
@@ -559,7 +619,8 @@ class SwapVMTest {
                 requestSwapQuote = requestSwapQuote,
                 cancelSwap = cancelSwap,
                 navigateToSwapQuoteIfAvailable = navigateToSwapQuoteIfAvailable,
-                navigationRouter = navigationRouter
+                navigationRouter = navigationRouter,
+                selectedAccount = selectedAccount
             )
 
         // The VM exposes its callbacks only through SwapVMMapper.createState; capture the callbacks
@@ -610,6 +671,7 @@ class SwapVMTest {
         val cancelSwap: CancelSwapUseCase,
         val navigateToSwapQuoteIfAvailable: NavigateToSwapQuoteIfAvailableUseCase,
         val navigationRouter: NavigationRouter,
+        val selectedAccount: MutableStateFlow<WalletAccount?>,
     ) {
         lateinit var vm: SwapVM
         lateinit var capturedState: InternalState

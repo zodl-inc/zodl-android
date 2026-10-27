@@ -16,7 +16,15 @@ class CreateKeystoneAccountUseCase(
     private val synchronizerProvider: SynchronizerProvider,
     private val navigationRouter: NavigationRouter,
 ) {
-    @Throws(InitializeException.ImportAccountException::class)
+    /**
+     * @throws InitializeException.ImportAccountCollisionException if the wallet already holds an
+     *         account sharing a viewing key component with [account], e.g. a re-import of the same
+     *         Keystone account; trying again cannot succeed.
+     */
+    @Throws(
+        InitializeException.ImportAccountException::class,
+        InitializeException.ImportAccountCollisionException::class,
+    )
     suspend operator fun invoke(
         accounts: ZcashAccounts,
         account: ZcashAccount,

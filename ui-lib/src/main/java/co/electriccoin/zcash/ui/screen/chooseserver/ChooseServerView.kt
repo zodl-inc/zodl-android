@@ -323,7 +323,6 @@ private fun ChooseServerTopAppBar(
     ZashiSmallTopAppBar(
         title = stringResource(id = R.string.serverSetup_title),
         modifier = modifier.testTag(CHOOSE_SERVER_TOP_APP_BAR),
-        showTitleLogo = true,
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
         },

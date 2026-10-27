@@ -67,6 +67,7 @@ import co.electriccoin.zcash.ui.design.component.AppAlertDialog
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.BlankSurface
 import co.electriccoin.zcash.ui.design.component.Spacer
+import co.electriccoin.zcash.ui.design.component.WithoutPersonalizedLearning
 import co.electriccoin.zcash.ui.design.component.ZashiAutoSizeText
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
@@ -191,22 +192,24 @@ private fun SendMainContent(
     // For now, we merge [SendStage.Form] and [SendStage.Proposing] into one stage. We could eventually display a
     // loader if calling the Proposal API takes longer than expected
 
-    SendForm(
-        balanceWidgetState = balanceWidgetState,
-        selectedAccount = selectedAccount,
-        recipientAddressState = recipientAddressState,
-        exchangeRateState = exchangeRateState,
-        onRecipientAddressChange = onRecipientAddressChange,
-        amountState = amountState,
-        setAmountState = setAmountState,
-        memoState = memoState,
-        setMemoState = setMemoState,
-        onCreateZecSend = onCreateZecSend,
-        onQrScannerOpen = onQrScannerOpen,
-        hasCameraFeature = hasCameraFeature,
-        sendState = sendState,
-        modifier = modifier
-    )
+    WithoutPersonalizedLearning {
+        SendForm(
+            balanceWidgetState = balanceWidgetState,
+            selectedAccount = selectedAccount,
+            recipientAddressState = recipientAddressState,
+            exchangeRateState = exchangeRateState,
+            onRecipientAddressChange = onRecipientAddressChange,
+            amountState = amountState,
+            setAmountState = setAmountState,
+            memoState = memoState,
+            setMemoState = setMemoState,
+            onCreateZecSend = onCreateZecSend,
+            onQrScannerOpen = onQrScannerOpen,
+            hasCameraFeature = hasCameraFeature,
+            sendState = sendState,
+            modifier = modifier
+        )
+    }
 
     if (sendStage is SendStage.SendFailure) {
         SendFailure(

@@ -7,12 +7,18 @@ import co.electriccoin.zcash.ui.screen.pay.PayArgs
 class NavigateToNearPayUseCase(
     private val swapRepository: SwapRepository,
     private val navigationRouter: NavigationRouter,
+    private val rejectIfSelectedAccountCannotSpend: RejectIfSelectedAccountCannotSpendUseCase,
     // private val ephemeralAddressRepository: EphemeralAddressRepository,
     // private val isEphemeralAddressLocked: IsEphemeralAddressLockedUseCase,
     // private val createIncreaseEphemeralGapLimitProposal: CreateIncreaseEphemeralGapLimitProposalUseCase,
     // private val navigateToError: NavigateToErrorUseCase
 ) {
-    operator fun invoke() {
+    /**
+     * A selected account that cannot spend gets the unsupported-operation error instead of the
+     * flow, whose only outcome is spending from it.
+     */
+    suspend operator fun invoke() {
+        if (rejectIfSelectedAccountCannotSpend()) return
         swapRepository.requestRefreshAssets()
         navigationRouter.forward(PayArgs)
         // try {

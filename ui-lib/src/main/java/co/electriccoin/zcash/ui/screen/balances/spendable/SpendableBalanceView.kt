@@ -44,6 +44,7 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.Compose
 import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
@@ -145,12 +146,8 @@ private fun BalanceActionRow(state: SpendableBalanceRowState) {
         )
         Spacer(1f)
         when (state.icon) {
-            is ImageResource.ByDrawable -> {
-                Image(
-                    modifier = Modifier.size(20.dp),
-                    painter = painterResource(state.icon.resource),
-                    contentDescription = null
-                )
+            is ImageResource.ByDrawable, is ImageResource.Layered -> {
+                state.icon.Compose(modifier = Modifier.size(20.dp))
             }
 
             ImageResource.Loading -> {

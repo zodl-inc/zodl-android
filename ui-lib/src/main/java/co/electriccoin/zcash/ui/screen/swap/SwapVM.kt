@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -88,6 +89,13 @@ internal class SwapVM(
 
     private val isCancelStateVisible = MutableStateFlow(false)
 
+    /**
+     * Whether the selected account holds spend authority, null until it has loaded; tracked so the
+     * direction toggle and the quote request can refuse the swap-from-ZEC direction for an account
+     * without it.
+     */
+    private val isSelectedAccountSpendable = MutableStateFlow<Boolean?>(null)
+
     val cancelState =
         isCancelStateVisible
             .map { isVisible ->
@@ -123,7 +131,13 @@ internal class SwapVM(
             getCuratedSwapAssetsUseCase.observe(),
             getSelectedWalletAccount.observe(),
         ) { state, swapAssets, account ->
-            createState(state.copy(swapAssets = swapAssets, account = account))
+            createState(
+                state.copy(
+                    swapAssets = swapAssets,
+                    account = account,
+                    swapDirection = state.swapDirection.coerceFor(account?.isSpendable)
+                )
+            )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
@@ -131,6 +145,16 @@ internal class SwapVM(
         )
 
     init {
+        viewModelScope.launch {
+            getSelectedWalletAccount
+                .observe()
+                .map { it?.isSpendable }
+                .distinctUntilChanged()
+                .collect { isSpendable ->
+                    isSelectedAccountSpendable.update { isSpendable }
+                    internalState.update { it.copy(swapDirection = it.swapDirection.coerceFor(isSpendable)) }
+                }
+        }
         viewModelScope.launch {
             val asset = getPreselectedSwapAsset()
             val currentAssets = swapRepository.assets.value
@@ -184,6 +208,7 @@ internal class SwapVM(
     }
 
     private fun onChangeButtonClick() {
+        if (isSelectedAccountSpendable.value != true) return
         internalState.update {
             it.copy(
                 swapDirection =
@@ -331,7 +356,7 @@ internal class SwapVM(
         viewModelScope.launch {
             val asset = internalState.value.swapAsset ?: return@launch
             val slippage = internalState.value.slippage
-            val direction = internalState.value.swapDirection
+            val direction = internalState.value.swapDirection.coerceFor(isSelectedAccountSpendable.value)
             if (!navigateToSwapRefundWarning(fiatAmount = fiatAmount, mode = direction.toSwapMode())) {
                 return@launch
             }
@@ -379,6 +404,14 @@ internal class SwapVM(
             }
         }
 }
+
+/**
+ * A view-only account holds no spend authority ([isSpendable] false), so it may only swap into ZEC;
+ * any other direction is reset to [SWAP_INTO_ZEC]. An account that has not loaded yet (null) keeps
+ * the current direction.
+ */
+private fun SwapDirection.coerceFor(isSpendable: Boolean?): SwapDirection =
+    if (isSpendable == false) SWAP_INTO_ZEC else this
 
 internal enum class CurrencyType { TOKEN, FIAT }
 

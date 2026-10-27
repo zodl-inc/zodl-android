@@ -10,8 +10,14 @@ import co.electriccoin.zcash.ui.screen.send.Send
 class NavigateToSendUseCase(
     private val navigationRouter: NavigationRouter,
     private val exchangeRateRepository: ExchangeRateRepository,
+    private val rejectIfSelectedAccountCannotSpend: RejectIfSelectedAccountCannotSpendUseCase,
 ) {
-    operator fun invoke() {
+    /**
+     * A selected account that cannot spend gets the unsupported-operation error instead of the
+     * send form.
+     */
+    suspend operator fun invoke() {
+        if (rejectIfSelectedAccountCannotSpend()) return
         if (hasExchangeRateError()) {
             navigationRouter.forward(Send(), ExchangeRateUnavailableArgs)
         } else {

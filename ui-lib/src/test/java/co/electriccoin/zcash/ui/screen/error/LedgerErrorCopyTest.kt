@@ -2,8 +2,8 @@ package co.electriccoin.zcash.ui.screen.error
 
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.LceContent
-import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -20,11 +20,11 @@ import kotlin.test.assertNotEquals
 class LedgerErrorCopyTest {
     @Test
     fun theLceSheetOverridesWhateverTheCallSitePassed() {
-        val mapper = ErrorMapperUseCase(sendEmail = mockk(relaxed = true))
+        val mapper = ErrorMapperUseCase(sendEmail = mockk(relaxed = true), viewOnlyContent = mockk(relaxed = true))
 
         val state =
             mapper.mapToState(
-                error = error(LedgerOperationUnsupportedException()),
+                error = error(AccountOperationUnsupportedException.ledger()),
                 title = stringRes(R.string.error_general_title),
                 message = stringRes(R.string.error_general_title),
             )
@@ -35,7 +35,7 @@ class LedgerErrorCopyTest {
 
     @Test
     fun anOrdinaryFailureKeepsTheCallSiteCopy() {
-        val mapper = ErrorMapperUseCase(sendEmail = mockk(relaxed = true))
+        val mapper = ErrorMapperUseCase(sendEmail = mockk(relaxed = true), viewOnlyContent = mockk(relaxed = true))
 
         val state =
             mapper.mapToState(
@@ -51,10 +51,11 @@ class LedgerErrorCopyTest {
     fun theErrorDialogShowsTheLedgerCopyInsteadOfAStackTrace() {
         val vm =
             ErrorVM(
-                args = ErrorArgs.General(LedgerOperationUnsupportedException()),
+                args = ErrorArgs.General(AccountOperationUnsupportedException.ledger()),
                 navigateToErrorBottom = mockk(relaxed = true),
                 navigationRouter = mockk<NavigationRouter>(relaxed = true),
                 sendEmailUseCase = mockk(relaxed = true),
+                viewOnlyContent = mockk(relaxed = true),
             )
 
         assertEquals(
@@ -77,6 +78,7 @@ class LedgerErrorCopyTest {
                 navigateToErrorBottom = mockk(relaxed = true),
                 navigationRouter = mockk<NavigationRouter>(relaxed = true),
                 sendEmailUseCase = mockk(relaxed = true),
+                viewOnlyContent = mockk(relaxed = true),
             )
 
         assertEquals(

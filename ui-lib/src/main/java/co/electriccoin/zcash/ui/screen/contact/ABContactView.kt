@@ -207,7 +207,6 @@ private fun ContactTopAppBar(
     ZashiSmallTopAppBar(
         title = state.title.getValue(),
         modifier = modifier.testTag(ABContactTag.TOP_APP_BAR),
-        showTitleLogo = true,
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
         },

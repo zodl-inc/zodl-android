@@ -25,6 +25,7 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.Compose
 import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
@@ -52,6 +53,10 @@ fun ZashiCheckboxListItem(
                             painter = painterResource(state.icon.resource),
                             contentDescription = null,
                         )
+                    }
+
+                    is ImageResource.Layered -> {
+                        state.icon.Compose(modifier = Modifier.size(40.dp))
                     }
 
                     is ImageResource.DisplayString -> {

@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.screen.common
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -17,6 +16,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
+import co.electriccoin.zcash.ui.design.util.Compose
 import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.imageRes
 
@@ -41,13 +41,7 @@ fun ScreenLogoHeader(
         contentAlignment = Alignment.CenterStart,
         modifier = modifier
     ) {
-        if (logo is ImageResource.ByDrawable) {
-            Image(
-                painter = painterResource(logo.resource),
-                contentDescription = null,
-                modifier = Modifier.size(HEADER_ICON_SIZE)
-            )
-        }
+        logo.Compose(modifier = Modifier.size(HEADER_ICON_SIZE))
         Box(
             contentAlignment = Alignment.Center,
             modifier =

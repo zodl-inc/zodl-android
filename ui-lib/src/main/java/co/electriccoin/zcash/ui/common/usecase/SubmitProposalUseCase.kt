@@ -9,9 +9,11 @@ import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
 import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
+import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.BiometricRequest
 import co.electriccoin.zcash.ui.common.repository.BiometricsCancelledException
@@ -21,6 +23,8 @@ import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.error.ErrorArgs
+import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionArgs
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressArgs
 import kotlinx.coroutines.CoroutineScope
@@ -40,6 +44,7 @@ class SubmitProposalUseCase(
     private val metadataRepository: MetadataRepository,
     private val processSwapTransaction: ProcessSwapTransactionUseCase,
     private val prefillSend: PrefillSendUseCase,
+    private val navigateToError: NavigateToErrorUseCase,
 ) {
     @set:RestrictTo(RestrictTo.Scope.TESTS)
     @VisibleForTesting
@@ -47,7 +52,8 @@ class SubmitProposalUseCase(
 
     /**
      * Submit Zashi proposal and navigate to Transaction Progress screen, navigate to Keystone PCZT flow, or open
-     * the Ledger sign sheet over the confirmation screen.
+     * the Ledger sign sheet over the confirmation screen. An account that cannot spend gets the
+     * unsupported-operation error instead, before any proposal is read.
      */
     suspend operator fun invoke() {
         try {
@@ -62,11 +68,20 @@ class SubmitProposalUseCase(
                     )
             )
             val account = accountDataSource.getSelectedAccount()
+            if (!account.isSpendable) {
+                navigateToError(
+                    ErrorArgs.General(
+                        AccountOperationUnsupportedException.viewOnly()
+                    )
+                )
+                return
+            }
             val proposal =
                 when (account) {
                     is KeystoneAccount -> keystoneProposalRepository.getTransactionProposal()
                     is LedgerAccount -> ledgerProposalPipeline.getTransactionProposal()
-                    is ZashiAccount -> zashiProposalRepository.getTransactionProposal()
+                    is ViewOnlyAccount -> throw AccountOperationUnsupportedException.viewOnly()
+                    is ZodlAccount -> zashiProposalRepository.getTransactionProposal()
                 }
             if (proposal is SwapTransactionProposal) {
                 val selectedSwapAsset = proposal.quote.destinationAsset
@@ -84,7 +99,11 @@ class SubmitProposalUseCase(
                     ledgerNavigator.forwardToSign()
                 }
 
-                is ZashiAccount -> {
+                is ViewOnlyAccount -> {
+                    throw AccountOperationUnsupportedException.viewOnly()
+                }
+
+                is ZodlAccount -> {
                     swapRepository.clear()
                     submitZashiProposal(proposal)
                     navigationRouter.replace(TransactionProgressArgs)
