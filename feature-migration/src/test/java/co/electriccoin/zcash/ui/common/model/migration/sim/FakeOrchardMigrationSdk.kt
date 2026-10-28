@@ -7,6 +7,7 @@ import cash.z.ecc.android.sdk.MigrationAdvanceStep
 import cash.z.ecc.android.sdk.MigrationBlocker
 import cash.z.ecc.android.sdk.MigrationNextAction
 import cash.z.ecc.android.sdk.MigrationProgress
+import cash.z.ecc.android.sdk.MigrationRestartOutcome
 import cash.z.ecc.android.sdk.MigrationSchedule
 import cash.z.ecc.android.sdk.MigrationState
 import cash.z.ecc.android.sdk.MigrationSummary
@@ -534,7 +535,7 @@ class FakeOrchardMigrationSdk : OrchardMigrationSdk {
         usk: UnifiedSpendingKey,
     ): Unit = notImpl("signAndStoreMigrationSchedule — the sim seeds committed plans directly via the driver")
 
-    override suspend fun restartCurrentMigrationStep(includeResidual: Boolean): MigrationSchedule =
+    override suspend fun restartCurrentMigrationStep(includeResidual: Boolean): MigrationRestartOutcome =
         notImpl("restartCurrentMigrationStep — add when a RequiresAttention recovery scenario needs it")
 
     override suspend fun hasInvalidTransfers(): Boolean = invalidTransfersPresent

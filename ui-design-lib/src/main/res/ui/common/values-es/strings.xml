@@ -1305,6 +1305,14 @@
     <string name="migrationHome_residueSubtitle">Toca para decidir qué hacer con él</string>
     <string name="coinVote_confirmSubmission_detailExcludedWeight">Excluido de esta votación</string>
 
+    <string name="migrationSetup_automaticPausedSubtitle">Disponible después de la actualización de la red, alrededor del %1$s</string>
+    <string name="migrationSetup_automaticPausedSubtitleNoDate">Disponible después de la actualización de la red</string>
+    <string name="migrationUpgradePaused_title">La migración está en pausa</string>
+    <string name="migrationUpgradePaused_message">Una migración programada no puede iniciarse antes de la actualización de la red. Inténtalo de nuevo después.</string>
+    <string name="migrationTipUnavailable_title">Zodl sigue sincronizando</string>
+    <string name="migrationTipUnavailable_message">Zodl debe terminar de sincronizar antes de planificar una migración. Inténtalo de nuevo en un momento.</string>
+    <string name="migrationHome_upgradeStoppedTitle">Migración detenida</string>
+    <string name="migrationHome_upgradeStoppedSubtitle">La actualización de la red de Zcash detuvo tu migración antes de que terminara. Las transferencias confirmadas no se ven afectadas. Los fondos de las transferencias sin confirmar pueden seguir sin estar disponibles hasta que esas transacciones caduquen y tu billetera se sincronice. Toca para migrar lo que queda.</string>
     <string name="colorPicker_title">Colores</string>
     <string name="colorPicker_grid">Cuadrícula</string>
     <string name="colorPicker_spectrum">Espectro</string>

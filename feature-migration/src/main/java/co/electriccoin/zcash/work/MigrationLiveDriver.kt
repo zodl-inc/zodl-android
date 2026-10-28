@@ -240,6 +240,7 @@ class MigrationLiveDriverImpl(
                 // load delay tonight.
                 migrationState = sdk.getMigrationState(),
                 hasOverdueTransfers = sdk.hasOverdueTransfers(),
+                nu7ActivationHeight = sdk.nu7ActivationHeight,
             )
         }.onSuccess { migrationTransferStateRepository.publish(accountKeyId, it) }
             .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }

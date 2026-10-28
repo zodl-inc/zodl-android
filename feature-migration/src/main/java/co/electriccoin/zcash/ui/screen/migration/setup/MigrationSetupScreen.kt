@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package co.electriccoin.zcash.ui.screen.migration.setup
 
 import androidx.activity.compose.BackHandler
@@ -27,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -149,6 +152,7 @@ fun MigrationSetupView(state: MigrationSetupState) {
                 MigrationModeSelector(
                     selected = state.mode,
                     onSelect = state.onModeChange,
+                    gate = state.gate,
                 )
                 Spacer(Modifier.height(20.dp))
                 Spacer(Modifier.weight(1f))
@@ -234,6 +238,7 @@ private fun MigrationDisclaimerRow(
 private fun MigrationModeSelector(
     selected: MigrationMode,
     onSelect: (MigrationMode) -> Unit,
+    gate: MigrationSetupGate,
 ) {
     Column(
         modifier = Modifier.selectableGroup(),
@@ -242,8 +247,18 @@ private fun MigrationModeSelector(
         MigrationModeOption(
             mode = MigrationMode.AUTOMATIC,
             title = stringRes(DesignR.string.migrationSetup_automaticTitle).getValue(),
-            subtitle = stringRes(DesignR.string.migrationSetup_automaticSubtitle).getValue(),
+            subtitle =
+                when (gate) {
+                    is MigrationSetupGate.ScheduledPaused -> {
+                        gate.automaticSubtitle.getValue()
+                    }
+
+                    MigrationSetupGate.Open -> {
+                        stringRes(DesignR.string.migrationSetup_automaticSubtitle).getValue()
+                    }
+                },
             isWarning = false,
+            isEnabled = gate == MigrationSetupGate.Open,
             selected = selected,
             onSelect = onSelect,
         )
@@ -252,6 +267,7 @@ private fun MigrationModeSelector(
             title = stringRes(DesignR.string.migrationSetup_immediateTitle).getValue(),
             subtitle = stringRes(DesignR.string.migrationSetup_immediateSubtitle).getValue(),
             isWarning = true,
+            isEnabled = true,
             selected = selected,
             onSelect = onSelect,
         )
@@ -265,10 +281,11 @@ private fun MigrationModeOption(
     title: String,
     subtitle: String,
     isWarning: Boolean,
+    isEnabled: Boolean,
     selected: MigrationMode,
     onSelect: (MigrationMode) -> Unit,
 ) {
-    val isSelected = mode == selected
+    val isSelected = mode == selected && isEnabled
     val isWarningSelected = isSelected && isWarning
     val warningBorder = ZashiColors.Utility.WarningYellow.utilityOrange500
     val warningRing = ZashiColors.Utility.WarningYellow.utilityOrange200
@@ -304,9 +321,11 @@ private fun MigrationModeOption(
                     }
                 }.selectable(
                     selected = isSelected,
+                    enabled = isEnabled,
                     onClick = { onSelect(mode) },
                     role = Role.RadioButton,
-                ).padding(horizontal = 16.dp, vertical = 12.dp),
+                ).alpha(if (isEnabled) 1f else DISABLED_OPTION_ALPHA)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
         MigrationRadioIndicator(
@@ -328,6 +347,8 @@ private fun MigrationModeOption(
         }
     }
 }
+
+private const val DISABLED_OPTION_ALPHA = 0.5f
 
 private val MIGRATION_RADIO_SIZE = 20.dp
 
@@ -408,6 +429,29 @@ private fun PreviewImmediateSelected() =
                     onFindOutMore = {},
                     onConfirm = {},
                     onBack = {},
+                )
+        )
+    }
+
+@PreviewScreens
+@Composable
+private fun PreviewScheduledPaused() =
+    ZcashTheme {
+        MigrationSetupView(
+            state =
+                MigrationSetupState(
+                    orchardBalance = stringRes("12.458 ZEC"),
+                    fiatBalance = stringRes("$4,832.86"),
+                    isKeystone = false,
+                    mode = MigrationMode.IMMEDIATE,
+                    onModeChange = {},
+                    onFindOutMore = {},
+                    onConfirm = {},
+                    onBack = {},
+                    gate =
+                        MigrationSetupGate.ScheduledPaused(
+                            stringRes(DesignR.string.migrationSetup_automaticPausedSubtitle, "Nov 6, 2026")
+                        ),
                 )
         )
     }

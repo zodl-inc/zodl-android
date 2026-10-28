@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import androidx.annotation.DrawableRes
+import cash.z.ecc.android.sdk.MigrationPausedUntilNetworkUpgradeException
+import cash.z.ecc.android.sdk.MigrationWalletTipUnavailableException
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
@@ -14,6 +16,20 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import com.flexa.core.Flexa.scope
 import kotlinx.coroutines.launch
+
+/**
+ * A scheduled migration was asked for before the NU7 activation. The SDK refuses it, and the
+ * generic failure copy would hide why, so it gets its own message.
+ */
+fun Throwable?.isMigrationPausedUntilNetworkUpgrade(): Boolean =
+    generateSequence(this) { it.cause }.any { it is MigrationPausedUntilNetworkUpgradeException }
+
+/**
+ * A scheduled migration was asked for while the wallet has no chain tip yet, so whether NU7 has activated is not known.
+ * Syncing fixes it, and the pause copy would be the wrong reason once the upgrade has happened.
+ */
+fun Throwable?.isMigrationWalletTipUnavailable(): Boolean =
+    generateSequence(this) { it.cause }.any { it is MigrationWalletTipUnavailableException }
 
 class ErrorMapperUseCase(
     private val sendEmail: SendEmailUseCase,
@@ -38,16 +54,47 @@ class ErrorMapperUseCase(
         @DrawableRes icon: Int? = null,
     ): LceError.BottomSheet {
         val unsupported = (error.cause as? AccountOperationUnsupportedException)?.kind?.errorCopy(viewOnlyContent)
+        val isMigrationPaused = error.cause.isMigrationPausedUntilNetworkUpgrade()
+        val isMigrationTipUnavailable = error.cause.isMigrationWalletTipUnavailable()
         return mapToBottomSheet(
             error = error,
             title =
-                unsupported?.title
-                    ?: title
-                    ?: stringRes(co.electriccoin.zcash.ui.design.R.string.coinVote_error_title),
+                when {
+                    unsupported != null -> {
+                        unsupported.title
+                    }
+
+                    isMigrationPaused -> {
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.migrationUpgradePaused_title)
+                    }
+
+                    isMigrationTipUnavailable -> {
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.migrationTipUnavailable_title)
+                    }
+
+                    else -> {
+                        title ?: stringRes(co.electriccoin.zcash.ui.design.R.string.coinVote_error_title)
+                    }
+                },
             message =
-                unsupported?.message
-                    ?: message
-                    ?: stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_laterDesc),
+                when {
+                    unsupported != null -> {
+                        unsupported.message
+                    }
+
+                    isMigrationPaused -> {
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.migrationUpgradePaused_message)
+                    }
+
+                    isMigrationTipUnavailable -> {
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.migrationTipUnavailable_message)
+                    }
+
+                    else -> {
+                        message
+                            ?: stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_laterDesc)
+                    }
+                },
             primaryStyle = primaryStyle,
             secondaryStyle = secondaryStyle,
             isSupportFirst = isSupportFirst,

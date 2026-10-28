@@ -9,6 +9,7 @@ import co.electriccoin.zcash.ui.common.component.destructive
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
 import co.electriccoin.zcash.ui.common.migration.MigrationDebugActions
+import co.electriccoin.zcash.ui.common.migration.MigrationGate
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
@@ -27,7 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -43,13 +44,19 @@ class DebugVM(
     private val accountDataSource: AccountDataSource,
     private val migrationDebugActions: MigrationDebugActions,
     private val migrationAppHooks: MigrationAppHooks,
+    private val migrationGate: MigrationGate,
     private val context: Context,
     private val navigationRouter: NavigationRouter,
     private val simulateSeedNotRelevant: SimulateSeedNotRelevantUseCase,
 ) : ViewModel() {
     private val confirmationDialog = MutableStateFlow<ZashiConfirmationState?>(null)
+    private val isGateBypassEnabled = MutableStateFlow(false)
 
-    private val items =
+    init {
+        viewModelScope.launch { isGateBypassEnabled.value = migrationGate.isNetworkUpgradeGateBypassEnabled() }
+    }
+
+    private fun items(isBypassEnabled: Boolean) =
         listOf(
             ListItemState(
                 // bigIcon = imageRes(R.drawable.ic_zec_round_full),
@@ -96,26 +103,46 @@ class DebugVM(
                 onClick = ::onToggleBackgroundExecutionUnavailableClick
             ),
             ListItemState(
+                title =
+                    stringRes(
+                        if (isBypassEnabled) {
+                            "Migration: ignore the NU7 pause on scheduled migration: ON"
+                        } else {
+                            "Migration: ignore the NU7 pause on scheduled migration: OFF"
+                        }
+                    ),
+                onClick = ::onGateBypassClick
+            ),
+            ListItemState(
                 title = stringRes("Simulate SeedNotRelevant"),
                 onClick = ::onSimulateSeedNotRelevantClick
             )
         )
 
     val state: StateFlow<DebugState> =
-        confirmationDialog
-            .map { dialog ->
-                DebugState(
-                    onBack = ::onBack,
-                    items = items,
-                    confirmationDialog = dialog,
-                )
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
-                initialValue = DebugState(onBack = ::onBack, items = items, confirmationDialog = null),
+        combine(confirmationDialog, isGateBypassEnabled) { dialog, isBypassEnabled ->
+            DebugState(
+                onBack = ::onBack,
+                items = items(isBypassEnabled),
+                confirmationDialog = dialog,
             )
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
+            initialValue = DebugState(onBack = ::onBack, items = items(false), confirmationDialog = null),
+        )
 
     private fun onBack() = navigationRouter.back()
+
+    /**
+     * Lifts the SDK's pause on new scheduled migrations before NU7, so a scheduled run can be tried on mainnet.
+     * Remembered across restarts. Submission validity (branch, expiry) is never bypassed.
+     */
+    private fun onGateBypassClick() =
+        viewModelScope.launch {
+            migrationGate.setNetworkUpgradeGateBypass(!isGateBypassEnabled.value)
+            isGateBypassEnabled.value = migrationGate.isNetworkUpgradeGateBypassEnabled()
+        }
 
     private fun onGetEphemeralAddressClick() =
         viewModelScope.launch {

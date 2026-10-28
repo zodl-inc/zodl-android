@@ -76,6 +76,7 @@ class MigrationProgressVM(
                     estimatedTip = if (est >= 0) est else liveStates.tipHeight,
                     secondsPerBlock = secondsPerBlock,
                     nowEpochSeconds = Clock.System.now().epochSeconds,
+                    nu7ActivationHeight = readout.nu7ActivationHeight,
                 )?.let { createState(it, rate) }
         }.withLce(sendLce, errorStateMapper::mapToState)
             .stateIn(this)
@@ -104,13 +105,13 @@ class MigrationProgressVM(
         exchangeRateState: ExchangeRateState,
     ): MigrationProgressState {
         val now = Clock.System.now()
-        val subtitle = migrationProgressSubtitle(snapshot, now)
+        val subtitle = stringRes(migrationProgressSubtitle(snapshot, now))
 
         val totalZatoshi = snapshot.transfers.sumOf { it.amountZatoshi }
         val totalAmount = stringRes(Zatoshi(totalZatoshi))
         return MigrationProgressState(
             title = stringRes(DesignR.string.migration_common_progressTitle),
-            subtitle = stringRes(subtitle),
+            subtitle = subtitle,
             totalAmount = totalAmount,
             totalFiatAmount = fiatAmount(Zatoshi(totalZatoshi), exchangeRateState),
             // Figma "PR App Designs Q3'26" node 3480:7638: a balance-tracker card showing the

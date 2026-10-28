@@ -7,6 +7,23 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Changed:
+
+- Migration time estimates, the plan's total duration and the Syncing banner follow NU7's 25-second target block
+  spacing. An estimate that reaches past the NU7 activation height counts each side at its own spacing, and the
+  Syncing banner still opens at three days behind.
+- The scheduled (private) Ironwood migration is not offered until the chain reaches the NU7 activation height, and
+  the Setup screen shows it as available after the upgrade with the estimated date. The one-transaction migration
+  stays available at every height, and a migration that is already running keeps sending its valid transfers until
+  the activation. After NU7 a run that still holds a transfer signed for the old consensus branch is cancelled and a
+  one-time Home notice offers to migrate what is left. Confirmed transfers are unaffected, and unconfirmed ones can
+  stay unavailable until they expire and the wallet syncs.
+- Restarting a migration that has a transfer needing attention, before NU7, ends the run and opens the Setup screen
+  (the scheduled migration is shown as available after the upgrade, the one-transaction one now) instead of failing.
+- The Keystone signing and scanning screens explain that a scheduled migration cannot start before NU7 instead of a
+  generic error. Spanish copy was added for the new migration messages. A wallet that has not synced yet is told to
+  finish syncing instead.
+
 ## [3.18.0 (3206)] - 2026-10-23
 
 ### Added:

@@ -1,6 +1,6 @@
 package co.electriccoin.zcash.ui.common.model.migration
 
-import cash.z.ecc.android.sdk.ext.ZcashSdk
+import cash.z.ecc.android.sdk.model.BlockSpacing
 import co.electriccoin.zcash.migration.BuildConfig
 
 /**
@@ -63,6 +63,12 @@ internal fun isTestnetBuildFlavor(): Boolean = BuildConfig.FLAVOR.contains("test
  * decades overdue: a block height (~4.18M) stored as `scheduledAtEpochSeconds` and later compared
  * against a real 2026 `Instant` measures the gap back to the Unix epoch, not to the actual
  * scheduled time.
+ *
+ * Blocks come three times as often from [nu7ActivationHeight] (ZIP 218: 75 s to 25 s), so a range that spans
+ * it cannot use one rate. Null (no activation known, or not passed) keeps the single-rate math. Past ranges
+ * (`toHeight < fromHeight`) are the negation of the forward range. [rateHeight] is the height the measured
+ * [secondsPerBlock] belongs to (the chain tip it was measured at), which is [fromHeight] for every "from now"
+ * projection.
  */
 fun estimatedSecondsBetweenHeights(
     fromHeight: Long,
@@ -70,7 +76,55 @@ fun estimatedSecondsBetweenHeights(
     // 75s protocol target as fallback. Pass OrchardMigrationSdk.estimatedSecondsPerBlock()
     // wherever an SDK is in reach — testnet's minimum-difficulty bursts make the constant a
     // large overestimate (observed live: "~1 h" plans coming due within minutes).
-    secondsPerBlock: Long = ZcashSdk.BLOCK_INTERVAL_MILLIS / MILLIS_PER_SECOND,
-): Long = (toHeight - fromHeight) * secondsPerBlock
+    secondsPerBlock: Long = BlockSpacing.POST_BLOSSOM_SECONDS,
+    nu7ActivationHeight: Long? = null,
+    rateHeight: Long = fromHeight,
+): Long =
+    when {
+        nu7ActivationHeight == null -> {
+            (toHeight - fromHeight) * secondsPerBlock
+        }
 
-private const val MILLIS_PER_SECOND = 1000L
+        toHeight < fromHeight -> {
+            -estimatedSecondsBetweenHeights(toHeight, fromHeight, secondsPerBlock, nu7ActivationHeight, rateHeight)
+        }
+
+        else -> {
+            forwardSecondsAcrossNu7(fromHeight, toHeight, secondsPerBlock, nu7ActivationHeight, rateHeight)
+        }
+    }
+
+/**
+ * The height a measured block rate holds at, for [estimatedSecondsBetweenHeights]'s `rateHeight`.
+ *
+ * The SDK reads the rate at its estimated chain tip, so that is the height to attribute it to. A plan anchor is not: it
+ * is drawn from a bucket up to 287 blocks below the tip, and a rate read just after NU7 would be priced as a pre-NU7
+ * one for a plan anchored just before it, three times too fast. [fallbackHeight] is used only when the tip is unknown
+ * (the SDK answers -1 before any block is scanned).
+ */
+fun rateReferenceHeight(
+    estimatedTip: Long,
+    fallbackHeight: Long?,
+): Long? = estimatedTip.takeIf { it > 0L } ?: fallbackHeight
+
+/** [rateReferenceHeight] for a caller that always has a fallback, so the answer is never null. */
+fun rateReferenceHeight(
+    estimatedTip: Long,
+    fallbackHeight: Long,
+): Long = estimatedTip.takeIf { it > 0L } ?: fallbackHeight
+
+private fun forwardSecondsAcrossNu7(
+    fromHeight: Long,
+    toHeight: Long,
+    secondsPerBlock: Long,
+    nu7ActivationHeight: Long,
+    rateHeight: Long,
+): Long {
+    val ratio = BlockSpacing.NU7_RATIO
+    val rateIsPostNu7 = rateHeight >= nu7ActivationHeight
+    val preNu7Rate = if (rateIsPostNu7) secondsPerBlock * ratio else secondsPerBlock
+    val postNu7Rate = if (rateIsPostNu7) secondsPerBlock else (secondsPerBlock / ratio).coerceAtLeast(1L)
+    val preNu7Blocks = (minOf(toHeight, nu7ActivationHeight - 1) - fromHeight).coerceIn(0L, toHeight - fromHeight)
+    val postNu7Blocks = (toHeight - fromHeight) - preNu7Blocks
+    return preNu7Blocks * preNu7Rate + postNu7Blocks * postNu7Rate
+}

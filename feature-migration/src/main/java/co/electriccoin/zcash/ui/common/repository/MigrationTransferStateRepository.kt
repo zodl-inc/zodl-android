@@ -25,6 +25,8 @@ data class MigrationLiveReadout(
     val estimatedSecondsPerBlock: Long,
     val migrationState: MigrationState?,
     val hasOverdueTransfers: Boolean,
+    /** The NU7 activation height of the wallet's network, for splitting height ranges that span it. */
+    val nu7ActivationHeight: Long? = null,
 )
 
 /**
@@ -49,6 +51,7 @@ suspend fun OrchardMigrationSdk.readUnreconciledLiveReadout(): MigrationLiveRead
         estimatedSecondsPerBlock = estimatedSecondsPerBlock(),
         migrationState = getMigrationStateUnreconciled(),
         hasOverdueTransfers = states?.transfers?.any { it.ready && it.action == MigrationNextAction.BROADCAST } == true,
+        nu7ActivationHeight = nu7ActivationHeight,
     )
 }
 

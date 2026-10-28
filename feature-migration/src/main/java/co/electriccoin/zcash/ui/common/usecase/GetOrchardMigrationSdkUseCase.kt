@@ -1,11 +1,14 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import android.content.Context
+import cash.z.ecc.android.sdk.InternalTestingApi
 import cash.z.ecc.android.sdk.OrchardMigrationSdk
+import co.electriccoin.zcash.migration.BuildConfig
 import co.electriccoin.zcash.migration.migrationLog
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.toStorageKeyId
+import co.electriccoin.zcash.ui.common.provider.MigrationGateBypassStorageProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 
 /**
@@ -39,6 +42,7 @@ class GetOrchardMigrationSdkUseCase(
     private val persistableWalletProvider: PersistableWalletProvider,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     private val accountDataSource: AccountDataSource,
+    private val gateBypassStorage: MigrationGateBypassStorageProvider,
 ) {
     /** Resolves the SDK for the currently selected wallet account. */
     suspend operator fun invoke(): OrchardMigrationSdk =
@@ -75,14 +79,20 @@ class GetOrchardMigrationSdkUseCase(
         return buildFor(account)
     }
 
+    @OptIn(InternalTestingApi::class)
     private suspend fun buildFor(account: WalletAccount): OrchardMigrationSdk {
         val wallet = persistableWalletProvider.requirePersistableWallet()
-        return OrchardMigrationSdk.new(
-            appContext = context,
-            zcashNetwork = wallet.network,
-            lightWalletEndpoint = wallet.endpoint,
-            account = account.sdkAccount.accountUuid,
-        )
+        return OrchardMigrationSdk
+            .new(
+                appContext = context,
+                zcashNetwork = wallet.network,
+                lightWalletEndpoint = wallet.endpoint,
+                account = account.sdkAccount.accountUuid,
+            ).also {
+                if (BuildConfig.DEBUG) {
+                    it.setMigrationNetworkUpgradeGateBypass(gateBypassStorage.isEnabled())
+                }
+            }
     }
 }
 
