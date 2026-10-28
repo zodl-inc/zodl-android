@@ -14,6 +14,8 @@ import kotlin.time.Instant
 data class MigrationGateInfo(
     val availability: MigrationAvailability,
     val estimatedActivation: Instant?,
+    /** The wallet has no chain tip yet, so the SDK cannot say whether NU7 is active. */
+    val isWalletTipUnknown: Boolean = false,
 ) {
     /** The scheduled (private, multi-transfer) lane is closed until NU7 activates. */
     val isScheduledLaneAvailable: Boolean get() = availability.isScheduledLaneAvailable

@@ -115,8 +115,6 @@ class MigrationTransferInvalidVM(
                     navigationRouter.replace(MigrationReviewArgs(MigrationMode.AUTOMATIC))
                 }
 
-                // Before NU7 the SDK cancelled the run and planned nothing: the setup screen shows the scheduled
-                // option as available after the upgrade and offers the one-transaction migration now.
                 is MigrationRestartOutcome.CancelledUntilNetworkUpgrade -> {
                     navigationRouter.replace(MigrationSetupArgs)
                 }

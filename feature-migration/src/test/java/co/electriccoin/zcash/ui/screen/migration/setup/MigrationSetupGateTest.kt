@@ -43,6 +43,18 @@ class MigrationSetupGateTest {
     }
 
     @Test
+    fun anUnsyncedWalletIsToldItIsSyncingAndNotThatTheUpgradeIsPending() {
+        val gate =
+            MigrationGateInfo(
+                MigrationAvailability.PausedUntilNetworkUpgrade(2_000L),
+                estimatedActivation = null,
+                isWalletTipUnknown = true,
+            ).toSetupGate()
+        assertIs<MigrationSetupGate.ScheduledPaused>(gate)
+        assertEquals(DesignR.string.migrationTipUnavailable_title, resourceId(gate.automaticSubtitle))
+    }
+
+    @Test
     fun theImmediateOptionIsActedOnWhileTheScheduledOneIsPaused() {
         val paused = MigrationSetupGate.ScheduledPaused(StringResource.ByString("x"))
         assertEquals(MigrationMode.IMMEDIATE, effectiveMigrationMode(MigrationMode.AUTOMATIC, paused))

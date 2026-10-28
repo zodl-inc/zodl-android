@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package co.electriccoin.zcash.ui.screen.migration.setup
 
 import androidx.activity.compose.BackHandler
@@ -427,6 +429,29 @@ private fun PreviewImmediateSelected() =
                     onFindOutMore = {},
                     onConfirm = {},
                     onBack = {},
+                )
+        )
+    }
+
+@PreviewScreens
+@Composable
+private fun PreviewScheduledPaused() =
+    ZcashTheme {
+        MigrationSetupView(
+            state =
+                MigrationSetupState(
+                    orchardBalance = stringRes("12.458 ZEC"),
+                    fiatBalance = stringRes("$4,832.86"),
+                    isKeystone = false,
+                    mode = MigrationMode.IMMEDIATE,
+                    onModeChange = {},
+                    onFindOutMore = {},
+                    onConfirm = {},
+                    onBack = {},
+                    gate =
+                        MigrationSetupGate.ScheduledPaused(
+                            stringRes(DesignR.string.migrationSetup_automaticPausedSubtitle, "Nov 6, 2026")
+                        ),
                 )
         )
     }

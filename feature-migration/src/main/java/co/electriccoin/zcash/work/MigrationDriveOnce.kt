@@ -150,12 +150,10 @@ class MigrationDriveOnce(
                     waitingRun(sdk, accountKeyId)
                 }
 
-                // The SDK holds this run until NU7 activates; nothing to build or send, so re-arm like Waiting.
                 is MigrationAdvanceStep.PausedForNetworkUpgrade -> {
                     waitingRun(sdk, accountKeyId)
                 }
 
-                // NU7 is active and the run holds a transaction no block accepts any more.
                 is MigrationAdvanceStep.InterruptedByNetworkUpgrade -> {
                     interruptedRun(sdk, accountKeyId, step.activationHeight)
                     DriveOnceResult.Terminal
@@ -299,8 +297,6 @@ class MigrationDriveOnce(
                 DriveOnceResult.Terminal
             }
 
-            // The sync itself carried the wallet across the activation: stop the run now rather than waiting for
-            // the next cycle (the re-arm below would fall back to the slow cadence for an hour).
             is MigrationAdvanceStep.InterruptedByNetworkUpgrade -> {
                 interruptedRun(sdk, accountKeyId, nextStep.activationHeight)
                 DriveOnceResult.Terminal

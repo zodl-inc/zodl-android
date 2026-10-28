@@ -42,7 +42,8 @@ class GetMigrationGateInfoUseCase(
                 val activation = sdk.nu7ActivationHeight ?: throw e
                 MigrationGateInfo(
                     MigrationAvailability.PausedUntilNetworkUpgrade(activation),
-                    estimatedActivation = null
+                    estimatedActivation = null,
+                    isWalletTipUnknown = true,
                 )
             }
         }.getOrDefault(MigrationGateInfo.OPEN)

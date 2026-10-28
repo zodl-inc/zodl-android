@@ -25,7 +25,7 @@ data class MigrationLiveReadout(
     val estimatedSecondsPerBlock: Long,
     val migrationState: MigrationState?,
     val hasOverdueTransfers: Boolean,
-    // The NU7 activation height of the wallet's network, for splitting height ranges that span it.
+    /** The NU7 activation height of the wallet's network, for splitting height ranges that span it. */
     val nu7ActivationHeight: Long? = null,
 )
 

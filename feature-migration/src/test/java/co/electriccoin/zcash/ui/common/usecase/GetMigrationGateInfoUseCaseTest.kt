@@ -30,6 +30,7 @@ class GetMigrationGateInfoUseCaseTest {
 
             assertEquals(MigrationAvailability.PausedUntilNetworkUpgrade(activation), info.availability)
             assertEquals(null, info.estimatedActivation)
+            assertEquals(true, info.isWalletTipUnknown)
             assertFalse(info.isScheduledLaneAvailable)
             assertEquals(true, info.isImmediateLaneAvailable)
         }

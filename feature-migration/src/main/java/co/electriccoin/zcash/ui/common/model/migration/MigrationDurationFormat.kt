@@ -63,6 +63,12 @@ internal fun isTestnetBuildFlavor(): Boolean = BuildConfig.FLAVOR.contains("test
  * decades overdue: a block height (~4.18M) stored as `scheduledAtEpochSeconds` and later compared
  * against a real 2026 `Instant` measures the gap back to the Unix epoch, not to the actual
  * scheduled time.
+ *
+ * Blocks come three times as often from [nu7ActivationHeight] (ZIP 218: 75 s to 25 s), so a range that spans
+ * it cannot use one rate. Null (no activation known, or not passed) keeps the single-rate math. Past ranges
+ * (`toHeight < fromHeight`) are the negation of the forward range. [rateHeight] is the height the measured
+ * [secondsPerBlock] belongs to (the chain tip it was measured at), which is [fromHeight] for every "from now"
+ * projection.
  */
 fun estimatedSecondsBetweenHeights(
     fromHeight: Long,
@@ -71,11 +77,7 @@ fun estimatedSecondsBetweenHeights(
     // wherever an SDK is in reach — testnet's minimum-difficulty bursts make the constant a
     // large overestimate (observed live: "~1 h" plans coming due within minutes).
     secondsPerBlock: Long = BlockSpacing.POST_BLOSSOM_SECONDS,
-    // From this height blocks come NU7_RATIO times as often (ZIP 218: 75s -> 25s), so a range that spans
-    // it cannot use one rate. null (no activation known, or not passed) keeps the single-rate math.
     nu7ActivationHeight: Long? = null,
-    // The height the measured [secondsPerBlock] belongs to (the chain tip it was measured at). Defaults
-    // to [fromHeight], which is the tip for every "from now" projection.
     rateHeight: Long = fromHeight,
 ): Long =
     when {
@@ -83,7 +85,6 @@ fun estimatedSecondsBetweenHeights(
             (toHeight - fromHeight) * secondsPerBlock
         }
 
-        // Past ranges (to < from, "scheduled 2h ago") are the negation of the forward range.
         toHeight < fromHeight -> {
             -estimatedSecondsBetweenHeights(toHeight, fromHeight, secondsPerBlock, nu7ActivationHeight, rateHeight)
         }
@@ -123,7 +124,6 @@ private fun forwardSecondsAcrossNu7(
     val rateIsPostNu7 = rateHeight >= nu7ActivationHeight
     val preNu7Rate = if (rateIsPostNu7) secondsPerBlock * ratio else secondsPerBlock
     val postNu7Rate = if (rateIsPostNu7) secondsPerBlock else (secondsPerBlock / ratio).coerceAtLeast(1L)
-    // Heights in (from, to] that are below the activation height are the pre-NU7 blocks.
     val preNu7Blocks = (minOf(toHeight, nu7ActivationHeight - 1) - fromHeight).coerceIn(0L, toHeight - fromHeight)
     val postNu7Blocks = (toHeight - fromHeight) - preNu7Blocks
     return preNu7Blocks * preNu7Rate + postNu7Blocks * postNu7Rate

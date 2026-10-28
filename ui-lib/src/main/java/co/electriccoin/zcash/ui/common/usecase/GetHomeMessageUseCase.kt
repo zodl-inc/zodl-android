@@ -335,10 +335,12 @@ internal fun prioritizeHomeMessage(
 internal fun isShieldFundsMessageEligible(account: WalletAccount): Boolean =
     account.isSpendable && account.isShieldingAvailable == true
 
-// The first syncing banner stays hidden while the wallet is less than three days (of target block time) behind.
-// 3456 blocks is that span at the pre-NU7 75 s spacing; from NU7 (25 s) it is 10368 blocks, so the threshold is
-// kept in seconds and [WalletSnapshot.behindSeconds] is compared to it. The block count is only the fallback
-// when the target time is unknown.
+/**
+ * The first syncing banner stays hidden while the wallet is less than three days (of target block time) behind.
+ * 3456 blocks is that span at the pre-NU7 75 s spacing; from NU7 (25 s) it is 10368 blocks, so the threshold is
+ * kept in seconds and [WalletSnapshot.behindSeconds] is compared to it. The block count is only the fallback
+ * when the target time is unknown.
+ */
 internal const val SYNCING_BANNER_HIDE_BELOW_SECONDS = 3L * 24L * 3600L
 internal const val SYNCING_BANNER_HIDE_BELOW_BLOCKS = 3456L
 

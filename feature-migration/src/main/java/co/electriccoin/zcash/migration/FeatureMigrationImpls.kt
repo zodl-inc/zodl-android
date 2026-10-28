@@ -92,13 +92,12 @@ class MigrationGateImpl(
             getOrchardMigrationSdk().getMigrationStateUnreconciled() is cash.z.ecc.android.sdk.MigrationState.InProgress
         }.getOrDefault(false)
 
-    // Persisted: GetOrchardMigrationSdkUseCase applies the stored value to every SDK instance it builds.
+    /** Persisted: GetOrchardMigrationSdkUseCase applies the stored value to every SDK instance it builds. */
     override suspend fun isNetworkUpgradeGateBypassEnabled(): Boolean = gateBypassStorage.isEnabled()
 
     @OptIn(InternalTestingApi::class)
     override suspend fun setNetworkUpgradeGateBypass(enabled: Boolean) {
         gateBypassStorage.setEnabled(enabled)
-        // Without a wallet there is no SDK to tell yet; the stored value is applied when one is built.
         runCatching { getOrchardMigrationSdk().setMigrationNetworkUpgradeGateBypass(enabled) }
     }
 

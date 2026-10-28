@@ -12,7 +12,6 @@ import co.electriccoin.zcash.ui.common.model.migration.MigrationMode
 import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.requireSpendable
 import co.electriccoin.zcash.ui.common.model.stateIn
-import co.electriccoin.zcash.ui.common.model.withLce
 import co.electriccoin.zcash.ui.common.provider.MigrationUpgradeNoticeStorageProvider
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
@@ -26,6 +25,8 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByDynamicCurrencyNumber
 import co.electriccoin.zcash.ui.screen.ExternalUrl
 import co.electriccoin.zcash.ui.screen.migration.howitworks.MigrationHowItWorksArgs
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -37,6 +38,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import kotlin.time.Duration.Companion.seconds
 import co.electriccoin.zcash.ui.design.R as DesignR
 
 class MigrationSetupVM(
@@ -52,8 +54,7 @@ class MigrationSetupVM(
     private val accountLce = mutableLce<Zatoshi>()
     private val selectedMode = MutableStateFlow(MigrationMode.AUTOMATIC)
 
-    // null until the SDK has answered: the screen is loading then, so the scheduled option never shows as selectable
-    // for a moment and then turns paused.
+    /** Null until the SDK has answered. The screen is loading then, so the scheduled option never flashes enabled. */
     private val gate = MutableStateFlow<MigrationSetupGate?>(null)
     private val isKeystoneAccount = getSelectedWalletAccount.observe().map { it is KeystoneAccount }
 
@@ -62,12 +63,11 @@ class MigrationSetupVM(
             getSelectedWalletAccount().requireSpendable()
             getOrchardBalance()
         }
-        viewModelScope.launch { gate.value = getMigrationGateInfo().toSetupGate() }
-        // The Home notice about a run the NU7 upgrade stopped leads here; opening this screen acknowledges it.
+        viewModelScope.launch { refreshGateWhileSyncing() }
         viewModelScope.launch { runCatching { migrationUpgradeNotice.clearSelected() } }
     }
 
-    val state: StateFlow<LceState<MigrationSetupState>> =
+    private val content: Flow<MigrationSetupState?> =
         combine(
             accountLce.state,
             selectedMode,
@@ -80,8 +80,25 @@ class MigrationSetupVM(
                     createState(balance, effectiveMigrationMode(mode, it), isKeystone, rate, it)
                 }
             }
-        }.withLce(accountLce, errorStateMapper::mapToState)
-            .stateIn(this)
+        }
+
+    val state: StateFlow<LceState<MigrationSetupState>> =
+        combine(content, accountLce.loading, accountLce.error, gate) { setup, isLoading, error, currentGate ->
+            LceState(
+                content = setup,
+                isLoading = isLoading || currentGate == null,
+                error = error?.let(errorStateMapper::mapToState),
+            )
+        }.stateIn(this)
+
+    /** Asks again while the wallet has no chain tip, so the screen follows the first sync instead of staying stale. */
+    private suspend fun refreshGateWhileSyncing() {
+        do {
+            val info = getMigrationGateInfo()
+            gate.value = info.toSetupGate()
+            if (info.isWalletTipUnknown) delay(GATE_RETRY_DELAY)
+        } while (info.isWalletTipUnknown)
+    }
 
     private fun createState(
         balance: Zatoshi,
@@ -134,6 +151,10 @@ class MigrationSetupVM(
     }
 
     private fun onBack() = navigationRouter.back()
+
+    private companion object {
+        val GATE_RETRY_DELAY = 3.seconds
+    }
 }
 
 /**
@@ -149,9 +170,11 @@ internal fun effectiveMigrationMode(
         MigrationSetupGate.Open -> selected
     }
 
-/** Maps what the SDK's NU7 gate allows to the setup screen's gate. */
+/**
+ * Maps what the SDK's NU7 gate allows to the setup screen's gate. Only the date is shown: the estimate can be
+ * weeks away, so a time of day would claim precision it does not have.
+ */
 internal fun MigrationGateInfo.toSetupGate(): MigrationSetupGate {
-    // The date only: the estimate can be weeks away, so a time of day would claim precision it does not have.
     val date =
         estimatedActivation?.let {
             stringRes(
@@ -162,6 +185,10 @@ internal fun MigrationGateInfo.toSetupGate(): MigrationSetupGate {
             )
         }
     return when {
+        isWalletTipUnknown -> {
+            MigrationSetupGate.ScheduledPaused(stringRes(DesignR.string.migrationTipUnavailable_title))
+        }
+
         !isScheduledLaneAvailable -> {
             MigrationSetupGate.ScheduledPaused(
                 if (date == null) {

@@ -109,14 +109,18 @@ class MigrationReviewVM(
     @Volatile
     private var secondsPerBlock: Long = DEFAULT_SECONDS_PER_BLOCK
 
-    // The wallet network's NU7 activation height, captured with [secondsPerBlock]: a plan whose heights
-    // span it is converted to time in two segments (75 s before, 25 s from activation), not one.
+    /**
+     * The wallet network's NU7 activation height, captured with [secondsPerBlock]: a plan whose heights span it is
+     * converted to time in two segments (75 s before, 25 s from activation), not one.
+     */
     @Volatile
     private var nu7ActivationHeight: Long? = null
 
-    // The height the measured rate belongs to: the estimated chain tip it was read at, not a plan anchor, which sits
-    // up to 287 blocks below it. Without it the rate would be attributed to each range's start, and a plan anchored
-    // just before NU7 would price its post-NU7 blocks as if the rate were a pre-NU7 one.
+    /**
+     * The height the measured rate belongs to: the estimated chain tip it was read at, not a plan anchor, which sits
+     * up to 287 blocks below it. Attributing the rate to a plan's own start would price the post-NU7 blocks of a
+     * plan anchored just before NU7 as if the rate were a pre-NU7 one.
+     */
     @Volatile
     private var rateReferenceTip: Long? = null
 

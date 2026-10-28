@@ -134,8 +134,10 @@ class DebugVM(
 
     private fun onBack() = navigationRouter.back()
 
-    // Lifts the SDK's pause on new scheduled migrations before NU7, so a scheduled run can be tried on mainnet.
-    // Remembered across restarts. Submission validity (branch, expiry) is never bypassed.
+    /**
+     * Lifts the SDK's pause on new scheduled migrations before NU7, so a scheduled run can be tried on mainnet.
+     * Remembered across restarts. Submission validity (branch, expiry) is never bypassed.
+     */
     private fun onGateBypassClick() =
         viewModelScope.launch {
             migrationGate.setNetworkUpgradeGateBypass(!isGateBypassEnabled.value)

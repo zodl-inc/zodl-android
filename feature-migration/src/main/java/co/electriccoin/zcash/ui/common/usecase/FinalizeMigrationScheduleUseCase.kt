@@ -152,13 +152,14 @@ class FinalizeMigrationScheduleUseCase(
     // SDK always draws from the same committed chain tip). Preparations and transfers share this
     // one origin, so the delay to a preparation's broadcastHeight and the delay to a transfer's
     // nextExecutableAfterHeight are comparable block-count deltas from the same point.
+    //
+    // [rateHeight] is the height [secondsPerBlock] was measured at: the estimated chain tip, which is above
+    // [tipHeight] (the commit anchor) by up to a bucket. See rateReferenceHeight.
     internal fun delayUntilFirstStep(
         sched: MigrationSchedule,
         secondsPerBlock: Long,
         tipHeight: Long,
         nu7ActivationHeight: Long?,
-        // The height [secondsPerBlock] was measured at: the estimated chain tip, which is above [tipHeight] (the
-        // commit anchor) by up to a bucket. See rateReferenceHeight.
         rateHeight: Long = tipHeight,
     ): Duration {
         val earliest =

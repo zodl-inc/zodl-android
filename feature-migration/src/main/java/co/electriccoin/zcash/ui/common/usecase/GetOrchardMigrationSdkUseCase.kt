@@ -89,9 +89,6 @@ class GetOrchardMigrationSdkUseCase(
                 lightWalletEndpoint = wallet.endpoint,
                 account = account.sdkAccount.accountUuid,
             ).also {
-                // The SDK's flag is process-wide: re-apply the stored switch so a restart, or a wallet reset that
-                // cleared it, never leaves a stale value behind.
-                // Debug builds only, even though only the Debug menu ever stores a value.
                 if (BuildConfig.DEBUG) {
                     it.setMigrationNetworkUpgradeGateBypass(gateBypassStorage.isEnabled())
                 }

@@ -95,8 +95,6 @@ class MigrationHomeMessageSourceImpl(
                 // still-changing DB), so it must not fire until the wallet has caught up with
                 // the chain tip. See MOB-1750 mid-sync race investigation.
                 walletSnapshotDataSource.observe(),
-                // Raised by the drive loop after it cancelled a run the NU7 upgrade interrupted; cleared when
-                // the user opens the migration entry from the notice.
                 migrationUpgradeNoticeStorageProvider.observePendingForSelected(),
             ) { hasSeenComplete, readout, orchardBalance, walletSnapshot, isUpgradeNoticePending ->
                 val isFullySynced = walletSnapshot?.status == Synchronizer.Status.SYNCED
@@ -352,6 +350,10 @@ class MigrationHomeMessageSourceImpl(
  * branches (celebration, residue, plain "Migrate now") each require it non-null and fall through to
  * `null` (no banner) otherwise; the RequiresAttention and InProgress branches above them don't read
  * the balance at all, so a null balance never suppresses those.
+ *
+ * The one-time notice that the NU7 upgrade stopped a run (and the SDK cancelled it) comes first, ahead of the
+ * attention branch: the cancelled run stays persisted as failed, so that branch would otherwise hide the notice
+ * behind "Update migration plan". A new run in progress still wins.
  */
 @Suppress("CyclomaticComplexMethod")
 internal fun migrationMessageFor(
@@ -393,10 +395,6 @@ internal fun migrationMessageFor(
                 s.preparations.any { it.blocker == MigrationTransferBlocker.SIGNATURE }
         } ?: false
     return when {
-        // The NU7 upgrade stopped this account's run and the SDK cancelled it. Explained once, with the way to
-        // migrate what is left. Ahead of the attention branch, because the cancelled run stays persisted as failed,
-        // so that branch would otherwise hide this notice behind "Update migration plan". A new run in progress
-        // still wins.
         isUpgradeNoticePending && sdkState !is MigrationState.InProgress -> {
             MigrationHomeMessageData(isRunActive = false, isInterruptedByNetworkUpgrade = true)
         }

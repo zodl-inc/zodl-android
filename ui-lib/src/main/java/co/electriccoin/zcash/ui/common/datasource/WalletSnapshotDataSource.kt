@@ -43,7 +43,6 @@ class WalletSnapshotDataSourceImpl(
                         ) { networkHeight, fullyScannedHeight ->
                             if (networkHeight != null && fullyScannedHeight != null) {
                                 val blocks = (networkHeight.value - fullyScannedHeight.value).coerceAtLeast(0L)
-                                // The same gap in target time: one block is 75 s before NU7 and 25 s from it.
                                 val seconds =
                                     BlockSpacing.targetSecondsBetween(
                                         synchronizer.network,
