@@ -34,7 +34,7 @@ sealed interface WalletAccount : Comparable<WalletAccount> {
 
     /**
      * Null for hardware-wallet accounts (Keystone, Ledger), and while the balance snapshot has not
-     * loaded yet.
+     * loaded yet. A view-only account carries the Sapling balance its key scans.
      */
     val saplingBalance: WalletBalance?
 
@@ -50,6 +50,12 @@ sealed interface WalletAccount : Comparable<WalletAccount> {
 
     @get:DrawableRes
     val icon: Int
+
+    /**
+     * Whether the wallet holds spend authority for this account, in software or on a paired hardware
+     * wallet. False only for a [ViewOnlyAccount]. Not a balance check; that is [canSpend].
+     */
+    val isSpendable: Boolean
 
     /**
      * The account's ZIP 32 index, or null when it is not known, as for a Ledger account without a
@@ -154,26 +160,11 @@ data class LoadedAccountBalances(
     val transparentBalance: Zatoshi,
 )
 
-data class ZashiAccount(
-    override val sdkAccount: Account,
-    override val unifiedAddress: String,
-    override val transparentAddress: String,
-    override val saplingAddress: String,
-    override val orchardBalance: WalletBalance?,
-    override val saplingBalance: WalletBalance?,
-    override val ironwoodBalance: WalletBalance?,
-    override val transparentBalance: Zatoshi?,
-    override val isSelected: Boolean,
-) : WalletAccount {
-    override val name: StringResource
-        get() = stringRes(co.electriccoin.zcash.ui.R.string.accounts_zashi)
-
-    override val hdAccountIndex: Zip32AccountIndex
-        get() = checkNotNull(sdkAccount.hdAccountIndex)
-
-    override val icon: Int
-        get() = R.drawable.ic_item_zashi
-
+/**
+ * An account whose totals count its Sapling balance next to the unified and transparent ones: the
+ * Zodl account and a view-only account.
+ */
+sealed interface SaplingBalanceAccount : WalletAccount {
     override val totalBalance: Zatoshi?
         get() {
             val unifiedTotal = unifiedBalance?.total ?: return null
@@ -207,12 +198,36 @@ data class ZashiAccount(
             val valuePendingShieldedBalance = unified.valuePending + sapling.valuePending
             return changePendingShieldedBalance + valuePendingShieldedBalance
         }
+}
+
+data class ZodlAccount(
+    override val sdkAccount: Account,
+    override val unifiedAddress: String,
+    override val transparentAddress: String,
+    override val saplingAddress: String,
+    override val orchardBalance: WalletBalance?,
+    override val saplingBalance: WalletBalance?,
+    override val ironwoodBalance: WalletBalance?,
+    override val transparentBalance: Zatoshi?,
+    override val isSelected: Boolean,
+) : SaplingBalanceAccount {
+    override val name: StringResource
+        get() = stringRes(co.electriccoin.zcash.ui.R.string.accounts_zashi)
+
+    override val hdAccountIndex: Zip32AccountIndex
+        get() = checkNotNull(sdkAccount.hdAccountIndex)
+
+    override val icon: Int
+        get() = R.drawable.ic_item_zashi
+
+    override val isSpendable: Boolean = true
 
     override fun compareTo(other: WalletAccount) =
         when (other) {
             is KeystoneAccount -> 1
             is LedgerAccount -> 1
-            is ZashiAccount -> 0
+            is ViewOnlyAccount -> 1
+            is ZodlAccount -> 0
         }
 }
 
@@ -232,6 +247,8 @@ data class KeystoneAccount(
 ) : HWWalletAccount {
     override val icon: Int
         get() = R.drawable.ic_item_keystone
+
+    override val isSpendable: Boolean = true
 
     override val name: StringResource
         get() = stringRes(co.electriccoin.zcash.ui.R.string.accounts_keystone)
@@ -266,7 +283,8 @@ data class KeystoneAccount(
         when (other) {
             is KeystoneAccount -> 0
             is LedgerAccount -> 1
-            is ZashiAccount -> -1
+            is ViewOnlyAccount -> 1
+            is ZodlAccount -> -1
         }
 }
 
@@ -305,6 +323,8 @@ data class LedgerAccount(
     override val icon: Int
         get() = R.drawable.ic_item_ledger
 
+    override val isSpendable: Boolean = true
+
     override val name: StringResource
         get() = stringRes(co.electriccoin.zcash.ui.R.string.accounts_ledger)
 
@@ -341,7 +361,8 @@ data class LedgerAccount(
         when (other) {
             is KeystoneAccount -> -1
             is LedgerAccount -> 0
-            is ZashiAccount -> -1
+            is ViewOnlyAccount -> 1
+            is ZodlAccount -> -1
         }
 
     /**
@@ -351,6 +372,55 @@ data class LedgerAccount(
     override fun toString() =
         "LedgerAccount(sdkAccount=$sdkAccount, deviceIdentity=***, " +
             "zip32AccountIndex=$zip32AccountIndex, isSelected=$isSelected)"
+}
+
+/**
+ * An account imported from a unified full viewing key: the wallet sees its balance, addresses and
+ * activity but holds no spend authority, so [isSpendable] is false and every spend path refuses it.
+ *
+ * It is deliberately not a [HWWalletAccount], so it never counts as a connected hardware vendor.
+ * Like the hardware accounts it has no Sapling address of its own, so it receives on Orchard only,
+ * but a key exported from a full Zodl account carries a Sapling component that the SDK scans, so
+ * [saplingBalance] counts toward every total just as it does for [ZodlAccount]. Its SDK-side
+ * [Account.hdAccountIndex] is null, so [hdAccountIndex] is null too.
+ *
+ * @param name The name the account shows: [customName], or the default view-only name when the
+ *        account has no name of its own.
+ * @param customName The account's own name, the one the user last saved or else the one it was
+ *        imported with; null when it has none and [name] is the default view-only name.
+ * @param icon The account's avatar, supplied by the view-only feature module.
+ */
+data class ViewOnlyAccount(
+    override val sdkAccount: Account,
+    override val unifiedAddress: String,
+    override val transparentAddress: String,
+    override val orchardBalance: WalletBalance?,
+    override val saplingBalance: WalletBalance?,
+    override val ironwoodBalance: WalletBalance?,
+    override val transparentBalance: Zatoshi?,
+    override val isSelected: Boolean,
+    override val name: StringResource,
+    val customName: String?,
+    @param:DrawableRes override val icon: Int,
+) : SaplingBalanceAccount {
+    override val isSpendable: Boolean = false
+
+    override val saplingAddress: String? = null
+
+    override fun compareTo(other: WalletAccount) =
+        when (other) {
+            is KeystoneAccount -> -1
+            is LedgerAccount -> -1
+            is ViewOnlyAccount -> 0
+            is ZodlAccount -> -1
+        }
+
+    /**
+     * Overridden so a printed account never carries its addresses or the SDK account, whose UFVK
+     * is the imported viewing key.
+     */
+    override fun toString() =
+        "ViewOnlyAccount(accountUuid=${sdkAccount.accountUuid}, isSelected=$isSelected)"
 }
 
 /**
@@ -373,3 +443,21 @@ private operator fun WalletBalance.plus(other: WalletBalance) =
  * answers null — not yet known, never coerced to a definitive answer.
  */
 fun WalletAccount?.canSpend(amount: Zatoshi): Boolean? = if (this == null) false else canSpend(amount)
+
+/**
+ * Whether a Keystone wallet can still be connected: the wallet holds at most one account per
+ * hardware vendor.
+ */
+internal fun List<WalletAccount>?.canConnectKeystone(): Boolean = orEmpty().none { it is KeystoneAccount }
+
+/**
+ * Whether a Ledger wallet can still be connected: the wallet holds at most one account per hardware
+ * vendor.
+ */
+internal fun List<WalletAccount>?.canConnectLedger(): Boolean = orEmpty().none { it is LedgerAccount }
+
+/**
+ * Whether any hardware vendor is still left to connect. A view-only account is not a hardware wallet
+ * and does not count.
+ */
+fun List<WalletAccount>?.canConnectHardwareWallet(): Boolean = canConnectKeystone() || canConnectLedger()

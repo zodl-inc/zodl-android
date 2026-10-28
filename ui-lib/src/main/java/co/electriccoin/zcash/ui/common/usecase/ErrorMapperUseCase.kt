@@ -1,9 +1,13 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import androidx.annotation.DrawableRes
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.component.error
+import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.LceContent
 import co.electriccoin.zcash.ui.common.model.LceError
-import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
+import co.electriccoin.zcash.ui.common.model.errorCopy
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyContent
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.StringResource
@@ -13,38 +17,41 @@ import kotlinx.coroutines.launch
 
 class ErrorMapperUseCase(
     private val sendEmail: SendEmailUseCase,
+    private val viewOnlyContent: ViewOnlyContent,
 ) {
     /**
-     * A [LedgerOperationUnsupportedException] carries its own copy and overrides whatever title and
-     * message the call site passed — the caller cannot know a Ledger account was selected, and the
-     * generic failure copy would be misleading.
+     * An [AccountOperationUnsupportedException] carries its own copy and overrides whatever title
+     * and message the call site passed — the caller cannot know a Ledger or view-only account was
+     * selected, and the generic failure copy would be misleading.
+     *
+     * The defaults draw retry above contact support; a screen whose design puts contact support
+     * first passes [isSupportFirst] together with its own [primaryStyle], [secondaryStyle] and
+     * [icon].
      */
     fun mapToState(
         error: LceContent.Error,
         title: StringResource? = null,
         message: StringResource? = null,
         primaryStyle: ButtonStyle? = null,
+        secondaryStyle: ButtonStyle? = null,
+        isSupportFirst: Boolean = false,
+        @DrawableRes icon: Int? = null,
     ): LceError.BottomSheet {
-        val isLedgerUnsupported = error.cause is LedgerOperationUnsupportedException
+        val unsupported = (error.cause as? AccountOperationUnsupportedException)?.kind?.errorCopy(viewOnlyContent)
         return mapToBottomSheet(
             error = error,
             title =
-                when {
-                    isLedgerUnsupported -> stringRes(co.electriccoin.zcash.ui.R.string.ledger_unsupported_title)
-                    else -> title ?: stringRes(co.electriccoin.zcash.ui.design.R.string.coinVote_error_title)
-                },
+                unsupported?.title
+                    ?: title
+                    ?: stringRes(co.electriccoin.zcash.ui.design.R.string.coinVote_error_title),
             message =
-                when {
-                    isLedgerUnsupported -> {
-                        stringRes(co.electriccoin.zcash.ui.R.string.ledger_unsupported_message)
-                    }
-
-                    else -> {
-                        message
-                            ?: stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_laterDesc)
-                    }
-                },
+                unsupported?.message
+                    ?: message
+                    ?: stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_laterDesc),
             primaryStyle = primaryStyle,
+            secondaryStyle = secondaryStyle,
+            isSupportFirst = isSupportFirst,
+            icon = icon,
         )
     }
 
@@ -53,11 +60,17 @@ class ErrorMapperUseCase(
         title: StringResource,
         message: StringResource,
         primaryStyle: ButtonStyle?,
+        secondaryStyle: ButtonStyle?,
+        isSupportFirst: Boolean,
+        @DrawableRes icon: Int?,
     ) = LceError.BottomSheet(
         ZashiConfirmationState.error(
             title = title,
             message = message,
             primaryStyle = primaryStyle ?: ButtonStyle.TERTIARY,
+            secondaryStyle = secondaryStyle ?: ButtonStyle.PRIMARY,
+            isSecondaryFirst = isSupportFirst,
+            icon = icon ?: R.drawable.ic_reset_zashi_warning,
             onPrimary = error.restart,
             onBack = error.dismiss,
             onSecondary = {

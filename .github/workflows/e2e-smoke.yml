@@ -135,7 +135,8 @@ jobs:
 
   e2e-android:
     needs: build
-    runs-on: ubuntu-latest
+    # The standard private-repo runner (2 vCPU / 7 GB) starves the API 35 emulator.
+    runs-on: ubuntu-24.04-8cores
     # Cold-cache phase 2 runs (no cached SDK DB yet for the seed)
     # spend most of the budget scanning blocks from birthday height.
     # 45 min leaves headroom for the first run; warm-cache runs

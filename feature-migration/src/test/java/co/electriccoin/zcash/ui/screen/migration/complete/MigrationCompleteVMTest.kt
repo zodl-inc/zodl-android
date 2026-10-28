@@ -12,10 +12,13 @@ import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.ProposalDataSource
 import co.electriccoin.zcash.ui.common.datasource.ZashiSpendingKeyDataSource
+import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.MutableLce
 import co.electriccoin.zcash.ui.common.model.SubmitResult
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.model.migration.MIGRATION_DUST_THRESHOLD_ZATOSHI
 import co.electriccoin.zcash.ui.common.model.migration.MIGRATION_RESIDUAL_MIN_ZATOSHI
 import co.electriccoin.zcash.ui.common.model.migration.formatMigrationDuration
@@ -54,6 +57,8 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MigrationCompleteVMTest {
@@ -78,7 +83,7 @@ class MigrationCompleteVMTest {
             val vm =
                 vm(
                     seen = seen,
-                    account = mockk<KeystoneAccount>(relaxed = true),
+                    account = mockk<KeystoneAccount>(relaxed = true) { every { isSpendable } returns true },
                     orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI + 500_000L,
                     router = router,
                 )
@@ -101,7 +106,7 @@ class MigrationCompleteVMTest {
             val vm =
                 vm(
                     seen = seen,
-                    account = mockk<KeystoneAccount>(relaxed = true),
+                    account = mockk<KeystoneAccount>(relaxed = true) { every { isSpendable } returns true },
                     orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI,
                     router = router,
                 )
@@ -122,7 +127,7 @@ class MigrationCompleteVMTest {
             val vm =
                 vm(
                     seen = seen,
-                    account = mockk<KeystoneAccount>(relaxed = true),
+                    account = mockk<KeystoneAccount>(relaxed = true) { every { isSpendable } returns true },
                     orchardBalanceZatoshi = 0L,
                     router = router,
                 )
@@ -145,7 +150,7 @@ class MigrationCompleteVMTest {
             val vm =
                 vm(
                     seen = seen,
-                    account = mockk<ZashiAccount>(relaxed = true),
+                    account = mockk<ZodlAccount>(relaxed = true) { every { isSpendable } returns true },
                     orchardBalanceZatoshi = 500_000L,
                     router = router,
                 )
@@ -169,7 +174,7 @@ class MigrationCompleteVMTest {
             val vm =
                 vm(
                     seen = seen,
-                    account = mockk<KeystoneAccount>(relaxed = true),
+                    account = mockk<KeystoneAccount>(relaxed = true) { every { isSpendable } returns true },
                     orchardBalanceZatoshi = MIGRATION_DUST_THRESHOLD_ZATOSHI - 1L,
                     router = router,
                 )
@@ -191,7 +196,7 @@ class MigrationCompleteVMTest {
             val vm =
                 vm(
                     seen = seen,
-                    account = mockk<KeystoneAccount>(relaxed = true),
+                    account = mockk<KeystoneAccount>(relaxed = true) { every { isSpendable } returns true },
                     orchardBalanceZatoshi = MIGRATION_DUST_THRESHOLD_ZATOSHI,
                     router = router,
                 )
@@ -227,7 +232,7 @@ class MigrationCompleteVMTest {
             val vm =
                 vm(
                     seen = seen,
-                    account = mockk<KeystoneAccount>(relaxed = true),
+                    account = mockk<KeystoneAccount>(relaxed = true) { every { isSpendable } returns true },
                     orchardBalanceZatoshi = residualInGapZatoshi,
                     router = router,
                 )
@@ -264,7 +269,7 @@ class MigrationCompleteVMTest {
 
             val vm =
                 vm(
-                    account = mockk<ZashiAccount>(relaxed = true),
+                    account = mockk<ZodlAccount>(relaxed = true) { every { isSpendable } returns true },
                     orchardBalanceZatoshi = 500_000L,
                     router = router,
                     getOrchardMigrationSdk = mockk { coEvery { this@mockk() } returns sdk },
@@ -295,7 +300,7 @@ class MigrationCompleteVMTest {
 
             val vm =
                 vm(
-                    account = mockk<KeystoneAccount>(relaxed = true),
+                    account = mockk<KeystoneAccount>(relaxed = true) { every { isSpendable } returns true },
                     orchardBalanceZatoshi = 500_000L,
                     router = router,
                     getOrchardMigrationSdk = mockk { coEvery { this@mockk() } returns sdk },
@@ -333,7 +338,7 @@ class MigrationCompleteVMTest {
                 }
             val vm =
                 vm(
-                    account = mockk<KeystoneAccount>(relaxed = true),
+                    account = mockk<KeystoneAccount>(relaxed = true) { every { isSpendable } returns true },
                     orchardBalanceZatoshi = 500_000L,
                     router = FakeNavigationRouter(),
                     getOrchardMigrationSdk = mockk { coEvery { this@mockk() } returns sdk },
@@ -366,7 +371,7 @@ class MigrationCompleteVMTest {
                 }
             val vm =
                 vm(
-                    account = mockk<KeystoneAccount>(relaxed = true),
+                    account = mockk<KeystoneAccount>(relaxed = true) { every { isSpendable } returns true },
                     orchardBalanceZatoshi = 500_000L,
                     router = FakeNavigationRouter(),
                     args = MigrationCompleteArgs(isResidueOnly = true),
@@ -409,7 +414,7 @@ class MigrationCompleteVMTest {
                 }
             val vm =
                 vm(
-                    account = mockk<KeystoneAccount>(relaxed = true),
+                    account = mockk<KeystoneAccount>(relaxed = true) { every { isSpendable } returns true },
                     orchardBalanceZatoshi = 500_000L,
                     router = FakeNavigationRouter(),
                     getOrchardMigrationSdk = mockk { coEvery { this@mockk() } returns sdk },
@@ -434,7 +439,7 @@ class MigrationCompleteVMTest {
             // unchanged — this is what MigrationCompleteScreen branches its copy/summary card on.
             val vm =
                 vm(
-                    account = mockk<KeystoneAccount>(relaxed = true),
+                    account = mockk<KeystoneAccount>(relaxed = true) { every { isSpendable } returns true },
                     orchardBalanceZatoshi = 500_000L,
                     router = FakeNavigationRouter(),
                     args = MigrationCompleteArgs(isResidueOnly = true),
@@ -456,7 +461,7 @@ class MigrationCompleteVMTest {
         runTest {
             val vm =
                 vm(
-                    account = mockk<KeystoneAccount>(relaxed = true),
+                    account = mockk<KeystoneAccount>(relaxed = true) { every { isSpendable } returns true },
                     orchardBalanceZatoshi = 500_000L,
                     router = FakeNavigationRouter(),
                     args = MigrationCompleteArgs(isResidueOnly = false),
@@ -471,6 +476,50 @@ class MigrationCompleteVMTest {
                     ?.isResidueOnly
             )
             collectJob.cancel()
+        }
+
+    @Test
+    fun migrateAnywayOnAViewOnlyAccountIsRefusedWithoutSigning() =
+        runTest {
+            val router = FakeNavigationRouter()
+            val sdk =
+                mockk<OrchardMigrationSdk> {
+                    coEvery { proposeImmediateMigration() } returns mockk(relaxed = true)
+                    coEvery { getMigrationSummary() } returns null
+                }
+            val zashiSpendingKeyDataSource = mockk<ZashiSpendingKeyDataSource>(relaxed = true)
+            val keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true)
+            val proposalDataSource = mockk<ProposalDataSource>(relaxed = true)
+            val vm =
+                vm(
+                    account = mockk<ViewOnlyAccount>(relaxed = true) { every { isSpendable } returns false },
+                    orchardBalanceZatoshi = 500_000L,
+                    router = router,
+                    getOrchardMigrationSdk = mockk { coEvery { this@mockk() } returns sdk },
+                    zashiSpendingKeyDataSource = zashiSpendingKeyDataSource,
+                    keystoneProposalRepository = keystoneProposalRepository,
+                    proposalDataSource = proposalDataSource,
+                )
+
+            advanceUntilIdle()
+            invokeOnMigrateAnyway(vm)
+            advanceUntilIdle()
+
+            val migrateAnywayLce =
+                MigrationCompleteVM::class.java
+                    .getDeclaredField("migrateAnywayLce")
+                    .apply { isAccessible = true }
+                    .get(vm) as MutableLce<*>
+            val error = assertNotNull(migrateAnywayLce.state.value.error)
+            assertEquals(
+                AccountOperationUnsupportedException.Kind.VIEW_ONLY,
+                assertIs<AccountOperationUnsupportedException>(error.cause).kind
+            )
+            coVerify(exactly = 0) { zashiSpendingKeyDataSource.getZashiSpendingKey() }
+            coVerify(exactly = 0) { proposalDataSource.submitTransaction(any<Proposal>(), any<UnifiedSpendingKey>()) }
+            coVerify(exactly = 0) { keystoneProposalRepository.setMigrationSweepProposal(any(), any()) }
+            coVerify(exactly = 0) { keystoneProposalRepository.createPCZTFromProposal() }
+            assertEquals(emptyList(), router.forwardedRoutes)
         }
 
     private fun invokeOnDone(vm: MigrationCompleteVM) {

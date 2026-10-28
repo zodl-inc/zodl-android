@@ -14,6 +14,10 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     composeOptions {
         kotlinCompilerExtensionVersion = libs.androidx.compose.compiler.get().versionConstraint.displayName
     }
@@ -51,6 +55,9 @@ dependencies {
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.zxing)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.compose.test.junit)
+    testImplementation(libs.androidx.compose.test.manifest)
 
     androidTestImplementation(libs.bundles.androidx.test)
     androidTestImplementation(libs.androidx.compose.test.junit)

@@ -1,0 +1,2 @@
+Cambiado:
+- Aceleramos la criptografía detrás de las transacciones protegidas y la sincronización en dispositivos de 64 bits.

@@ -108,7 +108,7 @@ class GetHomeMessageUseCase(
                     flowOf(null)
                 }
 
-                account.isShieldingAvailable == true -> {
+                isShieldFundsMessageEligible(account) -> {
                     messageAvailabilityDataSource.canShowShieldMessage
                         .map { canShowShieldMessage ->
                             when {
@@ -327,6 +327,13 @@ internal fun prioritizeHomeMessage(
         }
     }
 }
+
+/**
+ * Whether [account] may be offered the shield-funds message: it must be able to spend, since
+ * shielding spends its transparent funds, and hold enough of them to be worth shielding.
+ */
+internal fun isShieldFundsMessageEligible(account: WalletAccount): Boolean =
+    account.isSpendable && account.isShieldingAvailable == true
 
 internal const val SYNCING_BANNER_HIDE_BELOW_BLOCKS = 3456L
 

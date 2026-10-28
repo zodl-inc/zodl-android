@@ -14,6 +14,25 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.18.0 (3206)] - 2026-10-23
+
+### Añadido:
+
+- Añadimos las cuentas de solo lectura. Importa una clave de visualización completa pegándola o escaneando un código QR para seguir el saldo y la actividad de una cuenta sin poder gastar desde ella.
+- Añadimos la opción de cambiar el nombre y el color de una cuenta de solo lectura, o de eliminarla de la app.
+
+## [3.17.2 (3157)] - 2026-10-20
+
+### Corregido:
+
+- Actualizamos la forma en que Zodl verifica las conexiones seguras con los servidores, en respuesta a un problema de seguridad que afecta a toda la industria y que se dio a conocer recientemente. Te recomendamos actualizar a la última versión lo antes posible.
+
+## [3.17.1 (3155)] - 2026-10-14
+
+### Cambiado:
+
+- Aceleramos la criptografía detrás de las transacciones protegidas y la sincronización en dispositivos de 64 bits.
+
 ## [3.17.0 (3149)] - 2026-10-10
 
 ### Añadido:

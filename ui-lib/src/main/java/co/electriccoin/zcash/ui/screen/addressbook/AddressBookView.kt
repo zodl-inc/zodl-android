@@ -358,7 +358,6 @@ private fun AddressBookTopAppBar(
     ZashiSmallTopAppBar(
         title = state.title.getValue(),
         modifier = modifier.testTag(AddressBookTag.TOP_APP_BAR),
-        showTitleLogo = true,
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
         },

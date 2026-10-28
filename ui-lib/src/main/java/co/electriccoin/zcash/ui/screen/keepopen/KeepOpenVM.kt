@@ -9,6 +9,8 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
 import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProvider
 import co.electriccoin.zcash.ui.common.provider.KeepScreenOnSyncSessionProvider
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyContent
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyNavigator
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiDisclaimerState
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -29,6 +31,8 @@ class KeepOpenVM(
     private val keepScreenOnSyncSessionProvider: KeepScreenOnSyncSessionProvider,
     private val navigationRouter: NavigationRouter,
     private val ledgerNavigator: LedgerNavigator,
+    private val viewOnlyNavigator: ViewOnlyNavigator,
+    private val viewOnlyContent: ViewOnlyContent,
 ) : AndroidViewModel(application) {
     private val isChecked = MutableStateFlow(true)
 
@@ -99,6 +103,23 @@ class KeepOpenVM(
                     buttonTestTag = KeepOpenTag.OK_BTN,
                 )
             }
+
+            KeepOpenFlow.VIEW_ONLY -> {
+                KeepOpenState(
+                    description = viewOnlyContent.keepOpenDescription,
+                    subtitle = viewOnlyContent.keepOpenSubtitle,
+                    disclaimer = ZashiDisclaimerState.warning(viewOnlyContent.keepOpenDisclaimer),
+                    checkboxLabel = viewOnlyContent.keepOpenCheckboxLabel,
+                    isChecked = isChecked,
+                    onCheckedChange = { onChecked() },
+                    button =
+                        ButtonState(
+                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok),
+                            onClick = ::onButtonClick,
+                        ),
+                    buttonTestTag = KeepOpenTag.OK_BTN,
+                )
+            }
         }
 
     private fun getDisclaimer(value: Int) =
@@ -118,6 +139,7 @@ class KeepOpenVM(
             KeepOpenFlow.RESTORE, KeepOpenFlow.RESYNC -> navigationRouter.backToRoot()
             KeepOpenFlow.KEYSTONE -> navigationRouter.forward(KeystoneConnectedArgs)
             KeepOpenFlow.LEDGER -> ledgerNavigator.forwardToConnected()
+            KeepOpenFlow.VIEW_ONLY -> viewOnlyNavigator.forwardToImported()
         }
     }
 }

@@ -29,6 +29,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
@@ -40,11 +41,17 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.stringRes
 
+/**
+ * A 48 dp round icon button. [iconSize] draws the icon at that size instead of its intrinsic one,
+ * and [iconTint] tints it; by default the icon keeps its own size and colours.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ZashiIconButton(
     state: IconButtonState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    iconSize: Dp? = null,
+    iconTint: Color = Color.Unspecified,
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -85,7 +92,8 @@ fun ZashiIconButton(
             Icon(
                 painter = painterResource(state.icon),
                 contentDescription = state.contentDescription?.getValue(),
-                tint = Color.Unspecified
+                modifier = if (iconSize != null) Modifier.size(iconSize) else Modifier,
+                tint = iconTint
             )
         }
         if (state.badge != null) {

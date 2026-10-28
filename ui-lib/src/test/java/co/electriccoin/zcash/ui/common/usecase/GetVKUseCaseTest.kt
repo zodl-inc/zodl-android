@@ -5,7 +5,7 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.VKType
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -85,7 +85,7 @@ class GetVKUseCaseTest {
                     isSelected = true,
                 )
             } else {
-                ZashiAccount(
+                ZodlAccount(
                     sdkAccount = sdkAccount,
                     unifiedAddress = "unified",
                     transparentAddress = "transparent",

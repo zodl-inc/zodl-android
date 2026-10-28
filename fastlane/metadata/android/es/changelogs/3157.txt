@@ -1,0 +1,2 @@
+Corregido:
+- Actualizamos la forma en que Zodl verifica las conexiones seguras con los servidores, en respuesta a un problema de seguridad que afecta a toda la industria y que se dio a conocer recientemente. Te recomendamos actualizar a la última versión lo antes posible.

@@ -145,6 +145,7 @@ class VoteConfirmSubmissionVM(
         // snapshot are loaded. We read keystone-ness from the same account
         // emission to avoid races between the two derived StateFlows.
         val account = getSelectedWalletAccount.observe().filterNotNull().first()
+        if (!account.isSpendable) return
         val accountUuid = account.sdkAccount.accountUuid.toVotingAccountScopeId()
         val snapshot = recovery.filterNotNull().first()
         if (snapshot.accountUuid != accountUuid || snapshot.roundId != args.roundIdHex) {

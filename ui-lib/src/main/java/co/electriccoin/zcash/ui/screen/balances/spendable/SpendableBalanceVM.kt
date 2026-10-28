@@ -57,19 +57,21 @@ class SpendableBalanceVM(
     private fun createState(account: WalletAccount?, transactions: List<ListTransactionData>?): SpendableBalanceState? {
         if (account == null) return null
         val balances = account.loadedBalances ?: return null
+        val canShield = account.isSpendable && balances.isShieldingAvailable
         return SpendableBalanceState(
             title = stringRes(R.string.balances_spendableBalance_title),
-            message = createMessage(balances, transactions),
-            positive = createPositiveButton(balances),
+            message = createMessage(balances, transactions, canShield),
+            positive = createPositiveButton(canShield),
             onBack = ::onBack,
             rows = createInfoRows(balances, transactions),
-            shieldButton = createShieldButtonState(balances)
+            shieldButton = createShieldButtonState(balances, canShield)
         )
     }
 
     private fun createMessage(
         balances: LoadedAccountBalances,
-        transactions: List<ListTransactionData>?
+        transactions: List<ListTransactionData>?,
+        canShield: Boolean
     ): StringResource {
         val pending =
             when {
@@ -97,7 +99,7 @@ class SpendableBalanceVM(
                 CURRENCY_TICKER,
                 stringRes(Zatoshi.typicalFee, HIDDEN),
                 CURRENCY_TICKER
-            ).takeIf { balances.isShieldingAvailable }
+            ).takeIf { canShield }
 
         return if (pending != null && shielding != null) {
             pending + stringRes("\n\n") + shielding
@@ -106,10 +108,10 @@ class SpendableBalanceVM(
         }
     }
 
-    private fun createPositiveButton(balances: LoadedAccountBalances) =
+    private fun createPositiveButton(canShield: Boolean) =
         ButtonState(
             text =
-                if (balances.isShieldingAvailable) {
+                if (canShield) {
                     stringRes(co.electriccoin.zcash.ui.design.R.string.balances_dismiss)
                 } else {
                     stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok)
@@ -156,11 +158,14 @@ class SpendableBalanceVM(
         )
     }
 
-    private fun createShieldButtonState(balances: LoadedAccountBalances): SpendableBalanceShieldButtonState? =
+    private fun createShieldButtonState(
+        balances: LoadedAccountBalances,
+        canShield: Boolean
+    ): SpendableBalanceShieldButtonState? =
         SpendableBalanceShieldButtonState(
             amount = balances.transparentBalance,
             onShieldClick = ::onShieldClick
-        ).takeIf { balances.isShieldingAvailable }
+        ).takeIf { canShield }
 
     private fun onBack() = navigationRouter.back()
 

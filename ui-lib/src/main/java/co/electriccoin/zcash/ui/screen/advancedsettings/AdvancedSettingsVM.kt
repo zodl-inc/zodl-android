@@ -10,8 +10,6 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.migration.MigrationGate
 import co.electriccoin.zcash.ui.common.migration.MigrationNavigator
 import co.electriccoin.zcash.ui.common.model.DistributionDimension
-import co.electriccoin.zcash.ui.common.model.HWWalletAccount
-import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
@@ -27,7 +25,6 @@ import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.DebugArgs
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs
-import co.electriccoin.zcash.ui.screen.disconnect.DisconnectArgs
 import co.electriccoin.zcash.ui.screen.exportvk.ExportVKArgs
 import co.electriccoin.zcash.ui.screen.tor.settings.TorSettingsArgs
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,12 +74,17 @@ class AdvancedSettingsVM(
                 )
         )
 
+    /**
+     * A selected account that cannot spend gets no Export Private Data entry. Export Viewing Key
+     * stays: such an account carries the full viewing key it was imported from, and exporting it, or
+     * the incoming viewing key derived from it, reveals nothing beyond what was imported.
+     */
     private fun createState(
         walletRestoringState: WalletRestoringState,
         accounts: List<WalletAccount>?,
         isRestartAvailable: Boolean,
     ): AdvancedSettingsState {
-        val selectedHWAccount = accounts.orEmpty().firstOrNull { it.isSelected } as? HWWalletAccount
+        val selectedAccount = accounts.orEmpty().firstOrNull { it.isSelected }
         val restoring = walletRestoringState == WalletRestoringState.RESTORING
         return AdvancedSettingsState(
             onBack = ::onBack,
@@ -97,7 +99,7 @@ class AdvancedSettingsVM(
                         title = stringRes(R.string.settings_exportPrivateData),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_export),
                         onClick = ::onExportPrivateDataClick
-                    ),
+                    ).takeIf { selectedAccount?.isSpendable != false },
                     ListItemState(
                         title = stringRes(R.string.exportViewingKey_settingsItem),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_viewing_key),
@@ -138,16 +140,6 @@ class AdvancedSettingsVM(
                         onClick = ::onCrashReportingClick
                     ).takeIf { versionInfo.distribution == DistributionDimension.STORE },
                     ListItemState(
-                        title =
-                            if (selectedHWAccount is LedgerAccount) {
-                                stringRes(R.string.ledger_disconnect_title)
-                            } else {
-                                stringRes(R.string.disconnectHWWallet_cta)
-                            },
-                        bigIcon = imageRes(R.drawable.ic_advanced_settings_disconnect_hw),
-                        onClick = ::onDisconnectHwWalletClick
-                    ).takeIf { selectedHWAccount != null },
-                    ListItemState(
                         title = stringRes(co.electriccoin.zcash.ui.design.R.string.restartMigration_settingsItem),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_restart_migration),
                         onClick = ::onRestartMigrationClick,
@@ -187,8 +179,6 @@ class AdvancedSettingsVM(
     private fun onExportVKClick() = navigationRouter.forward(ExportVKArgs)
 
     private fun onResetWalletClick() = viewModelScope.launch { navigateToResetWallet() }
-
-    private fun onDisconnectHwWalletClick() = navigationRouter.forward(DisconnectArgs)
 
     private fun onRestartMigrationClick() = migrationNavigator.forwardToRestartMigration()
 

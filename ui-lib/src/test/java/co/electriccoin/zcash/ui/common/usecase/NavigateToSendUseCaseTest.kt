@@ -5,16 +5,21 @@ import cash.z.ecc.android.sdk.model.FiatCurrency
 import co.electriccoin.zcash.ui.BaseNavigationCommand
 import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateError
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.screen.exchangerateunavailable.ExchangeRateUnavailableArgs
 import co.electriccoin.zcash.ui.screen.send.Send
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.test.runTest
 import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -32,7 +37,7 @@ class NavigateToSendUseCaseTest {
                 dataState(error = ExchangeRateError.CMC_SERVER_CONNECTION_ERROR, expectedCurrency = FiatCurrency("EUR"))
             )
 
-        NavigateToSendUseCase(router, repo)()
+        runTest { useCase(router, repo)() }
 
         assertEquals(listOf(Send(), ExchangeRateUnavailableArgs), router.forwardedRoutes)
     }
@@ -42,7 +47,7 @@ class NavigateToSendUseCaseTest {
         val router = FakeNavigationRouter()
         val repo = FakeExchangeRateRepository(dataState(error = null, expectedCurrency = FiatCurrency("EUR")))
 
-        NavigateToSendUseCase(router, repo)()
+        runTest { useCase(router, repo)() }
 
         assertEquals(listOf<Any>(Send()), router.forwardedRoutes)
     }
@@ -56,7 +61,7 @@ class NavigateToSendUseCaseTest {
                 dataState(error = ExchangeRateError.CMC_SERVER_CONNECTION_ERROR, expectedCurrency = FiatCurrency.USD)
             )
 
-        NavigateToSendUseCase(router, repo)()
+        runTest { useCase(router, repo)() }
 
         assertEquals(listOf<Any>(Send()), router.forwardedRoutes)
     }
@@ -66,11 +71,27 @@ class NavigateToSendUseCaseTest {
         val router = FakeNavigationRouter()
         val repo = FakeExchangeRateRepository(ExchangeRateState.OptIn)
 
-        NavigateToSendUseCase(router, repo)()
+        runTest { useCase(router, repo)() }
 
         assertEquals(listOf<Any>(Send()), router.forwardedRoutes)
     }
 }
+
+private fun useCase(
+    router: NavigationRouter,
+    repo: ExchangeRateRepository,
+) = NavigateToSendUseCase(
+    navigationRouter = router,
+    exchangeRateRepository = repo,
+    rejectIfSelectedAccountCannotSpend =
+        RejectIfSelectedAccountCannotSpendUseCase(
+            accountDataSource =
+                mockk {
+                    coEvery { getSelectedAccount() } returns mockk<WalletAccount> { every { isSpendable } returns true }
+                },
+            navigateToError = mockk(relaxed = true),
+        ),
+)
 
 private fun dataState(
     error: ExchangeRateError?,

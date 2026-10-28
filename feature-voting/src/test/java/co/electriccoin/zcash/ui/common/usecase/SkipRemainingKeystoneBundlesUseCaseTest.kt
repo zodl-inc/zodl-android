@@ -12,8 +12,9 @@ import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.SynchronizerError
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneBundleSignature
@@ -193,13 +194,13 @@ private class FakeAccountDataSource(
 ) : AccountDataSource {
     override val allAccounts: StateFlow<List<WalletAccount>?> = MutableStateFlow(listOf(selectedAccountValue))
     override val selectedAccount: Flow<WalletAccount?> = flowOf(selectedAccountValue)
-    override val zashiAccount: Flow<ZashiAccount?> = flowOf(null)
+    override val zashiAccount: Flow<ZodlAccount?> = flowOf(null)
 
     override suspend fun getAllAccounts(): List<WalletAccount> = listOf(selectedAccountValue)
 
     override suspend fun getSelectedAccount(): WalletAccount = selectedAccountValue
 
-    override suspend fun getZashiAccount(): ZashiAccount = unsupported()
+    override suspend fun getZashiAccount(): ZodlAccount = unsupported()
 
     override suspend fun selectAccount(account: Account) = unsupported()
 
@@ -217,9 +218,20 @@ private class FakeAccountDataSource(
         birthday: BlockHeight?
     ): cash.z.ecc.android.sdk.model.Account = error("unsupported")
 
+    override suspend fun importViewOnlyAccount(
+        ufvk: String,
+        name: String,
+        birthday: BlockHeight?
+    ): cash.z.ecc.android.sdk.model.Account = error("unsupported")
+
     override suspend fun requestNextShieldedAddress(): String = unsupported()
 
     override suspend fun deleteAccount(account: WalletAccount) = unsupported()
+
+    override suspend fun renameAccount(
+        account: ViewOnlyAccount,
+        name: String
+    ) = unsupported()
 }
 
 private class FakeSynchronizerProvider(

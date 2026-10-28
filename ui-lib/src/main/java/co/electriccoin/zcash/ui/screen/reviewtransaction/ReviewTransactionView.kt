@@ -62,6 +62,8 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.balances.LocalBalancesAvailable
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.Compose
+import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.StringResourceColor
 import co.electriccoin.zcash.ui.design.util.StyledStringStyle
 import co.electriccoin.zcash.ui.design.util.TickerLocation
@@ -252,11 +254,7 @@ private fun SenderWidget(state: SenderState) {
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                modifier = Modifier.size(32.dp),
-                painter = painterResource(id = state.icon),
-                contentDescription = null
-            )
+            state.icon.Compose(modifier = Modifier.size(32.dp))
             Spacer(Modifier.width(16.dp))
             Text(
                 text = state.name.getValue(),
@@ -519,7 +517,7 @@ private fun Preview() =
                             ),
                             SenderState(
                                 title = stringRes("Sending from"),
-                                icon = R.drawable.ic_item_keystone,
+                                icon = imageRes(R.drawable.ic_item_keystone),
                                 name = stringRes("Keystone wallet"),
                             ),
                             FinancialInfoState(
@@ -539,6 +537,36 @@ private fun Preview() =
                         ButtonState(
                             stringRes("Confirm with Keystone")
                         ),
+                    onBack = {},
+                )
+        )
+    }
+
+@PreviewScreens
+@Composable
+private fun ColoredSenderPreview() =
+    ZcashTheme {
+        ReviewTransactionView(
+            state =
+                ReviewTransactionState(
+                    title = stringRes("Review"),
+                    items =
+                        listOf(
+                            SenderState(
+                                title = stringRes("Sending from"),
+                                icon =
+                                    ImageResource.Layered(
+                                        background = Color(PREVIEW_COLOR),
+                                        foreground = ImageResource.ByDrawable(R.drawable.ic_item_zodl_glyph)
+                                    ),
+                                name = stringRes("Zodl"),
+                            ),
+                            FinancialInfoState(
+                                title = stringRes("Fee"),
+                                amount = ZatoshiFixture.new()
+                            ),
+                        ),
+                    primaryButton = ButtonState(stringRes("Send")),
                     onBack = {},
                 )
         )
@@ -577,7 +605,7 @@ private fun TransparentPreview() =
                             ),
                             SenderState(
                                 title = stringRes("Sending from"),
-                                icon = R.drawable.ic_item_keystone,
+                                icon = imageRes(R.drawable.ic_item_keystone),
                                 name = stringRes("Keystone wallet"),
                             ),
                             FinancialInfoState(
@@ -631,7 +659,7 @@ private fun Zip321Preview() =
                             ),
                             SenderState(
                                 title = stringRes(co.electriccoin.zcash.ui.R.string.accounts_sendingFrom),
-                                icon = R.drawable.ic_item_keystone,
+                                icon = imageRes(R.drawable.ic_item_keystone),
                                 name = stringRes("Keystone wallet"),
                             ),
                             ReceiverExpandedState(
@@ -722,7 +750,7 @@ private fun PayPreview() =
                             ),
                             SenderState(
                                 title = stringRes("Sending from"),
-                                icon = R.drawable.ic_item_keystone,
+                                icon = imageRes(R.drawable.ic_item_keystone),
                                 name = stringRes("Keystone wallet"),
                             ),
                             SimpleListItemState(
@@ -764,3 +792,5 @@ private fun PayPreview() =
                 )
         )
     }
+
+private const val PREVIEW_COLOR = 0xFFBE38F3

@@ -53,6 +53,7 @@ class MigrationBackgroundRecoveryScenarioTest {
     private val testWalletAccount: WalletAccount =
         mockk(relaxed = true) {
             every { sdkAccount } returns testSdkAccount
+            every { isSpendable } returns true
         }
 
     @BeforeTest

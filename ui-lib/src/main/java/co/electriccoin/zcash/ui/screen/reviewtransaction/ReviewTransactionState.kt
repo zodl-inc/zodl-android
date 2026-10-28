@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ChipButtonState
 import co.electriccoin.zcash.ui.design.component.SwapQuoteHeaderState
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
+import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.StyledStringResource
 
@@ -46,9 +47,10 @@ data class ReceiverExpandedState(
     val saveButton: ChipButtonState?
 ) : ReviewTransactionItemState
 
+/** The account sending, with its [icon] in its colour. */
 data class SenderState(
     val title: StringResource,
-    val icon: Int,
+    val icon: ImageResource,
     val name: StringResource
 ) : ReviewTransactionItemState
 

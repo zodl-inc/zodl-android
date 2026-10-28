@@ -6,7 +6,7 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
-import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
+import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
@@ -93,7 +93,7 @@ internal class EphemeralLockVM(
             viewModelScope.launch {
                 try {
                     submitIncreaseEphemeralGapLimit()
-                } catch (e: LedgerOperationUnsupportedException) {
+                } catch (e: AccountOperationUnsupportedException) {
                     navigateToError(ErrorArgs.General(e))
                 }
             }

@@ -13,6 +13,7 @@ import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.withLce
 import co.electriccoin.zcash.ui.common.usecase.CreateHWWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyContent
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldInnerState
@@ -26,15 +27,17 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 
 /**
- * Takes a birthday height typed by hand and imports the enrolled account at it.
+ * Takes a birthday height typed by hand and imports the enrolled hardware-wallet account at it; a
+ * view-only import stores the height and goes on to name the account instead.
  */
 class HWHeightVM(
     private val args: HWHeightArgs,
     private val createHWWalletAccount: CreateHWWalletAccountUseCase,
     private val navigationRouter: NavigationRouter,
     private val errorStateMapper: ErrorMapperUseCase,
+    viewOnlyContent: ViewOnlyContent,
 ) : ViewModel() {
-    private val branding = brandingOf(args.enrollment)
+    private val branding = brandingOf(args.enrollment, viewOnlyContent)
     private val blockHeightText = MutableStateFlow(NumberTextFieldInnerState())
     private val createAccountLce = mutableLce<Unit>()
 
@@ -77,11 +80,16 @@ class HWHeightVM(
         }
     }
 
-    private fun onConfirmClick(height: Long) {
-        createAccountLce.execute {
-            createHWWalletAccount(args.enrollment, BlockHeight.new(height))
+    /**
+     * A second tap while the import runs is ignored: restarting would cancel the running import
+     * inside the SDK call, after the account exists but before it is selected.
+     */
+    private fun onConfirmClick(height: Long) =
+        createAccountLce.guardLoading {
+            createAccountLce.execute {
+                createHWWalletAccount(args.enrollment, BlockHeight.new(height))
+            }
         }
-    }
 
     private fun onInfoClick() = navigationRouter.forward(HeightInfoArgs)
 

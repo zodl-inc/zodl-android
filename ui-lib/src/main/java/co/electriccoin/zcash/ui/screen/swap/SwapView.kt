@@ -244,26 +244,44 @@ private fun SlippageSeparator(
     state: SwapState,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = CenterVertically
-    ) {
-        ZashiHorizontalDivider(
-            modifier = Modifier.weight(1f),
-            color = ZashiColors.Utility.Gray.utilityGray100
-        )
+    if (state.changeModeButton == null) {
+        Box(
+            modifier = modifier.heightIn(min = ChangeModeButtonMinSize),
+            contentAlignment = Alignment.Center
+        ) {
+            ZashiHorizontalDivider(
+                modifier = Modifier.fillMaxWidth(),
+                color = ZashiColors.Utility.Gray.utilityGray100
+            )
+        }
+    } else {
+        Row(
+            modifier = modifier,
+            verticalAlignment = CenterVertically
+        ) {
+            ZashiHorizontalDivider(
+                modifier = Modifier.weight(1f),
+                color = ZashiColors.Utility.Gray.utilityGray100
+            )
 
-        ZashiImageButton(
-            state = state.changeModeButton,
-            modifier = Modifier.testTag(SwapTag.SWAP_CHANGE_MODE_BUTTON)
-        )
+            ZashiImageButton(
+                state = state.changeModeButton,
+                modifier = Modifier.testTag(SwapTag.SWAP_CHANGE_MODE_BUTTON)
+            )
 
-        ZashiHorizontalDivider(
-            modifier = Modifier.weight(1f),
-            color = ZashiColors.Utility.Gray.utilityGray100
-        )
+            ZashiHorizontalDivider(
+                modifier = Modifier.weight(1f),
+                color = ZashiColors.Utility.Gray.utilityGray100
+            )
+        }
     }
 }
+
+/**
+ * Minimum touch size of [ZashiImageButton]; the unbroken divider keeps this height so the content below
+ * does not shift when the change-mode button is hidden.
+ */
+private val ChangeModeButtonMinSize = 48.dp
 
 @Composable
 private fun TopAppBar(
@@ -515,6 +533,17 @@ private fun Preview() {
                     onBack = {},
                     changeModeButton = IconButtonState(R.drawable.ic_swap_change_mode) {}
                 ),
+            appBarState = ZashiMainTopAppBarStateFixture.new(),
+        )
+    }
+}
+
+@PreviewScreens
+@Composable
+private fun ViewOnlyAccountPreview() {
+    ZcashTheme {
+        SwapView(
+            state = SwapState.previewViewOnly,
             appBarState = ZashiMainTopAppBarStateFixture.new(),
         )
     }

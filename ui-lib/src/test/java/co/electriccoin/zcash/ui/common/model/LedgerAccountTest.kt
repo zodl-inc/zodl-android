@@ -78,7 +78,7 @@ class LedgerAccountTest {
     }
 
     private fun zashi() =
-        ZashiAccount(
+        ZodlAccount(
             sdkAccount = sdkAccount,
             unifiedAddress = "u",
             transparentAddress = "t",

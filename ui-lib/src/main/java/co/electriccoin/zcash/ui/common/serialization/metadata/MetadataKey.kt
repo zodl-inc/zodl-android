@@ -3,7 +3,7 @@ package co.electriccoin.zcash.ui.common.serialization.metadata
 import cash.z.ecc.android.sdk.model.SeedPhrase
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.android.sdk.tool.DerivationTool
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.serialization.METADATA_ENCRYPTION_KEY_SIZE
 import co.electriccoin.zcash.ui.common.serialization.METADATA_FILE_IDENTIFIER_SIZE
 import co.electriccoin.zcash.ui.common.serialization.METADATA_SALT_SIZE
@@ -80,7 +80,7 @@ class MetadataKey(
         suspend fun derive(
             seedPhrase: SeedPhrase,
             network: ZcashNetwork,
-            zashiAccount: ZashiAccount,
+            zashiAccount: ZodlAccount,
             ufvk: String?
         ): MetadataKey {
             val key =

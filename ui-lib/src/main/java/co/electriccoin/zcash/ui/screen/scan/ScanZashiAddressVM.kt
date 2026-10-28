@@ -78,7 +78,7 @@ internal class ScanZashiAddressVM(
         state.update { ScanValidationState.INVALID }
     }
 
-    private fun onAddressScanned(
+    private suspend fun onAddressScanned(
         result: String,
         addressValidationResult: AddressType
     ) {

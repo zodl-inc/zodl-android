@@ -8,7 +8,7 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollmentTag
 
 data class HWNewOrActiveState(
-    @param:DrawableRes val logo: Int,
+    @param:DrawableRes val logo: Int?,
     val subtitle: StringResource,
     val message: StringResource,
     val newDevice: ButtonState,

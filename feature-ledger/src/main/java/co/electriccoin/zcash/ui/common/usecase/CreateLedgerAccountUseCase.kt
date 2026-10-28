@@ -20,8 +20,14 @@ class CreateLedgerAccountUseCase(
     /**
      * @throws LedgerPairingMissingException if the pending pairing is gone — the flow was resumed
      *         after process death, and the device has to be paired again.
+     * @throws InitializeException.ImportAccountCollisionException if the wallet already holds an
+     *         account sharing a viewing key component with the paired one; trying again cannot
+     *         succeed, and the pairing is kept, as for any other failed import.
      */
-    @Throws(InitializeException.ImportAccountException::class)
+    @Throws(
+        InitializeException.ImportAccountException::class,
+        InitializeException.ImportAccountCollisionException::class,
+    )
     suspend operator fun invoke(birthday: BlockHeight? = null) {
         val pairing = ledgerPairingRepository.get() ?: throw LedgerPairingMissingException()
         val createdAccount = accountDataSource.importLedgerAccount(pairing, birthday)

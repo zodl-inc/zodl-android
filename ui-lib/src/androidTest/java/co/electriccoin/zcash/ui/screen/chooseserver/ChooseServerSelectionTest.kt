@@ -302,6 +302,7 @@ private class FakeWalletRepository(
     override val secretState = MutableStateFlow(SecretState.NONE)
     override val fastestEndpoints = MutableStateFlow(FastestServersState(listOf(fastestEndpoint), false))
     override val walletRestoringState = MutableStateFlow(WalletRestoringState.NONE)
+    override val isIronwoodAnnouncementShown = MutableStateFlow<Boolean?>(true)
 
     val endpointUpdateStarted = CompletableDeferred<Unit>()
 
@@ -330,6 +331,8 @@ private class FakeWalletRepository(
     override fun refreshFastestServers() {
         refreshCount++
     }
+
+    override suspend fun markIronwoodAnnouncementShown() = Unit
 }
 
 private class FakeSynchronizerProvider : SynchronizerProvider {
