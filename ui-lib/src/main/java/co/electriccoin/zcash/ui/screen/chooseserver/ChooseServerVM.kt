@@ -513,6 +513,11 @@ class ChooseServerVM(
         return !local.isSaveInProgress
     }
 
+    /**
+     * Saves the selected mode. Confirming Public as a deliberate choice (not an outage fallback) keeps the current
+     * endpoint rather than switching to the fastest one: changing servers rebuilds the Synchronizer, which is
+     * unnecessary here.
+     */
     private fun onSaveButtonClicked() =
         viewModelScope.launch {
             val local = innerState.value.requireLocal()
@@ -525,9 +530,6 @@ class ChooseServerVM(
                     val persisted = innerState.value.requirePersisted()
                     persistServerSelection.persistPublic(
                         fastest =
-                            // When confirming Public as a deliberate choice (not an outage fallback), keep the
-                            // current endpoint rather than switch to the fastest one. Changing servers rebuilds the
-                            // Synchronizer, which is unnecessary here.
                             persisted.endpoint.takeIf { persisted.mode == ServerConnectionMode.PUBLIC }
                                 ?: fastestPublicServer(fastestServersFlow.value)
                     )
