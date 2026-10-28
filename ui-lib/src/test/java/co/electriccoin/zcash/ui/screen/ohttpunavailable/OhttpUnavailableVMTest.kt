@@ -107,6 +107,10 @@ class OhttpUnavailableVMTest {
             verify(exactly = 1) { navigationRouter.custom(any()) }
         }
 
+    /**
+     * A transaction in progress prevents the sheet from being popped. Popping with the send
+     * flow still active would cancel the send instead of the sheet.
+     */
     @Test
     fun aTransactionDoesNotPopAScreenThatIsNotTheSheet() =
         runTest(dispatcher) {
@@ -115,7 +119,16 @@ class OhttpUnavailableVMTest {
             stateOf(createVm())
             transactionInProgress.value = true
             advanceUntilIdle()
-            // Popping with the send flow on top would cancel that flow instead of the sheet.
             assertNull(block.captured(null))
+        }
+
+    @Test
+    fun switchToPublicDoesNotSwitchWhenATransactionIsInProgress() =
+        runTest(dispatcher) {
+            transactionInProgress.value = true
+            stateOf(createVm()).onSwitchToPublic()
+            advanceUntilIdle()
+            coVerify(exactly = 0) { persist.persistPublic(any()) }
+            verify(exactly = 0) { navigationRouter.back() }
         }
 }

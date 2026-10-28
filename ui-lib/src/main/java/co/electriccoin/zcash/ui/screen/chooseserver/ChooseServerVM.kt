@@ -251,6 +251,12 @@ class ChooseServerVM(
         )
     }
 
+    /**
+     * Save button visibility and state.
+     *
+     * While Public mode is being tested (speed test still running), save is disabled. The user can only
+     * confirm after the test completes or manually pick a server in Manual mode.
+     */
     private fun createSaveButton(
         local: InnerState.Local,
         persisted: InnerState.Persisted,
@@ -264,7 +270,6 @@ class ChooseServerVM(
                 } else {
                     stringRes(R.string.serverSetup_save)
                 },
-            // Public is still being tested: Save waits for the test result (Figma "Public (Testing)").
             isEnabled =
                 !isSaveInProgress &&
                     !(local.mode == ServerConnectionMode.PUBLIC && fastestServers.isLoading) &&
@@ -319,8 +324,13 @@ class ChooseServerVM(
         )
     }
 
+    /**
+     * Determines whether the current local state differs from the persisted state.
+     *
+     * For Manual mode, a server must be selected (either from the list or custom). Immediately after
+     * switching to Manual from Private, nothing is selected yet.
+     */
     private fun hasUnsavedChanges(local: InnerState.Local, persisted: InnerState.Persisted): Boolean {
-        // Manual needs a server to pin: right after tapping it from Private nothing is selected yet.
         val manualEndpoint = if (local.isCustomSelected) local.customEndpoint.endpoint else local.selectedEndpoint
         return when {
             local.mode == ServerConnectionMode.MANUAL -> {
@@ -514,8 +524,10 @@ class ChooseServerVM(
                 } else if (local.mode == ServerConnectionMode.PUBLIC) {
                     val persisted = innerState.value.requirePersisted()
                     persistServerSelection.persistPublic(
-                        // Confirming Public as deliberate must not also hop servers (it rebuilds the Synchronizer).
                         fastest =
+                            // When confirming Public as a deliberate choice (not an outage fallback), keep the
+                            // current endpoint rather than switch to the fastest one. Changing servers rebuilds the
+                            // Synchronizer, which is unnecessary here.
                             persisted.endpoint.takeIf { persisted.mode == ServerConnectionMode.PUBLIC }
                                 ?: fastestPublicServer(fastestServersFlow.value)
                     )

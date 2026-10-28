@@ -61,7 +61,18 @@ data class OhttpOptInMessageState(
     val buttonText: StringResource,
     val onClick: () -> Unit,
     val onButtonClick: () -> Unit,
-) : HomeMessageState
+) : HomeMessageState {
+    companion object {
+        val preview =
+            OhttpOptInMessageState(
+                title = stringRes(R.string.ohttpOptIn_widgetTitle),
+                subtitle = stringRes(R.string.ohttpOptIn_widgetSubtitle),
+                buttonText = stringRes(R.string.ohttpOptIn_widgetView),
+                onClick = {},
+                onButtonClick = {},
+            )
+    }
+}
 
 @PreviewScreens
 @Composable
@@ -69,14 +80,7 @@ private fun Preview() =
     ZcashTheme {
         BlankSurface {
             OhttpOptInMessage(
-                state =
-                    OhttpOptInMessageState(
-                        title = stringRes(R.string.ohttpOptIn_widgetTitle),
-                        subtitle = stringRes(R.string.ohttpOptIn_widgetSubtitle),
-                        buttonText = stringRes(R.string.ohttpOptIn_widgetView),
-                        onClick = {},
-                        onButtonClick = {},
-                    ),
+                state = OhttpOptInMessageState.preview,
                 contentPadding = PaddingValues()
             )
         }

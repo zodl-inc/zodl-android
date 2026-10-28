@@ -49,16 +49,21 @@ class PersistServerSelectionUseCase(
             persistFlagAndEndpoint(isAutomatic = true, endpoint = endpoint)
         }
 
+    /**
+     * Persists a manual server selection.
+     *
+     * The OHTTP gateway is only ever reached as Private mode; a manual pin of it is converted to
+     * Private to keep the health monitoring lane active. Validation happens outside the lock since
+     * it's a network call.
+     */
     @Throws(PersistEndpointException::class)
     suspend fun persistManual(endpoint: LightWalletEndpoint) {
-        // The gateway is only ever reached as Private; a Manual pin of it would switch the health lane off.
         if (lightWalletEndpointProvider.isOhttpGateway(endpoint)) {
             persistPrivate()
             return
         }
         when (val result = validateServerEndpoint(endpoint)) {
             ServerValidation.Valid -> {
-                // Validated outside the lock: it is a network call.
                 serverSelectionMutex.withLock {
                     isPublicConnectionProvider.store(false)
                     persistFlagAndEndpoint(isAutomatic = false, endpoint = endpoint)

@@ -36,6 +36,7 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlinx.serialization.Serializable
@@ -79,24 +80,29 @@ fun OhttpUnavailableView(
             )
             Spacer(12.dp)
             Text(
-                text = stringRes(R.string.ohttpUnavailableSheet_title).getValue(),
+                text = innerState.title.getValue(),
                 style = ZashiTypography.textXl,
                 fontWeight = FontWeight.SemiBold,
                 color = ZashiColors.Text.textPrimary,
             )
             Spacer(4.dp)
             Text(
-                text = stringRes(R.string.ohttpUnavailableSheet_body).getValue(),
+                text = innerState.body.getValue(),
                 style = ZashiTypography.textSm,
                 color = ZashiColors.Text.textTertiary,
             )
             Spacer(24.dp)
-            TorCard(isTorEnabled = innerState.isTorEnabled, onTorToggle = innerState.onTorToggle)
+            TorCard(
+                torTitle = innerState.torTitle,
+                torBody = innerState.torBody,
+                isTorEnabled = innerState.isTorEnabled,
+                onTorToggle = innerState.onTorToggle,
+            )
             Spacer(24.dp)
             ZashiButton(
                 state =
                     ButtonState(
-                        text = stringRes(R.string.ohttpUnavailableSheet_keepWaiting),
+                        text = innerState.keepWaitingText,
                         style = ButtonStyle.SECONDARY,
                         onClick = innerState.onKeepWaiting,
                     ),
@@ -106,7 +112,7 @@ fun OhttpUnavailableView(
             ZashiButton(
                 state =
                     ButtonState(
-                        text = stringRes(R.string.ohttpUnavailableSheet_switchToPublic),
+                        text = innerState.switchToPublicText,
                         onClick = innerState.onSwitchToPublic,
                     ),
                 modifier = Modifier.fillMaxWidth(),
@@ -117,6 +123,8 @@ fun OhttpUnavailableView(
 
 @Composable
 private fun TorCard(
+    torTitle: StringResource,
+    torBody: StringResource,
     isTorEnabled: Boolean,
     onTorToggle: (Boolean) -> Unit,
 ) {
@@ -132,13 +140,13 @@ private fun TorCard(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = stringRes(R.string.ohttpUnavailableSheet_torTitle).getValue(),
+                text = torTitle.getValue(),
                 style = ZashiTypography.textMd,
                 fontWeight = FontWeight.SemiBold,
                 color = ZashiColors.Text.textPrimary,
             )
             Text(
-                text = stringRes(R.string.ohttpUnavailableSheet_torBody).getValue(),
+                text = torBody.getValue(),
                 style = ZashiTypography.textXs,
                 color = ZashiColors.Text.textTertiary,
             )
@@ -152,14 +160,5 @@ private fun TorCard(
 @Composable
 private fun Preview() =
     ZcashTheme {
-        OhttpUnavailableView(
-            state =
-                OhttpUnavailableState(
-                    isTorEnabled = false,
-                    onTorToggle = {},
-                    onKeepWaiting = {},
-                    onSwitchToPublic = {},
-                    onBack = {},
-                )
-        )
+        OhttpUnavailableView(state = OhttpUnavailableState.preview)
     }

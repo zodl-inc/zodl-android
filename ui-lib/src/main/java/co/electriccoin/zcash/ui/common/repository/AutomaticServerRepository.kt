@@ -568,13 +568,21 @@ class AutomaticServerRepositoryImpl(
     }
 
     /**
-     * The SDK is told about the switch only once it has actually been applied: a declined or failed switch
-     * that confirmed anyway would clear the SDK's consecutive-failure count and start its cooldown, leaving
-     * a wallet on a dead server to earn its way out from scratch.
+     * Applies a server switch if the candidate still fits the current connection mode.
      *
-     * The Synchronizer is taken before the endpoint is written, because writing it tears the current
-     * Synchronizer down and rebuilds it. Which instance receives the confirmation does not matter - the
-     * hysteresis state it updates is process-wide and outlives any single Synchronizer.
+     * The candidate was chosen for the mode the wallet was in when evaluation started. The user can change
+     * the mode while it runs (a benchmark plus snapshot wait takes time), so the candidate is only applied if
+     * it still fits: Private never moves to clearnet, and a deliberate Public never returns to the gateway.
+     * The user's save takes the same lock, so the mode cannot change between the validation and writes.
+     *
+     * The endpoint is written first; if this fails, the wallet must not already read as Private while on clearnet.
+     * For Private mode, the fallback flag is updated to reflect whether the endpoint is off the gateway.
+     *
+     * The SDK is told about the switch only after it has been applied: a declined or failed switch that confirmed
+     * anyway would clear the SDK's consecutive-failure count and start its cooldown, leaving a wallet on a dead
+     * server to earn its way out from scratch. The Synchronizer is taken before the endpoint write, because writing
+     * it tears the current Synchronizer down and rebuilds it. Which instance receives the confirmation does not
+     * matter - the hysteresis state it updates is process-wide and outlives any single Synchronizer.
      */
     private suspend fun applyServerSwitch(candidate: LightWalletEndpoint) =
         serverSelectionMutex.withLock { applyServerSwitchLocked(candidate) }
@@ -583,10 +591,6 @@ class AutomaticServerRepositoryImpl(
     private suspend fun applyServerSwitchLocked(candidate: LightWalletEndpoint) {
         if (!isServerAutomatic() || isAppInTransactionState) return
         if (candidate !in lightWalletEndpointProvider.getEndpoints()) return
-        // The candidate was chosen for the mode the wallet was in when the evaluation started, and the user can
-        // change the mode while it runs (a benchmark plus the snapshot wait takes a while). Apply it only if it
-        // still fits: Private never moves to clearnet, and a deliberate Public never returns to the gateway.
-        // The user's save takes the same lock, so the mode cannot change between this check and the writes below.
         val returningToPrivate = lightWalletEndpointProvider.isOhttpGateway(candidate)
         val isPublic = isPublicConnectionProvider.get()
         if (!returningToPrivate && !isPublic) {
@@ -599,10 +603,8 @@ class AutomaticServerRepositoryImpl(
         }
         val synchronizer: Synchronizer? = synchronizerProvider.getSynchronizerOrNull()
         Twig.info { "Automatic server: switching to ${candidate.host}:${candidate.port}" }
-        // The endpoint first: if this write fails the wallet must not already read as Private while on clearnet.
         walletRepository.updateWalletEndpoint(candidate)
         if (returningToPrivate) isPublicConnectionProvider.store(false)
-        // Public runs on clearnet by choice; only Private marks being off the gateway as the OHTTP fallback.
         if (returningToPrivate || !isPublicConnectionProvider.get()) syncFallbackFlag(candidate)
         synchronizer?.confirmServerSwitch(candidate)
     }

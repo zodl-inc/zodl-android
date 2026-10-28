@@ -225,10 +225,13 @@ class WalletRepositoryImplTest {
             repository.init()
             advanceUntilIdle()
 
-            // Never the gateway: that would leave the wallet "Public" on the Private server.
             assertEquals(ZEC_ROCKS, harness.walletProvider.getPersistableWallet()?.endpoint)
         }
 
+    /**
+     * When moving a non-Public wallet off a decommissioned host, switch to the gateway
+     * in Automatic/Private mode, not Manual.
+     */
     @Test
     fun initMovesANonPublicWalletOffADecommissionedHostToTheGateway() =
         runTest {
@@ -245,7 +248,6 @@ class WalletRepositoryImplTest {
             advanceUntilIdle()
 
             assertEquals(GATEWAY, harness.walletProvider.getPersistableWallet()?.endpoint)
-            // On the gateway it must be Private, not "Manual on the gateway".
             coVerify(exactly = 1) { harness.isAutomaticProvider.store(true) }
             coVerify(exactly = 1) { harness.isPublicProvider.store(false) }
         }
