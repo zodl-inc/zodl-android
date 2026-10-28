@@ -7,6 +7,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.19.0 (3234)] - 2026-10-29
+
 ### Changed:
 
 - Migration time estimates, the plan's total duration and the Syncing banner follow NU7's 25-second target block
