@@ -1,8 +1,11 @@
 package co.electriccoin.zcash.ui.screen.send
 
+import androidx.compose.runtime.saveable.SaverScope
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.model.ZecSend
+import cash.z.ecc.android.sdk.type.AddressType
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
@@ -33,6 +36,8 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 
 class SendViewModel(
+    args: Send,
+    private val savedStateHandle: SavedStateHandle,
     exchangeRateRepository: ExchangeRateRepository,
     private val observeContactByAddress: ObserveContactByAddressUseCase,
     private val observeContactPicked: ObserveABContactPickedUseCase,
@@ -41,7 +46,20 @@ class SendViewModel(
     private val navigateToSelectRecipient: NavigateToSelectRecipientUseCase,
     private val navigationRouter: NavigationRouter,
 ) : ViewModel() {
-    val recipientAddressState = MutableStateFlow(RecipientAddressState.new("", null))
+    val recipientAddressState =
+        MutableStateFlow(
+            savedStateHandle.get<Any>(RECIPIENT_STATE)?.let { RecipientAddressState.Saver.restore(it) }
+                ?: RecipientAddressState.new(
+                    args.recipientAddress.orEmpty(),
+                    when (args.recipientAddressType) {
+                        cash.z.ecc.sdk.model.AddressType.UNIFIED -> AddressType.Unified
+                        cash.z.ecc.sdk.model.AddressType.TRANSPARENT -> AddressType.Transparent
+                        cash.z.ecc.sdk.model.AddressType.SAPLING -> AddressType.Shielded
+                        cash.z.ecc.sdk.model.AddressType.TEX -> AddressType.Tex
+                        null -> null
+                    }
+                )
+        )
 
     private var onCreateZecSendClickJob: Job? = null
 
@@ -128,6 +146,7 @@ class SendViewModel(
     }
 
     fun onRecipientAddressChanged(state: RecipientAddressState) {
+        savedStateHandle[RECIPIENT_STATE] = with(RecipientAddressState.Saver) { SaverScope { true }.save(state) }
         recipientAddressState.update { state }
     }
 
@@ -147,5 +166,9 @@ class SendViewModel(
                     Twig.error(e) { "Error creating proposal" }
                 }
             }
+    }
+
+    private companion object {
+        const val RECIPIENT_STATE = "recipient_state"
     }
 }

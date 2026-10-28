@@ -14,6 +14,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
 import cash.z.ecc.android.sdk.model.toZecString
 import cash.z.ecc.android.sdk.type.AddressType
@@ -114,7 +115,7 @@ internal fun WrapSend(
 ) {
     val scope = rememberCoroutineScope()
 
-    val viewModel = koinViewModel<SendViewModel>()
+    val viewModel = koinViewModel<SendViewModel> { parametersOf(sendArguments) }
 
     val validateAddress = koinInject<ValidateAddressUseCase>()
 
@@ -136,27 +137,18 @@ internal fun WrapSend(
     val observeClearSend = koinInject<ObserveClearSendUseCase>()
     val prefillSend = koinInject<PrefillSendUseCase>()
 
-    if (sendArguments.recipientAddress != null && sendArguments.recipientAddressType != null) {
-        viewModel.onRecipientAddressChanged(
-            RecipientAddressState.new(
-                sendArguments.recipientAddress,
-                when (sendArguments.recipientAddressType) {
-                    cash.z.ecc.sdk.model.AddressType.UNIFIED -> AddressType.Unified
-                    cash.z.ecc.sdk.model.AddressType.TRANSPARENT -> AddressType.Transparent
-                    cash.z.ecc.sdk.model.AddressType.SAPLING -> AddressType.Shielded
-                    cash.z.ecc.sdk.model.AddressType.TEX -> AddressType.Tex
-                }
-            )
-        )
-    }
-
     // Amount computation:
     val (amountState, setAmountState) =
         rememberSaveable(stateSaver = AmountState.getSaver(context)) {
             // Default amount state
             mutableStateOf(
                 AmountState.newFromZec(
-                    value = zecSend?.amount?.toZecString(NUMBER_FORMAT_LOCALE) ?: "",
+                    value =
+                        zecSend?.amount?.toZecString(NUMBER_FORMAT_LOCALE)
+                            ?: sendArguments.initialAmount()?.let {
+                                stringRes(it, TickerLocation.HIDDEN).getString(context)
+                            }
+                            ?: "",
                     fiatValue = "",
                     isTransparentOrTextRecipient =
                         recipientAddressState.type?.let { it == AddressType.Transparent }
@@ -197,7 +189,7 @@ internal fun WrapSend(
     // Memo computation:
     val (memoState, setMemoState) =
         rememberSaveable(stateSaver = MemoState.Saver) {
-            mutableStateOf(MemoState.new(zecSend?.memo?.value ?: ""))
+            mutableStateOf(MemoState.new(zecSend?.memo?.value ?: sendArguments.memo.orEmpty()))
         }
 
     LaunchedEffect(Unit) {
@@ -217,49 +209,59 @@ internal fun WrapSend(
         }
     }
 
+    suspend fun applyRecipient(address: String): AddressType? {
+        val type = validateAddress(address)
+        setSendStage(SendStage.Form)
+        setZecSend(null)
+        viewModel.onRecipientAddressChanged(
+            RecipientAddressState.new(
+                address = address,
+                type = type
+            )
+        )
+        return type
+    }
+
+    suspend fun applyPayment(
+        address: String,
+        amount: Zatoshi,
+        fee: Zatoshi?,
+        memo: String?
+    ) {
+        val type = applyRecipient(address)
+
+        val value =
+            when {
+                fee == null -> amount
+                fee > amount -> amount
+                else -> amount - fee
+            }
+
+        setAmountState(
+            AmountState.newFromZec(
+                value = stringRes(value, TickerLocation.HIDDEN).getString(context),
+                fiatValue = amountState.fiatValue.getString(context),
+                isTransparentOrTextRecipient = type == AddressType.Transparent,
+                exchangeRateState = exchangeRateState,
+            )
+        )
+        setMemoState(MemoState.new(memo.orEmpty()))
+    }
+
     LaunchedEffect(Unit) {
         prefillSend().collect {
             when (it) {
                 is PrefillSendData.All -> {
-                    val type = validateAddress(it.address.orEmpty())
-                    setSendStage(SendStage.Form)
-                    setZecSend(null)
-                    viewModel.onRecipientAddressChanged(
-                        RecipientAddressState.new(
-                            address = it.address.orEmpty(),
-                            type = type
-                        )
+                    applyPayment(
+                        address = it.address.orEmpty(),
+                        amount = it.amount,
+                        fee = it.fee,
+                        memo = it.memos?.firstOrNull()
                     )
-
-                    val fee = it.fee
-                    val value =
-                        when {
-                            fee == null -> it.amount
-                            fee > it.amount -> it.amount
-                            else -> it.amount - fee
-                        }
-
-                    setAmountState(
-                        AmountState.newFromZec(
-                            value = stringRes(value, TickerLocation.HIDDEN).getString(context),
-                            fiatValue = amountState.fiatValue.getString(context),
-                            isTransparentOrTextRecipient = type == AddressType.Transparent,
-                            exchangeRateState = exchangeRateState,
-                        )
-                    )
-                    setMemoState(MemoState.new(it.memos?.firstOrNull().orEmpty()))
                 }
 
                 is PrefillSendData.FromAddressScan -> {
-                    val type = validateAddress(it.address)
-                    setSendStage(SendStage.Form)
-                    setZecSend(null)
-                    viewModel.onRecipientAddressChanged(
-                        RecipientAddressState.new(
-                            address = it.address,
-                            type = type
-                        )
-                    )
+                    applyRecipient(it.address)
                 }
             }
         }

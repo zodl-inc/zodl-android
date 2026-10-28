@@ -34,6 +34,7 @@ import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
 import co.electriccoin.zcash.ui.common.usecase.HandleExternalLinkUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationUIState
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
+import co.electriccoin.zcash.ui.common.viewmodel.IncomingPaymentViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.SecretState
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
@@ -82,6 +83,8 @@ class MainActivity : FragmentActivity() {
     private val migrationAppHooks: MigrationAppHooks by inject()
     private val handleExternalLink: HandleExternalLinkUseCase by inject()
 
+    private val incomingPaymentViewModel by viewModel<IncomingPaymentViewModel>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Twig.debug { "Activity state: Create" }
@@ -94,15 +97,28 @@ class MainActivity : FragmentActivity() {
 
         monitorForBackgroundSync()
 
+        // Only on a fresh start: the launching Intent stays attached to the Activity, so replaying
+        // it after a process-death recreation would navigate into Send a second time.
+        if (savedInstanceState == null) {
+            incomingPaymentViewModel.accept(intent)
+        }
         handleViewIntent(intent, isRecreated = savedInstanceState != null)
         handleMigrationIntent(intent)
+        setIntent(Intent(Intent.ACTION_MAIN))
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                incomingPaymentViewModel.processPending()
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
+        incomingPaymentViewModel.accept(intent)
         handleViewIntent(intent, isRecreated = false)
         handleMigrationIntent(intent)
+        setIntent(Intent(Intent.ACTION_MAIN))
     }
 
     /**
@@ -115,6 +131,7 @@ class MainActivity : FragmentActivity() {
         intent: Intent,
         isRecreated: Boolean
     ) {
+        if (intent.action != Intent.ACTION_VIEW) return
         val data = intent.data ?: return
         val isFromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
         val isGiftCardLink = handleExternalLink(host = data.host, isRedelivery = isRecreated || isFromHistory)

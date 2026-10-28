@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.send
 
+import androidx.lifecycle.SavedStateHandle
 import cash.z.ecc.android.sdk.model.ZecSend
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.usecase.CreateProposalUseCase
@@ -57,6 +58,8 @@ class SendViewModelLedgerTest {
 
     private fun vm(createProposal: CreateProposalUseCase) =
         SendViewModel(
+            args = Send(),
+            savedStateHandle = SavedStateHandle(),
             exchangeRateRepository = mockk(relaxed = true),
             observeContactByAddress = mockk(relaxed = true),
             observeContactPicked = mockk(relaxed = true),
