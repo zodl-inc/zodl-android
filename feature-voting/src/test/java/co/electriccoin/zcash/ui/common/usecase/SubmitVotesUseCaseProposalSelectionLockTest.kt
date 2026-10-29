@@ -3,7 +3,7 @@ package co.electriccoin.zcash.ui.common.usecase
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.VotingRoundSession
 import cash.z.ecc.android.sdk.ext.toHex
-import cash.z.ecc.android.sdk.model.voting.VotingRoute
+import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
 import cash.z.ecc.android.sdk.fixture.AccountFixture
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture

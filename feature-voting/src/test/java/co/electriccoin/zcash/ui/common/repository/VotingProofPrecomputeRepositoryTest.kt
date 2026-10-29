@@ -1,7 +1,7 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import cash.z.ecc.android.sdk.Synchronizer
-import cash.z.ecc.android.sdk.model.voting.VotingRoute
+import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider

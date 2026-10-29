@@ -1,6 +1,6 @@
 package co.electriccoin.zcash.ui.common.model.voting
 
-import cash.z.ecc.android.sdk.model.VotingTorLease
+import cash.z.ecc.android.sdk.model.voting.VotingTorLease
 
 /**
  * Immutable routing decision for one voting operation.
