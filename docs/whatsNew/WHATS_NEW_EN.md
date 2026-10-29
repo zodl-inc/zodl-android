@@ -14,6 +14,16 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.19.0 (3234)] - 2026-10-29
+
+### Added:
+
+- We added support for the Zcash network upgrade (NU7).
+
+### Changed:
+
+- Private migration pauses until the upgrade. If the upgrade stops a migration, we offer to migrate your remaining funds.
+
 ## [3.18.0 (3206)] - 2026-10-23
 
 ### Added:

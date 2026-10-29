@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.migration.invalid
 
 import androidx.lifecycle.ViewModel
 import cash.z.ecc.android.sdk.AttentionReason
+import cash.z.ecc.android.sdk.MigrationRestartOutcome
 import cash.z.ecc.android.sdk.MigrationState
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.LceState
@@ -23,6 +24,7 @@ import co.electriccoin.zcash.ui.common.usecase.GetOrchardMigrationSdkUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.migration.review.MigrationReviewArgs
+import co.electriccoin.zcash.ui.screen.migration.setup.MigrationSetupArgs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -106,10 +108,17 @@ class MigrationTransferInvalidVM(
             // normal user confirmation flow rather than being discarded — hand it to MigrationReviewVM
             // instead of letting it independently re-propose (see RestartMigrationScheduleRepository's
             // doc for why this is a separate slot from the Keystone sign/scan hand-off).
-            val schedule = sdk.restartCurrentMigrationStep()
-            val accountKeyId = getSelectedWalletAccount().sdkAccount.accountUuid.toStorageKeyId()
-            restartMigrationScheduleRepository.set(accountKeyId, schedule)
-            navigationRouter.replace(MigrationReviewArgs(MigrationMode.AUTOMATIC))
+            when (val outcome = sdk.restartCurrentMigrationStep()) {
+                is MigrationRestartOutcome.Replanned -> {
+                    val accountKeyId = getSelectedWalletAccount().sdkAccount.accountUuid.toStorageKeyId()
+                    restartMigrationScheduleRepository.set(accountKeyId, outcome.schedule)
+                    navigationRouter.replace(MigrationReviewArgs(MigrationMode.AUTOMATIC))
+                }
+
+                is MigrationRestartOutcome.CancelledUntilNetworkUpgrade -> {
+                    navigationRouter.replace(MigrationSetupArgs)
+                }
+            }
         }
 
     private fun onBack() = navigationRouter.back()
