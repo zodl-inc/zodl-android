@@ -5,8 +5,6 @@ import cash.z.ecc.android.sdk.model.AccountUuid
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
-import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
-import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -125,8 +123,6 @@ class ViewOnlyVotingGuardTest {
     fun shareTrackingHasNothingToDo() =
         runTest {
             val votingRecoveryRepository = mockk<VotingRecoveryRepository>(relaxed = true)
-            val votingChainConfigRepository = mockk<VotingChainConfigRepository>()
-            coEvery { votingChainConfigRepository.get() } returns VotingChainConfigState()
             val useCase =
                 TrackVotingSharesUseCase(
                     votingRecoveryRepository = votingRecoveryRepository,
@@ -134,7 +130,6 @@ class ViewOnlyVotingGuardTest {
                     votingApiProvider = mockk(relaxed = true),
                     synchronizerProvider = mockk(relaxed = true),
                     getSelectedWalletAccount = getSelectedWalletAccount,
-                    votingChainConfigRepository = votingChainConfigRepository,
                     votingRouteProvider = mockk(relaxed = true),
                 )
 

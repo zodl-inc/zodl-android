@@ -2,10 +2,6 @@ package co.electriccoin.zcash.ui.common.provider
 
 import co.electriccoin.lightwallet.client.OhttpHttpClient
 import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
-import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
-import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
-import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
-import co.electriccoin.zcash.ui.common.repository.VotingCustomChainConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -16,8 +12,6 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -30,7 +24,7 @@ class HttpPirSnapshotResolverTest {
         runBlocking {
             val direct = mutableListOf<String>()
             val ohttp = mutableListOf<String>()
-            val resolver = resolver(torEnabled = false, isCustom = false, direct = direct, ohttp = ohttp)
+            val resolver = resolver(torEnabled = false, direct = direct, ohttp = ohttp)
 
             assertEquals(
                 PIR_URL,
@@ -45,7 +39,7 @@ class HttpPirSnapshotResolverTest {
         runBlocking {
             val direct = mutableListOf<String>()
             val ohttpClient = ohttpClient(mutableListOf(), canHandle = false)
-            val resolver = resolver(torEnabled = false, isCustom = false, direct = direct, ohttpClient = ohttpClient)
+            val resolver = resolver(torEnabled = false, direct = direct, ohttpClient = ohttpClient)
 
             assertFailsWith<PirSnapshotResolverException.NoMatchingEndpoint> {
                 resolver.resolve(VotingRouteDecision(isTor = false, isCustomServer = false), listOf(PIR_URL), HEIGHT)
@@ -59,7 +53,7 @@ class HttpPirSnapshotResolverTest {
         runBlocking {
             val direct = mutableListOf<String>()
             val ohttp = mutableListOf<String>()
-            val resolver = resolver(torEnabled = false, isCustom = true, direct = direct, ohttp = ohttp)
+            val resolver = resolver(torEnabled = false, direct = direct, ohttp = ohttp)
 
             assertEquals(
                 PIR_URL,
@@ -74,7 +68,7 @@ class HttpPirSnapshotResolverTest {
         runBlocking {
             val direct = mutableListOf<String>()
             val ohttp = mutableListOf<String>()
-            val resolver = resolver(torEnabled = true, isCustom = false, direct = direct, ohttp = ohttp)
+            val resolver = resolver(torEnabled = true, direct = direct, ohttp = ohttp)
 
             assertEquals(
                 PIR_URL,
@@ -92,7 +86,7 @@ class HttpPirSnapshotResolverTest {
             val torFlags = mutableListOf<Boolean>()
             // Preference says Tor on and a custom chain; the operation's decision says Tor off, predefined.
             val resolver =
-                resolver(torEnabled = true, isCustom = true, direct = direct, ohttp = ohttp, torFlags = torFlags)
+                resolver(torEnabled = true, direct = direct, ohttp = ohttp, torFlags = torFlags)
 
             assertEquals(
                 PIR_URL,
@@ -111,7 +105,7 @@ class HttpPirSnapshotResolverTest {
             val torFlags = mutableListOf<Boolean>()
             // Preference says Tor off (predefined, so OHTTP would be chosen); the decision says Tor on.
             val resolver =
-                resolver(torEnabled = false, isCustom = false, direct = direct, ohttp = ohttp, torFlags = torFlags)
+                resolver(torEnabled = false, direct = direct, ohttp = ohttp, torFlags = torFlags)
 
             assertEquals(
                 PIR_URL,
@@ -124,7 +118,6 @@ class HttpPirSnapshotResolverTest {
 
     private fun resolver(
         torEnabled: Boolean,
-        isCustom: Boolean,
         direct: MutableList<String>,
         ohttp: MutableList<String> = mutableListOf(),
         ohttpClient: OhttpHttpClient = ohttpClient(ohttp, canHandle = true),
@@ -154,8 +147,7 @@ class HttpPirSnapshotResolverTest {
                 override suspend fun createOhttp(): OhttpHttpClient = ohttpClient
 
                 override suspend fun isTorEnabled(): Boolean = torEnabled
-            },
-        votingChainConfigRepository = FakeVotingChainConfigRepository(isCustom)
+            }
     )
 
     private fun ohttpClient(
@@ -169,42 +161,6 @@ class HttpPirSnapshotResolverTest {
                 OhttpHttpClient.Response(status = 200, body = ROOT_JSON.toByteArray())
             }
         }
-
-    private class FakeVotingChainConfigRepository(
-        isCustom: Boolean
-    ) : VotingChainConfigRepository {
-        override val state: StateFlow<VotingChainConfigState> =
-            MutableStateFlow(
-                if (isCustom) {
-                    VotingChainConfigState(
-                        selected = VotingChainConfigSelection.Custom("custom"),
-                        customChains =
-                            listOf(VotingCustomChainConfig("custom", "Custom", "https://custom.example/config.json"))
-                    )
-                } else {
-                    VotingChainConfigState()
-                }
-            )
-
-        override suspend fun get(): VotingChainConfigState = state.value
-
-        override suspend fun selectDefault() = Unit
-
-        override suspend fun selectCustom(id: String) = Unit
-
-        override suspend fun addCustom(
-            name: String,
-            pinnedSource: String
-        ): VotingCustomChainConfig = error("unused")
-
-        override suspend fun updateCustom(
-            id: String,
-            name: String,
-            pinnedSource: String
-        ) = Unit
-
-        override suspend fun deleteCustom(id: String) = Unit
-    }
 
     private companion object {
         const val PIR_URL = "https://lb-pir-primary.valargroup.org"

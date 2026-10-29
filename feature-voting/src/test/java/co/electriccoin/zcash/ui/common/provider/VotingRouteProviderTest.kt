@@ -23,9 +23,9 @@ import kotlin.test.assertSame
  * closed without one; Tor off never asks for a lease; the custom-server flag is captured once.
  */
 class VotingRouteProviderTest {
-    private val synchronizer = mockk<Synchronizer>()
+    private val sdkSynchronizer = mockk<Synchronizer>()
     private val synchronizerProvider =
-        mockk<SynchronizerProvider> { coEvery { getSynchronizer() } returns synchronizer }
+        mockk<SynchronizerProvider> { coEvery { getSynchronizer() } returns sdkSynchronizer }
     private val httpClientProvider = mockk<HttpClientProvider>()
     private val chainConfig = mockk<VotingChainConfigRepository>()
 
@@ -48,7 +48,7 @@ class VotingRouteProviderTest {
 
             assertEquals(VotingRouteDecision(isTor = false, isCustomServer = false), route.decision)
             assertNull(route.torLease)
-            coVerify(exactly = 0) { synchronizer.acquireVotingTorLease() }
+            coVerify(exactly = 0) { sdkSynchronizer.acquireVotingTorLease() }
         }
 
     @Test
@@ -57,7 +57,7 @@ class VotingRouteProviderTest {
             val lease = mockk<VotingTorLease>(relaxed = true)
             coEvery { httpClientProvider.isTorEnabled() } returns true
             coEvery { chainConfig.get() } returns defaultConfig
-            coEvery { synchronizer.acquireVotingTorLease() } returns lease
+            coEvery { sdkSynchronizer.acquireVotingTorLease() } returns lease
 
             val route = provider.acquire()
 
@@ -70,7 +70,7 @@ class VotingRouteProviderTest {
         runTest {
             coEvery { httpClientProvider.isTorEnabled() } returns true
             coEvery { chainConfig.get() } returns defaultConfig
-            coEvery { synchronizer.acquireVotingTorLease() } throws TorUnavailableException()
+            coEvery { sdkSynchronizer.acquireVotingTorLease() } throws TorUnavailableException()
 
             assertFailsWith<TorUnavailableException> { provider.acquire() }
         }
@@ -95,7 +95,7 @@ class VotingRouteProviderTest {
             val lease = mockk<VotingTorLease>(relaxed = true)
             coEvery { httpClientProvider.isTorEnabled() } returns true
             coEvery { chainConfig.get() } returns defaultConfig
-            coEvery { synchronizer.acquireVotingTorLease() } returns lease
+            coEvery { sdkSynchronizer.acquireVotingTorLease() } returns lease
 
             provider.acquire().release()
 

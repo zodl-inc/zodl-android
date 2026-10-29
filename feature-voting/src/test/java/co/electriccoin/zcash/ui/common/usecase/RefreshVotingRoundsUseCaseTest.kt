@@ -45,6 +45,7 @@ class RefreshVotingRoundsUseCaseTest {
                     votingApiProvider =
                         FakeVotingApiProvider(endorsedRoundFailure = IllegalStateException("unavailable")),
                     votingApiRepository = repository,
+                    votingRouteProvider = mockk(relaxed = true),
                     logEndorsementFailure = {}
                 )
 

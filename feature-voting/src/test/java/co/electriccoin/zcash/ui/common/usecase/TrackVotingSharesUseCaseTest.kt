@@ -19,8 +19,6 @@ import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingRouteProvider
-import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
-import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import io.mockk.coEvery
@@ -44,8 +42,6 @@ class TrackVotingSharesUseCaseTest {
             val synchronizerProvider = mockk<SynchronizerProvider>()
             val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
 
-            val votingChainConfigRepository = mockk<VotingChainConfigRepository>()
-            coEvery { votingChainConfigRepository.get() } returns VotingChainConfigState()
 
             val votingRouteProvider = mockk<VotingRouteProvider>(relaxed = true)
 
@@ -56,7 +52,6 @@ class TrackVotingSharesUseCaseTest {
                     votingApiProvider,
                     synchronizerProvider,
                     getSelectedWalletAccount,
-                    votingChainConfigRepository,
                     votingRouteProvider
                 )
 
@@ -117,8 +112,6 @@ class TrackVotingSharesUseCaseTest {
                 session.run(torLease = null, isCustomServer = any(), helperUrls = any(), voteEndTimeSeconds = any())
             } returns report
 
-            val votingChainConfigRepository = mockk<VotingChainConfigRepository>()
-            coEvery { votingChainConfigRepository.get() } returns VotingChainConfigState()
 
             val votingRouteProvider = mockk<VotingRouteProvider>()
             coEvery { votingRouteProvider.acquire() } returns
@@ -131,7 +124,6 @@ class TrackVotingSharesUseCaseTest {
                     votingApiProvider,
                     synchronizerProvider,
                     getSelectedWalletAccount,
-                    votingChainConfigRepository,
                     votingRouteProvider
                 )
 
@@ -178,8 +170,6 @@ class TrackVotingSharesUseCaseTest {
             every { synchronizer.network } returns ZcashNetwork.Testnet
             coEvery { votingCryptoClient.openVotingDb(any()) } returns 1L
 
-            val votingChainConfigRepository = mockk<VotingChainConfigRepository>()
-            coEvery { votingChainConfigRepository.get() } returns VotingChainConfigState()
 
             val votingRouteProvider = mockk<VotingRouteProvider>()
             coEvery { votingRouteProvider.acquire() } throws torInitializationError
@@ -191,7 +181,6 @@ class TrackVotingSharesUseCaseTest {
                     votingApiProvider,
                     synchronizerProvider,
                     getSelectedWalletAccount,
-                    votingChainConfigRepository,
                     votingRouteProvider
                 )
 
@@ -242,8 +231,6 @@ class TrackVotingSharesUseCaseTest {
             coEvery { votingCryptoClient.openVotingDb(any()) } returns 1L
             coEvery { votingCryptoClient.openShareTrackingSession(any(), roundId) } returns session
 
-            val votingChainConfigRepository = mockk<VotingChainConfigRepository>()
-            coEvery { votingChainConfigRepository.get() } returns VotingChainConfigState()
 
             var current = initial
             val votingRouteProvider = mockk<VotingRouteProvider>()
@@ -280,7 +267,6 @@ class TrackVotingSharesUseCaseTest {
                     votingApiProvider,
                     synchronizerProvider,
                     getSelectedWalletAccount,
-                    votingChainConfigRepository,
                     votingRouteProvider
                 )
 
