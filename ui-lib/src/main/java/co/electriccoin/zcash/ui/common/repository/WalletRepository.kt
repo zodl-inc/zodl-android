@@ -184,12 +184,28 @@ class WalletRepositoryImpl(
 
     private var previousFastestEndpoints: FastestServersState? = null
 
+    /**
+     * The fastest-server benchmark, filtered by the user's connection mode choice.
+     *
+     * ZIP #10 rule 3: the app must not contact clearnet servers before the user chooses Public mode. Opening
+     * the Server screen benchmarks only the servers the user may use without changing modes: in Private mode,
+     * only OHTTP gateways are measured (clearnet servers are listed without latency); in Public mode, only
+     * public servers are measured (gateways are not offered in Manual lists). When the user saves Public mode,
+     * the mode flag changes and this flow re-triggers, now benchmarking public servers.
+     *
+     * Decision: benchmarking happens when the user SAVES their mode choice (Public or Private), not when they
+     * select it. Saving is the confirmation; the benchmark then runs in the background. This means the wallet
+     * moves to a default public server when switching from Private to Public, and any subsequent automatic
+     * re-ranking happens through the usual fallback coordinator.
+     */
     @Suppress("ComplexCondition", "ReturnCount")
     @OptIn(ExperimentalCoroutinesApi::class)
     override val fastestEndpoints =
-        refreshFastestServersRequest
-            .onStart { emit(Unit) }
-            .flatMapLatest {
+        combine(
+            refreshFastestServersRequest.onStart { emit(Unit) },
+            isPublicConnectionProvider.observe()
+        ) { _, isPublic -> isPublic }
+            .flatMapLatest { isPublic ->
                 var synchronizerEmitted = false
 
                 synchronizerProvider
@@ -212,32 +228,43 @@ class WalletRepositoryImpl(
                             synchronizerEmitted = true
                         }
 
-                        result
+                        result to isPublic
                     }
-            }.flatMapLatest { synchronizer ->
-                synchronizer
-                    ?.getFastestServers(lightWalletEndpointProvider.getEndpoints())
-                    ?.map {
-                        when (it) {
-                            FastestServersResult.Measuring -> {
-                                previousFastestEndpoints?.copy(isLoading = true)
-                                    ?: FastestServersState(servers = null, isLoading = true)
-                            }
+            }.flatMapLatest { (synchronizer, isPublic) ->
+                if (synchronizer == null) {
+                    flowOf(
+                        previousFastestEndpoints ?: FastestServersState(
+                            servers = emptyList(),
+                            isLoading = false
+                        )
+                    )
+                } else {
+                    val allEndpoints = lightWalletEndpointProvider.getEndpoints()
+                    val endpointsToTest =
+                        if (isPublic) {
+                            allEndpoints.filterNot { lightWalletEndpointProvider.isOhttpGateway(it) }
+                        } else {
+                            allEndpoints.filter { lightWalletEndpointProvider.isOhttpGateway(it) }
+                        }
+                    synchronizer
+                        .getFastestServers(endpointsToTest)
+                        .map {
+                            when (it) {
+                                FastestServersResult.Measuring -> {
+                                    previousFastestEndpoints?.copy(isLoading = true)
+                                        ?: FastestServersState(servers = null, isLoading = true)
+                                }
 
-                            is FastestServersResult.Validating -> {
-                                FastestServersState(servers = it.servers, isLoading = true)
-                            }
+                                is FastestServersResult.Validating -> {
+                                    FastestServersState(servers = it.servers, isLoading = true)
+                                }
 
-                            is FastestServersResult.Done -> {
-                                FastestServersState(servers = it.servers, isLoading = false)
+                                is FastestServersResult.Done -> {
+                                    FastestServersState(servers = it.servers, isLoading = false)
+                                }
                             }
                         }
-                    } ?: flowOf(
-                    previousFastestEndpoints ?: FastestServersState(
-                        servers = emptyList(),
-                        isLoading = false
-                    )
-                )
+                }
             }.onEach {
                 previousFastestEndpoints = it
             }.stateIn(
