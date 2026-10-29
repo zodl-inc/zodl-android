@@ -1,7 +1,7 @@
 # Zodl Android Wallet
 
 This is the official home of the Zodl Zcash wallet for Android, a no-frills
-Zcash mobile wallet leveraging the [Zcash Android SDK](https://github.com/zcash/zcash-android-wallet-sdk).
+Zcash mobile wallet leveraging the [ZODL Android SDK](https://github.com/zodl-inc/zodl-android-wallet-sdk).
 
 # Download
 

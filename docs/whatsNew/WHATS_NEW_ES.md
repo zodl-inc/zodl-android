@@ -14,6 +14,16 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.19.0 (3234)] - 2026-10-29
+
+### Añadido:
+
+- Añadimos compatibilidad con la actualización de red de Zcash (NU7).
+
+### Cambiado:
+
+- La migración privada se pausa hasta la actualización. Si la actualización detiene una migración, te ofrecemos migrar los fondos restantes.
+
 ## [3.18.0 (3206)] - 2026-10-23
 
 ### Añadido:
