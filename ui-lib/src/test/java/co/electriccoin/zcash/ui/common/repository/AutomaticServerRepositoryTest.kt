@@ -551,6 +551,34 @@ class AutomaticServerRepositoryTest {
             coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
         }
 
+    /**
+     * RECOVERY ticks run every 30 s (foreground) or 5 min (background) to check whether the gateway is back.
+     * The full fastest-server benchmark can take up to 90 s and would be cancelled by switchLane's mapLatest
+     * before completing. RECOVERY evaluations use lightweight probeGateway (one GetLightdInfo per gateway,
+     * 20 s cap) instead of the full benchmark.
+     */
+    @Test
+    fun recoveryTriggerUsesProbeGatewayNotFullBenchmark() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            coEvery { isPublicProvider.get() } returns true
+            coEvery { fallbackActiveProvider.get() } returns true
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(fallbacks.first())
+            coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns ServerValidation.Valid
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.RECOVERY).launchIn(backgroundScope)
+            runCurrent()
+            localBalances.value = emptyMap()
+            edges.emit(Unit)
+            runCurrent()
+
+            // RECOVERY evaluations probe via validateServerEndpoint, not the full getFastestServers benchmark
+            coVerify(exactly = 1) { synchronizer.validateServerEndpoint(any(), gateway) }
+            coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(gateway) }
+        }
+
     @Test
     fun scenario1And2GatewayReachableStaysOnOhttpWithoutProbingClearnet() =
         runTest {

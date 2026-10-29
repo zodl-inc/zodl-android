@@ -493,7 +493,7 @@ class AutomaticServerRepositoryImpl(
     private suspend fun evaluatePublicServerSwitch(trigger: SwitchTrigger): LightWalletEndpoint? {
         if (isAppInTransactionState) return null
         if (isOhttpFallbackActiveProvider.get() && trigger.probesGatewayRecovery) {
-            evaluateReturnToPrivate()?.let { return it }
+            evaluateReturnToPrivate(trigger)?.let { return it }
         }
         if (trigger != SwitchTrigger.FOREGROUND && trigger != SwitchTrigger.CONNECTIVITY) return null
         val current = persistableWalletProvider.getPersistableWallet()?.endpoint ?: return null
@@ -512,13 +512,24 @@ class AutomaticServerRepositoryImpl(
         }
     }
 
+    /**
+     * Returns the first healthy OHTTP gateway, or null. For RECOVERY triggers (periodic checks while on the
+     * fallback) this uses lightweight [probeGateway] per gateway (one GetLightdInfo, 20 s cap) and returns
+     * the first that answers; for FOREGROUND and CONNECTIVITY it runs the full fastest-server benchmark.
+     * RECOVERY ticks run every 30 s (foreground) or 5 min (background): the full benchmark can take up to
+     * 90 s and would be cancelled by [switchLane]'s mapLatest before completing.
+     */
     @Suppress("ReturnCount")
-    private suspend fun evaluateReturnToPrivate(): LightWalletEndpoint? {
+    private suspend fun evaluateReturnToPrivate(trigger: SwitchTrigger): LightWalletEndpoint? {
         val gateways = lightWalletEndpointProvider.getEndpoints().filter(lightWalletEndpointProvider::isOhttpGateway)
         if (gateways.isEmpty()) return null
         val synchronizer = synchronizerProvider.getSynchronizerOrNull() ?: return null
         return try {
-            rankValidated(synchronizer, gateways).firstOrNull()
+            if (trigger == SwitchTrigger.RECOVERY) {
+                gateways.firstOrNull { probeGateway(synchronizer, it) }
+            } else {
+                rankValidated(synchronizer, gateways).firstOrNull()
+            }
         } finally {
             evaluationInterval.markAttempted()
         }
@@ -646,9 +657,10 @@ private val VALIDATION_TIMEOUT = 20.seconds
 private val PUBLIC_FETCH_THRESHOLD = 5.seconds
 
 /**
- * How often, while on a clearnet fallback and in the foreground, to check whether the OHTTP gateway is back
- * (ZIP #10 reference: about every 30 s). The probe checks the Gateway only, never re-benchmarking clearnet
- * servers.
+ * How often, while on a clearnet fallback and in the foreground, to check whether the OHTTP gateway is back.
+ * The probe checks the gateway only via lightweight [probeGateway] (one GetLightdInfo per gateway, 20 s cap),
+ * never re-benchmarking clearnet servers. CONNECTIVITY and FOREGROUND triggers in Public mode still re-rank
+ * the public tier.
  */
 private val FALLBACK_RECOVERY_INTERVAL = 30.seconds
 

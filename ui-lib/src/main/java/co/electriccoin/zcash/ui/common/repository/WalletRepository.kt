@@ -187,11 +187,12 @@ class WalletRepositoryImpl(
     /**
      * The fastest-server benchmark, filtered by the user's connection mode choice.
      *
-     * ZIP #10 rule 3: the app must not contact clearnet servers before the user chooses Public mode. Opening
-     * the Server screen benchmarks only the servers the user may use without changing modes: in Private mode,
-     * only OHTTP gateways are measured (clearnet servers are listed without latency); in Public mode, only
-     * public servers are measured (gateways are not offered in Manual lists). When the user saves Public mode,
-     * the mode flag changes and this flow re-triggers, now benchmarking public servers.
+     * ZIP #10 ("OHTTP Relay for Zcash") Section 5 ("Client Behavior"), rule 3: the app must not contact
+     * clearnet servers before the user chooses Public mode. Opening the Server screen benchmarks only the
+     * servers the user may use without changing modes: in Private mode, only OHTTP gateways are measured
+     * (clearnet servers are listed without latency); in Public mode, only public servers are measured
+     * (gateways are not offered in Manual lists). When the user saves Public mode, the mode flag changes
+     * and this flow re-triggers, now benchmarking public servers.
      *
      * Decision: benchmarking happens when the user SAVES their mode choice (Public or Private), not when they
      * select it. Saving is the confirmation; the benchmark then runs in the background. This means the wallet
