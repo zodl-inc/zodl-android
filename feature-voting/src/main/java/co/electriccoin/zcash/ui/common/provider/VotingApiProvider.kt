@@ -380,7 +380,14 @@ class KtorVotingApiProvider(
                                                     .filterNot { serverUrl -> serverUrl in targets }
                                                     .shuffled()
                                             for (fallbackTarget in fallbackTargets) {
-                                                if (client.postShare(fallbackTarget, body, supportsKtorTimeouts, routeSnapshot)) {
+                                                val accepted =
+                                                    client.postShare(
+                                                        fallbackTarget,
+                                                        body,
+                                                        supportsKtorTimeouts,
+                                                        routeSnapshot
+                                                    )
+                                                if (accepted) {
                                                     acceptedByServers += fallbackTarget
                                                     break
                                                 }
@@ -1001,7 +1008,8 @@ class KtorVotingApiProvider(
 
         val success =
             try {
-                when (val route = resolveVoteRoute(serverUrl, snapshot.torEnabled, snapshot.isCustomServer, ohttpClient)) {
+                val route = resolveVoteRoute(serverUrl, snapshot.torEnabled, snapshot.isCustomServer, ohttpClient)
+                when (route) {
                     is VoteRoute.Ohttp -> {
                         val response =
                             try {

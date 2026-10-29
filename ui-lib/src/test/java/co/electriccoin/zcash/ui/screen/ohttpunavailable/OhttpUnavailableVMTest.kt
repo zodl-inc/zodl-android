@@ -38,7 +38,7 @@ class OhttpUnavailableVMTest {
     private val persist = mockk<PersistServerSelectionUseCase>(relaxed = true)
     private val navigationRouter = mockk<NavigationRouter>(relaxed = true)
     private val transactionInProgress = MutableStateFlow(false)
-    private val fastestServers = MutableStateFlow(FastestServersState.None)
+    private val fastestServers = MutableStateFlow(FastestServersState(servers = null, isLoading = false))
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
