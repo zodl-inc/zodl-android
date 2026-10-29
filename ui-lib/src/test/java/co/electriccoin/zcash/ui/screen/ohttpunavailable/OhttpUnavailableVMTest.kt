@@ -92,7 +92,7 @@ class OhttpUnavailableVMTest {
             stateOf(createVm()).onKeepWaiting()
             advanceUntilIdle()
             verify(exactly = 1) { navigationRouter.back() }
-            coVerify(exactly = 0) { persist.persistPublic(any()) }
+            coVerify(exactly = 0) { persist.persistPublic(any(), any(), any()) }
             coVerify(exactly = 0) { persist.persistPrivate() }
         }
 
