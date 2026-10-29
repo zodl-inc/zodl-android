@@ -189,9 +189,9 @@ class HttpClientProviderImpl(
         HttpClient(OkHttp) {
             configureHttpClient(installTimeouts = true)
             engine {
-                // MOB-1378: Currency Conversion exchange rates must only ever be fetched over Tor (the
+                // MOB-1378: Currency Conversion exchange rates must only ever be fetched privately (the
                 // in-app copy promises rates are fetched over Tor to protect the user's IP). CMCApiProvider
-                // already routes through createTor(), so this clearnet client should never see a CMC
+                // already routes through createOhttp(), so this clearnet client should never see a CMC
                 // request — this interceptor is a backstop that fails loudly if a future caller regresses
                 // to create(), rather than silently leaking the user's IP / request timing.
                 addInterceptor { chain ->

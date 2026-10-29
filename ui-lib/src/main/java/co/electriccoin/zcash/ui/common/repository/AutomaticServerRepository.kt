@@ -614,7 +614,7 @@ enum class SwitchTrigger(
     val probesGatewayRecovery: Boolean = false,
 ) {
     FOREGROUND(bypassesInterval = false, probesGatewayRecovery = true),
-    CONNECTIVITY(bypassesInterval = true),
+    CONNECTIVITY(bypassesInterval = true, probesGatewayRecovery = true),
     HEALTH(bypassesInterval = true),
     RECOVERY(bypassesInterval = true, probesGatewayRecovery = true),
 }
@@ -631,8 +631,12 @@ private val VALIDATION_TIMEOUT = 20.seconds
 /** Public mode: how long a test block fetch may take before the SDK counts the server as slow. */
 private val PUBLIC_FETCH_THRESHOLD = 5.seconds
 
-/** How often, while on a clearnet fallback, to check whether the OHTTP gateway is back. */
-private val FALLBACK_RECOVERY_INTERVAL = 5.minutes
+/**
+ * How often, while on a clearnet fallback, to check whether the OHTTP gateway is back (ZIP #10
+ * reference: about every 30 s). The probe is foreground-gated and checks the Gateway only, never
+ * re-benchmarking clearnet servers.
+ */
+private val FALLBACK_RECOVERY_INTERVAL = 30.seconds
 
 /** Cap on validating one tier (the SDK benchmark itself times out per server well before this). */
 private val TIER_BENCHMARK_TIMEOUT = 90.seconds
