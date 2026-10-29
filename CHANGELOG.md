@@ -38,6 +38,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Flexa's API calls go through OHTTP to the gateway, which holds the publishable key, so Flexa no
   longer sees the user's IP address for them and the app no longer needs a build-time Flexa key. The
   Flexa SDK is built from source (`third-party/flexa`). Its web pages and images still load directly.
+- The F-Droid build now behaves like the Google Play build: it offers Flexa (its API calls go through
+  OHTTP, so no publishable key is needed), and its release checks that the FOSS runtime classpath has
+  no non-free dependency. It still ships without Firebase Crashlytics and ML Kit (QR scanning uses
+  zxing-cpp).
 
 ## [3.18.0 (3206)] - 2026-10-23
 
