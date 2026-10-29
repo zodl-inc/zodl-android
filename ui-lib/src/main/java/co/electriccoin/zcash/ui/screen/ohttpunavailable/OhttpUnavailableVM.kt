@@ -5,10 +5,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavDestination.Companion.hasRoute
 import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
 import co.electriccoin.zcash.ui.common.usecase.IsTorEnabledUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.SetTorEnabledUseCase
+import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -16,6 +18,14 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/**
+ * ViewModel for the OHTTP unavailable sheet.
+ *
+ * Watches for transaction starts and automatically closes the sheet when one begins, since switching
+ * to public servers rebuilds the Synchronizer and must not happen mid-transaction. The wallet
+ * continues retrying the private connection in the background, and the switch remains available in
+ * the server selection screen.
+ */
 class OhttpUnavailableVM(
     isTorEnabled: IsTorEnabledUseCase,
     private val setTorEnabled: SetTorEnabledUseCase,
@@ -28,6 +38,12 @@ class OhttpUnavailableVM(
             .observe()
             .map { torEnabled ->
                 OhttpUnavailableState(
+                    title = stringRes(R.string.ohttpUnavailableSheet_title),
+                    body = stringRes(R.string.ohttpUnavailableSheet_body),
+                    keepWaitingText = stringRes(R.string.ohttpUnavailableSheet_keepWaiting),
+                    switchToPublicText = stringRes(R.string.ohttpUnavailableSheet_switchToPublic),
+                    torTitle = stringRes(R.string.ohttpUnavailableSheet_torTitle),
+                    torBody = stringRes(R.string.ohttpUnavailableSheet_torBody),
                     isTorEnabled = torEnabled,
                     onTorToggle = ::onTorToggle,
                     onKeepWaiting = ::onBack,
@@ -37,9 +53,6 @@ class OhttpUnavailableVM(
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
 
     init {
-        // "Switch to public servers" rebuilds the Synchronizer, which must not happen mid-transaction. The sheet
-        // only opens outside a transaction, so one that starts while it is open closes it; the wallet keeps
-        // retrying Private on its own and the switch stays available in Choose Server.
         viewModelScope.launch {
             automaticServerRepository.isTransactionInProgress.first { it }
             closeIfOnTop()
@@ -61,10 +74,17 @@ class OhttpUnavailableVM(
 
     private fun onTorToggle(enabled: Boolean) = viewModelScope.launch { setTorEnabled(enabled) }
 
-    /** Marked as outage-induced, so the wallet returns to Private by itself once the relay answers. */
+    /**
+     * Marked as outage-induced, so the wallet returns to Private by itself once the relay answers. The
+     * transaction check runs again under the server-selection lock, since a send can start while the
+     * sheet is open; a refused switch leaves the sheet open.
+     */
     private fun onSwitchToPublic() =
         viewModelScope.launch {
-            persistServerSelection.persistPublic(afterPrivateUnavailable = true)
-            navigationRouter.back()
+            val inTransaction: suspend () -> Boolean = { automaticServerRepository.isTransactionInProgress.first() }
+            if (inTransaction()) return@launch
+            if (persistServerSelection.persistPublic(afterPrivateUnavailable = true, abortIf = inTransaction)) {
+                navigationRouter.back()
+            }
         }
 }

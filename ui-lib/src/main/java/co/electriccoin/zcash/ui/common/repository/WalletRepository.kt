@@ -27,6 +27,7 @@ import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvid
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProvider
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.WalletBackupFlagStorageProvider
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProvider
@@ -97,6 +98,7 @@ class WalletRepositoryImpl(
     private val sdkEncryptedPreferenceRecoveryProvider: SdkEncryptedPreferenceRecoveryProvider,
     private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
     private val isPublicConnectionProvider: IsPublicConnectionProvider,
+    private val serverSelectionMutex: ServerSelectionMutex,
 ) : WalletRepository {
     /**
      * Scope the repository's `stateIn`-shared flows run on. Captured by those flows at
@@ -262,7 +264,7 @@ class WalletRepositoryImpl(
                 walletMutation.withLock {
                     val wallet = persistableWalletProvider.getPersistableWallet()
                     val onboarding = onboardingState.first()
-                    migrateEndpointIfNeeded(wallet)
+                    serverSelectionMutex.withLock { migrateEndpointIfNeeded(wallet) }
                     resetOnboardingIfWalletMissing(wallet = wallet, onboardingState = onboarding)
                 }
             } catch (e: Exception) {
@@ -272,21 +274,32 @@ class WalletRepositoryImpl(
     }
 
     /**
+     * Moves the wallet to the appropriate endpoint when needed for mode consistency.
+     *
      * Moves the wallet to the OHTTP gateway when its server was decommissioned, or when it is in
      * Automatic mode but still on a clearnet server (a wallet upgraded from before OHTTP): Automatic
      * mode selects only the gateway tier, so it must not start on a clearnet server (ZIP #10).
+     *
+     * Manual selection of the OHTTP gateway is converted to Private mode, since they're functionally
+     * identical (same endpoint, no fastest-server lookup) and Private receives the gateway health check
+     * and unavailable prompt.
+     *
+     * Public mode runs on clearnet by choice and is not considered "automatic but off the gateway".
+     * When migrating, Public wallets move to another public server rather than the gateway to preserve
+     * their deliberate Public mode selection.
+     *
+     * [init] runs it under [ServerSelectionMutex] as well as [walletMutation], so a save made while the
+     * app starts cannot interleave with these reads and writes; nothing that holds the server-selection
+     * lock takes [walletMutation].
      */
     private suspend fun migrateEndpointIfNeeded(wallet: PersistableWallet?) {
         if (wallet == null) return
         val endpoint = wallet.endpoint
-        // Manual on the OHTTP gateway is what Private is: same endpoint, no fastest-server lookup. Make it
-        // Private so it also gets the gateway health check and the unavailable prompt.
         if (lightWalletEndpointProvider.isOhttpGateway(endpoint) && isServerSelectionAutomaticProvider.get() == false) {
             isServerSelectionAutomaticProvider.store(true)
             isPublicConnectionProvider.store(false)
         }
         val isDecommissioned = endpoint.host in lightWalletEndpointProvider.getDecommissionedHosts()
-        // Public mode runs on clearnet by choice, so it is not "automatic but off the gateway".
         val isAutomaticOffGateway =
             !lightWalletEndpointProvider.isOhttpGateway(endpoint) &&
                 !isPublicConnectionProvider.get() &&
@@ -296,7 +309,6 @@ class WalletRepositoryImpl(
                     knownEndpoints = lightWalletEndpointProvider.getEndpoints(),
                 )
         if (isDecommissioned || isAutomaticOffGateway) {
-            // Public stays on public servers: moving it to the gateway would leave it "Public" on the Private server.
             val replacement =
                 lightWalletEndpointProvider
                     .takeIf { isPublicConnectionProvider.get() }

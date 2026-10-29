@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
 import co.electriccoin.zcash.ui.common.usecase.IsTorEnabledUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.SetTorEnabledUseCase
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -91,10 +92,22 @@ class OhttpUnavailableVMTest {
     @Test
     fun switchToPublicIsMarkedAsOutageInducedAndCloses() =
         runTest(dispatcher) {
+            coEvery { persist.persistPublic(any(), any(), any()) } returns true
             stateOf(createVm()).onSwitchToPublic()
             advanceUntilIdle()
-            coVerify(exactly = 1) { persist.persistPublic(afterPrivateUnavailable = true) }
+            coVerify(exactly = 1) {
+                persist.persistPublic(afterPrivateUnavailable = true, fastest = null, abortIf = any())
+            }
             verify(exactly = 1) { navigationRouter.back() }
+        }
+
+    @Test
+    fun aSwitchRefusedUnderTheLockKeepsTheSheetOpen() =
+        runTest(dispatcher) {
+            coEvery { persist.persistPublic(any(), any(), any()) } returns false
+            stateOf(createVm()).onSwitchToPublic()
+            advanceUntilIdle()
+            verify(exactly = 0) { navigationRouter.back() }
         }
 
     @Test
@@ -107,6 +120,10 @@ class OhttpUnavailableVMTest {
             verify(exactly = 1) { navigationRouter.custom(any()) }
         }
 
+    /**
+     * A transaction in progress prevents the sheet from being popped. Popping with the send
+     * flow still active would cancel the send instead of the sheet.
+     */
     @Test
     fun aTransactionDoesNotPopAScreenThatIsNotTheSheet() =
         runTest(dispatcher) {
@@ -115,7 +132,16 @@ class OhttpUnavailableVMTest {
             stateOf(createVm())
             transactionInProgress.value = true
             advanceUntilIdle()
-            // Popping with the send flow on top would cancel that flow instead of the sheet.
             assertNull(block.captured(null))
+        }
+
+    @Test
+    fun switchToPublicDoesNotSwitchWhenATransactionIsInProgress() =
+        runTest(dispatcher) {
+            transactionInProgress.value = true
+            stateOf(createVm()).onSwitchToPublic()
+            advanceUntilIdle()
+            coVerify(exactly = 0) { persist.persistPublic(any()) }
+            verify(exactly = 0) { navigationRouter.back() }
         }
 }

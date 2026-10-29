@@ -85,13 +85,16 @@ class MainActivity : FragmentActivity() {
     private val handleExternalLink: HandleExternalLinkUseCase by inject()
     private val appAccessLockProvider: AppAccessLockProvider by inject()
 
+    /**
+     * Initializes the activity. A recreated Activity starts locked; the first composition of
+     * AuthenticationForAppAccess determines the actual lock state.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Twig.debug { "Activity state: Create" }
 
         setAllowedScreenOrientation()
 
-        // A recreated Activity starts locked: the first composition of AuthenticationForAppAccess decides.
         appAccessLockProvider.setLocked(true)
 
         setupSplashScreen()
