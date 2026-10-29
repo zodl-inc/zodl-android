@@ -264,7 +264,7 @@ class WalletRepositoryImpl(
                 walletMutation.withLock {
                     val wallet = persistableWalletProvider.getPersistableWallet()
                     val onboarding = onboardingState.first()
-                    migrateEndpointIfNeeded(wallet)
+                    serverSelectionMutex.withLock { migrateEndpointIfNeeded(wallet) }
                     resetOnboardingIfWalletMissing(wallet = wallet, onboardingState = onboarding)
                 }
             } catch (e: Exception) {
@@ -287,19 +287,13 @@ class WalletRepositoryImpl(
      * Public mode runs on clearnet by choice and is not considered "automatic but off the gateway".
      * When migrating, Public wallets move to another public server rather than the gateway to preserve
      * their deliberate Public mode selection.
+     *
+     * [init] runs it under [ServerSelectionMutex] as well as [walletMutation], so a save made while the
+     * app starts cannot interleave with these reads and writes; nothing that holds the server-selection
+     * lock takes [walletMutation].
      */
     private suspend fun migrateEndpointIfNeeded(wallet: PersistableWallet?) {
         if (wallet == null) return
-        serverSelectionMutex.withLock { migrateEndpointLocked(wallet) }
-    }
-
-    /**
-     * [migrateEndpointIfNeeded] under [ServerSelectionMutex], the lock the server-selection saves and the
-     * automatic lane take, so a save made while the app starts cannot interleave with these reads and
-     * writes. It is taken inside [walletMutation]; nothing that holds the server-selection lock takes
-     * [walletMutation].
-     */
-    private suspend fun migrateEndpointLocked(wallet: PersistableWallet) {
         val endpoint = wallet.endpoint
         if (lightWalletEndpointProvider.isOhttpGateway(endpoint) && isServerSelectionAutomaticProvider.get() == false) {
             isServerSelectionAutomaticProvider.store(true)
