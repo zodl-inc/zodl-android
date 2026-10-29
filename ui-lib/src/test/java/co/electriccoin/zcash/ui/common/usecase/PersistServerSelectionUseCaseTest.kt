@@ -170,6 +170,30 @@ class PersistServerSelectionUseCaseTest {
             assertEquals(true, save.isCompleted)
         }
 
+    /**
+     * The caller (a sheet's ViewModel) can be cancelled while the selection is being written. The flags
+     * must not stay switched with the endpoint left behind.
+     */
+    @Test
+    fun aCancelledSwitchToPublicStillWritesTheEndpoint() =
+        runTest {
+            every { lightWalletEndpointProvider.getFallbackEndpoints() } returns listOf(endpoint)
+            val flagWriteRunning = CompletableDeferred<Unit>()
+            val flagWriteReleased = CompletableDeferred<Unit>()
+            coEvery { isPublicProvider.store(true) } coAnswers {
+                flagWriteRunning.complete(Unit)
+                flagWriteReleased.await()
+            }
+
+            val switch = launch { useCase.persistPublic(afterPrivateUnavailable = true) }
+            flagWriteRunning.await()
+            switch.cancel()
+            flagWriteReleased.complete(Unit)
+            runCurrent()
+
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(endpoint) }
+        }
+
     @Test
     fun manualPinOfTheGatewayIsPrivate() =
         runTest {

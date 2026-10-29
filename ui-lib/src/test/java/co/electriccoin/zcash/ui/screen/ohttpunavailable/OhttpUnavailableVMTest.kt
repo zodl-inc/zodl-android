@@ -141,7 +141,20 @@ class OhttpUnavailableVMTest {
             transactionInProgress.value = true
             stateOf(createVm()).onSwitchToPublic()
             advanceUntilIdle()
-            coVerify(exactly = 0) { persist.persistPublic(any()) }
+            coVerify(exactly = 0) { persist.persistPublic(any(), any(), any()) }
             verify(exactly = 0) { navigationRouter.back() }
+        }
+
+    /** The check handed to the use case, which re-runs it under the lock, must follow the live transaction state. */
+    @Test
+    fun theCheckHandedToTheUseCaseFollowsTheTransactionState() =
+        runTest(dispatcher) {
+            val abortIf = slot<suspend () -> Boolean>()
+            coEvery { persist.persistPublic(any(), any(), capture(abortIf)) } returns true
+            stateOf(createVm()).onSwitchToPublic()
+            advanceUntilIdle()
+            assertEquals(false, abortIf.captured())
+            transactionInProgress.value = true
+            assertEquals(true, abortIf.captured())
         }
 }
