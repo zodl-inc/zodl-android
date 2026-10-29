@@ -14,6 +14,8 @@ import co.electriccoin.zcash.ui.common.repository.PendingKeystoneMigrationPcztsR
 import co.electriccoin.zcash.ui.common.repository.PendingMigrationScheduleRepository
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardMigrationSdkUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
+import co.electriccoin.zcash.ui.common.usecase.isMigrationPausedUntilNetworkUpgrade
+import co.electriccoin.zcash.ui.common.usecase.isMigrationWalletTipUnavailable
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.migration.keystonesign.MigrationKeystoneSignArgs
 import co.electriccoin.zcash.ui.screen.migration.keystonesign.keystoneBatchRoundSlice
@@ -229,7 +231,20 @@ class MigrationKeystoneScanVM(
                 isProcessing = false
                 failureSheet.update {
                     MigrationTransferFailureState(
-                        message = stringRes(DesignR.string.migrationKeystoneScan_errorMessage),
+                        message =
+                            when {
+                                e.isMigrationPausedUntilNetworkUpgrade() -> {
+                                    stringRes(DesignR.string.migrationUpgradePaused_message)
+                                }
+
+                                e.isMigrationWalletTipUnavailable() -> {
+                                    stringRes(DesignR.string.migrationTipUnavailable_message)
+                                }
+
+                                else -> {
+                                    stringRes(DesignR.string.migrationKeystoneScan_errorMessage)
+                                }
+                            },
                         onRetry = { failureSheet.value = null },
                         onDismiss = {
                             failureSheet.value = null
