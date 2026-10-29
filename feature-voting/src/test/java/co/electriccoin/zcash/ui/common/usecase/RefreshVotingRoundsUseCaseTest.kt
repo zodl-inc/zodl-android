@@ -72,7 +72,8 @@ class RefreshVotingRoundsUseCaseTest {
             val useCase =
                 RefreshVotingRoundsUseCase(
                     votingApiProvider = FakeVotingApiProvider(endorsedRoundIds = setOf(ROUND_ID)),
-                    votingApiRepository = recordingRepository
+                    votingApiRepository = recordingRepository,
+                    votingRouteProvider = mockk(relaxed = true)
                 )
 
             useCase()

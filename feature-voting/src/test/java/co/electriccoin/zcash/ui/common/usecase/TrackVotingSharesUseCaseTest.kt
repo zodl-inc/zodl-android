@@ -42,7 +42,6 @@ class TrackVotingSharesUseCaseTest {
             val synchronizerProvider = mockk<SynchronizerProvider>()
             val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
 
-
             val votingRouteProvider = mockk<VotingRouteProvider>(relaxed = true)
 
             val useCase =
@@ -112,7 +111,6 @@ class TrackVotingSharesUseCaseTest {
                 session.run(torLease = null, isCustomServer = any(), helperUrls = any(), voteEndTimeSeconds = any())
             } returns report
 
-
             val votingRouteProvider = mockk<VotingRouteProvider>()
             coEvery { votingRouteProvider.acquire() } returns
                 VotingRoute(VotingRouteDecision(isTor = false, isCustomServer = false), null)
@@ -169,7 +167,6 @@ class TrackVotingSharesUseCaseTest {
             coEvery { synchronizerProvider.getVotingWalletDbPath() } returns "/tmp/voting-wallet.db"
             every { synchronizer.network } returns ZcashNetwork.Testnet
             coEvery { votingCryptoClient.openVotingDb(any()) } returns 1L
-
 
             val votingRouteProvider = mockk<VotingRouteProvider>()
             coEvery { votingRouteProvider.acquire() } throws torInitializationError
@@ -230,7 +227,6 @@ class TrackVotingSharesUseCaseTest {
             every { synchronizer.network } returns ZcashNetwork.Testnet
             coEvery { votingCryptoClient.openVotingDb(any()) } returns 1L
             coEvery { votingCryptoClient.openShareTrackingSession(any(), roundId) } returns session
-
 
             var current = initial
             val votingRouteProvider = mockk<VotingRouteProvider>()
