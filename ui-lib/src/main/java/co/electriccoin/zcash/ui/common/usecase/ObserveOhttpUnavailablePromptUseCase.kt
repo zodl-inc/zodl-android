@@ -28,6 +28,12 @@ class ObserveOhttpUnavailablePromptUseCase(
     private val appAccessLockProvider: AppAccessLockProvider,
     private val navigationRouter: NavigationRouter,
 ) {
+    /**
+     * Observes OHTTP unavailability and shows the prompt when appropriate.
+     *
+     * Uses `awaitCancellation()` to hold the episode open; `collectLatest` cancels this suspension
+     * once the outage clears, allowing the next outage to trigger a new prompt.
+     */
     suspend operator fun invoke() {
         automaticServerRepository.ohttpUnavailable
             .catch { Twig.error(it) { "Private connection prompt: the outage signal failed" } }
@@ -40,7 +46,6 @@ class ObserveOhttpUnavailablePromptUseCase(
                     ) { foreground, locked, inTransaction -> foreground && !locked && !inTransaction }
                         .first { it }
                     showPrompt()
-                    // Hold the episode open: collectLatest cancels this once the outage clears.
                     awaitCancellation()
                 }
             }

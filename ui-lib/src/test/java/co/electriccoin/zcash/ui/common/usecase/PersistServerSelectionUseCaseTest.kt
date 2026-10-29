@@ -25,6 +25,8 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * Persisting the user's server selection (MOB-1144): a manual selection is validated before it is
@@ -191,6 +193,20 @@ class PersistServerSelectionUseCaseTest {
 
             useCase.persistPublic()
             coVerify(exactly = 1) { isOhttpFallbackActiveProvider.store(false) }
+        }
+
+    @Test
+    fun aPublicSwitchAbortedUnderTheLockStoresNothing() =
+        runTest {
+            every { lightWalletEndpointProvider.getFallbackEndpoints() } returns listOf(endpoint, fastest)
+
+            assertFalse(useCase.persistPublic(afterPrivateUnavailable = true, abortIf = { true }))
+            coVerify(exactly = 0) { isOhttpFallbackActiveProvider.store(any()) }
+            coVerify(exactly = 0) { isPublicProvider.store(any()) }
+            coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
+
+            assertTrue(useCase.persistPublic(afterPrivateUnavailable = true, abortIf = { false }))
+            coVerify(exactly = 1) { isOhttpFallbackActiveProvider.store(true) }
         }
 
     @Test

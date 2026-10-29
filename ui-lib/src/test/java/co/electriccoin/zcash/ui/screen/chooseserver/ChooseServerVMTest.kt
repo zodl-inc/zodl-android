@@ -237,6 +237,10 @@ class ChooseServerVMTest {
             job.cancel()
         }
 
+    /**
+     * Switching to Manual mode from Private requires selecting a server before save is enabled.
+     * No server is preselected since the gateway is Private-only.
+     */
     @Test
     fun manualFromPrivateNeedsAServerBeforeItCanBeSaved() =
         runTest(dispatcher) {
@@ -249,7 +253,6 @@ class ChooseServerVMTest {
             advanceUntilIdle()
             val state = vm.state.value!!
             assertTrue(state.connectionMode.isManualSelected)
-            // Nothing is preselected (the gateway is Private's) and nothing can be saved yet.
             assertFalse(state.saveButton.isEnabled)
             assertTrue(
                 state.other.servers
@@ -259,13 +262,16 @@ class ChooseServerVMTest {
             job.cancel()
         }
 
+    /**
+     * An outage-induced Public mode can be confirmed as a deliberate choice. The endpoint
+     * stays the same even if the speed test ranked a different server first.
+     */
     @Test
     fun anOutageInducedPublicCanBeConfirmedAsDeliberate() =
         runTest(dispatcher) {
             mode.value = ServerConnectionMode.PUBLIC
             selectedEndpoint.value = clearnet
             fallbackActive.value = true
-            // The speed test prefers another server, but confirming Public must keep the current one.
             fastest.value = FastestServersState(servers = listOf(otherClearnet, clearnet), isLoading = false)
             val vm = createVm()
             val job = launchCollector(vm)

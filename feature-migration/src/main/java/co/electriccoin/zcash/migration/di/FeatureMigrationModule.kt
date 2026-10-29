@@ -19,7 +19,11 @@ import co.electriccoin.zcash.ui.common.provider.HasSeenMigrationCompleteStorageP
 import co.electriccoin.zcash.ui.common.provider.HasSeenMigrationCompleteStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsMigrationTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.IsMigrationTorEnabledStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.MigrationGateBypassStorageProvider
+import co.electriccoin.zcash.ui.common.provider.MigrationGateBypassStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.MigrationNotifier
+import co.electriccoin.zcash.ui.common.provider.MigrationUpgradeNoticeStorageProvider
+import co.electriccoin.zcash.ui.common.provider.MigrationUpgradeNoticeStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.PendingMigrationTorFailureStorageProvider
 import co.electriccoin.zcash.ui.common.provider.PendingMigrationTorFailureStorageProviderImpl
 import co.electriccoin.zcash.ui.common.repository.MigrationTransferStateRepository
@@ -35,6 +39,7 @@ import co.electriccoin.zcash.ui.common.repository.RestartMigrationScheduleReposi
 import co.electriccoin.zcash.ui.common.usecase.CheckMigrationRecoveryUseCase
 import co.electriccoin.zcash.ui.common.usecase.DebugStartMigrationE2EUseCase
 import co.electriccoin.zcash.ui.common.usecase.FinalizeMigrationScheduleUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetMigrationGateInfoUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetMigrationPrivacyOrReviewDestinationUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetMigrationSnapshotUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardMigrationSdkUseCase
@@ -92,6 +97,8 @@ val featureMigrationModule =
         // Providers
         singleOf(::HasSeenMigrationCompleteStorageProviderImpl) bind
             HasSeenMigrationCompleteStorageProvider::class
+        singleOf(::MigrationUpgradeNoticeStorageProviderImpl) bind MigrationUpgradeNoticeStorageProvider::class
+        singleOf(::MigrationGateBypassStorageProviderImpl) bind MigrationGateBypassStorageProvider::class
         singleOf(::HasLockedOrchardDustStorageProviderImpl) bind
             HasLockedOrchardDustStorageProvider::class
         singleOf(::IsMigrationTorEnabledStorageProviderImpl) bind IsMigrationTorEnabledStorageProvider::class
@@ -122,6 +129,7 @@ val featureMigrationModule =
         factoryOf(::GetMigrationSnapshotUseCase)
         factoryOf(::LockOrchardBalanceUseCase)
         factoryOf(::GetMigrationPrivacyOrReviewDestinationUseCase)
+        factoryOf(::GetMigrationGateInfoUseCase)
         // Explicit factory: the defaulted isWorkerActive lambda must use its Kotlin default —
         // factoryOf resolves ALL constructor params via Koin and dies on the Function1
         // (NoDefinitionFoundException at startup, caught on-emulator 2026-07-28).

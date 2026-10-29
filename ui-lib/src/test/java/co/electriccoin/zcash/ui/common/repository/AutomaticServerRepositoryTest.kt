@@ -286,7 +286,6 @@ class AutomaticServerRepositoryTest {
                     blocksToFetch = 1
                 )
             }
-            // The gateway is never probed in Public mode.
             coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
             coVerify(exactly = 0) { synchronizer.validateServerEndpoint(any(), any()) }
         }
@@ -311,13 +310,15 @@ class AutomaticServerRepositoryTest {
             assertEquals(fallbacks[1], repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
         }
 
+    /**
+     * A clearnet server candidate is dropped when Private mode is chosen while the speed test is running.
+     */
     @Test
     fun aClearnetCandidateIsDroppedWhenTheUserMovedToPrivateMeanwhile() =
         runTest {
             stubPublic(current = fallbacks[0])
             localBalances.value = emptyMap()
             coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } coAnswers {
-                // Private is chosen and saved while the benchmark is still running.
                 coEvery { isPublicProvider.get() } returns false
                 fallbacks[1]
             }
@@ -332,6 +333,10 @@ class AutomaticServerRepositoryTest {
             assertEquals(false, fallbackActive)
         }
 
+    /**
+     * An automatic server switch candidate is held back until the user's mode/endpoint save completes.
+     * If the mode changes while waiting, the candidate is dropped.
+     */
     @Test
     fun aSwitchWaitsForTheUsersSaveAndIsDroppedWhenItChangedTheMode() =
         runTest {
@@ -339,7 +344,6 @@ class AutomaticServerRepositoryTest {
             localBalances.value = emptyMap()
             coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns fallbacks[1]
 
-            // The user's save of Private holds the lock while it writes the mode and the endpoint.
             val saveFinishes = CompletableDeferred<Unit>()
             backgroundScope.launch {
                 serverSelectionMutex.withLock {
@@ -354,13 +358,11 @@ class AutomaticServerRepositoryTest {
             runCurrent()
             edges.emit(Unit)
             runCurrent()
-            // The candidate is ready but must not be written while the save is still running.
             coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
 
             saveFinishes.complete(Unit)
             runCurrent()
 
-            // It then sees Private and is dropped: Private never ends on clearnet.
             coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
         }
 
@@ -399,6 +401,10 @@ class AutomaticServerRepositoryTest {
             assertEquals(listOf(false, true, false), values)
         }
 
+    /**
+     * A gateway candidate is dropped when Public mode is chosen deliberately while the
+     * switch evaluation awaits a local balance snapshot.
+     */
     @Test
     fun aGatewayCandidateIsDroppedWhenThePublicChoiceWasDeliberate() =
         runTest {
@@ -408,7 +414,6 @@ class AutomaticServerRepositoryTest {
             runCurrent()
             edges.emit(Unit)
             runCurrent()
-            // The gateway candidate waits for the balance snapshot; Public is chosen on purpose meanwhile.
             coEvery { isPublicProvider.get() } returns true
             fallbackActive = false
             localBalances.value = emptyMap()

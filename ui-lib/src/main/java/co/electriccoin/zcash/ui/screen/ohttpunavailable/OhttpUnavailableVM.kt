@@ -6,6 +6,7 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
@@ -13,6 +14,7 @@ import co.electriccoin.zcash.ui.common.usecase.IsTorEnabledUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveFastestServersUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.SetTorEnabledUseCase
+import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -20,6 +22,14 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/**
+ * ViewModel for the OHTTP unavailable sheet.
+ *
+ * Watches for transaction starts and automatically closes the sheet when one begins, since switching
+ * to public servers rebuilds the Synchronizer and must not happen mid-transaction. The wallet
+ * continues retrying the private connection in the background, and the switch remains available in
+ * the server selection screen.
+ */
 class OhttpUnavailableVM(
     isTorEnabled: IsTorEnabledUseCase,
     private val setTorEnabled: SetTorEnabledUseCase,
@@ -34,6 +44,12 @@ class OhttpUnavailableVM(
             .observe()
             .map { torEnabled ->
                 OhttpUnavailableState(
+                    title = stringRes(R.string.ohttpUnavailableSheet_title),
+                    body = stringRes(R.string.ohttpUnavailableSheet_body),
+                    keepWaitingText = stringRes(R.string.ohttpUnavailableSheet_keepWaiting),
+                    switchToPublicText = stringRes(R.string.ohttpUnavailableSheet_switchToPublic),
+                    torTitle = stringRes(R.string.ohttpUnavailableSheet_torTitle),
+                    torBody = stringRes(R.string.ohttpUnavailableSheet_torBody),
                     isTorEnabled = torEnabled,
                     onTorToggle = ::onTorToggle,
                     onKeepWaiting = ::onBack,
@@ -43,9 +59,6 @@ class OhttpUnavailableVM(
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
 
     init {
-        // "Switch to public servers" rebuilds the Synchronizer, which must not happen mid-transaction. The sheet
-        // only opens outside a transaction, so one that starts while it is open closes it; the wallet keeps
-        // retrying Private on its own and the switch stays available in Choose Server.
         viewModelScope.launch {
             automaticServerRepository.isTransactionInProgress.first { it }
             closeIfOnTop()
@@ -72,13 +85,23 @@ class OhttpUnavailableVM(
      * Uses the fastest public server only from a finished result that already exists, never a new
      * benchmark (ZIP #10 rule 3). The sheet shows in Private mode, where the fastest-servers
      * benchmark measures only the gateway, so this is normally null and the default public server
-     * is used; the automatic switch ranks the public servers later, once Public is saved.
+     * is used; the automatic switch ranks the public servers later, once Public is saved. The
+     * transaction check runs again under the server-selection lock, since a send can start while
+     * the sheet is open; a refused switch leaves the sheet open.
      */
     private fun onSwitchToPublic() =
         viewModelScope.launch {
+            val inTransaction: suspend () -> Boolean = { automaticServerRepository.isTransactionInProgress.first() }
+            if (inTransaction()) return@launch
             val fastest = fastestPublicServer(observeFastestServers().value)
-            persistServerSelection.persistPublic(afterPrivateUnavailable = true, fastest = fastest)
-            navigationRouter.back()
+            if (persistServerSelection.persistPublic(
+                    afterPrivateUnavailable = true,
+                    fastest = fastest,
+                    abortIf = inTransaction
+                )
+            ) {
+                navigationRouter.back()
+            }
         }
 
     /**

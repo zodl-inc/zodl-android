@@ -29,6 +29,7 @@ class GetMigrationSnapshotUseCase(
             states = states,
             estimatedTip = sdk.estimatedChainTip(),
             secondsPerBlock = sdk.estimatedSecondsPerBlock(),
+            nu7ActivationHeight = sdk.nu7ActivationHeight,
         )
     }
 }
@@ -44,9 +45,11 @@ fun migrationSnapshotFrom(
     states: MigrationTransferStates,
     estimatedTip: Long,
     secondsPerBlock: Long,
+    nu7ActivationHeight: Long?,
 ): LiveMigrationSnapshot =
     states.toSnapshot(
         estimatedTip = estimatedTip,
         secondsPerBlock = secondsPerBlock,
+        nu7ActivationHeight = nu7ActivationHeight,
         nowEpochSeconds = Clock.System.now().epochSeconds,
     )

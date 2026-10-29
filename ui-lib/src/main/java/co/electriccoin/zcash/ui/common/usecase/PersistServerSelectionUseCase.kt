@@ -36,9 +36,16 @@ class PersistServerSelectionUseCase(
      * [afterPrivateUnavailable] marks a switch made from the "private connection unavailable" prompt: the
      * wallet then returns to Private by itself once the gateway answers again. A deliberate Public never does.
      * [fastest] is the public server a speed test just ranked first; without a usable one the default is used.
+     * [abortIf] is checked under the server-selection lock, like the automatic lane checks the transaction
+     * state before it switches; when it holds, nothing is stored. Returns whether the switch was made.
      */
-    suspend fun persistPublic(afterPrivateUnavailable: Boolean = false, fastest: LightWalletEndpoint? = null) =
+    suspend fun persistPublic(
+        afterPrivateUnavailable: Boolean = false,
+        fastest: LightWalletEndpoint? = null,
+        abortIf: (suspend () -> Boolean)? = null,
+    ): Boolean =
         serverSelectionMutex.withLock {
+            if (abortIf?.invoke() == true) return@withLock false
             isOhttpFallbackActiveProvider.store(afterPrivateUnavailable)
             isPublicConnectionProvider.store(true)
             val publicServers = lightWalletEndpointProvider.getFallbackEndpoints()
@@ -47,18 +54,24 @@ class PersistServerSelectionUseCase(
                     ?: publicServers.firstOrNull()
                     ?: lightWalletEndpointProvider.getDefaultEndpoint()
             persistFlagAndEndpoint(isAutomatic = true, endpoint = endpoint)
+            true
         }
 
+    /**
+     * Persists a manual server selection.
+     *
+     * The OHTTP gateway is only ever reached as Private mode; a manual pin of it is converted to
+     * Private to keep the health monitoring lane active. Validation happens outside the lock since
+     * it's a network call.
+     */
     @Throws(PersistEndpointException::class)
     suspend fun persistManual(endpoint: LightWalletEndpoint) {
-        // The gateway is only ever reached as Private; a Manual pin of it would switch the health lane off.
         if (lightWalletEndpointProvider.isOhttpGateway(endpoint)) {
             persistPrivate()
             return
         }
         when (val result = validateServerEndpoint(endpoint)) {
             ServerValidation.Valid -> {
-                // Validated outside the lock: it is a network call.
                 serverSelectionMutex.withLock {
                     isPublicConnectionProvider.store(false)
                     persistFlagAndEndpoint(isAutomatic = false, endpoint = endpoint)

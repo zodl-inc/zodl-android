@@ -195,7 +195,6 @@ class AuthenticationViewModelTest {
             setMonotonicTimeMillis(16.minutes.inWholeMilliseconds)
             viewModel.runAuthenticationRequiredCheck()
 
-            // Synchronously, before any recomposition and before the app is foregrounded again.
             verify(exactly = 1) { lock.setLocked(true) }
         }
 
@@ -220,10 +219,13 @@ class AuthenticationViewModelTest {
             verify(exactly = 0) { lock.setLocked(true) }
         }
 
+    /**
+     * Background timeout does not lock a walletless session. Even though authentication is on by default,
+     * locking without a wallet would make the app permanently inaccessible.
+     */
     @Test
     fun backgroundTimeoutDoesNotLockAWalletlessSession() =
         runTest {
-            // Authentication is on by default, but without a wallet nothing would ever unlock the app again.
             val lock = mockk<AppAccessLockProvider>(relaxed = true)
             val (viewModel, _, setMonotonicTimeMillis) =
                 newViewModel(secretState = SecretState.NONE, appAccessLockProvider = lock)
@@ -238,9 +240,12 @@ class AuthenticationViewModelTest {
             verify(exactly = 0) { lock.setLocked(true) }
         }
 
+    /**
+     * A recreated Activity can compose with a cached successful state while the reset has already changed
+     * the raw state. This test ensures the derived state (which determines whether to unlock) is checked correctly.
+     */
     @Test
     fun aCachedSuccessfulStateDoesNotUnlockAfterAReset() {
-        // A recreated Activity composes with the cached derived state while the reset already changed the raw one.
         assertTrue(isAppAccessLocked(AuthenticationUIState.Successful, rawState = AuthenticationUIState.Initial))
         assertFalse(isAppAccessLocked(AuthenticationUIState.Successful, rawState = AuthenticationUIState.Successful))
         assertFalse(isAppAccessLocked(AuthenticationUIState.NotRequired, rawState = AuthenticationUIState.Initial))

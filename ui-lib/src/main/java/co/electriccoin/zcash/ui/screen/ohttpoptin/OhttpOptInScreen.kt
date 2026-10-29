@@ -88,25 +88,6 @@ fun OhttpOptInView(state: OhttpOptInState) {
 private fun Preview() =
     ZcashTheme {
         BlankSurface {
-            OhttpOptInView(
-                state =
-                    OhttpOptInState(
-                        title = stringRes(R.string.ohttpOptIn_title),
-                        body = stringRes(R.string.ohttpOptIn_body),
-                        items =
-                            listOf(
-                                OhttpOptInItemState(
-                                    icon = R.drawable.ic_ohttp_lock,
-                                    title = stringRes(R.string.ohttpInfo_item1Title),
-                                    subtitle = stringRes(R.string.ohttpInfo_item1Body),
-                                ),
-                            ),
-                        notNowText = stringRes(R.string.ohttpOptIn_notNow),
-                        turnOnText = stringRes(R.string.ohttpOptIn_turnOn),
-                        onTurnOn = {},
-                        onNotNow = {},
-                        onBack = {},
-                    )
-            )
+            OhttpOptInView(state = OhttpOptInState.preview)
         }
     }

@@ -38,6 +38,10 @@ class ObserveOhttpUnavailablePromptUseCaseTest {
             navigationRouter = navigationRouter,
         )
 
+    /**
+     * The unavailable prompt is shown once per outage episode. Backgrounding/foregrounding
+     * during the same episode does not repeat it. Recovery ends the episode.
+     */
     @Test
     fun opensThePromptOncePerOutageEpisode() =
         runTest {
@@ -49,13 +53,11 @@ class ObserveOhttpUnavailablePromptUseCaseTest {
             runCurrent()
             verify(exactly = 1) { navigationRouter.custom(any()) }
 
-            // Still the same episode: no second prompt.
             foreground.value = false
             foreground.value = true
             runCurrent()
             verify(exactly = 1) { navigationRouter.custom(any()) }
 
-            // Recovery ends the episode; the next outage prompts again.
             unavailable.value = false
             runCurrent()
             unavailable.value = true

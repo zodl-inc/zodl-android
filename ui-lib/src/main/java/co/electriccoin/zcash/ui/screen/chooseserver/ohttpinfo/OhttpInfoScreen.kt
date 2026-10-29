@@ -67,14 +67,14 @@ fun OhttpInfoView(
             )
             Spacer(12.dp)
             Text(
-                text = stringRes(R.string.ohttpInfo_title).getValue(),
+                text = innerState.title.getValue(),
                 style = ZashiTypography.textXl,
                 fontWeight = FontWeight.SemiBold,
                 color = ZashiColors.Text.textPrimary,
             )
             Spacer(4.dp)
             Text(
-                text = stringRes(R.string.ohttpInfo_body).getValue(),
+                text = innerState.body.getValue(),
                 style = ZashiTypography.textSm,
                 color = ZashiColors.Text.textTertiary,
             )
@@ -90,7 +90,7 @@ fun OhttpInfoView(
             )
             Spacer(24.dp)
             ZashiButton(
-                state = ButtonState(text = stringRes(R.string.ohttpInfo_gotIt), onClick = innerState.onGotIt),
+                state = ButtonState(text = innerState.gotItText, onClick = innerState.onGotIt),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -126,5 +126,5 @@ private fun OhttpInfoItem(
 @Composable
 private fun Preview() =
     ZcashTheme {
-        OhttpInfoView(state = OhttpInfoState(onGotIt = {}, onBack = {}))
+        OhttpInfoView(state = OhttpInfoState.preview)
     }
