@@ -381,7 +381,7 @@ class WalletRepositoryImplTest {
             val synchronizer =
                 mockk<Synchronizer> {
                     coEvery { getFastestServers(any()) } answers {
-                        testedEndpoints += firstArg()
+                        testedEndpoints += firstArg<List<LightWalletEndpoint>>()
                         flowOf(FastestServersResult.Done(listOf(GATEWAY)))
                     }
                 }
@@ -413,7 +413,7 @@ class WalletRepositoryImplTest {
             val synchronizer =
                 mockk<Synchronizer> {
                     coEvery { getFastestServers(any()) } answers {
-                        testedEndpoints += firstArg()
+                        testedEndpoints += firstArg<List<LightWalletEndpoint>>()
                         flowOf(FastestServersResult.Done(listOf(ZEC_ROCKS)))
                     }
                 }
@@ -445,7 +445,7 @@ class WalletRepositoryImplTest {
             val synchronizer =
                 mockk<Synchronizer> {
                     coEvery { getFastestServers(any()) } answers {
-                        testedEndpoints += firstArg()
+                        testedEndpoints += firstArg<List<LightWalletEndpoint>>()
                         flowOf(FastestServersResult.Done(emptyList()))
                     }
                 }
@@ -544,7 +544,7 @@ class WalletRepositoryImplTest {
         val fakeSynchronizer = synchronizer
         val synchronizerProvider =
             mockk<SynchronizerProvider>(relaxed = true) {
-                every { synchronizer } returns MutableStateFlow(fakeSynchronizer)
+                every { this@mockk.synchronizer } returns MutableStateFlow(fakeSynchronizer)
             }
 
         val fakePrefs = RecordingPreferenceProvider(events)
