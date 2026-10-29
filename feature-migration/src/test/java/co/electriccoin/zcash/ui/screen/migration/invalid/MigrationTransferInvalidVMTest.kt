@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.migration.invalid
 
 import androidx.navigation.NavBackStackEntry
 import cash.z.ecc.android.sdk.AttentionReason
+import cash.z.ecc.android.sdk.MigrationRestartOutcome
 import cash.z.ecc.android.sdk.MigrationSchedule
 import cash.z.ecc.android.sdk.MigrationState
 import cash.z.ecc.android.sdk.OrchardMigrationSdk
@@ -20,6 +21,7 @@ import co.electriccoin.zcash.ui.common.usecase.GetMigrationSnapshotUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardMigrationSdkUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.screen.migration.setup.MigrationSetupArgs
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -165,7 +167,8 @@ class MigrationTransferInvalidVMTest {
                         MigrationState.RequiresAttention(AttentionReason.TransferExpired)
                     coEvery { getMigrationStateUnreconciled() } returns
                         MigrationState.RequiresAttention(AttentionReason.TransferExpired)
-                    coEvery { restartCurrentMigrationStep() } returns restartedSchedule
+                    coEvery { restartCurrentMigrationStep() } returns
+                        MigrationRestartOutcome.Replanned(restartedSchedule)
                 }
             val restartRepo = mockk<RestartMigrationScheduleRepository>(relaxed = true)
             val router = FakeNavigationRouter()
@@ -184,6 +187,38 @@ class MigrationTransferInvalidVMTest {
 
             coVerify(exactly = 1) { restartRepo.set(any(), restartedSchedule) }
             assertEquals(1, router.replacedRoutes.size)
+            collectJob.cancel()
+        }
+
+    @Test
+    fun continuingBeforeNu7CancelsTheRunAndOpensTheSetupScreenWithoutAPlan() =
+        runTest {
+            val sdk =
+                mockk<OrchardMigrationSdk>(relaxed = true) {
+                    coEvery { getMigrationState() } returns
+                        MigrationState.RequiresAttention(AttentionReason.TransferExpired)
+                    coEvery { getMigrationStateUnreconciled() } returns
+                        MigrationState.RequiresAttention(AttentionReason.TransferExpired)
+                    coEvery { restartCurrentMigrationStep() } returns
+                        MigrationRestartOutcome.CancelledUntilNetworkUpgrade(2_000L)
+                }
+            val restartRepo = mockk<RestartMigrationScheduleRepository>(relaxed = true)
+            val router = FakeNavigationRouter()
+            val vm =
+                vm(
+                    snapshot = snapshot(emptyList()),
+                    getOrchardMigrationSdk = mockk { coEvery { this@mockk() } returns sdk },
+                    restartMigrationScheduleRepository = restartRepo,
+                    router = router,
+                )
+            val collectJob = launch { vm.state.collect {} }
+            advanceUntilIdle()
+
+            invokeOnContinue(vm)
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { restartRepo.set(any(), any()) }
+            assertEquals(listOf<Any>(MigrationSetupArgs), router.replacedRoutes.toList())
             collectJob.cancel()
         }
 

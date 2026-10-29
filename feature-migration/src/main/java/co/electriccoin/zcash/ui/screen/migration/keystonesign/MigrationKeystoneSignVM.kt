@@ -12,6 +12,8 @@ import co.electriccoin.zcash.ui.common.repository.PendingKeystoneMigrationPcztsR
 import co.electriccoin.zcash.ui.common.repository.PendingMigrationScheduleRepository
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardMigrationSdkUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
+import co.electriccoin.zcash.ui.common.usecase.isMigrationPausedUntilNetworkUpgrade
+import co.electriccoin.zcash.ui.common.usecase.isMigrationWalletTipUnavailable
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.addressbook.ADDRESS_MAX_LENGTH
@@ -175,10 +177,23 @@ class MigrationKeystoneSignVM(
                     qrParts.value = parts
                     roundInfo.value = roundIndex to totalRounds
                 }
-            }.onFailure {
+            }.onFailure { error ->
                 failureSheet.update {
                     MigrationTransferFailureState(
-                        message = stringRes(DesignR.string.migrationKeystoneSign_prepareErrorMessage),
+                        message =
+                            when {
+                                error.isMigrationPausedUntilNetworkUpgrade() -> {
+                                    stringRes(DesignR.string.migrationUpgradePaused_message)
+                                }
+
+                                error.isMigrationWalletTipUnavailable() -> {
+                                    stringRes(DesignR.string.migrationTipUnavailable_message)
+                                }
+
+                                else -> {
+                                    stringRes(DesignR.string.migrationKeystoneSign_prepareErrorMessage)
+                                }
+                            },
                         onRetry = {
                             failureSheet.value = null
                             buildBatch()
