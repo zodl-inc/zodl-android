@@ -10,6 +10,8 @@ import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 
 class PersistServerSelectionUseCase(
     private val application: Application,
@@ -22,13 +24,18 @@ class PersistServerSelectionUseCase(
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
     private val serverSelectionMutex: ServerSelectionMutex,
 ) {
-    /** Private: switching to it always starts from the OHTTP gateway. */
+    /**
+     * Private: switching to it always starts from the OHTTP gateway. The flags and the endpoint are written
+     * as one unit: a caller going away halfway (a closed sheet or screen) must not leave them disagreeing.
+     */
     suspend fun persistPrivate() =
         serverSelectionMutex.withLock {
-            isOhttpFallbackActiveProvider.store(false)
-            isPublicConnectionProvider.store(false)
-            val endpoint = getAutomaticEndpoint()
-            persistFlagAndEndpoint(isAutomatic = true, endpoint = endpoint)
+            withContext(NonCancellable) {
+                isOhttpFallbackActiveProvider.store(false)
+                isPublicConnectionProvider.store(false)
+                val endpoint = getAutomaticEndpoint()
+                persistFlagAndEndpoint(isAutomatic = true, endpoint = endpoint)
+            }
         }
 
     /**
@@ -38,6 +45,7 @@ class PersistServerSelectionUseCase(
      * [fastest] is the public server a speed test just ranked first; without a usable one the default is used.
      * [abortIf] is checked under the server-selection lock, like the automatic lane checks the transaction
      * state before it switches; when it holds, nothing is stored. Returns whether the switch was made.
+     * Once the check passes the flags and the endpoint are written as one unit, even if the caller is cancelled.
      */
     suspend fun persistPublic(
         afterPrivateUnavailable: Boolean = false,
@@ -46,15 +54,17 @@ class PersistServerSelectionUseCase(
     ): Boolean =
         serverSelectionMutex.withLock {
             if (abortIf?.invoke() == true) return@withLock false
-            isOhttpFallbackActiveProvider.store(afterPrivateUnavailable)
-            isPublicConnectionProvider.store(true)
-            val publicServers = lightWalletEndpointProvider.getFallbackEndpoints()
-            val endpoint =
-                fastest?.takeIf { it in publicServers }
-                    ?: publicServers.firstOrNull()
-                    ?: lightWalletEndpointProvider.getDefaultEndpoint()
-            persistFlagAndEndpoint(isAutomatic = true, endpoint = endpoint)
-            true
+            withContext(NonCancellable) {
+                isOhttpFallbackActiveProvider.store(afterPrivateUnavailable)
+                isPublicConnectionProvider.store(true)
+                val publicServers = lightWalletEndpointProvider.getFallbackEndpoints()
+                val endpoint =
+                    fastest?.takeIf { it in publicServers }
+                        ?: publicServers.firstOrNull()
+                        ?: lightWalletEndpointProvider.getDefaultEndpoint()
+                persistFlagAndEndpoint(isAutomatic = true, endpoint = endpoint)
+                true
+            }
         }
 
     /**
@@ -73,8 +83,10 @@ class PersistServerSelectionUseCase(
         when (val result = validateServerEndpoint(endpoint)) {
             ServerValidation.Valid -> {
                 serverSelectionMutex.withLock {
-                    isPublicConnectionProvider.store(false)
-                    persistFlagAndEndpoint(isAutomatic = false, endpoint = endpoint)
+                    withContext(NonCancellable) {
+                        isPublicConnectionProvider.store(false)
+                        persistFlagAndEndpoint(isAutomatic = false, endpoint = endpoint)
+                    }
                 }
             }
 
