@@ -229,6 +229,7 @@ class MigrationDriveOnceTest {
             computeEngineWakeDelay(
                 est = 100,
                 secondsPerBlock = 10,
+                nu7ActivationHeight = null,
                 peek = MigrationPeek(height = 250, kind = MigrationStepKind.BROADCAST),
             )
         // (250-100)*10 = 1500s.
@@ -241,6 +242,7 @@ class MigrationDriveOnceTest {
             computeEngineWakeDelay(
                 est = 100,
                 secondsPerBlock = 10,
+                nu7ActivationHeight = null,
                 peek = MigrationPeek(height = 90, kind = MigrationStepKind.PROVE),
             )
         assertEquals(MIN_REARM_SECONDS.seconds, delay)
@@ -252,6 +254,7 @@ class MigrationDriveOnceTest {
             computeEngineWakeDelay(
                 est = -1,
                 secondsPerBlock = 10,
+                nu7ActivationHeight = null,
                 peek = MigrationPeek(height = 300, kind = MigrationStepKind.BROADCAST),
             )
         )
@@ -259,7 +262,7 @@ class MigrationDriveOnceTest {
 
     @Test
     fun `no peek falls back to the cadence`() {
-        assertNull(computeEngineWakeDelay(est = 100, secondsPerBlock = 10, peek = null))
+        assertNull(computeEngineWakeDelay(est = 100, secondsPerBlock = 10, nu7ActivationHeight = null, peek = null))
     }
 
     // ── nextWake (engine peek folded with the app privacy gap; §3's gap term is untouched by
@@ -276,6 +279,7 @@ class MigrationDriveOnceTest {
                 lastActivityEpochSeconds = 1_000_000L,
                 privacyBufferSeconds = 180L,
                 nowEpochSeconds = 1_000_060L,
+                nu7ActivationHeight = null,
                 peek = null,
             )
         assertEquals(120.seconds, delay)
@@ -291,6 +295,7 @@ class MigrationDriveOnceTest {
                 lastActivityEpochSeconds = 1_000_000L,
                 privacyBufferSeconds = 600L,
                 nowEpochSeconds = 1_000_100L,
+                nu7ActivationHeight = null,
                 peek = MigrationPeek(height = 1100, kind = MigrationStepKind.PROVE),
             )
         // engine peek at 1100: (1100-1000)*1 = 100s < 500s gap remaining -> 100s wins.
@@ -307,6 +312,7 @@ class MigrationDriveOnceTest {
                 lastActivityEpochSeconds = 1_000_000L,
                 privacyBufferSeconds = 180L,
                 nowEpochSeconds = 1_000_178L, // if the gap applied, only 2s would remain
+                nu7ActivationHeight = null,
                 peek = MigrationPeek(height = 2000, kind = MigrationStepKind.PROVE),
             )
         // Unproved -> not broadcast-ready -> gap term is inert; falls through to the engine
@@ -324,6 +330,7 @@ class MigrationDriveOnceTest {
                 lastActivityEpochSeconds = 1_000_000L,
                 privacyBufferSeconds = 180L,
                 nowEpochSeconds = 1_000_500L, // 500s since last activity, buffer only 180s
+                nu7ActivationHeight = null,
                 peek = null,
             )
         assertEquals(0.seconds, delay)
@@ -390,6 +397,97 @@ class MigrationDriveOnceTest {
         assertEquals(
             WaitingDisposition.COMPLETION_SWEEP,
             waitingDisposition(allSent = true, hasUnprovableBlocker = true)
+        )
+    }
+
+    // ── NU7 characterization pins (MOB-2287): pre-NU7 behaviour at the 75 s/block rate. ──
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - engine wake delay is block delta times 75`() {
+        // No activation height is passed, so this is the single pre-NU7 rate; the era-spanning case is below.
+        val delay =
+            computeEngineWakeDelay(
+                est = 1_000,
+                secondsPerBlock = 75,
+                nu7ActivationHeight = null,
+                peek = MigrationPeek(height = 1_100, kind = MigrationStepKind.BROADCAST),
+            )
+        assertEquals((100 * 75).seconds, delay)
+    }
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - engine wake delay floors at 60s for 0 and 1 block`() {
+        // No activation height is passed, so this is the single pre-NU7 rate; the era-spanning case is below.
+        // 1 block * 75 s = 75 s is above the floor; 0 blocks (due now) and past peeks floor to 60 s.
+        val peekNow = MigrationPeek(height = 1_000, kind = MigrationStepKind.PROVE)
+        assertEquals(
+            60.seconds,
+            computeEngineWakeDelay(
+                est = 1_000,
+                secondsPerBlock = 75,
+                nu7ActivationHeight = null,
+                peek = peekNow
+            )
+        )
+        val peekNext = MigrationPeek(height = 1_001, kind = MigrationStepKind.PROVE)
+        assertEquals(
+            75.seconds,
+            computeEngineWakeDelay(
+                est = 1_000,
+                secondsPerBlock = 75,
+                nu7ActivationHeight = null,
+                peek = peekNext
+            )
+        )
+    }
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - nextWake takes the engine peek at 75s per block when no gap`() {
+        // No activation height is passed, so this is the single pre-NU7 rate; the era-spanning case is below.
+        val delay =
+            nextWake(
+                states = states(tx(1, scheduled = 5_000)),
+                est = 1_000,
+                secondsPerBlock = 75,
+                lastActivityEpochSeconds = null,
+                privacyBufferSeconds = 180L,
+                nowEpochSeconds = 1_000_000L,
+                nu7ActivationHeight = null,
+                peek = MigrationPeek(height = 1_010, kind = MigrationStepKind.PROVE),
+            )
+        assertEquals((10 * 75).seconds, delay)
+    }
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - rearm and cadence constants`() {
+        assertEquals(60L, MIN_REARM_SECONDS)
+        assertEquals(60.seconds, REARM_FLOOR)
+        assertEquals(1.seconds, PREP_FAST_TRACK_REARM)
+        assertEquals(180.seconds, SYNC_TIMEOUT)
+        // Fallback cadence: 5 min testnet / 60 min mainnet; unit tests run under whichever flavor is active.
+        val cadence = migrationCadence()
+        assertTrue(cadence == 300.seconds || cadence == 3_600.seconds, "unexpected cadence $cadence")
+    }
+
+    @Test
+    fun `NU7 - engine wake delay splits at the activation height`() {
+        // est 1_000, peek 1_100, activation 1_040: 39 blocks at 75 s then 61 at 25 s.
+        val delay =
+            computeEngineWakeDelay(
+                est = 1_000,
+                secondsPerBlock = 75,
+                peek = MigrationPeek(height = 1_100, kind = MigrationStepKind.BROADCAST),
+                nu7ActivationHeight = 1_040,
+            )
+        assertEquals((39 * 75 + 61 * 25).seconds, delay)
+    }
+
+    @Test
+    fun `NU7 - engine wake delay still floors at 60s`() {
+        val peek = MigrationPeek(height = 1_001, kind = MigrationStepKind.PROVE)
+        assertEquals(
+            60.seconds,
+            computeEngineWakeDelay(est = 1_000, secondsPerBlock = 25, peek = peek, nu7ActivationHeight = 500)
         )
     }
 }

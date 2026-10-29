@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import cash.z.ecc.android.sdk.InternalTestingApi
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
@@ -14,6 +15,7 @@ import co.electriccoin.zcash.ui.common.migration.MigrationNavContributor
 import co.electriccoin.zcash.ui.common.migration.MigrationNavigator
 import co.electriccoin.zcash.ui.common.migration.MigrationSyncedHook
 import co.electriccoin.zcash.ui.common.model.toStorageKeyId
+import co.electriccoin.zcash.ui.common.provider.MigrationGateBypassStorageProvider
 import co.electriccoin.zcash.ui.common.provider.MigrationNotifier
 import co.electriccoin.zcash.ui.common.provider.PendingMigrationTorFailureStorageProvider
 import co.electriccoin.zcash.ui.common.usecase.CheckMigrationRecoveryUseCase
@@ -67,6 +69,7 @@ import kotlinx.coroutines.launch
 
 class MigrationGateImpl(
     private val getOrchardMigrationSdk: GetOrchardMigrationSdkUseCase,
+    private val gateBypassStorage: MigrationGateBypassStorageProvider,
 ) : MigrationGate {
     // Engine state IS the gate now — no app-side plan marker exists. Selected-account scoped
     // (matches the sync it gates).
@@ -88,6 +91,15 @@ class MigrationGateImpl(
         runCatching {
             getOrchardMigrationSdk().getMigrationStateUnreconciled() is cash.z.ecc.android.sdk.MigrationState.InProgress
         }.getOrDefault(false)
+
+    /** Persisted: GetOrchardMigrationSdkUseCase applies the stored value to every SDK instance it builds. */
+    override suspend fun isNetworkUpgradeGateBypassEnabled(): Boolean = gateBypassStorage.isEnabled()
+
+    @OptIn(InternalTestingApi::class)
+    override suspend fun setNetworkUpgradeGateBypass(enabled: Boolean) {
+        gateBypassStorage.setEnabled(enabled)
+        runCatching { getOrchardMigrationSdk().setMigrationNetworkUpgradeGateBypass(enabled) }
+    }
 
     override suspend fun isRestartAvailable(): Boolean =
         runCatching {
