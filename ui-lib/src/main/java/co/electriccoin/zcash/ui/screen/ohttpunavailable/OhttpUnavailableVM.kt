@@ -81,7 +81,7 @@ class OhttpUnavailableVM(
      */
     private fun onSwitchToPublic() =
         viewModelScope.launch {
-            val inTransaction = { automaticServerRepository.isTransactionInProgress.first() }
+            val inTransaction: suspend () -> Boolean = { automaticServerRepository.isTransactionInProgress.first() }
             if (inTransaction()) return@launch
             if (persistServerSelection.persistPublic(afterPrivateUnavailable = true, abortIf = inTransaction)) {
                 navigationRouter.back()
