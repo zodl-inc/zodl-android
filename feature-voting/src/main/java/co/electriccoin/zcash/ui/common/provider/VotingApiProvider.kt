@@ -932,7 +932,6 @@ class KtorVotingApiProvider(
             },
         )
 
-
     private suspend inline fun <T> executeWithKtorTimeoutSupport(
         decision: VotingRouteDecision,
         crossinline block: suspend HttpClient.(Boolean, VotingRouteDecision) -> T,

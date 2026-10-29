@@ -114,7 +114,6 @@ interface VotingProofPrecomputeRepository {
 class VotingProofPrecomputeRepositoryImpl(
     private val votingCryptoClient: VotingCryptoClient,
     private val pirSnapshotResolver: PirSnapshotResolver,
-    private val synchronizerProvider: SynchronizerProvider,
     private val votingRouteProvider: co.electriccoin.zcash.ui.common.provider.VotingRouteProvider,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
     // Injectable so tests exercising the "one failure is enough" dedup-key behavior

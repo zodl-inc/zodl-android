@@ -63,7 +63,8 @@ class RefreshActiveVotingSessionUseCaseTest {
 
         override suspend fun invalidateConfigCache() = Unit
 
-        override suspend fun fetchServiceConfig(decision: VotingRouteDecision): VotingServiceConfig = VotingServiceConfig.EMPTY
+        override suspend fun fetchServiceConfig(decision: VotingRouteDecision): VotingServiceConfig =
+            VotingServiceConfig.EMPTY
 
         override suspend fun fetchActiveVotingSession(decision: VotingRouteDecision): VotingSession? = error("unused")
 

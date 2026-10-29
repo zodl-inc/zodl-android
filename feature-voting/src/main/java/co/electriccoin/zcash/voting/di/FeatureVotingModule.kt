@@ -90,7 +90,8 @@ val featureVotingModule =
         }
         singleOf(::HttpPirSnapshotResolver) bind PirSnapshotResolver::class
         single<co.electriccoin.zcash.ui.common.provider.VotingRouteProvider> {
-            co.electriccoin.zcash.ui.common.provider.VotingRouteProviderImpl(get(), get(), get())
+            co.electriccoin.zcash.ui.common.provider
+                .VotingRouteProviderImpl(get(), get(), get())
         }
         singleOf(::VotingShareTrackingScheduler)
 
@@ -103,7 +104,6 @@ val featureVotingModule =
             VotingProofPrecomputeRepositoryImpl(
                 votingCryptoClient = get(),
                 pirSnapshotResolver = get(),
-                synchronizerProvider = get(),
                 votingRouteProvider = get()
             )
         }

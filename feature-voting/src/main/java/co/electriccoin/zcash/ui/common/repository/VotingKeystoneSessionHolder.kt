@@ -125,7 +125,9 @@ class VotingKeystoneSessionHolder(
                     dbHandle = handle,
                     // The holder keeps owning the lease (released in closeLocked/closeResources);
                     // openRoundSession only reads it.
-                    route = co.electriccoin.zcash.ui.common.model.voting.VotingRoute(decision, lease),
+                    route =
+                        co.electriccoin.zcash.ui.common.model.voting
+                            .VotingRoute(decision, lease),
                     roundId = roundId,
                     proposals = proposals,
                     hotkeySecret = hotkeySecret,

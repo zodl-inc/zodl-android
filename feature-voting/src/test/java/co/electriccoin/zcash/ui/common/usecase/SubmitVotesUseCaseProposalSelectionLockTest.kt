@@ -3,8 +3,6 @@ package co.electriccoin.zcash.ui.common.usecase
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.VotingRoundSession
 import cash.z.ecc.android.sdk.ext.toHex
-import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
-import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import cash.z.ecc.android.sdk.fixture.AccountFixture
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
@@ -16,6 +14,8 @@ import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VoteOption
 import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
+import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
@@ -80,7 +80,8 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
             val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
             val getWalletSeedBytes = mockk<GetWalletSeedBytesUseCase>()
             val votingRouteProvider = mockk<VotingRouteProvider>()
-            coEvery { votingRouteProvider.acquire() } returns VotingRoute(VotingRouteDecision(isTor = false, isCustomServer = false), null)
+            coEvery { votingRouteProvider.acquire() } returns
+                VotingRoute(VotingRouteDecision(isTor = false, isCustomServer = false), null)
 
             val serviceConfig =
                 VotingServiceConfig(
@@ -191,7 +192,8 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
             val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
             val getWalletSeedBytes = mockk<GetWalletSeedBytesUseCase>()
             val votingRouteProvider = mockk<VotingRouteProvider>()
-            coEvery { votingRouteProvider.acquire() } returns VotingRoute(VotingRouteDecision(isTor = false, isCustomServer = false), null)
+            coEvery { votingRouteProvider.acquire() } returns
+                VotingRoute(VotingRouteDecision(isTor = false, isCustomServer = false), null)
 
             val serviceConfig =
                 VotingServiceConfig(

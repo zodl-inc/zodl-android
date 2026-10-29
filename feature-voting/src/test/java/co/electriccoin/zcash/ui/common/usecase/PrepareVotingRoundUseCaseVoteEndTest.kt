@@ -75,7 +75,7 @@ class PrepareVotingRoundUseCaseVoteEndTest {
                     votingProofPrecomputeRepository = votingProofPrecomputeRepository,
                     synchronizerProvider = synchronizerProvider,
                     getSelectedWalletAccount = getSelectedWalletAccount,
-                votingRouteProvider = mockk(relaxed = true)
+                    votingRouteProvider = mockk(relaxed = true)
                 )
 
             val result = useCase(roundId)

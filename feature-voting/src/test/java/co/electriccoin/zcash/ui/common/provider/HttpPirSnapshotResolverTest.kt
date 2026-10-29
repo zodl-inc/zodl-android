@@ -1,7 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
-import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.lightwallet.client.OhttpHttpClient
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
@@ -32,7 +32,10 @@ class HttpPirSnapshotResolverTest {
             val ohttp = mutableListOf<String>()
             val resolver = resolver(torEnabled = false, isCustom = false, direct = direct, ohttp = ohttp)
 
-            assertEquals(PIR_URL, resolver.resolve(VotingRouteDecision(isTor = false, isCustomServer = false), listOf(PIR_URL), HEIGHT))
+            assertEquals(
+                PIR_URL,
+                resolver.resolve(VotingRouteDecision(isTor = false, isCustomServer = false), listOf(PIR_URL), HEIGHT)
+            )
             assertEquals(listOf("$PIR_URL/root"), ohttp)
             assertTrue(direct.isEmpty(), "predefined PIR probe must not go direct with Tor off")
         }
@@ -58,7 +61,10 @@ class HttpPirSnapshotResolverTest {
             val ohttp = mutableListOf<String>()
             val resolver = resolver(torEnabled = false, isCustom = true, direct = direct, ohttp = ohttp)
 
-            assertEquals(PIR_URL, resolver.resolve(VotingRouteDecision(isTor = false, isCustomServer = true), listOf(PIR_URL), HEIGHT))
+            assertEquals(
+                PIR_URL,
+                resolver.resolve(VotingRouteDecision(isTor = false, isCustomServer = true), listOf(PIR_URL), HEIGHT)
+            )
             assertEquals(listOf("/root"), direct)
             assertTrue(ohttp.isEmpty(), "a custom PIR server must never go through the gateway")
         }
@@ -70,7 +76,10 @@ class HttpPirSnapshotResolverTest {
             val ohttp = mutableListOf<String>()
             val resolver = resolver(torEnabled = true, isCustom = false, direct = direct, ohttp = ohttp)
 
-            assertEquals(PIR_URL, resolver.resolve(VotingRouteDecision(isTor = true, isCustomServer = false), listOf(PIR_URL), HEIGHT))
+            assertEquals(
+                PIR_URL,
+                resolver.resolve(VotingRouteDecision(isTor = true, isCustomServer = false), listOf(PIR_URL), HEIGHT)
+            )
             assertEquals(listOf("/root"), direct)
             assertTrue(ohttp.isEmpty(), "with Tor on the PIR probe goes over Tor, not OHTTP")
         }

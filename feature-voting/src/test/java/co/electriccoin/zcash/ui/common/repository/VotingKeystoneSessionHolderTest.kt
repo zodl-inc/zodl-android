@@ -3,9 +3,9 @@ package co.electriccoin.zcash.ui.common.repository
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.VotingRoundSession
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
-import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
 import cash.z.ecc.android.sdk.model.voting.VotingTorLease
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import io.mockk.coEvery

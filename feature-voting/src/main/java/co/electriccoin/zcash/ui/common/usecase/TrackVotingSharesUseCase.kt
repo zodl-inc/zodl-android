@@ -46,7 +46,6 @@ class TrackVotingSharesUseCase(
     private val votingApiProvider: VotingApiProvider,
     private val synchronizerProvider: SynchronizerProvider,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
-    private val votingChainConfigRepository: VotingChainConfigRepository,
     private val votingRouteProvider: co.electriccoin.zcash.ui.common.provider.VotingRouteProvider,
 ) {
     suspend operator fun invoke(roundId: String): VotingShareTrackingResult =

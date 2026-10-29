@@ -1,14 +1,14 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import cash.z.ecc.android.sdk.Synchronizer
-import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
+import cash.z.ecc.android.sdk.model.voting.VotingTorLease
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
+import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingRouteProvider
-import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
-import cash.z.ecc.android.sdk.model.voting.VotingTorLease
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
@@ -645,6 +645,7 @@ private fun fakeVotingRouteProvider(): VotingRouteProvider =
         coEvery { acquire() } returns TOR_LEASE
         coEvery { decision(any()) } returns TOR_LEASE.decision
     }
+
 private const val TIMEOUT_MS = 5_000L
 
 private class FakePirSnapshotResolver(

@@ -8,11 +8,13 @@ import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
-import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
 import cash.z.ecc.android.sdk.model.voting.VotingShareTrackingQuiescence
 import cash.z.ecc.android.sdk.model.voting.VotingShareTrackingReport
+import cash.z.ecc.android.sdk.model.voting.VotingTorLease
 import co.electriccoin.zcash.ui.common.model.ZodlAccount
+import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
 import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
@@ -21,8 +23,6 @@ import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
-import cash.z.ecc.android.sdk.model.voting.VotingTorLease
-import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every

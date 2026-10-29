@@ -85,8 +85,8 @@ class ViewOnlyVotingGuardTest {
                     votingRecoveryRepository = mockk(relaxed = true),
                     votingKeystoneSessionHolder = mockk(relaxed = true),
                     votingProofPrecomputeRepository = votingProofPrecomputeRepository,
-                )
                     votingRouteProvider = mockk(relaxed = true),
+                )
 
             val thrown =
                 assertFailsWith<AccountOperationUnsupportedException> {

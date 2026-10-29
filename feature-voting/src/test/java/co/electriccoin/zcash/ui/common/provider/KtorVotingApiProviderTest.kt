@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.common.provider
 
-import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.lightwallet.client.OhttpHttpClient
 import co.electriccoin.zcash.configuration.model.entry.ConfigKey
 import co.electriccoin.zcash.configuration.model.map.Configuration
@@ -12,6 +11,7 @@ import co.electriccoin.zcash.ui.common.model.voting.EncryptedShare
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.SharePayload
 import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
@@ -314,11 +314,12 @@ class KtorVotingApiProviderTest {
         runBlocking {
             val provider = hangingConfigProvider(hangingPath = "/static-voting-config.json")
 
-            val exception = assertFailsWith<StaticVotingConfigFetchFailedException> {
-                provider.fetchServiceConfig(
-                    decision = DEFAULT_OHTTP,
-                )
-            }
+            val exception =
+                assertFailsWith<StaticVotingConfigFetchFailedException> {
+                    provider.fetchServiceConfig(
+                        decision = DEFAULT_OHTTP,
+                    )
+                }
 
             assertTrue(exception.message.orEmpty().contains("timed out"), exception.message.orEmpty())
         }

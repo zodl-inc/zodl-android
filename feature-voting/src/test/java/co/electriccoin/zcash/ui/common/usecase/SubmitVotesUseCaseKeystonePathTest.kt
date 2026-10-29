@@ -7,8 +7,6 @@ import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
-import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
-import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import cash.z.ecc.android.sdk.model.voting.VotingRoundQuiescence
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
 import cash.z.ecc.android.sdk.model.voting.VotingRoundStepFailure
@@ -17,6 +15,8 @@ import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VoteOption
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
+import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
@@ -177,7 +177,8 @@ class SubmitVotesUseCaseKeystonePathTest {
         val synchronizer = mockk<Synchronizer>()
         val votingRouteProvider =
             mockk<VotingRouteProvider> {
-                coEvery { acquire() } returns VotingRoute(VotingRouteDecision(isTor = false, isCustomServer = false), null)
+                coEvery { acquire() } returns
+                    VotingRoute(VotingRouteDecision(isTor = false, isCustomServer = false), null)
             }
 
         private val useCase =

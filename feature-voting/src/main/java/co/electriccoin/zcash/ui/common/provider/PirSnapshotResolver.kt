@@ -76,11 +76,14 @@ class HttpPirSnapshotResolver(
                 val rootUrl = "$url/root"
                 val bodyText =
                     when (route) {
-                        is PirProbeRoute.Ohttp -> fetchViaOhttp(route.client, rootUrl)
+                        is PirProbeRoute.Ohttp -> {
+                            fetchViaOhttp(route.client, rootUrl)
+                        }
 
                         // A fresh client per probe: under Tor each gets its own circuit (MOB-1808).
-                        is PirProbeRoute.Direct ->
+                        is PirProbeRoute.Direct -> {
                             httpClientProvider.create(route.tor).use { it.get(rootUrl).bodyAsText() }
+                        }
                     }
                 val rootInfo = pirSnapshotJson.decodeFromString<PirRootInfo>(bodyText)
                 val height =

@@ -44,7 +44,7 @@ import cash.z.ecc.android.sdk.model.voting.VotingBundleSetupResult as SdkVotingB
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationPirPrecomputeResult as SdkVotingDelegationPirPrecomputeResult
 import cash.z.ecc.android.sdk.model.voting.VotingHotkey as SdkVotingHotkey
 import cash.z.ecc.android.sdk.model.voting.VotingPirPrecomputeResult as SdkVotingPirPrecomputeResult
-import cash.z.ecc.android.sdk.model.voting.VotingSnapshotBundlePrecomputeReport as SdkVotingSnapshotBundlePrecomputeReport
+import cash.z.ecc.android.sdk.model.voting.VotingSnapshotBundlePrecomputeReport as SdkSnapshotPrecomputeReport
 
 /**
  * Kotlin surface over the voting-crypto backend, delegating to the public [VotingSdk] and its
@@ -379,9 +379,7 @@ interface VotingCryptoClient {
     ): ByteArray
 }
 
-class VotingCryptoClientImpl(
-    private val votingChainConfigRepository: VotingChainConfigRepository
-) : VotingCryptoClient {
+class VotingCryptoClientImpl : VotingCryptoClient {
     private val nextDbHandle = AtomicLong(1)
     private val sdkMutex = Mutex()
     private var sdk: VotingSdk? = null
@@ -818,7 +816,7 @@ private fun SdkVotingPirPrecomputeResult.toAppModel() =
         servedRoot = servedRoot.copyOf()
     )
 
-private fun SdkVotingSnapshotBundlePrecomputeReport.toAppModel() =
+private fun SdkSnapshotPrecomputeReport.toAppModel() =
     VotingSnapshotBundlePrecomputeResult(
         bundleCount = layout.bundleCount,
         eligibleWeight = layout.eligibleWeightZatoshi,

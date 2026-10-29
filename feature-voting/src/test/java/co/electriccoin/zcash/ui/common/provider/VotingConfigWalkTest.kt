@@ -984,5 +984,4 @@ private suspend fun HttpClient.fetchStaticBytesOrThrow(url: String): ByteArray =
 
 // Routing the provider's fakes stand for: the test chain is a custom (non-bundled) source.
 private val CUSTOM_DIRECT = VotingRouteDecision(isTor = false, isCustomServer = true)
-private val CUSTOM_TOR = VotingRouteDecision(isTor = true, isCustomServer = true)
 private val DEFAULT_OHTTP = VotingRouteDecision(isTor = false, isCustomServer = false)

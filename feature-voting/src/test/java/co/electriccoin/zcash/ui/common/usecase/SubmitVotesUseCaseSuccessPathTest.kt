@@ -11,8 +11,6 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.android.sdk.model.voting.VotingRoundQuiescence
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
-import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
-import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import cash.z.ecc.android.sdk.model.voting.VotingTorLease
 import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
@@ -20,6 +18,8 @@ import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VoteOption
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
+import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -277,7 +277,8 @@ class SubmitVotesUseCaseSuccessPathTest {
         val roundSession = mockk<VotingRoundSession>(relaxed = true)
         val votingRouteProvider =
             mockk<VotingRouteProvider> {
-                coEvery { acquire() } returns VotingRoute(VotingRouteDecision(isTor = false, isCustomServer = false), null)
+                coEvery { acquire() } returns
+                    VotingRoute(VotingRouteDecision(isTor = false, isCustomServer = false), null)
             }
 
         private val useCase =

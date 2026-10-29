@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.common.provider
 
-import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.lightwallet.client.OhttpHttpClient
 import co.electriccoin.zcash.configuration.model.entry.ConfigKey
 import co.electriccoin.zcash.configuration.model.map.Configuration
@@ -8,6 +7,7 @@ import co.electriccoin.zcash.ui.common.model.voting.EncryptedShare
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.SharePayload
 import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfig
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
