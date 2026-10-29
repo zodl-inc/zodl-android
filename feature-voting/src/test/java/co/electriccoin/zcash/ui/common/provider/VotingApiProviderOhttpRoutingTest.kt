@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import cash.z.ecc.android.sdk.model.voting.VotingRouteDecision
 import co.electriccoin.lightwallet.client.OhttpHttpClient
 import co.electriccoin.zcash.configuration.model.entry.ConfigKey
 import co.electriccoin.zcash.configuration.model.map.Configuration
@@ -46,8 +47,7 @@ class VotingApiProviderOhttpRoutingTest {
             val provider =
                 providerWithOhttpTracking(
                     ohttpRequests = ohttpRequests,
-                    torEnabled = false,
-                    isCustomServer = false
+                    decision = VotingRouteDecision(isTor = false, isCustomServer = false)
                 )
 
             val share =
@@ -79,8 +79,7 @@ class VotingApiProviderOhttpRoutingTest {
                 providerWithOhttpTracking(
                     ohttpRequests = ohttpRequests,
                     directRequests = directRequests,
-                    torEnabled = false,
-                    isCustomServer = true,
+                    decision = VotingRouteDecision(isTor = false, isCustomServer = true),
                     ohttpCanHandle = { true }
                 )
 
@@ -107,8 +106,7 @@ class VotingApiProviderOhttpRoutingTest {
                 providerWithOhttpTracking(
                     ohttpRequests = ohttpRequests,
                     directRequests = directRequests,
-                    torEnabled = false,
-                    isCustomServer = true,
+                    decision = VotingRouteDecision(isTor = false, isCustomServer = true),
                     customPinnedSource = StaticVotingConfig.BUNDLED_PINNED_SOURCE,
                     ohttpCanHandle = { true }
                 )
@@ -138,8 +136,7 @@ class VotingApiProviderOhttpRoutingTest {
                 providerWithOhttpTracking(
                     ohttpRequests = ohttpRequests,
                     directRequests = directRequests,
-                    torEnabled = false,
-                    isCustomServer = true,
+                    decision = VotingRouteDecision(isTor = false, isCustomServer = true),
                     ohttpCanHandle = { true }
                 )
 
@@ -166,8 +163,7 @@ class VotingApiProviderOhttpRoutingTest {
                 providerWithOhttpTracking(
                     ohttpRequests = ohttpRequests,
                     directRequests = directRequests,
-                    torEnabled = false,
-                    isCustomServer = true,
+                    decision = VotingRouteDecision(isTor = false, isCustomServer = true),
                     ohttpCanHandle = { true }
                 )
 
@@ -195,8 +191,7 @@ class VotingApiProviderOhttpRoutingTest {
                 providerWithOhttpTracking(
                     ohttpRequests = ohttpRequests,
                     directRequests = directRequests,
-                    torEnabled = false,
-                    isCustomServer = false,
+                    decision = VotingRouteDecision(isTor = false, isCustomServer = false),
                     ohttpCanHandle = { url -> !url.startsWith(VOTE_SERVER_URL) }
                 )
 
@@ -223,8 +218,7 @@ class VotingApiProviderOhttpRoutingTest {
                 providerWithOhttpTracking(
                     ohttpRequests = ohttpRequests,
                     directRequests = directRequests,
-                    torEnabled = false,
-                    isCustomServer = false,
+                    decision = VotingRouteDecision(isTor = false, isCustomServer = false),
                     ohttpCanHandle = { url -> !url.startsWith(VOTE_SERVER_URL) }
                 )
 
@@ -263,17 +257,16 @@ class VotingApiProviderOhttpRoutingTest {
     private fun providerWithOhttpTracking(
         ohttpRequests: MutableList<String> = mutableListOf(),
         directRequests: MutableList<String> = mutableListOf(),
-        torEnabled: Boolean,
-        isCustomServer: Boolean,
+        decision: VotingRouteDecision,
         customPinnedSource: String = CUSTOM_PINNED_SOURCE,
-        ohttpCanHandle: (String) -> Boolean = { !torEnabled && !isCustomServer }
+        ohttpCanHandle: (String) -> Boolean = { !decision.isTor && !decision.isCustomServer }
     ): KtorVotingApiProvider =
         KtorVotingApiProvider(
             httpClientProvider =
                 object : HttpClientProvider {
                     override suspend fun supportsKtorTimeouts(): Boolean = true
 
-                    override suspend fun isTorEnabled(): Boolean = torEnabled
+                    override suspend fun isTorEnabled(): Boolean = decision.isTor
 
                     override suspend fun createTor(): HttpClient = create()
 
@@ -338,7 +331,7 @@ class VotingApiProviderOhttpRoutingTest {
                 },
             configurationRepository = TestConfigurationRepository(),
             votingChainConfigRepository =
-                TestVotingChainConfigRepository(isCustom = isCustomServer, pinnedSource = customPinnedSource),
+                TestVotingChainConfigRepository(isCustom = decision.isCustomServer, pinnedSource = customPinnedSource),
             votingCryptoClient = unusedVotingCryptoClient()
         )
 

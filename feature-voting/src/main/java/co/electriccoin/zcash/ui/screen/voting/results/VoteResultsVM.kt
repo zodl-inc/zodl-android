@@ -43,6 +43,7 @@ class VoteResultsVM(
     private val args: VoteResultsArgs,
     private val getAllRounds: GetAllVotingRoundsUseCase,
     private val votingApiProvider: VotingApiProvider,
+    private val votingRouteProvider: co.electriccoin.zcash.ui.common.provider.VotingRouteProvider,
     private val votingApiRepository: VotingApiRepository,
     private val configurationRepository: ConfigurationRepository,
     private val votingChainConfigRepository: VotingChainConfigRepository,
@@ -69,7 +70,7 @@ class VoteResultsVM(
             val cachedTally = votingApiRepository.snapshot.value.tallyResultsByRoundId[args.roundIdHex]
             val tally =
                 cachedTally
-                    ?: votingApiProvider.fetchTallyResults(args.roundIdHex).also { results ->
+                    ?: votingApiProvider.fetchTallyResults(args.roundIdHex, votingRouteProvider.decision()).also { results ->
                         votingApiRepository.storeTallyResults(args.roundIdHex, results)
                     }
             val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()

@@ -1,11 +1,12 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import cash.z.ecc.android.sdk.Synchronizer
-import cash.z.ecc.android.sdk.model.voting.VotingTorLease
+import cash.z.ecc.android.sdk.model.voting.VotingRoute
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import co.electriccoin.zcash.ui.common.provider.VotingRouteProvider
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -63,7 +64,7 @@ class VotingProofPrecomputeRepositoryTest {
                     CryptoCall.SetWalletId(dbHandle = DB_HANDLE, walletId = "wallet-id", networkId = 0),
                     CryptoCall.PrecomputePirProofs(
                         dbHandle = DB_HANDLE,
-                        torLease = TOR_LEASE,
+                        route = TOR_LEASE,
                         pirServerUrl = "https://pir.example",
                         pirLayout = VotingPirLayout(),
                         notesJson = "[notes]",
@@ -313,7 +314,7 @@ class VotingProofPrecomputeRepositoryTest {
                     CryptoCall.SetWalletId(dbHandle = DB_HANDLE, walletId = "wallet-id", networkId = 0),
                     CryptoCall.PrecomputeSnapshotBundles(
                         dbHandle = DB_HANDLE,
-                        torLease = TOR_LEASE,
+                        route = TOR_LEASE,
                         roundId = "round-id",
                         pirServerUrl = "https://pir.example",
                         pirLayout = VotingPirLayout(),
@@ -615,7 +616,7 @@ private fun fakeSynchronizer(): Synchronizer =
 private const val DB_HANDLE = 42L
 
 // One shared relaxed instance, so recorded calls compare equal by identity; release() is a no-op.
-private val TOR_LEASE: VotingTorLease = mockk(relaxed = true)
+private val TOR_LEASE: VotingRoute = mockk(relaxed = true)
 private const val TIMEOUT_MS = 5_000L
 
 private class FakePirSnapshotResolver(
@@ -675,7 +676,7 @@ private class FakeVotingCryptoClient(
                     calls +=
                         CryptoCall.PrecomputePirProofs(
                             dbHandle = args.valueAt(0),
-                            torLease = args.valueAt(1),
+                            route = args.valueAt(1),
                             pirServerUrl = args.valueAt(2),
                             pirLayout = args.valueAt(3),
                             notesJson = args.valueAt(4),
@@ -688,7 +689,7 @@ private class FakeVotingCryptoClient(
                     calls +=
                         CryptoCall.PrecomputeSnapshotBundles(
                             dbHandle = args.valueAt(0),
-                            torLease = args.valueAt(1),
+                            route = args.valueAt(1),
                             roundId = args.valueAt(2),
                             pirServerUrl = args.valueAt(3),
                             pirLayout = args.valueAt(4),
@@ -767,7 +768,7 @@ private sealed interface CryptoCall {
 
     data class PrecomputePirProofs(
         val dbHandle: Long,
-        val torLease: VotingTorLease?,
+        val route: VotingRoute?,
         val pirServerUrl: String,
         val pirLayout: VotingPirLayout,
         val notesJson: String,
@@ -775,7 +776,7 @@ private sealed interface CryptoCall {
 
     data class PrecomputeSnapshotBundles(
         val dbHandle: Long,
-        val torLease: VotingTorLease?,
+        val route: VotingRoute?,
         val roundId: String,
         val pirServerUrl: String,
         val pirLayout: VotingPirLayout,

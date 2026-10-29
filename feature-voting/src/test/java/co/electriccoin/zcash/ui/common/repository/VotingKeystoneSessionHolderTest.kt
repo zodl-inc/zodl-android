@@ -4,6 +4,7 @@ import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.VotingRoundSession
 import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
+import cash.z.ecc.android.sdk.model.voting.VotingRouteDecision
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
 import cash.z.ecc.android.sdk.model.voting.VotingTorLease
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -57,7 +58,7 @@ class VotingKeystoneSessionHolderTest {
             coVerify(exactly = 1) {
                 env.votingCryptoClient.openRoundSession(
                     dbHandle = DB_HANDLE_B,
-                    torLease = env.torLeaseB,
+                    route = env.torLeaseB,
                     roundId = any(),
                     proposals = any(),
                     hotkeySecret = any(),
@@ -67,7 +68,7 @@ class VotingKeystoneSessionHolderTest {
                     voteTreeNodeUrls = any(),
                     ceremonyStartSeconds = any(),
                     voteEndTimeSeconds = any(),
-                    isCustomServer = any()
+                    decision = any()
                 )
             }
             coVerify(exactly = 0) { env.torLeaseB.release() }
@@ -186,7 +187,7 @@ class VotingKeystoneSessionHolderTest {
             coEvery {
                 env.votingCryptoClient.openRoundSession(
                     dbHandle = DB_HANDLE_B,
-                    torLease = any(),
+                    route = any(),
                     roundId = any(),
                     proposals = any(),
                     hotkeySecret = any(),
@@ -196,7 +197,7 @@ class VotingKeystoneSessionHolderTest {
                     voteTreeNodeUrls = any(),
                     ceremonyStartSeconds = any(),
                     voteEndTimeSeconds = any(),
-                    isCustomServer = any()
+                    decision = any()
                 )
             } returns env.roundSessionB
 
@@ -211,7 +212,7 @@ class VotingKeystoneSessionHolderTest {
                 ceremonyStartSeconds = 0L,
                 voteEndTimeSeconds = 0L,
                 delegationInputs = mockk<VotingDelegationInputs>(),
-                isCustomServer = true
+                decision = VotingRouteDecision.DIRECT
             )
 
             coVerify(exactly = 1) { env.roundSessionA.close() }
@@ -222,7 +223,7 @@ class VotingKeystoneSessionHolderTest {
             coVerify(exactly = 1) {
                 env.votingCryptoClient.openRoundSession(
                     dbHandle = DB_HANDLE_B,
-                    torLease = any(),
+                    route = any(),
                     roundId = any(),
                     proposals = any(),
                     hotkeySecret = any(),
@@ -232,7 +233,7 @@ class VotingKeystoneSessionHolderTest {
                     voteTreeNodeUrls = any(),
                     ceremonyStartSeconds = any(),
                     voteEndTimeSeconds = any(),
-                    isCustomServer = true
+                    decision = VotingRouteDecision.DIRECT
                 )
             }
         }
@@ -263,7 +264,7 @@ class VotingKeystoneSessionHolderTest {
             ceremonyStartSeconds = 0L,
             voteEndTimeSeconds = 0L,
             delegationInputs = mockk<VotingDelegationInputs>(),
-            isCustomServer = false
+            decision = VotingRouteDecision.OHTTP
         )
     }
 
@@ -288,7 +289,7 @@ class VotingKeystoneSessionHolderTest {
         coEvery {
             votingCryptoClient.openRoundSession(
                 dbHandle = DB_HANDLE_A,
-                torLease = any(),
+                route = any(),
                 roundId = any(),
                 proposals = any(),
                 hotkeySecret = any(),
@@ -298,13 +299,13 @@ class VotingKeystoneSessionHolderTest {
                 voteTreeNodeUrls = any(),
                 ceremonyStartSeconds = any(),
                 voteEndTimeSeconds = any(),
-                isCustomServer = any()
+                decision = any()
             )
         } returns roundSessionA
         coEvery {
             votingCryptoClient.openRoundSession(
                 dbHandle = DB_HANDLE_B,
-                torLease = any(),
+                route = any(),
                 roundId = any(),
                 proposals = any(),
                 hotkeySecret = any(),
@@ -314,7 +315,7 @@ class VotingKeystoneSessionHolderTest {
                 voteTreeNodeUrls = any(),
                 ceremonyStartSeconds = any(),
                 voteEndTimeSeconds = any(),
-                isCustomServer = any()
+                decision = any()
             )
         } returns roundSessionB
 

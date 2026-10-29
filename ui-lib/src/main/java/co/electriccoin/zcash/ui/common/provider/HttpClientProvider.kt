@@ -35,6 +35,13 @@ interface HttpClientProvider {
     suspend fun create(): HttpClient
 
     /**
+     * Creates a client for the given routing decision.
+     *
+     * @param tor true for Tor routing, false for direct
+     */
+    suspend fun create(tor: Boolean): HttpClient
+
+    /**
      * Returns a client that always routes over Tor, regardless of the user's Tor preference. Used for
      * requests that must never touch clearnet (e.g. exchange-rate fetching, MOB-1378).
      */
@@ -93,6 +100,9 @@ class HttpClientProviderImpl(
 
     override suspend fun create(): HttpClient =
         if (isTorEnabledStorageProvider.get() == true) createTor() else createDirect()
+
+    override suspend fun create(tor: Boolean): HttpClient =
+        if (tor) createTor() else createDirect()
 
     override suspend fun supportsKtorTimeouts(): Boolean = isTorEnabledStorageProvider.get() != true
 

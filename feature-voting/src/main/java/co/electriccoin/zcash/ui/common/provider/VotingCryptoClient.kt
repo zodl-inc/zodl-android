@@ -179,7 +179,7 @@ interface VotingCryptoClient {
     @Throws(RuntimeException::class)
     suspend fun precomputeDelegationPir(
         dbHandle: Long,
-        torLease: VotingTorLease?,
+        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
         roundId: String,
         bundleIndex: Int,
         pirServerUrl: String,
@@ -194,10 +194,8 @@ interface VotingCryptoClient {
      * round or bundle -- safe to call as a background pre-warming step before any round is
      * selected, whenever wallet notes are available.
      *
-     * [torLease] follows the same contract as [openRoundSession]'s own `torLease` parameter --
-     * obtain it from `Synchronizer.acquireVotingTorLeaseOrNull()`, `null` when Tor is disabled;
-     * this degrades to plain HTTP rather than failing the call, never fail-closed. The caller
-     * owns the lease and releases it after this call returns.
+     * [route] provides the Tor lease and routing decision for this operation.
+     * The caller owns the route and releases it after this call returns.
      *
      * **Shared native DB lock**: holds the shared native database lock for [dbHandle]'s
      * `(dbPath, walletId)` for the full call duration, including all PIR network round-trips,
@@ -210,7 +208,7 @@ interface VotingCryptoClient {
     @Throws(RuntimeException::class)
     suspend fun precomputePirProofs(
         dbHandle: Long,
-        torLease: VotingTorLease?,
+        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
         notesJson: String
@@ -224,14 +222,14 @@ interface VotingCryptoClient {
      * superset of [precomputeDelegationPir] -- prefer this over per-bundle calls whenever the
      * round's full snapshot note set is available.
      *
-     * [torLease] and the shared-database-lock contract are the same as [precomputePirProofs]
+     * [route] and the shared-database-lock contract are the same as [precomputePirProofs]
      * above -- see that doc comment.
      * @throws RuntimeException if the native layer reports a failure.
      */
     @Throws(RuntimeException::class)
     suspend fun precomputeSnapshotBundles(
         dbHandle: Long,
-        torLease: VotingTorLease?,
+        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
         roundId: String,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
@@ -240,8 +238,8 @@ interface VotingCryptoClient {
 
     /**
      * Opens a round-driver session: binds a `RoundExecutor` to [roundId]'s roster and hotkey,
-     * wires its chain-submission and helper transports through [torLease]. Callers must
-     * [VotingRoundSession.close] it when done, and keep [torLease] unreleased until after that
+     * wires its chain-submission and helper transports through [route]. Callers must
+     * [VotingRoundSession.close] it when done, and keep [route] unreleased until after that
      * close -- the session uses the Tor runtime for its whole lifetime.
      *
      * Returns the raw SDK session type directly — the round-driver's plan/ballot-intent/run
@@ -249,16 +247,13 @@ interface VotingCryptoClient {
      * deliberately does not wrap it in another app-side abstraction layer (see this interface's
      * class doc for why the old per-step methods below it were deleted rather than shimmed).
      *
-     * [isCustomServer] is the routing decision the caller already made; when null, the current
-     * value of [isCustomServer] is read instead.
-     *
      * @throws RuntimeException if the native layer reports a failure.
      */
     @Suppress("LongParameterList")
     @Throws(RuntimeException::class)
     suspend fun openRoundSession(
         dbHandle: Long,
-        torLease: VotingTorLease?,
+        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
         roundId: String,
         proposals: List<VotingProposalRosterEntry>,
         hotkeySecret: ByteArray?,
@@ -267,8 +262,7 @@ interface VotingCryptoClient {
         configuredHelperUrls: List<String>,
         voteTreeNodeUrls: List<String>,
         ceremonyStartSeconds: Long?,
-        voteEndTimeSeconds: Long?,
-        isCustomServer: Boolean? = null
+        voteEndTimeSeconds: Long?
     ): VotingRoundSession
 
     /**
@@ -312,8 +306,7 @@ interface VotingCryptoClient {
     @Throws(RuntimeException::class)
     suspend fun syncVoteTree(
         dbHandle: Long,
-        torLease: VotingTorLease?,
-        isCustomServer: Boolean,
+        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
         roundId: String,
         nodeUrl: String
     ): Long
@@ -383,13 +376,6 @@ interface VotingCryptoClient {
         signedPcztBytes: ByteArray,
         actionIndex: Int
     ): ByteArray
-
-    /**
-     * Whether the wallet is configured with a custom voting config (custom vote servers), as opposed
-     * to the default ZODL-bundled config. Used by the SDK's OHTTP routing: custom servers go Direct
-     * (fail-closed when Tor is off), default servers route through the OHTTP gateway when Tor is off.
-     */
-    suspend fun isCustomServer(): Boolean
 }
 
 class VotingCryptoClientImpl(
@@ -409,12 +395,6 @@ class VotingCryptoClientImpl(
     private val mapsMutex = Mutex()
     private val dbPaths = mutableMapOf<Long, String>()
     private val sessions = mutableMapOf<Long, VotingDbSession>()
-
-    /**
-     * Same source of truth as KtorVotingApiProvider.isCustomVoteServer(): custom servers are routed
-     * Direct by the SDK instead of OHTTP.
-     */
-    override suspend fun isCustomServer(): Boolean = !votingChainConfigRepository.get().isOnDefaultConfig
 
     private suspend fun votingSdk(): VotingSdk =
         sdk ?: sdkMutex.withLock {
@@ -591,7 +571,7 @@ class VotingCryptoClientImpl(
 
     override suspend fun precomputeDelegationPir(
         dbHandle: Long,
-        torLease: VotingTorLease?,
+        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
         roundId: String,
         bundleIndex: Int,
         pirServerUrl: String,
@@ -601,8 +581,8 @@ class VotingCryptoClientImpl(
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .precomputeDelegationPir(
-                    torLease = torLease,
-                    isCustomServer = isCustomServer(),
+                    torLease = route.torLease,
+                    isCustomServer = route.decision.isCustomServer,
                     roundId,
                     bundleIndex,
                     pirServerUrl,
@@ -616,7 +596,7 @@ class VotingCryptoClientImpl(
 
     override suspend fun precomputePirProofs(
         dbHandle: Long,
-        torLease: VotingTorLease?,
+        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
         notesJson: String
@@ -624,8 +604,8 @@ class VotingCryptoClientImpl(
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .precomputePirProofs(
-                    torLease = torLease,
-                    isCustomServer = isCustomServer(),
+                    torLease = route.torLease,
+                    isCustomServer = route.decision.isCustomServer,
                     pirServerUrl,
                     pirLayout.pirDepth,
                     pirLayout.tier0Layers,
@@ -637,7 +617,7 @@ class VotingCryptoClientImpl(
 
     override suspend fun precomputeSnapshotBundles(
         dbHandle: Long,
-        torLease: VotingTorLease?,
+        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
         roundId: String,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
@@ -646,8 +626,8 @@ class VotingCryptoClientImpl(
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .precomputeSnapshotBundles(
-                    torLease = torLease,
-                    isCustomServer = isCustomServer(),
+                    torLease = route.torLease,
+                    isCustomServer = route.decision.isCustomServer,
                     roundId,
                     pirServerUrl,
                     pirLayout.pirDepth,
@@ -660,7 +640,7 @@ class VotingCryptoClientImpl(
 
     override suspend fun openRoundSession(
         dbHandle: Long,
-        torLease: VotingTorLease?,
+        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
         roundId: String,
         proposals: List<VotingProposalRosterEntry>,
         hotkeySecret: ByteArray?,
@@ -669,14 +649,13 @@ class VotingCryptoClientImpl(
         configuredHelperUrls: List<String>,
         voteTreeNodeUrls: List<String>,
         ceremonyStartSeconds: Long?,
-        voteEndTimeSeconds: Long?,
-        isCustomServer: Boolean?
+        voteEndTimeSeconds: Long?
     ): VotingRoundSession =
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .openRoundSession(
-                    torLease = torLease,
-                    isCustomServer = isCustomServer ?: this@VotingCryptoClientImpl.isCustomServer(),
+                    torLease = route.torLease,
+                    isCustomServer = route.decision.isCustomServer,
                     roundId,
                     proposals,
                     hotkeySecret,
@@ -717,13 +696,12 @@ class VotingCryptoClientImpl(
 
     override suspend fun syncVoteTree(
         dbHandle: Long,
-        torLease: VotingTorLease?,
-        isCustomServer: Boolean,
+        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
         roundId: String,
         nodeUrl: String
     ): Long =
         withContext(Dispatchers.IO) {
-            session(dbHandle).syncVoteTree(torLease, isCustomServer, roundId, nodeUrl)
+            session(dbHandle).syncVoteTree(route.torLease, route.decision.isCustomServer, roundId, nodeUrl)
         }
 
     override suspend fun scheduledShareSubmitAt(

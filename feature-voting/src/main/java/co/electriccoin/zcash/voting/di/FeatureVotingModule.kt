@@ -89,6 +89,9 @@ val featureVotingModule =
             )
         }
         singleOf(::HttpPirSnapshotResolver) bind PirSnapshotResolver::class
+        single<co.electriccoin.zcash.ui.common.provider.VotingRouteProvider> {
+            co.electriccoin.zcash.ui.common.provider.VotingRouteProviderImpl(get(), get(), get())
+        }
         singleOf(::VotingShareTrackingScheduler)
 
         // Repositories
@@ -100,7 +103,8 @@ val featureVotingModule =
             VotingProofPrecomputeRepositoryImpl(
                 votingCryptoClient = get(),
                 pirSnapshotResolver = get(),
-                synchronizerProvider = get()
+                synchronizerProvider = get(),
+                votingRouteProvider = get()
             )
         }
         singleOf(::VotingKeystoneRepositoryImpl) bind VotingKeystoneRepository::class
@@ -113,7 +117,7 @@ val featureVotingModule =
         // Explicit factory: the defaulted logEndorsementFailure lambda must use its Kotlin
         // default — factoryOf resolves ALL constructor params via Koin and dies on the Function1
         // (mirrors CheckMigrationRecoveryUseCase's registration in featureMigrationModule).
-        factory { RefreshVotingRoundsUseCase(get(), get()) }
+        factory { RefreshVotingRoundsUseCase(get(), get(), get()) }
         factoryOf(::GetAllVotingRoundsUseCase)
         factoryOf(::ResolveVotingRoundSessionUseCase)
         factoryOf(::PrepareVotingRoundUseCase)

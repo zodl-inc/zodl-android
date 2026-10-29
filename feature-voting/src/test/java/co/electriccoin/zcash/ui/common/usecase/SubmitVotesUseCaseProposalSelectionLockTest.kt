@@ -2,8 +2,8 @@ package co.electriccoin.zcash.ui.common.usecase
 
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.VotingRoundSession
-import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.ext.toHex
+import cash.z.ecc.android.sdk.model.voting.VotingRoute
 import cash.z.ecc.android.sdk.fixture.AccountFixture
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
@@ -21,6 +21,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableE
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
+import co.electriccoin.zcash.ui.common.provider.VotingRouteProvider
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSessionHolder
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
@@ -77,6 +78,7 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
             val synchronizerProvider = mockk<SynchronizerProvider>()
             val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
             val getWalletSeedBytes = mockk<GetWalletSeedBytesUseCase>()
+            val votingRouteProvider = mockk<VotingRouteProvider>()
 
             val serviceConfig =
                 VotingServiceConfig(
@@ -86,7 +88,6 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
             val synchronizer = mockk<Synchronizer>()
             every { synchronizer.network } returns ZcashNetwork.Testnet
             coEvery { synchronizer.getTreeState(any()) } returns ByteArray(32)
-            coEvery { synchronizer.acquireVotingTorLease() } throws TorUnavailableException()
 
             val roundSession = mockk<VotingRoundSession>(relaxed = true)
 
@@ -107,7 +108,7 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
             coEvery {
                 votingCryptoClient.openRoundSession(
                     dbHandle = any(),
-                    torLease = any(),
+                    route = any(),
                     roundId = any(),
                     proposals = any(),
                     hotkeySecret = any(),
@@ -138,7 +139,8 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
                     votingShareTrackingScheduler = votingShareTrackingScheduler,
                     votingRecoveryRepository = votingRecoveryRepository,
                     votingKeystoneSessionHolder = votingKeystoneSessionHolder,
-                    votingProofPrecomputeRepository = votingProofPrecomputeRepository
+                    votingProofPrecomputeRepository = votingProofPrecomputeRepository,
+                    votingRouteProvider = votingRouteProvider
                 )
 
             val exception =
@@ -186,6 +188,7 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
             val synchronizerProvider = mockk<SynchronizerProvider>()
             val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
             val getWalletSeedBytes = mockk<GetWalletSeedBytesUseCase>()
+            val votingRouteProvider = mockk<VotingRouteProvider>()
 
             val serviceConfig =
                 VotingServiceConfig(
@@ -195,7 +198,6 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
             val synchronizer = mockk<Synchronizer>()
             every { synchronizer.network } returns ZcashNetwork.Testnet
             coEvery { synchronizer.getTreeState(any()) } returns ByteArray(32)
-            coEvery { synchronizer.acquireVotingTorLease() } throws TorUnavailableException()
 
             val roundSession = mockk<VotingRoundSession>(relaxed = true)
             val callOrder = mutableListOf<String>()
@@ -223,7 +225,7 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
             coEvery {
                 votingCryptoClient.openRoundSession(
                     dbHandle = any(),
-                    torLease = any(),
+                    route = any(),
                     roundId = any(),
                     proposals = any(),
                     hotkeySecret = any(),
@@ -254,7 +256,8 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
                     votingShareTrackingScheduler = votingShareTrackingScheduler,
                     votingRecoveryRepository = votingRecoveryRepository,
                     votingKeystoneSessionHolder = votingKeystoneSessionHolder,
-                    votingProofPrecomputeRepository = votingProofPrecomputeRepository
+                    votingProofPrecomputeRepository = votingProofPrecomputeRepository,
+                    votingRouteProvider = votingRouteProvider
                 )
 
             assertFailsWith<VotingSubmissionRecoverableException> {

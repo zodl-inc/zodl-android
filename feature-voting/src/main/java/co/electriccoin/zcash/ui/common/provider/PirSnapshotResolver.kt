@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.common.provider
 
 import co.electriccoin.lightwallet.client.OhttpHttpClient
-import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -15,16 +14,17 @@ import kotlinx.serialization.json.Json
 
 interface PirSnapshotResolver {
     suspend fun resolve(
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision,
         endpoints: List<String>,
         expectedSnapshotHeight: Long
     ): String
 }
 
 class HttpPirSnapshotResolver(
-    private val httpClientProvider: HttpClientProvider,
-    private val votingChainConfigRepository: VotingChainConfigRepository
+    private val httpClientProvider: HttpClientProvider
 ) : PirSnapshotResolver {
     override suspend fun resolve(
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision,
         endpoints: List<String>,
         expectedSnapshotHeight: Long
     ): String {
@@ -43,8 +43,7 @@ class HttpPirSnapshotResolver(
         // if the gateway cannot reach the host), direct for a user-selected custom config.
         val route =
             when {
-                httpClientProvider.isTorEnabled() -> PirProbeRoute.Direct
-                !votingChainConfigRepository.get().isOnDefaultConfig -> PirProbeRoute.Direct
+                decision.isTor || decision.isCustomServer -> PirProbeRoute.Direct(tor = decision.isTor)
                 else -> PirProbeRoute.Ohttp(httpClientProvider.createOhttp())
             }
 
@@ -80,7 +79,8 @@ class HttpPirSnapshotResolver(
                         is PirProbeRoute.Ohttp -> fetchViaOhttp(route.client, rootUrl)
 
                         // A fresh client per probe: under Tor each gets its own circuit (MOB-1808).
-                        PirProbeRoute.Direct -> httpClientProvider.create().use { it.get(rootUrl).bodyAsText() }
+                        is PirProbeRoute.Direct ->
+                            httpClientProvider.create(route.tor).use { it.get(rootUrl).bodyAsText() }
                     }
                 val rootInfo = pirSnapshotJson.decodeFromString<PirRootInfo>(bodyText)
                 val height =
@@ -135,7 +135,9 @@ class HttpPirSnapshotResolver(
 }
 
 private sealed interface PirProbeRoute {
-    data object Direct : PirProbeRoute
+    data class Direct(
+        val tor: Boolean
+    ) : PirProbeRoute
 
     data class Ohttp(
         val client: OhttpHttpClient

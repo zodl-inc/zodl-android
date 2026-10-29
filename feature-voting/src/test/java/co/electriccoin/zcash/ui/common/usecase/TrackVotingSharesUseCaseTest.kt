@@ -3,12 +3,12 @@ package co.electriccoin.zcash.ui.common.usecase
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.VotingShareTrackingSession
 import cash.z.ecc.android.sdk.exception.TorInitializationErrorException
-import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.fixture.AccountFixture
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
+import cash.z.ecc.android.sdk.model.voting.VotingRoute
 import cash.z.ecc.android.sdk.model.voting.VotingShareTrackingQuiescence
 import cash.z.ecc.android.sdk.model.voting.VotingShareTrackingReport
 import co.electriccoin.zcash.ui.common.model.ZodlAccount
@@ -103,7 +103,6 @@ class TrackVotingSharesUseCaseTest {
             coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
             coEvery { synchronizerProvider.getVotingWalletDbPath() } returns "/tmp/voting-wallet.db"
             every { synchronizer.network } returns ZcashNetwork.Testnet
-            coEvery { synchronizer.acquireVotingTorLease() } throws TorUnavailableException()
             coEvery { votingCryptoClient.openVotingDb(any()) } returns 1L
             coEvery { votingCryptoClient.openShareTrackingSession(any(), roundId) } returns session
             coEvery {
@@ -164,7 +163,6 @@ class TrackVotingSharesUseCaseTest {
             coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
             coEvery { synchronizerProvider.getVotingWalletDbPath() } returns "/tmp/voting-wallet.db"
             every { synchronizer.network } returns ZcashNetwork.Testnet
-            coEvery { synchronizer.acquireVotingTorLease() } throws torInitializationError
             coEvery { votingCryptoClient.openVotingDb(any()) } returns 1L
 
             val votingChainConfigRepository = mockk<VotingChainConfigRepository>()

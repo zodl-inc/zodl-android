@@ -9,7 +9,6 @@ import cash.z.ecc.android.sdk.model.voting.VotingRoundDriveProgressListener
 import cash.z.ecc.android.sdk.model.voting.VotingTorLease
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
-import co.electriccoin.zcash.ui.common.provider.acquireVotingTorLeaseOrNull
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -57,8 +56,7 @@ class VotingKeystoneSessionHolder(
     // one that issued it.
     private var torLease: VotingTorLease? = null
 
-    /** isCustomServer at open time, so a mid-round custom/default switch reopens with the right OHTTP route. */
-    private var openedWithIsCustomServer: Boolean? = null
+    private var openedDecision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision? = null
 
     /**
      * Ensures a delegation-enabled [VotingRoundSession.run] pass has completed for [roundId] on
@@ -86,15 +84,15 @@ class VotingKeystoneSessionHolder(
         ceremonyStartSeconds: Long,
         voteEndTimeSeconds: Long,
         delegationInputs: VotingDelegationInputs,
-        isCustomServer: Boolean
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
     ) = mutex.withLock {
-        val lease = synchronizerProvider.getSynchronizer().acquireVotingTorLeaseOrNull()
+        val lease = if (decision.isTor) synchronizerProvider.getSynchronizer().acquireVotingTorLease() else null
         val reusable =
             openRoundId == roundId &&
                 openAccountUuidString == accountUuidString &&
                 roundSession != null &&
                 (torLease == null) == (lease == null) &&
-                openedWithIsCustomServer == isCustomServer
+                openedDecision == decision
         if (reusable) {
             lease?.release()
             return@withLock
@@ -125,7 +123,9 @@ class VotingKeystoneSessionHolder(
             session =
                 votingCryptoClient.openRoundSession(
                     dbHandle = handle,
-                    torLease = lease,
+                    // The holder keeps owning the lease (released in closeLocked/closeResources);
+                    // openRoundSession only reads it.
+                    route = co.electriccoin.zcash.ui.common.model.voting.VotingRoute(decision, lease),
                     roundId = roundId,
                     proposals = proposals,
                     hotkeySecret = hotkeySecret,
@@ -134,8 +134,7 @@ class VotingKeystoneSessionHolder(
                     configuredHelperUrls = chainEndpoints,
                     voteTreeNodeUrls = chainEndpoints,
                     ceremonyStartSeconds = ceremonyStartSeconds,
-                    voteEndTimeSeconds = voteEndTimeSeconds,
-                    isCustomServer = isCustomServer
+                    voteEndTimeSeconds = voteEndTimeSeconds
                 )
             // A delegation-enabled run() call caches the DelegationPipeline this session's
             // getKeystoneSigningRequests needs -- see VotingRoundSession.run's doc comment. This
@@ -157,7 +156,7 @@ class VotingKeystoneSessionHolder(
         openRoundId = roundId
         openAccountUuidString = accountUuidString
         torLease = lease
-        openedWithIsCustomServer = isCustomServer
+        openedDecision = decision
     }
 
     suspend fun getKeystoneSigningRequests(
@@ -224,7 +223,7 @@ class VotingKeystoneSessionHolder(
         openRoundId = null
         openAccountUuidString = null
         torLease = null
-        openedWithIsCustomServer = null
+        openedDecision = null
         closeResources(session, handle, lease)
     }
 

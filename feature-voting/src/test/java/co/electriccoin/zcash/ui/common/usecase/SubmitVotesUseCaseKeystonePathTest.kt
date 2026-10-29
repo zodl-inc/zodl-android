@@ -7,6 +7,7 @@ import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
+import cash.z.ecc.android.sdk.model.voting.VotingRoute
 import cash.z.ecc.android.sdk.model.voting.VotingRoundQuiescence
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
 import cash.z.ecc.android.sdk.model.voting.VotingRoundStepFailure
@@ -21,6 +22,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableE
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
+import co.electriccoin.zcash.ui.common.provider.VotingRouteProvider
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSessionHolder
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
@@ -134,6 +136,7 @@ class SubmitVotesUseCaseKeystonePathTest {
         val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
         val getWalletSeedBytes = mockk<GetWalletSeedBytesUseCase>()
         val synchronizer = mockk<Synchronizer>()
+        val votingRouteProvider = mockk<VotingRouteProvider>()
 
         private val useCase =
             SubmitVotesUseCase(
@@ -147,7 +150,8 @@ class SubmitVotesUseCaseKeystonePathTest {
                 votingShareTrackingScheduler = votingShareTrackingScheduler,
                 votingRecoveryRepository = votingRecoveryRepository,
                 votingKeystoneSessionHolder = votingKeystoneSessionHolder,
-                votingProofPrecomputeRepository = votingProofPrecomputeRepository
+                votingProofPrecomputeRepository = votingProofPrecomputeRepository,
+                votingRouteProvider = votingRouteProvider
             )
 
         init {

@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import cash.z.ecc.android.sdk.model.voting.VotingRouteDecision
 import co.electriccoin.lightwallet.client.OhttpHttpClient
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
@@ -31,7 +32,7 @@ class HttpPirSnapshotResolverTest {
             val ohttp = mutableListOf<String>()
             val resolver = resolver(torEnabled = false, isCustom = false, direct = direct, ohttp = ohttp)
 
-            assertEquals(PIR_URL, resolver.resolve(listOf(PIR_URL), HEIGHT))
+            assertEquals(PIR_URL, resolver.resolve(listOf(PIR_URL), HEIGHT, VotingRouteDecision(isTor = false, isCustomServer = false)))
             assertEquals(listOf("$PIR_URL/root"), ohttp)
             assertTrue(direct.isEmpty(), "predefined PIR probe must not go direct with Tor off")
         }
@@ -44,7 +45,7 @@ class HttpPirSnapshotResolverTest {
             val resolver = resolver(torEnabled = false, isCustom = false, direct = direct, ohttpClient = ohttpClient)
 
             assertFailsWith<PirSnapshotResolverException.NoMatchingEndpoint> {
-                resolver.resolve(listOf(PIR_URL), HEIGHT)
+                resolver.resolve(listOf(PIR_URL), HEIGHT, VotingRouteDecision(isTor = false, isCustomServer = false))
             }
             assertTrue(direct.isEmpty(), "an unsupported predefined PIR host must not fall back to direct")
             coVerify(exactly = 0) { ohttpClient.execute(any()) }
@@ -57,7 +58,7 @@ class HttpPirSnapshotResolverTest {
             val ohttp = mutableListOf<String>()
             val resolver = resolver(torEnabled = false, isCustom = true, direct = direct, ohttp = ohttp)
 
-            assertEquals(PIR_URL, resolver.resolve(listOf(PIR_URL), HEIGHT))
+            assertEquals(PIR_URL, resolver.resolve(listOf(PIR_URL), HEIGHT, VotingRouteDecision(isTor = false, isCustomServer = true)))
             assertEquals(listOf("/root"), direct)
             assertTrue(ohttp.isEmpty(), "a custom PIR server must never go through the gateway")
         }
@@ -69,7 +70,7 @@ class HttpPirSnapshotResolverTest {
             val ohttp = mutableListOf<String>()
             val resolver = resolver(torEnabled = true, isCustom = false, direct = direct, ohttp = ohttp)
 
-            assertEquals(PIR_URL, resolver.resolve(listOf(PIR_URL), HEIGHT))
+            assertEquals(PIR_URL, resolver.resolve(listOf(PIR_URL), HEIGHT, VotingRouteDecision(isTor = true, isCustomServer = false)))
             assertEquals(listOf("/root"), direct)
             assertTrue(ohttp.isEmpty(), "with Tor on the PIR probe goes over Tor, not OHTTP")
         }
