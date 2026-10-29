@@ -42,11 +42,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -442,12 +442,15 @@ class WalletRepositoryImplTest {
     @Test
     fun fastestEndpointsReTriggersWhenModeChanges() =
         runTest {
-            val testedEndpoints = mutableListOf<List<LightWalletEndpoint>>()
+            // The benchmark runs on the repository's own sharing scope (Dispatchers.IO), so the
+            // test waits on the flow itself rather than on the test scheduler.
+            val testedEndpoints = CopyOnWriteArrayList<List<LightWalletEndpoint>>()
             val synchronizer =
                 mockk<Synchronizer> {
                     coEvery { getFastestServers(any()) } answers {
-                        testedEndpoints += firstArg<List<LightWalletEndpoint>>()
-                        flowOf(FastestServersResult.Done(emptyList()))
+                        val endpoints = firstArg<List<LightWalletEndpoint>>()
+                        testedEndpoints += endpoints
+                        flowOf(FastestServersResult.Done(endpoints))
                     }
                 }
 
@@ -471,21 +474,13 @@ class WalletRepositoryImplTest {
                 )
             repository.useTestScope(testScheduler)
 
-            // Keep the flow active by launching a continuous collector
-            backgroundScope.launch {
-                repository.fastestEndpoints.collect {}
-            }
+            // Private mode: only the gateway is measured.
+            repository.fastestEndpoints.first { !it.isLoading }
+            assertEquals(listOf(listOf(GATEWAY)), testedEndpoints.toList())
 
-            // Wait for initial collection in Private mode
-            advanceUntilIdle()
-            assertEquals(1, testedEndpoints.size)
-            assertEquals(listOf(GATEWAY), testedEndpoints[0])
-
-            // Switch to Public mode
+            // Saving Public re-runs the benchmark over the public servers only.
             isPublicProvider.store(true)
-            advanceUntilIdle()
-
-            // Benchmark re-triggered with public servers
+            repository.fastestEndpoints.first { !it.isLoading && testedEndpoints.size >= 2 }
             assertEquals(2, testedEndpoints.size)
             assertEquals(listOf(ZEC_ROCKS), testedEndpoints[1])
         }

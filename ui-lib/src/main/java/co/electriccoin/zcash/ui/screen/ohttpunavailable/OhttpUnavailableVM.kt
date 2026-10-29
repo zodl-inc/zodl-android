@@ -69,8 +69,10 @@ class OhttpUnavailableVM(
 
     /**
      * Marked as outage-induced, so the wallet returns to Private by itself once the relay answers.
-     * Picks the fastest public server when a finished fastest-servers result is available (ZIP #10
-     * SHOULD, lines 1883-1887).
+     * Uses the fastest public server only from a finished result that already exists, never a new
+     * benchmark (ZIP #10 rule 3). The sheet shows in Private mode, where the fastest-servers
+     * benchmark measures only the gateway, so this is normally null and the default public server
+     * is used; the automatic switch ranks the public servers later, once Public is saved.
      */
     private fun onSwitchToPublic() =
         viewModelScope.launch {

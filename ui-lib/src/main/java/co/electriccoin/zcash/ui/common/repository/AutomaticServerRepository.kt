@@ -493,7 +493,7 @@ class AutomaticServerRepositoryImpl(
     private suspend fun evaluatePublicServerSwitch(trigger: SwitchTrigger): LightWalletEndpoint? {
         if (isAppInTransactionState) return null
         if (isOhttpFallbackActiveProvider.get() && trigger.probesGatewayRecovery) {
-            evaluateReturnToPrivate(trigger)?.let { return it }
+            evaluateReturnToPrivate()?.let { return it }
         }
         if (trigger != SwitchTrigger.FOREGROUND && trigger != SwitchTrigger.CONNECTIVITY) return null
         val current = persistableWalletProvider.getPersistableWallet()?.endpoint ?: return null
@@ -513,23 +513,19 @@ class AutomaticServerRepositoryImpl(
     }
 
     /**
-     * Returns the first healthy OHTTP gateway, or null. When [SwitchTrigger.probesGatewayRecovery] is true
-     * (RECOVERY, FOREGROUND, CONNECTIVITY), this uses lightweight [probeGateway] per gateway (one GetLightdInfo,
-     * 20 s cap) and returns the first that answers. There is one gateway per network, so ranking buys nothing.
-     * RECOVERY ticks run every 30 s (foreground) or 5 min (background): the full benchmark takes 90 s + 20 s
-     * and would be cancelled by [switchLane]'s mapLatest before completing.
+     * Returns the first healthy OHTTP gateway, or null. Called for the triggers with
+     * [SwitchTrigger.probesGatewayRecovery] (RECOVERY, FOREGROUND, CONNECTIVITY): one lightweight [probeGateway]
+     * per gateway (one GetLightdInfo, 20 s cap), the first that answers wins. There is one gateway per network, so
+     * ranking buys nothing. RECOVERY ticks run every 30 s (foreground) or 5 min (background): the full benchmark
+     * takes 90 s + 20 s and would be cancelled by [switchLane]'s mapLatest before completing.
      */
     @Suppress("ReturnCount")
-    private suspend fun evaluateReturnToPrivate(trigger: SwitchTrigger): LightWalletEndpoint? {
+    private suspend fun evaluateReturnToPrivate(): LightWalletEndpoint? {
         val gateways = lightWalletEndpointProvider.getEndpoints().filter(lightWalletEndpointProvider::isOhttpGateway)
         if (gateways.isEmpty()) return null
         val synchronizer = synchronizerProvider.getSynchronizerOrNull() ?: return null
         return try {
-            if (trigger.probesGatewayRecovery) {
-                gateways.firstOrNull { probeGateway(synchronizer, it) }
-            } else {
-                rankValidated(synchronizer, gateways).firstOrNull()
-            }
+            gateways.firstOrNull { probeGateway(synchronizer, it) }
         } finally {
             evaluationInterval.markAttempted()
         }
@@ -659,8 +655,9 @@ private val PUBLIC_FETCH_THRESHOLD = 5.seconds
 /**
  * How often, while on a clearnet fallback and in the foreground, to check whether the OHTTP gateway is back.
  * The probe checks the gateway only via lightweight [probeGateway] (one GetLightdInfo per gateway, 20 s cap),
- * never re-benchmarking clearnet servers. CONNECTIVITY and FOREGROUND triggers in Public mode still re-rank
- * the public tier.
+ * never re-benchmarking clearnet servers. When the gateway does not answer, a CONNECTIVITY or FOREGROUND
+ * trigger goes on to re-rank the public tier, but in the foreground the next RECOVERY tick usually cancels that
+ * re-rank ([switchLane] is mapLatest), so the wallet mostly stays on its current fallback server.
  */
 private val FALLBACK_RECOVERY_INTERVAL = 30.seconds
 
