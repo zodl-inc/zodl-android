@@ -76,10 +76,14 @@ import java.util.UUID
 import kotlin.math.max
 
 /**
- * Snapshot of routing state (Tor mode and custom server flag) taken once per round operation.
+ * Snapshot of routing state (Tor mode and custom server flag) for a round operation.
  * ZIP #10 lines 2059-2063: the route decision is made per server from the server's exact host
  * name and the current Tor mode when a session is opened, and PIR calls follow the same decision
  * as vote-server calls. A Client MUST NOT mix routes inside one session.
+ *
+ * Current scope: covers the share posts of [delegateShares] (the postShare* calls and their
+ * config fetches). Other round operations (PIR, vote-server GETs, tally result fetches) still
+ * read routing state per request.
  */
 private data class RouteSnapshot(
     val torEnabled: Boolean,

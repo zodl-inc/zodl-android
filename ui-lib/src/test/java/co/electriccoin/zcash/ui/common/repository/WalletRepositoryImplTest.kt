@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.repository
 import android.app.Application
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.WalletInitMode
+import cash.z.ecc.android.sdk.model.FastestServersResult
 import cash.z.ecc.android.sdk.model.PersistableWallet
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
@@ -370,6 +371,121 @@ class WalletRepositoryImplTest {
         }
 
     /**
+     * ZIP #10 rule 3: in Private mode (the default), the fastest-server benchmark measures only
+     * OHTTP gateways. Clearnet servers are not contacted before the user chooses Public mode.
+     */
+    @Test
+    fun fastestEndpointsBenchmarksOnlyGatewaysInPrivateMode() =
+        runTest {
+            val testedEndpoints = mutableListOf<List<LightWalletEndpoint>>()
+            val synchronizer =
+                mockk<Synchronizer> {
+                    every { getFastestServers(any()) } answers {
+                        testedEndpoints += firstArg()
+                        flowOf(FastestServersResult.Done(listOf(GATEWAY)))
+                    }
+                }
+
+            val (repository, _) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(GATEWAY),
+                    isPublic = false,
+                    synchronizer = synchronizer,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.fastestEndpoints.first { !it.isLoading }
+            advanceUntilIdle()
+
+            assertEquals(1, testedEndpoints.size)
+            assertEquals(listOf(GATEWAY), testedEndpoints[0])
+        }
+
+    /**
+     * ZIP #10 rule 3: in Public mode, the fastest-server benchmark measures only clearnet servers.
+     * OHTTP gateways are not offered in Manual server lists when Public is active.
+     */
+    @Test
+    fun fastestEndpointsBenchmarksOnlyPublicServersInPublicMode() =
+        runTest {
+            val testedEndpoints = mutableListOf<List<LightWalletEndpoint>>()
+            val synchronizer =
+                mockk<Synchronizer> {
+                    every { getFastestServers(any()) } answers {
+                        testedEndpoints += firstArg()
+                        flowOf(FastestServersResult.Done(listOf(ZEC_ROCKS)))
+                    }
+                }
+
+            val (repository, _) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(ZEC_ROCKS),
+                    isPublic = true,
+                    synchronizer = synchronizer,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.fastestEndpoints.first { !it.isLoading }
+            advanceUntilIdle()
+
+            assertEquals(1, testedEndpoints.size)
+            assertEquals(listOf(ZEC_ROCKS), testedEndpoints[0])
+        }
+
+    /**
+     * ZIP #10 rule 3: when the user saves Public mode, the mode flag changes and the
+     * fastest-server benchmark re-triggers with the new endpoint set (now public servers only).
+     */
+    @Test
+    fun fastestEndpointsReTriggersWhenModeChanges() =
+        runTest {
+            val testedEndpoints = mutableListOf<List<LightWalletEndpoint>>()
+            val synchronizer =
+                mockk<Synchronizer> {
+                    every { getFastestServers(any()) } answers {
+                        testedEndpoints += firstArg()
+                        flowOf(FastestServersResult.Done(emptyList()))
+                    }
+                }
+
+            val isPublicProvider =
+                mockk<IsPublicConnectionProvider>(relaxed = true) {
+                    val flow = MutableStateFlow(false)
+                    every { observe() } returns flow
+                    coEvery { get() } answers { flow.value }
+                    coEvery { store(any()) } coAnswers {
+                        flow.value = firstArg()
+                    }
+                }
+
+            val (repository, _) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(GATEWAY),
+                    isPublic = false,
+                    synchronizer = synchronizer,
+                    isPublicProviderOverride = isPublicProvider,
+                )
+            repository.useTestScope(testScheduler)
+
+            // Initial collection in Private mode
+            repository.fastestEndpoints.first { !it.isLoading }
+            advanceUntilIdle()
+            assertEquals(1, testedEndpoints.size)
+            assertEquals(listOf(GATEWAY), testedEndpoints[0])
+
+            // Switch to Public mode
+            isPublicProvider.store(true)
+            advanceUntilIdle()
+
+            // Benchmark re-triggered with public servers
+            assertEquals(2, testedEndpoints.size)
+            assertEquals(listOf(ZEC_ROCKS), testedEndpoints[1])
+        }
+
+    /**
      * Replaces the repository's production scope with one driven by the test's scheduler, and
      * registers both for cancellation in [tearDown] so no test leaves a live scope behind.
      */
@@ -384,6 +500,8 @@ class WalletRepositoryImplTest {
         isAutomaticPreference: Boolean? = null,
         isPublic: Boolean = false,
         decommissionedHosts: Set<String> = emptySet(),
+        synchronizer: Synchronizer? = null,
+        isPublicProviderOverride: IsPublicConnectionProvider? = null,
     ): Pair<WalletRepositoryImpl, TestHarness> {
         val events = mutableListOf<String>()
 
@@ -414,14 +532,18 @@ class WalletRepositoryImplTest {
             }
 
         val isPublicConnectionProvider =
-            mockk<IsPublicConnectionProvider>(relaxed = true).also { coEvery { it.get() } returns isPublic }
+            isPublicProviderOverride ?: mockk<IsPublicConnectionProvider>(relaxed = true).also {
+                val flow = MutableStateFlow(isPublic)
+                every { it.observe() } returns flow
+                coEvery { it.get() } returns isPublic
+            }
 
         val persistableWalletProvider =
             persistableWalletProviderOverride ?: FakePersistableWalletProvider(initialWallet, events)
 
         val synchronizerProvider =
             mockk<SynchronizerProvider>(relaxed = true) {
-                every { synchronizer } returns MutableStateFlow<Synchronizer?>(null)
+                every { synchronizer } returns MutableStateFlow(synchronizer)
             }
 
         val fakePrefs = RecordingPreferenceProvider(events)
