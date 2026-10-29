@@ -290,12 +290,15 @@ class WalletRepositoryImpl(
      */
     private suspend fun migrateEndpointIfNeeded(wallet: PersistableWallet?) {
         if (wallet == null) return
-        // Under the lock the server-selection saves and the automatic lane take, so a save made while
-        // the app starts cannot interleave with these reads and writes. Taken inside walletMutation;
-        // nothing that holds serverSelectionMutex takes walletMutation.
         serverSelectionMutex.withLock { migrateEndpointLocked(wallet) }
     }
 
+    /**
+     * [migrateEndpointIfNeeded] under [ServerSelectionMutex], the lock the server-selection saves and the
+     * automatic lane take, so a save made while the app starts cannot interleave with these reads and
+     * writes. It is taken inside [walletMutation]; nothing that holds the server-selection lock takes
+     * [walletMutation].
+     */
     private suspend fun migrateEndpointLocked(wallet: PersistableWallet) {
         val endpoint = wallet.endpoint
         if (lightWalletEndpointProvider.isOhttpGateway(endpoint) && isServerSelectionAutomaticProvider.get() == false) {

@@ -74,12 +74,15 @@ class OhttpUnavailableVM(
 
     private fun onTorToggle(enabled: Boolean) = viewModelScope.launch { setTorEnabled(enabled) }
 
-    /** Marked as outage-induced, so the wallet returns to Private by itself once the relay answers. */
+    /**
+     * Marked as outage-induced, so the wallet returns to Private by itself once the relay answers. The
+     * transaction check runs again under the server-selection lock, since a send can start while the
+     * sheet is open; a refused switch leaves the sheet open.
+     */
     private fun onSwitchToPublic() =
         viewModelScope.launch {
             val inTransaction = { automaticServerRepository.isTransactionInProgress.first() }
             if (inTransaction()) return@launch
-            // Checked again under the server-selection lock: a send can start while the sheet is open.
             if (persistServerSelection.persistPublic(afterPrivateUnavailable = true, abortIf = inTransaction)) {
                 navigationRouter.back()
             }
