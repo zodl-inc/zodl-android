@@ -36,9 +36,16 @@ class PersistServerSelectionUseCase(
      * [afterPrivateUnavailable] marks a switch made from the "private connection unavailable" prompt: the
      * wallet then returns to Private by itself once the gateway answers again. A deliberate Public never does.
      * [fastest] is the public server a speed test just ranked first; without a usable one the default is used.
+     * [abortIf] is checked under the server-selection lock, like the automatic lane checks the transaction
+     * state before it switches; when it holds, nothing is stored. Returns whether the switch was made.
      */
-    suspend fun persistPublic(afterPrivateUnavailable: Boolean = false, fastest: LightWalletEndpoint? = null) =
+    suspend fun persistPublic(
+        afterPrivateUnavailable: Boolean = false,
+        fastest: LightWalletEndpoint? = null,
+        abortIf: (suspend () -> Boolean)? = null,
+    ): Boolean =
         serverSelectionMutex.withLock {
+            if (abortIf?.invoke() == true) return@withLock false
             isOhttpFallbackActiveProvider.store(afterPrivateUnavailable)
             isPublicConnectionProvider.store(true)
             val publicServers = lightWalletEndpointProvider.getFallbackEndpoints()
@@ -47,6 +54,7 @@ class PersistServerSelectionUseCase(
                     ?: publicServers.firstOrNull()
                     ?: lightWalletEndpointProvider.getDefaultEndpoint()
             persistFlagAndEndpoint(isAutomatic = true, endpoint = endpoint)
+            true
         }
 
     /**

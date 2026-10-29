@@ -20,6 +20,7 @@ import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvid
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProvider
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.WalletBackupFlagStorageProvider
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProvider
@@ -460,6 +461,7 @@ class WalletRepositoryImplTest {
                 sdkEncryptedPreferenceRecoveryProvider = sdkEncryptedPreferenceRecoveryProvider,
                 isServerSelectionAutomaticProvider = isServerSelectionAutomaticProvider,
                 isPublicConnectionProvider = isPublicConnectionProvider,
+                serverSelectionMutex = ServerSelectionMutex(),
             )
 
         fakePrefs.seed(StandardPreferenceKeys.ONBOARDING_STATE.key, onboardingState.toNumber().toString())

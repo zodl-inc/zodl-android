@@ -27,6 +27,7 @@ import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvid
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProvider
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.WalletBackupFlagStorageProvider
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProvider
@@ -97,6 +98,7 @@ class WalletRepositoryImpl(
     private val sdkEncryptedPreferenceRecoveryProvider: SdkEncryptedPreferenceRecoveryProvider,
     private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
     private val isPublicConnectionProvider: IsPublicConnectionProvider,
+    private val serverSelectionMutex: ServerSelectionMutex,
 ) : WalletRepository {
     /**
      * Scope the repository's `stateIn`-shared flows run on. Captured by those flows at
@@ -288,6 +290,13 @@ class WalletRepositoryImpl(
      */
     private suspend fun migrateEndpointIfNeeded(wallet: PersistableWallet?) {
         if (wallet == null) return
+        // Under the lock the server-selection saves and the automatic lane take, so a save made while
+        // the app starts cannot interleave with these reads and writes. Taken inside walletMutation;
+        // nothing that holds serverSelectionMutex takes walletMutation.
+        serverSelectionMutex.withLock { migrateEndpointLocked(wallet) }
+    }
+
+    private suspend fun migrateEndpointLocked(wallet: PersistableWallet) {
         val endpoint = wallet.endpoint
         if (lightWalletEndpointProvider.isOhttpGateway(endpoint) && isServerSelectionAutomaticProvider.get() == false) {
             isServerSelectionAutomaticProvider.store(true)

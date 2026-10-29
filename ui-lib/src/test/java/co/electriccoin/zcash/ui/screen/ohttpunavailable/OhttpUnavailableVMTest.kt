@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
 import co.electriccoin.zcash.ui.common.usecase.IsTorEnabledUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.SetTorEnabledUseCase
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -91,10 +92,22 @@ class OhttpUnavailableVMTest {
     @Test
     fun switchToPublicIsMarkedAsOutageInducedAndCloses() =
         runTest(dispatcher) {
+            coEvery { persist.persistPublic(any(), any(), any()) } returns true
             stateOf(createVm()).onSwitchToPublic()
             advanceUntilIdle()
-            coVerify(exactly = 1) { persist.persistPublic(afterPrivateUnavailable = true) }
+            coVerify(exactly = 1) {
+                persist.persistPublic(afterPrivateUnavailable = true, fastest = null, abortIf = any())
+            }
             verify(exactly = 1) { navigationRouter.back() }
+        }
+
+    @Test
+    fun aSwitchRefusedUnderTheLockKeepsTheSheetOpen() =
+        runTest(dispatcher) {
+            coEvery { persist.persistPublic(any(), any(), any()) } returns false
+            stateOf(createVm()).onSwitchToPublic()
+            advanceUntilIdle()
+            verify(exactly = 0) { navigationRouter.back() }
         }
 
     @Test

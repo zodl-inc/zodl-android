@@ -77,8 +77,11 @@ class OhttpUnavailableVM(
     /** Marked as outage-induced, so the wallet returns to Private by itself once the relay answers. */
     private fun onSwitchToPublic() =
         viewModelScope.launch {
-            if (automaticServerRepository.isTransactionInProgress.first()) return@launch
-            persistServerSelection.persistPublic(afterPrivateUnavailable = true)
-            navigationRouter.back()
+            val inTransaction = { automaticServerRepository.isTransactionInProgress.first() }
+            if (inTransaction()) return@launch
+            // Checked again under the server-selection lock: a send can start while the sheet is open.
+            if (persistServerSelection.persistPublic(afterPrivateUnavailable = true, abortIf = inTransaction)) {
+                navigationRouter.back()
+            }
         }
 }
