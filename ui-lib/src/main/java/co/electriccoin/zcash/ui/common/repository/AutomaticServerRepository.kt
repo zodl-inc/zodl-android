@@ -270,7 +270,9 @@ class AutomaticServerRepositoryImpl(
      *
      * The gateway health ticks run only while the app is in the foreground: they stop in the background
      * and start over (a full [GATEWAY_HEALTH_INTERVAL] after the foreground edge, which itself triggers an
-     * evaluation) when the app returns.
+     * evaluation) when the app returns. The fallback recovery ticks run every [FALLBACK_RECOVERY_INTERVAL]
+     * in the foreground and every [FALLBACK_RECOVERY_BACKGROUND_INTERVAL] in the background, so a wallet
+     * syncing in the background still returns to OHTTP.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     internal fun healthTicks(): Flow<SwitchTrigger> =
@@ -286,7 +288,19 @@ class AutomaticServerRepositoryImpl(
                         .distinctUntilChanged()
                         .flatMapLatest { (fallbackActive, isPublic) ->
                             if (fallbackActive) {
-                                ticks(FALLBACK_RECOVERY_INTERVAL, SwitchTrigger.RECOVERY)
+                                applicationStateProvider
+                                    .isInForeground
+                                    .distinctUntilChanged()
+                                    .flatMapLatest { foreground ->
+                                        ticks(
+                                            if (foreground) {
+                                                FALLBACK_RECOVERY_INTERVAL
+                                            } else {
+                                                FALLBACK_RECOVERY_BACKGROUND_INTERVAL
+                                            },
+                                            SwitchTrigger.RECOVERY
+                                        )
+                                    }
                             } else if (isPublic) {
                                 emptyFlow()
                             } else {
@@ -632,11 +646,14 @@ private val VALIDATION_TIMEOUT = 20.seconds
 private val PUBLIC_FETCH_THRESHOLD = 5.seconds
 
 /**
- * How often, while on a clearnet fallback, to check whether the OHTTP gateway is back (ZIP #10
- * reference: about every 30 s). The probe is foreground-gated and checks the Gateway only, never
- * re-benchmarking clearnet servers.
+ * How often, while on a clearnet fallback and in the foreground, to check whether the OHTTP gateway is back
+ * (ZIP #10 reference: about every 30 s). The probe checks the Gateway only, never re-benchmarking clearnet
+ * servers.
  */
 private val FALLBACK_RECOVERY_INTERVAL = 30.seconds
+
+/** The same check while the app is in the background, sparing the battery. */
+private val FALLBACK_RECOVERY_BACKGROUND_INTERVAL = 5.minutes
 
 /** Cap on validating one tier (the SDK benchmark itself times out per server well before this). */
 private val TIER_BENCHMARK_TIMEOUT = 90.seconds

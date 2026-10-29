@@ -935,7 +935,7 @@ class AutomaticServerRepositoryTest {
         }
 
     @Test
-    fun fallbackRecoveryTicksKeepTheirOwnIntervalAndAreNotGatedByTheForeground() =
+    fun fallbackRecoveryTicksRunInTheBackgroundEveryFiveMinutes() =
         runTest {
             fallbackActiveFlow.value = true
             foreground.value = false
@@ -946,6 +946,20 @@ class AutomaticServerRepositoryTest {
             advanceTimeBy(5.minutes + 1.seconds)
 
             assertEquals(listOf(SwitchTrigger.RECOVERY), ticks)
+        }
+
+    @Test
+    fun fallbackRecoveryTicksRunEveryThirtySecondsInTheForeground() =
+        runTest {
+            fallbackActiveFlow.value = true
+            foreground.value = true
+            val ticks = mutableListOf<SwitchTrigger>()
+            repository.healthTicks().onEach { ticks += it }.launchIn(backgroundScope)
+            runCurrent()
+
+            advanceTimeBy(60.seconds + 1.seconds)
+
+            assertEquals(listOf(SwitchTrigger.RECOVERY, SwitchTrigger.RECOVERY), ticks)
         }
 
     @Test
