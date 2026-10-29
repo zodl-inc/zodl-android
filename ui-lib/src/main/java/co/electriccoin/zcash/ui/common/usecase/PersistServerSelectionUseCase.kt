@@ -83,8 +83,10 @@ class PersistServerSelectionUseCase(
         when (val result = validateServerEndpoint(endpoint)) {
             ServerValidation.Valid -> {
                 serverSelectionMutex.withLock {
-                    isPublicConnectionProvider.store(false)
-                    persistFlagAndEndpoint(isAutomatic = false, endpoint = endpoint)
+                    withContext(NonCancellable) {
+                        isPublicConnectionProvider.store(false)
+                        persistFlagAndEndpoint(isAutomatic = false, endpoint = endpoint)
+                    }
                 }
             }
 

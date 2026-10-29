@@ -194,6 +194,27 @@ class PersistServerSelectionUseCaseTest {
             coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(endpoint) }
         }
 
+    /** Leaving the Server screen while a validated manual pin is being written must not strand the old endpoint. */
+    @Test
+    fun aCancelledManualSaveStillWritesTheEndpoint() =
+        runTest {
+            coEvery { synchronizer.validateServerEndpoint(any(), endpoint) } returns ServerValidation.Valid
+            val flagWriteRunning = CompletableDeferred<Unit>()
+            val flagWriteReleased = CompletableDeferred<Unit>()
+            coEvery { isPublicProvider.store(false) } coAnswers {
+                flagWriteRunning.complete(Unit)
+                flagWriteReleased.await()
+            }
+
+            val save = launch { useCase.persistManual(endpoint) }
+            flagWriteRunning.await()
+            save.cancel()
+            flagWriteReleased.complete(Unit)
+            runCurrent()
+
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(endpoint) }
+        }
+
     @Test
     fun manualPinOfTheGatewayIsPrivate() =
         runTest {
