@@ -470,8 +470,12 @@ class WalletRepositoryImplTest {
                 )
             repository.useTestScope(testScheduler)
 
-            // Initial collection in Private mode
-            repository.fastestEndpoints.first { !it.isLoading }
+            // Keep the flow active by launching a continuous collector
+            backgroundScope.launch {
+                repository.fastestEndpoints.collect {}
+            }
+
+            // Wait for initial collection in Private mode
             advanceUntilIdle()
             assertEquals(1, testedEndpoints.size)
             assertEquals(listOf(GATEWAY), testedEndpoints[0])

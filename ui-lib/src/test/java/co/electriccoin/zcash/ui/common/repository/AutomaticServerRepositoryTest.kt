@@ -560,45 +560,31 @@ class AutomaticServerRepositoryTest {
     @Test
     fun recoveryTriggerUsesProbeGatewayNotFullBenchmark() =
         runTest {
-            coEvery { isAutomaticProvider.get() } returns true
-            coEvery { isPublicProvider.get() } returns true
-            coEvery { fallbackFlag.get() } returns true
-            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(fallbacks.first())
+            stubPublic(current = fallbacks[0])
+            fallbackActive = true
             coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns ServerValidation.Valid
 
-            val edges = MutableSharedFlow<Unit>()
-            repository.observeSwitchCandidates(edges, SwitchTrigger.RECOVERY).launchIn(backgroundScope)
-            runCurrent()
-            localBalances.value = emptyMap()
-            edges.emit(Unit)
-            runCurrent()
+            val result = repository.evaluateServerSwitch(SwitchTrigger.RECOVERY)
 
             // RECOVERY evaluations probe via validateServerEndpoint, not the full getFastestServers benchmark
-            coVerify(exactly = 1) { synchronizer.validateServerEndpoint(any(), gateway) }
+            assertEquals(gateway, result)
             coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
-            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(gateway) }
+            coVerify(exactly = 1) { synchronizer.validateServerEndpoint(any(), gateway) }
         }
 
     @Test
     fun connectivityTriggerOnFallbackUsesProbeGatewayNotFullBenchmark() =
         runTest {
-            coEvery { isAutomaticProvider.get() } returns true
-            coEvery { isPublicProvider.get() } returns true
-            coEvery { fallbackFlag.get() } returns true
-            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(fallbacks.first())
+            stubPublic(current = fallbacks[0])
+            fallbackActive = true
             coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns ServerValidation.Valid
 
-            val edges = MutableSharedFlow<Unit>()
-            repository.observeSwitchCandidates(edges, SwitchTrigger.CONNECTIVITY).launchIn(backgroundScope)
-            runCurrent()
-            localBalances.value = emptyMap()
-            edges.emit(Unit)
-            runCurrent()
+            val result = repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY)
 
             // CONNECTIVITY evaluations on fallback probe via validateServerEndpoint, not getFastestServers
-            coVerify(exactly = 1) { synchronizer.validateServerEndpoint(any(), gateway) }
+            assertEquals(gateway, result)
             coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
-            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(gateway) }
+            coVerify(exactly = 1) { synchronizer.validateServerEndpoint(any(), gateway) }
         }
 
     @Test
@@ -1142,6 +1128,8 @@ class AutomaticServerRepositoryTest {
             val servers = if (isOhttpTier) (if (gatewayReachable) listOf(gateway) else emptyList()) else rankedFallbacks
             flowOf(FastestServersResult.Done(servers))
         }
+        coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns
+            if (gatewayReachable) ServerValidation.Valid else ServerValidation.InValid(IllegalStateException("down"))
     }
 
     private fun wallet(walletEndpoint: LightWalletEndpoint) =
