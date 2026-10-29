@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import co.electriccoin.zcash.ui.common.model.migration.MigrationAttentionKind
+import kotlin.time.Instant
 
 /**
  * The migration home-banner payload (formerly ui-lib's `HomeMessageData.Migration`) — the concrete
@@ -33,4 +34,10 @@ data class MigrationHomeMessageData(
     // The live Orchard balance at decision time. Only meaningful when [isResidueOnly] is true — the
     // home banner needs the amount for its title; the celebration branch's copy is static.
     val residualBalanceZatoshi: Long = 0L,
+    /**
+     * True for the one-time notice that the NU7 upgrade stopped the account's migration and the SDK cancelled it:
+     * confirmed transfers are unaffected, unconfirmed ones can stay reserved until they expire and the wallet syncs,
+     * and tapping opens the migration entry for what is left.
+     */
+    val isInterruptedByNetworkUpgrade: Boolean = false,
 ) : MigrationHomeMessage()

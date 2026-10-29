@@ -69,6 +69,7 @@ class MigrationHomeMessageSourceViewOnlyTest {
             hasSeenMigrationCompleteStorageProvider = mockk(relaxed = true),
             isBackgroundExecutionAvailableProvider = mockk(relaxed = true),
             navigationRouter = mockk(relaxed = true),
+            migrationUpgradeNoticeStorageProvider = mockk(relaxed = true),
         )
 
     private fun zodl() =

@@ -73,6 +73,7 @@ class ObserveMigrationLiveReadoutUseCaseTest {
                     coEvery { estimatedChainTip() } returns fallback.estimatedTip
                     coEvery { estimatedSecondsPerBlock() } returns fallback.estimatedSecondsPerBlock
                     coEvery { getMigrationStateUnreconciled() } returns requireNotNull(fallback.migrationState)
+                    every { nu7ActivationHeight } returns fallback.nu7ActivationHeight
                 }
             val getOrchardMigrationSdk =
                 mockk<GetOrchardMigrationSdkUseCase> {

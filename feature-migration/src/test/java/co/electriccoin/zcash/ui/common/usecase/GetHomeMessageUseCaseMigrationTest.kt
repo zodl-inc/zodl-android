@@ -423,4 +423,104 @@ class GetHomeMessageUseCaseMigrationTest {
             )
         assertEquals(MigrationHomeMessageData(isRunActive = false), result)
     }
+
+    @Test
+    fun migratableBalanceBeforeNu7StillOffersTheImmediateLane() {
+        // The scheduled lane waits for NU7, but a single-transaction migration is a normal send, so the
+        // banner stays; the setup screen offers only the immediate option.
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI,
+            )
+        assertEquals(MigrationHomeMessageData(isRunActive = false), result)
+    }
+
+    @Test
+    fun residueBeforeNu7StillOffersMigrateAnyway() {
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI - 1L,
+                migratableOrchardTotalZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI - 1L,
+            )
+        assertEquals(
+            MigrationHomeMessageData(
+                isRunActive = false,
+                isComplete = true,
+                isResidueOnly = true,
+                residualBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI - 1L,
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun runInProgressIsStillShownBeforeNu7() {
+        val result =
+            migrationMessageFor(
+                sdkState = MigrationState.InProgress(MigrationProgress(0, 1, null)),
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI,
+            )
+        assertEquals(MigrationHomeMessageData(isRunActive = true), result)
+    }
+
+    @Test
+    fun interruptedRunNoticeIsShownOnceTheRunIsGone() {
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI,
+                isUpgradeNoticePending = true,
+            )
+        assertEquals(MigrationHomeMessageData(isRunActive = false, isInterruptedByNetworkUpgrade = true), result)
+    }
+
+    @Test
+    fun interruptedRunNoticeIsShownEvenWithNothingLeftToMigrate() {
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = 0L,
+                isUpgradeNoticePending = true,
+            )
+        assertEquals(true, result?.isInterruptedByNetworkUpgrade)
+    }
+
+    @Test
+    fun interruptedRunNoticeIsNotHiddenByTheAttentionBannerOfTheCancelledRun() {
+        // A cancelled run stays persisted as failed, so the SDK can still report RequiresAttention with a snapshot.
+        val result =
+            migrationMessageFor(
+                sdkState = MigrationState.RequiresAttention(AttentionReason.TransferExpired),
+                snapshot = snapshot(),
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI,
+                isUpgradeNoticePending = true,
+            )
+        assertEquals(MigrationHomeMessageData(isRunActive = false, isInterruptedByNetworkUpgrade = true), result)
+    }
+
+    @Test
+    fun interruptedRunNoticeWaitsWhileANewRunIsInProgress() {
+        val result =
+            migrationMessageFor(
+                sdkState = MigrationState.InProgress(MigrationProgress(0, 1, null)),
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI,
+                isUpgradeNoticePending = true,
+            )
+        assertEquals(MigrationHomeMessageData(isRunActive = true), result)
+    }
 }

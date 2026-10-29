@@ -21,6 +21,7 @@ import co.electriccoin.zcash.ui.common.model.migration.toUiKind
 import co.electriccoin.zcash.ui.common.model.toStorageKeyId
 import co.electriccoin.zcash.ui.common.provider.HasSeenMigrationCompleteStorageProvider
 import co.electriccoin.zcash.ui.common.provider.IsBackgroundExecutionAvailableProvider
+import co.electriccoin.zcash.ui.common.provider.MigrationUpgradeNoticeStorageProvider
 import co.electriccoin.zcash.ui.common.repository.MigrationHomeMessage
 import co.electriccoin.zcash.ui.common.repository.MigrationHomeMessageData
 import co.electriccoin.zcash.ui.design.util.getString
@@ -67,6 +68,7 @@ class MigrationHomeMessageSourceImpl(
     private val hasSeenMigrationCompleteStorageProvider: HasSeenMigrationCompleteStorageProvider,
     private val isBackgroundExecutionAvailableProvider: IsBackgroundExecutionAvailableProvider,
     private val navigationRouter: NavigationRouter,
+    private val migrationUpgradeNoticeStorageProvider: MigrationUpgradeNoticeStorageProvider,
 ) : MigrationHomeMessageSource {
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun observe(): Flow<MigrationHomeMessage?> =
@@ -93,7 +95,8 @@ class MigrationHomeMessageSourceImpl(
                 // still-changing DB), so it must not fire until the wallet has caught up with
                 // the chain tip. See MOB-1750 mid-sync race investigation.
                 walletSnapshotDataSource.observe(),
-            ) { hasSeenComplete, readout, orchardBalance, walletSnapshot ->
+                migrationUpgradeNoticeStorageProvider.observePendingForSelected(),
+            ) { hasSeenComplete, readout, orchardBalance, walletSnapshot, isUpgradeNoticePending ->
                 val isFullySynced = walletSnapshot?.status == Synchronizer.Status.SYNCED
                 val sdkState = readout?.migrationState
                 val states = readout?.states
@@ -103,6 +106,7 @@ class MigrationHomeMessageSourceImpl(
                             states = it,
                             estimatedTip = if (readout.estimatedTip >= 0) readout.estimatedTip else it.tipHeight,
                             secondsPerBlock = readout.estimatedSecondsPerBlock,
+                            nu7ActivationHeight = readout.nu7ActivationHeight,
                         )
                     }
                 // UNPROVABLE ANCHOR → immediate, deterministic "Update migration plan" attention
@@ -152,6 +156,7 @@ class MigrationHomeMessageSourceImpl(
                     hasOverdueTransfers = readout?.hasOverdueTransfers ?: false,
                     attentionKind = attentionKind,
                     attentionRangeText = attentionRangeText,
+                    isUpgradeNoticePending = isUpgradeNoticePending,
                 )
             }
         }
@@ -183,6 +188,15 @@ class MigrationHomeMessageSourceImpl(
 
                 null -> {
                     when {
+                        data.isInterruptedByNetworkUpgrade -> {
+                            BannerCopy(
+                                phase = MigrationBannerPhase.ATTENTION,
+                                title = stringRes(DesignR.string.migrationHome_upgradeStoppedTitle).getString(context),
+                                subtitle =
+                                    stringRes(DesignR.string.migrationHome_upgradeStoppedSubtitle).getString(context),
+                            )
+                        }
+
                         // MOB-1750: a small leftover Orchard balance not tied to an unseen in-app
                         // migration celebration gets its own "X ZEC left in Orchard" copy instead of
                         // the "Migration complete" celebration title.
@@ -336,6 +350,10 @@ class MigrationHomeMessageSourceImpl(
  * branches (celebration, residue, plain "Migrate now") each require it non-null and fall through to
  * `null` (no banner) otherwise; the RequiresAttention and InProgress branches above them don't read
  * the balance at all, so a null balance never suppresses those.
+ *
+ * The one-time notice that the NU7 upgrade stopped a run (and the SDK cancelled it) comes first, ahead of the
+ * attention branch: the cancelled run stays persisted as failed, so that branch would otherwise hide the notice
+ * behind "Update migration plan". A new run in progress still wins.
  */
 @Suppress("CyclomaticComplexMethod")
 internal fun migrationMessageFor(
@@ -351,6 +369,7 @@ internal fun migrationMessageFor(
     now: Instant = Clock.System.now(),
     attentionKind: MigrationAttentionKind? = null,
     attentionRangeText: String? = null,
+    isUpgradeNoticePending: Boolean = false,
 ): MigrationHomeMessageData? {
     val next = snapshot?.nextPending
     // A RequiresAttention state WITH live run statuses is still a mid-run condition (e.g. the
@@ -376,6 +395,10 @@ internal fun migrationMessageFor(
                 s.preparations.any { it.blocker == MigrationTransferBlocker.SIGNATURE }
         } ?: false
     return when {
+        isUpgradeNoticePending && sdkState !is MigrationState.InProgress -> {
+            MigrationHomeMessageData(isRunActive = false, isInterruptedByNetworkUpgrade = true)
+        }
+
         // Spec §6.2/§6.3 — takes priority over InProgress/Complete below.
         // SyncRequiredBeforeNext is explicitly excluded (a transient "keep syncing" condition,
         // not a user-action-required expiry) — falls through to the ordinary branches.
