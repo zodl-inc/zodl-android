@@ -6,6 +6,7 @@ import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
 import co.electriccoin.zcash.ui.screen.ScreenTimeoutVM
 import co.electriccoin.zcash.ui.screen.accountlist.AccountListVM
+import co.electriccoin.zcash.ui.screen.accountlist.options.WalletOptionsVM
 import co.electriccoin.zcash.ui.screen.addressbook.AddressBookVM
 import co.electriccoin.zcash.ui.screen.addressbook.SelectABRecipientVM
 import co.electriccoin.zcash.ui.screen.advancedsettings.AdvancedSettingsVM
@@ -17,6 +18,8 @@ import co.electriccoin.zcash.ui.screen.balances.breakdown.BalanceBreakdownVM
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceVM
 import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletVM
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerVM
+import co.electriccoin.zcash.ui.screen.chooseserver.ohttpinfo.OhttpInfoVM
+import co.electriccoin.zcash.ui.screen.colorpicker.ColorPickerVM
 import co.electriccoin.zcash.ui.screen.connecthw.date.HWDateVM
 import co.electriccoin.zcash.ui.screen.connecthw.estimation.HWEstimationVM
 import co.electriccoin.zcash.ui.screen.connecthw.height.HWHeightVM
@@ -28,6 +31,7 @@ import co.electriccoin.zcash.ui.screen.contact.UpdateGenericABContactVM
 import co.electriccoin.zcash.ui.screen.crashreporting.viewmodel.CrashReportingViewModel
 import co.electriccoin.zcash.ui.screen.deletewallet.ResetZashiVM
 import co.electriccoin.zcash.ui.screen.disconnect.DisconnectVM
+import co.electriccoin.zcash.ui.screen.editaccount.EditAccountVM
 import co.electriccoin.zcash.ui.screen.error.ErrorVM
 import co.electriccoin.zcash.ui.screen.error.SyncErrorVM
 import co.electriccoin.zcash.ui.screen.exchangerate.optin.ExchangeRateOptInVM
@@ -52,6 +56,8 @@ import co.electriccoin.zcash.ui.screen.integrations.IntegrationsVM
 import co.electriccoin.zcash.ui.screen.ironwood.IronwoodAnnouncementVM
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenVM
 import co.electriccoin.zcash.ui.screen.more.MoreVM
+import co.electriccoin.zcash.ui.screen.ohttpoptin.OhttpOptInVM
+import co.electriccoin.zcash.ui.screen.ohttpunavailable.OhttpUnavailableVM
 import co.electriccoin.zcash.ui.screen.pay.PayVM
 import co.electriccoin.zcash.ui.screen.qrcode.QrCodeVM
 import co.electriccoin.zcash.ui.screen.receive.ReceiveVM
@@ -124,6 +130,9 @@ val viewModelModule =
         viewModelOf(::SupportViewModel)
         viewModelOf(::WhatsNewViewModel)
         viewModelOf(::ChooseServerVM)
+        viewModelOf(::OhttpInfoVM)
+        viewModelOf(::OhttpUnavailableVM)
+        viewModelOf(::OhttpOptInVM)
         viewModelOf(::ReceiveVM)
         viewModelOf(::QrCodeVM)
         viewModelOf(::RequestVM)
@@ -138,6 +147,8 @@ val viewModelModule =
         viewModelOf(::FeedbackVM)
         viewModelOf(::SignKeystoneTransactionVM)
         viewModelOf(::AccountListVM)
+        viewModelOf(::WalletOptionsVM)
+        viewModelOf(::EditAccountVM)
         viewModelOf(::ZashiTopAppBarVM)
         viewModelOf(::SelectKeystoneAccountViewModel)
         viewModelOf(::ReviewTransactionVM)
@@ -182,6 +193,7 @@ val viewModelModule =
         viewModelOf(::ExchangeRateOptInVM)
         viewModelOf(::SwapAssetPickerVM)
         viewModelOf(::SwapSlippageVM)
+        viewModelOf(::ColorPickerVM)
         viewModelOf(::SwapRefundWarningVM)
         viewModelOf(::SwapVM)
         viewModelOf(::PayVM)

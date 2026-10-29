@@ -31,12 +31,14 @@ import co.electriccoin.zcash.ui.common.compose.BindCompLocalProvider
 import co.electriccoin.zcash.ui.common.compose.DisableScreenTimeout
 import co.electriccoin.zcash.ui.common.extension.setContentCompat
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
+import co.electriccoin.zcash.ui.common.provider.AppAccessLockProvider
 import co.electriccoin.zcash.ui.common.usecase.HandleExternalLinkUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationUIState
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.SecretState
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
+import co.electriccoin.zcash.ui.common.viewmodel.isAppAccessLocked
 import co.electriccoin.zcash.ui.design.component.BlankSurface
 import co.electriccoin.zcash.ui.design.component.ConfigurationOverride
 import co.electriccoin.zcash.ui.design.component.Override
@@ -81,12 +83,16 @@ class MainActivity : FragmentActivity() {
 
     private val migrationAppHooks: MigrationAppHooks by inject()
     private val handleExternalLink: HandleExternalLinkUseCase by inject()
+    private val appAccessLockProvider: AppAccessLockProvider by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Twig.debug { "Activity state: Create" }
 
         setAllowedScreenOrientation()
+
+        // A recreated Activity starts locked: the first composition of AuthenticationForAppAccess decides.
+        appAccessLockProvider.setLocked(true)
 
         setupSplashScreen()
 
@@ -231,6 +237,12 @@ class MainActivity : FragmentActivity() {
         val authState = authenticationViewModel.appAccessAuthenticationResultState.collectAsStateWithLifecycle().value
         val animateAppAccess = authenticationViewModel.showWelcomeAnimation.collectAsStateWithLifecycle().value
         val authFailed = authenticationViewModel.authFailed.collectAsStateWithLifecycle().value
+
+        LaunchedEffect(authState) {
+            appAccessLockProvider.setLocked(
+                isAppAccessLocked(authState, authenticationViewModel.appAccessAuthentication.value)
+            )
+        }
 
         if (animateAppAccess) {
             WelcomeAnimationAutostart(

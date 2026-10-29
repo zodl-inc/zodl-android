@@ -11,6 +11,10 @@ import kotlin.reflect.typeOf
  * Which hardware wallet is being enrolled, and everything the shared enrollment screens need to
  * finish it. Keystone carries the UR its QR flow scanned; Ledger carries nothing, because its
  * pairing is held by the Ledger feature (see `LedgerAccountImporter`) until the account is imported.
+ * ViewOnly is the import of a full viewing key, which reuses the same birthday screens but skips
+ * the new-or-active question, going from the key straight to the date and on to its name after the
+ * height; it carries nothing either, because the key must never ride in a route: the view-only
+ * feature holds it in memory (see `ViewOnlyAccountImporter`).
  */
 @Serializable
 sealed interface HWWalletEnrollment {
@@ -21,6 +25,9 @@ sealed interface HWWalletEnrollment {
 
     @Serializable
     data object Ledger : HWWalletEnrollment
+
+    @Serializable
+    data object ViewOnly : HWWalletEnrollment
 }
 
 /**

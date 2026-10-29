@@ -34,6 +34,10 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.text.ParseException
 
+/**
+ * The single-line number field for amounts and other numbers. The keyboard is asked not to learn
+ * from what is typed, by [WithoutPersonalizedLearning].
+ */
 @Suppress("LongParameterList")
 @Composable
 fun ZashiNumberTextField(
@@ -60,27 +64,29 @@ fun ZashiNumberTextField(
     colors: ZashiTextFieldColors = ZashiTextFieldDefaults.defaultColors()
 ) {
     val textFieldState = createTextFieldState(state)
-    ZashiTextField(
-        state = textFieldState,
-        modifier = modifier,
-        innerModifier = innerModifier,
-        textStyle = textStyle,
-        placeholder = placeholder,
-        leadingIcon = leadingIcon,
-        trailingIcon = null,
-        prefix = prefix,
-        suffix = suffix,
-        visualTransformation = visualTransformation,
-        keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions,
-        singleLine = true,
-        maxLines = 1,
-        minLines = 1,
-        interactionSource = interactionSource,
-        shape = shape,
-        contentPadding = contentPadding,
-        colors = colors,
-    )
+    WithoutPersonalizedLearning {
+        ZashiTextField(
+            state = textFieldState,
+            modifier = modifier,
+            innerModifier = innerModifier,
+            textStyle = textStyle,
+            placeholder = placeholder,
+            leadingIcon = leadingIcon,
+            trailingIcon = null,
+            prefix = prefix,
+            suffix = suffix,
+            visualTransformation = visualTransformation,
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
+            singleLine = true,
+            maxLines = 1,
+            minLines = 1,
+            interactionSource = interactionSource,
+            shape = shape,
+            contentPadding = contentPadding,
+            colors = colors,
+        )
+    }
 }
 
 @Composable

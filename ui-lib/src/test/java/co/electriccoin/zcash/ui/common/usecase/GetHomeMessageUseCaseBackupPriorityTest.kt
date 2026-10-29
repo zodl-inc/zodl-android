@@ -105,7 +105,7 @@ class GetHomeMessageUseCaseBackupPriorityTest {
      * [prioritizeHomeMessage]: the urgent Backup message must also bypass the hysteresis that otherwise
      * protects against flicker between optional/dismissible Prioritized messages. Without the special case,
      * a previously-shown [RuntimeMessage] (priority `Int.MAX_VALUE`) cached as `lastShownMessage` would make
-     * Backup's finite priority (5) look lower and get filtered out.
+     * Backup's finite priority (6) look lower and get filtered out.
      */
     @Test
     fun `urgent backup is shown immediately even right after a RuntimeMessage was last shown`() {

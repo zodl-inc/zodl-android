@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProvider
 import co.electriccoin.zcash.ui.common.repository.HomeMessageData
 import co.electriccoin.zcash.ui.common.repository.MigrationHomeMessage
 import co.electriccoin.zcash.ui.common.usecase.GetHomeMessageUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsRestoreSuccessDialogVisibleUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToNearPayUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToReceiveUseCase
@@ -34,7 +35,7 @@ import co.electriccoin.zcash.ui.screen.home.currency.EnableCurrencyConversionMes
 import co.electriccoin.zcash.ui.screen.home.disconnected.WalletDisconnectedInfo
 import co.electriccoin.zcash.ui.screen.home.disconnected.WalletDisconnectedMessageState
 import co.electriccoin.zcash.ui.screen.home.error.WalletErrorMessageState
-import co.electriccoin.zcash.ui.screen.home.ohttpunavailable.OhttpUnavailableMessageState
+import co.electriccoin.zcash.ui.screen.home.ohttpoptin.OhttpOptInMessageState
 import co.electriccoin.zcash.ui.screen.home.reporting.CrashReportMessageState
 import co.electriccoin.zcash.ui.screen.home.reporting.CrashReportOptIn
 import co.electriccoin.zcash.ui.screen.home.restoring.WalletRestoringInfo
@@ -48,6 +49,7 @@ import co.electriccoin.zcash.ui.screen.home.updating.WalletUpdatingInfo
 import co.electriccoin.zcash.ui.screen.home.updating.WalletUpdatingMessageState
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenArgs
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenFlow
+import co.electriccoin.zcash.ui.screen.ohttpoptin.OhttpOptInArgs
 import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInArgs
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -55,6 +57,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -78,6 +81,7 @@ class HomeVM(
     private val migrationHomeMessageSource: MigrationHomeMessageSource,
     private val homeMessageMapper: HomeMessageMapper,
     walletSnapshotDataSource: WalletSnapshotDataSource,
+    getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
 ) : ViewModel() {
     private var hasSyncErrorBeenShown = false
     private var hasRestoreSuccessBeenShown = false
@@ -129,12 +133,23 @@ class HomeVM(
             .observe()
             .map { it?.status == Synchronizer.Status.SYNCED }
 
+    /**
+     * Whether the selected account can spend, by its type; spendable until the account has loaded,
+     * the case of every wallet without a view-only account.
+     */
+    private val isSpendable: Flow<Boolean> =
+        getSelectedWalletAccount
+            .observe()
+            .map { it?.isSpendable ?: true }
+            .distinctUntilChanged()
+
     val state: StateFlow<HomeState?> =
         combine(
             messageState,
-            isSyncComplete
-        ) { messageState, isSyncComplete ->
-            createState(messageState, isSyncComplete)
+            isSyncComplete,
+            isSpendable,
+        ) { messageState, isSyncComplete, isSpendable ->
+            createState(messageState, isSyncComplete, isSpendable)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
@@ -178,9 +193,15 @@ class HomeVM(
 
     private var onSwapButtonClick: Job? = null
 
+    /**
+     * An account that cannot spend shows only Receive and Swap: Send and Pay are hidden, not
+     * disabled. Swap stays because it also swaps into the account; its spend direction is refused
+     * when the quote would create a proposal.
+     */
     private fun createState(
         messageState: HomeMessageState?,
-        isSyncComplete: Boolean
+        isSyncComplete: Boolean,
+        isSpendable: Boolean,
     ) = HomeState(
         firstButton =
             BigIconButtonState(
@@ -193,13 +214,13 @@ class HomeVM(
                 text = stringRes(R.string.tabs_send),
                 icon = R.drawable.ic_home_send,
                 onClick = ::onSendButtonClick,
-            ),
+            ).takeIf { isSpendable },
         thirdButton =
             BigIconButtonState(
                 text = stringRes(R.string.crosspay_pay),
                 icon = R.drawable.ic_home_pay,
                 onClick = ::onPayButtonClick,
-            ),
+            ).takeIf { isSpendable },
         fourthButton =
             BigIconButtonState(
                 text = stringRes(R.string.swapAndPay_swap),
@@ -226,9 +247,13 @@ class HomeVM(
                 )
             }
 
-            HomeMessageData.OhttpUnavailable -> {
-                OhttpUnavailableMessageState(
-                    onChooseServer = ::onOhttpUnavailableChooseServerClick
+            HomeMessageData.OhttpOptIn -> {
+                OhttpOptInMessageState(
+                    title = stringRes(R.string.ohttpOptIn_widgetTitle),
+                    subtitle = stringRes(R.string.ohttpOptIn_widgetSubtitle),
+                    buttonText = stringRes(R.string.ohttpOptIn_widgetView),
+                    onClick = ::onOhttpOptInClick,
+                    onButtonClick = ::onOhttpOptInClick
                 )
             }
 
@@ -318,7 +343,7 @@ class HomeVM(
         onSwapButtonClick = viewModelScope.launch { navigateToSwap() }
     }
 
-    private fun onSendButtonClick() = navigateToSend()
+    private fun onSendButtonClick() = viewModelScope.launch { navigateToSend() }
 
     private fun onReceiveButtonClick() = viewModelScope.launch { navigateToReceive() }
 
@@ -337,18 +362,14 @@ class HomeVM(
 
     private fun onEnableTorClick() = navigationRouter.forward(TorOptInArgs)
 
+    private fun onOhttpOptInClick() = navigationRouter.forward(OhttpOptInArgs)
+
     private fun onCoinholderPollingMessageClick() = viewModelScope.launch { navigateToVoting() }
 
     private fun onEnableCurrencyConversionClick() = navigationRouter.forward(ExchangeRateOptInArgs)
 
     private fun onWalletDisconnectedMessageClick() =
         navigationRouter.forward(WalletDisconnectedInfo)
-
-    private fun onOhttpUnavailableChooseServerClick() =
-        navigationRouter
-            .forward(
-                ChooseServerArgs(preselectFastestClearnet = true, autoStartProbing = false)
-            )
 
     private fun onWalletBackupMessageClick() = navigationRouter.forward(SeedBackupInfo)
 

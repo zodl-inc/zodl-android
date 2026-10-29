@@ -123,7 +123,7 @@ class CheckMigrationRecoveryUseCase(
             // getMigrationStateUnreconciled(), not getMigrationState(): this router never mutates
             // (2026-08-07 read/write-separation design) — it starts the live driver below regardless,
             // which reconciles on its own first cycle, so any staleness here self-corrects immediately.
-            accountDataSource.getAllAccounts().forEach { account ->
+            accountDataSource.getAllAccounts().filter { it.isSpendable }.forEach { account ->
                 val accountKeyId = account.sdkAccount.accountUuid.toStorageKeyId()
                 val accountSdk = getOrchardMigrationSdk(accountKeyId) ?: return@forEach
                 val engineInProgress = accountSdk.getMigrationStateUnreconciled() is MigrationState.InProgress

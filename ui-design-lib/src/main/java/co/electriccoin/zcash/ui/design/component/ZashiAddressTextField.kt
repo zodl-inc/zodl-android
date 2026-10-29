@@ -21,6 +21,10 @@ import co.electriccoin.zcash.ui.design.theme.typography.RobotoMonoFontFamily
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import kotlin.math.absoluteValue
 
+/**
+ * The single-line address field, which truncates the address around an ellipsis while it is not
+ * focused. The keyboard is asked not to learn from what is typed, by [WithoutPersonalizedLearning].
+ */
 @Suppress("LongParameterList")
 @Composable
 fun ZashiAddressTextField(
@@ -53,27 +57,29 @@ fun ZashiAddressTextField(
             if (isFocused) VisualTransformation.None else ellipsisVisualTransformation()
         }
 
-    ZashiTextField(
-        state = state,
-        modifier = modifier,
-        innerModifier = innerModifier,
-        textStyle = textStyle,
-        placeholder = placeholder,
-        leadingIcon = leadingIcon,
-        trailingIcon = trailingIcon,
-        prefix = prefix,
-        suffix = suffix,
-        visualTransformation = visualTransformation,
-        keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions,
-        maxLines = 1,
-        minLines = 1,
-        singleLine = true,
-        interactionSource = interactionSource,
-        shape = shape,
-        contentPadding = contentPadding,
-        colors = colors,
-    )
+    WithoutPersonalizedLearning {
+        ZashiTextField(
+            state = state,
+            modifier = modifier,
+            innerModifier = innerModifier,
+            textStyle = textStyle,
+            placeholder = placeholder,
+            leadingIcon = leadingIcon,
+            trailingIcon = trailingIcon,
+            prefix = prefix,
+            suffix = suffix,
+            visualTransformation = visualTransformation,
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
+            maxLines = 1,
+            minLines = 1,
+            singleLine = true,
+            interactionSource = interactionSource,
+            shape = shape,
+            contentPadding = contentPadding,
+            colors = colors,
+        )
+    }
 }
 
 @Suppress("MagicNumber")

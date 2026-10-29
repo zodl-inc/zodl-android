@@ -22,10 +22,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.util.PressMorphDefaults
 import co.electriccoin.zcash.ui.design.util.pressMorph
 
+/**
+ * @param clickSemantics semantics set on the same node as the click, which is the node an
+ *        accessibility service focuses, for state such as whether the item is selected.
+ */
 @Composable
 fun BaseListItem(
     leading: @Composable ((Modifier) -> Unit)?,
@@ -37,6 +43,7 @@ fun BaseListItem(
     shape: Shape = RoundedCornerShape(16.dp),
     border: BorderStroke? = null,
     color: Color = Color.Transparent,
+    clickSemantics: (SemanticsPropertyReceiver.() -> Unit)? = null,
     content: @Composable (Modifier) -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -50,7 +57,9 @@ fun BaseListItem(
         tonalElevation = 0.dp,
     ) {
         Box(
-            modifier = clickableModifier(interactionSource, onClick)
+            modifier =
+                clickableModifier(interactionSource, onClick)
+                    .then(clickSemantics?.let { Modifier.semantics(properties = it) } ?: Modifier)
         ) {
             Column {
                 Row(

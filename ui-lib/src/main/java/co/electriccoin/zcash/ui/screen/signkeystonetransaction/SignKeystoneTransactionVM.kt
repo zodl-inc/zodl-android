@@ -81,7 +81,7 @@ class SignKeystoneTransactionVM(
                 subtitle = stringRes(R.string.keystone_signWith_desc),
                 accountInfo =
                     ZashiAccountInfoListItemState(
-                        icon = R.drawable.ic_settings_info,
+                        icon = wallet.icon,
                         title = wallet.name,
                         subtitle =
                             if (proposal is ShieldTransactionProposal) {

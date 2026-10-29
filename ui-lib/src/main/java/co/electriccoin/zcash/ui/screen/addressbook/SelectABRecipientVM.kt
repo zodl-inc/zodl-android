@@ -1,18 +1,18 @@
 package co.electriccoin.zcash.ui.screen.addressbook
 
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.usecase.GetABContactsUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveABContactPickedUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveAccountIconUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.listitem.ContactListItemState
 import co.electriccoin.zcash.ui.design.util.ImageResource
@@ -34,15 +34,17 @@ class SelectABRecipientVM(
     getAddressBookContacts: GetABContactsUseCase,
     getWalletAccountsUseCase: GetWalletAccountsUseCase,
     private val observeContactPicked: ObserveABContactPickedUseCase,
-    private val navigationRouter: NavigationRouter
+    private val navigationRouter: NavigationRouter,
+    private val observeAccountIcon: ObserveAccountIconUseCase,
 ) : ViewModel() {
     val state =
         combine(
             getAddressBookContacts.observe(zcashContactsOnly = true),
-            getWalletAccountsUseCase.observe()
-        ) { contacts, accounts ->
+            getWalletAccountsUseCase.observe(),
+            observeAccountIcon.observeAll()
+        ) { contacts, accounts, colors ->
             if (accounts != null && accounts.size > 1) {
-                createStateWithAccounts(contacts, accounts)
+                createStateWithAccounts(contacts, accounts, colors)
             } else {
                 createStateWithoutAccounts(contacts)
             }
@@ -56,7 +58,8 @@ class SelectABRecipientVM(
     @Suppress("SpreadOperator")
     private fun createStateWithAccounts(
         contacts: List<EnhancedABContact>?,
-        accounts: List<WalletAccount>
+        accounts: List<WalletAccount>,
+        colors: Map<AccountUuid, Color>,
     ): AddressBookState {
         val accountItems =
             listOf(
@@ -66,22 +69,7 @@ class SelectABRecipientVM(
                     .map { account ->
                         AddressBookItem.Contact(
                             ContactListItemState(
-                                bigIcon =
-                                    imageRes(
-                                        when (account) {
-                                            is KeystoneAccount -> {
-                                                co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone
-                                            }
-
-                                            is LedgerAccount -> {
-                                                co.electriccoin.zcash.ui.design.R.drawable.ic_item_ledger
-                                            }
-
-                                            is ZashiAccount -> {
-                                                co.electriccoin.zcash.ui.design.R.drawable.ic_item_zashi
-                                            }
-                                        }
-                                    ),
+                                bigIcon = observeAccountIcon.iconOf(colors, account),
                                 smallIcon = null,
                                 isShielded = false,
                                 name = account.name,

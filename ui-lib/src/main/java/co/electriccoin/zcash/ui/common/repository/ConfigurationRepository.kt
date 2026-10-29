@@ -63,7 +63,10 @@ class ConfigurationRepositoryImpl(
 
 /**
  * Flexa is a mainnet service. Its API calls go through the OHTTP gateway, which holds the publishable key
- * (see FlexaRepositoryImpl), so every distribution, F-Droid included, offers it without a build-time key.
+ * (see FlexaRepositoryImpl), so no build needs a key. Every distribution offers it, the F-Droid build
+ * included (2026-10-22): the SDK is vendored from source under MIT (`third-party/flexa`), ships in every
+ * flavor (`ui-lib` depends on `flexaCore`/`flexaSpend` unconditionally) and pulls in no Play Services or
+ * Firebase, so nothing FOSS-specific is needed. The remote switch still applies to all of them.
  */
 internal fun isFlexaAvailable(
     network: ZcashNetwork,

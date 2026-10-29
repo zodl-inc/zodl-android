@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import cash.z.ecc.android.sdk.exception.InitializeException
 import cash.z.ecc.android.sdk.ledger.LedgerAccountPairing
 import cash.z.ecc.android.sdk.model.Account
 import cash.z.ecc.android.sdk.model.AccountUuid
@@ -73,6 +74,25 @@ class CreateLedgerAccountUseCaseTest {
 
             assertTrue(thrown.message.orEmpty().contains("paired again"))
             coVerify(exactly = 0) { accountDataSource.importLedgerAccount(any(), any()) }
+        }
+
+    @Test
+    fun aReImportCollisionPropagatesWithoutSelectingOrMovingOn() =
+        runTest {
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val accountDataSource =
+                mockk<AccountDataSource>(relaxed = true) {
+                    coEvery { importLedgerAccount(any(), any()) } throws
+                        InitializeException.ImportAccountCollisionException(null)
+                }
+            val ledgerPairingRepository = pairingRepository()
+            val useCase = useCase(accountDataSource, ledgerPairingRepository, navigationRouter)
+
+            assertFailsWith<InitializeException.ImportAccountCollisionException> { useCase(birthday = null) }
+
+            coVerify(exactly = 0) { accountDataSource.selectAccount(any<Account>()) }
+            verify(exactly = 0) { ledgerPairingRepository.clear() }
+            verify(exactly = 0) { navigationRouter.forward(*anyVararg()) }
         }
 
     private fun accountDataSource() =

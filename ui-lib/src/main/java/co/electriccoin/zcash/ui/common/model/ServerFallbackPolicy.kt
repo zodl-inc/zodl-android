@@ -48,8 +48,13 @@ object ServerFallbackPolicy {
         val gateway = healthyGateways.firstOrNull()
         val onGateway = isOhttpGateway(current)
         val unreachableTarget = configuredGateways.firstOrNull()
+        // A current gateway that did not answer gives way to one that did. With one gateway per network
+        // (LightWalletEndpointProvider) this second rule cannot fire today: `healthyGateways` is then
+        // either empty or the current gateway. It activates once a second gateway of the same network is
+        // configured and probed on the health tick.
         return when {
             gateway != null && !onGateway -> DecisionResult.ReturnToGateway(gateway)
+            gateway != null && current !in healthyGateways -> DecisionResult.ReturnToGateway(gateway)
             gateway == null && onGateway -> DecisionResult.StayAndReportGatewayUnavailable
             gateway == null && unreachableTarget != null -> DecisionResult.ReturnToGateway(unreachableTarget, false)
             else -> DecisionResult.Stay

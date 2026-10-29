@@ -8,7 +8,7 @@ import cash.z.ecc.android.sdk.model.Proposal
 import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -25,8 +25,9 @@ import kotlin.test.assertTrue
  */
 class ProposalDataSourceTest {
     private val account =
-        mockk<ZashiAccount> {
+        mockk<ZodlAccount> {
             every { sdkAccount } returns mockk(relaxed = true)
+            every { isSpendable } returns true
         }
 
     @Test

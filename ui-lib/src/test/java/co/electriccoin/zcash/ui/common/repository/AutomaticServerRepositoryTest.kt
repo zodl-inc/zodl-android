@@ -11,14 +11,18 @@ import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
+import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
+import co.electriccoin.zcash.ui.common.provider.NetworkConnectivityProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
@@ -29,6 +33,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -56,6 +61,7 @@ import kotlin.time.TestTimeSource
  * `observeSwitchCandidates` - the lane `init()` launches - on the test scope instead. Wiring `init()` to
  * the real foreground signal is exercised by the `ChooseServerSelectionTest` instrumentation test.
  */
+@Suppress("LargeClass")
 @OptIn(ExperimentalCoroutinesApi::class)
 class AutomaticServerRepositoryTest {
     private val gateway = endpoint("ohttp-gateway.example")
@@ -111,6 +117,13 @@ class AutomaticServerRepositoryTest {
     /** A relaxed mock returns a bare Object for the suspend Boolean getter; back it with a real value. */
     private var fallbackActive = false
     private val fallbackActiveFlow = MutableStateFlow(false)
+    private val isPublicFlow = MutableStateFlow(false)
+    private val isPublicProvider =
+        mockk<IsPublicConnectionProvider>(relaxed = true).also {
+            coEvery { it.get() } returns false
+            every { it.observe() } returns isPublicFlow
+        }
+
     private val fallbackFlag =
         mockk<IsOhttpFallbackActiveProvider>(relaxed = true) {
             every { observe() } returns fallbackActiveFlow
@@ -127,6 +140,13 @@ class AutomaticServerRepositoryTest {
     private val applicationStateProvider =
         mockk<ApplicationStateProvider>(relaxed = true) { every { isInForeground } returns foreground }
 
+    private val networkConnectivityProvider =
+        mockk<NetworkConnectivityProvider>(relaxed = true) {
+            every { isOnline() } returns true // Default to online
+        }
+
+    private val serverSelectionMutex = ServerSelectionMutex()
+
     private val repository =
         AutomaticServerRepositoryImpl(
             application = mockk(relaxed = true),
@@ -140,6 +160,9 @@ class AutomaticServerRepositoryTest {
             lightWalletEndpointProvider = lightWalletEndpointProvider,
             isServerSelectionAutomaticProvider = isAutomaticProvider,
             isOhttpFallbackActiveProvider = fallbackFlag,
+            isPublicConnectionProvider = isPublicProvider,
+            networkConnectivityProvider = networkConnectivityProvider,
+            serverSelectionMutex = serverSelectionMutex,
             evaluationInterval = EvaluationInterval(MINIMUM_EVALUATION_INTERVAL, timeSource)
         )
 
@@ -245,6 +268,247 @@ class AutomaticServerRepositoryTest {
             // Re-entering automatic mode must not resurrect the outage recorded before leaving it.
             automaticPreference.value = true
             assertEquals(listOf(false, true, false), emissions)
+        }
+
+    @Test
+    fun publicForegroundAsksTheSdkSwitchPolicyAboutTheClearnetServersOnly() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns fallbacks[1]
+
+            assertEquals(fallbacks[1], repository.evaluateServerSwitch(SwitchTrigger.FOREGROUND))
+
+            coVerify(exactly = 1) {
+                synchronizer.evaluateServerSwitch(
+                    current = fallbacks[0],
+                    candidates = fallbacks,
+                    fetchThreshold = 5.seconds,
+                    blocksToFetch = 1
+                )
+            }
+            // The gateway is never probed in Public mode.
+            coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
+            coVerify(exactly = 0) { synchronizer.validateServerEndpoint(any(), any()) }
+        }
+
+    @Test
+    fun publicIgnoresTheGatewayHealthAndRecoveryTriggers() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.RECOVERY))
+
+            coVerify(exactly = 0) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun publicLooksForABetterServerWhenTheCurrentOneStopsAnswering() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns fallbacks[1]
+
+            assertEquals(fallbacks[1], repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
+        }
+
+    @Test
+    fun aClearnetCandidateIsDroppedWhenTheUserMovedToPrivateMeanwhile() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            localBalances.value = emptyMap()
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } coAnswers {
+                // Private is chosen and saved while the benchmark is still running.
+                coEvery { isPublicProvider.get() } returns false
+                fallbacks[1]
+            }
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.FOREGROUND).launchIn(backgroundScope)
+            runCurrent()
+            edges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
+            assertEquals(false, fallbackActive)
+        }
+
+    @Test
+    fun aSwitchWaitsForTheUsersSaveAndIsDroppedWhenItChangedTheMode() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            localBalances.value = emptyMap()
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns fallbacks[1]
+
+            // The user's save of Private holds the lock while it writes the mode and the endpoint.
+            val saveFinishes = CompletableDeferred<Unit>()
+            backgroundScope.launch {
+                serverSelectionMutex.withLock {
+                    saveFinishes.await()
+                    coEvery { isPublicProvider.get() } returns false
+                }
+            }
+            runCurrent()
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.FOREGROUND).launchIn(backgroundScope)
+            runCurrent()
+            edges.emit(Unit)
+            runCurrent()
+            // The candidate is ready but must not be written while the save is still running.
+            coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
+
+            saveFinishes.complete(Unit)
+            runCurrent()
+
+            // It then sees Private and is dropped: Private never ends on clearnet.
+            coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
+        }
+
+    @Test
+    fun theTransactionSignalFollowsTheProposalStates() =
+        runTest {
+            val proposal = MutableStateFlow<TransactionProposal?>(null)
+            every { zashiProposalRepository.transactionProposal } returns proposal
+            val freshRepository =
+                AutomaticServerRepositoryImpl(
+                    application = mockk(relaxed = true),
+                    walletRepository = walletRepository,
+                    zashiProposalRepository = zashiProposalRepository,
+                    keystoneProposalRepository = keystoneProposalRepository,
+                    ledgerProposalPipeline = ledgerProposalPipeline,
+                    applicationStateProvider = applicationStateProvider,
+                    synchronizerProvider = synchronizerProvider,
+                    persistableWalletProvider = persistableWalletProvider,
+                    lightWalletEndpointProvider = lightWalletEndpointProvider,
+                    isServerSelectionAutomaticProvider = isAutomaticProvider,
+                    isOhttpFallbackActiveProvider = fallbackFlag,
+                    isPublicConnectionProvider = isPublicProvider,
+                    networkConnectivityProvider = networkConnectivityProvider,
+                    serverSelectionMutex = serverSelectionMutex,
+                    evaluationInterval = EvaluationInterval(MINIMUM_EVALUATION_INTERVAL, timeSource)
+                )
+            val values = mutableListOf<Boolean>()
+            backgroundScope.launch { freshRepository.isTransactionInProgress.toList(values) }
+            runCurrent()
+
+            proposal.value = mockk<TransactionProposal>()
+            runCurrent()
+            proposal.value = null
+            runCurrent()
+
+            assertEquals(listOf(false, true, false), values)
+        }
+
+    @Test
+    fun aGatewayCandidateIsDroppedWhenThePublicChoiceWasDeliberate() =
+        runTest {
+            stubSwitchDecision(balances = null)
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.CONNECTIVITY).launchIn(backgroundScope)
+            runCurrent()
+            edges.emit(Unit)
+            runCurrent()
+            // The gateway candidate waits for the balance snapshot; Public is chosen on purpose meanwhile.
+            coEvery { isPublicProvider.get() } returns true
+            fallbackActive = false
+            localBalances.value = emptyMap()
+            runCurrent()
+
+            coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
+        }
+
+    @Test
+    fun noHealthTicksInADeliberatePublic() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            val ticks = mutableListOf<SwitchTrigger>()
+            repository.healthTicks().onEach { ticks += it }.launchIn(backgroundScope)
+            runCurrent()
+
+            advanceTimeBy(10.minutes)
+
+            assertEquals(emptyList(), ticks)
+        }
+
+    @Test
+    fun publicInTransactionStateSkipsTheSdkSwitchPolicy() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            every { zashiProposalRepository.transactionProposal } returns MutableStateFlow(mockk<TransactionProposal>())
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.FOREGROUND))
+
+            coVerify(exactly = 0) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun publicSwitchIsAppliedAndConfirmedWithoutMarkingTheOhttpFallback() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            localBalances.value = emptyMap()
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns fallbacks[1]
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.FOREGROUND).launchIn(backgroundScope)
+            runCurrent()
+            edges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(fallbacks[1]) }
+            coVerify(exactly = 1) { synchronizer.confirmServerSwitch(fallbacks[1]) }
+            assertEquals(false, fallbackActive)
+        }
+
+    @Test
+    fun publicAfterAnOutageReturnsToTheGatewayOnceItAnswers() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            fallbackActive = true
+            stubTiers(gatewayReachable = true, rankedFallbacks = fallbacks)
+
+            assertEquals(gateway, repository.evaluateServerSwitch(SwitchTrigger.RECOVERY))
+            coVerify(exactly = 0) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun publicAfterAnOutageStaysWhileTheGatewayIsStillDown() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            fallbackActive = true
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            coEvery { synchronizer.validateServerEndpoint(any(), any()) } returns
+                ServerValidation.InValid(IllegalStateException("down"))
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.RECOVERY))
+        }
+
+    @Test
+    fun aDeliberatePublicNeverProbesTheGatewayOnRecovery() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            fallbackActive = false
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.RECOVERY))
+            coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
+        }
+
+    @Test
+    fun returningToTheGatewayLeavesPublicMode() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            fallbackActive = true
+            localBalances.value = emptyMap()
+            stubTiers(gatewayReachable = true, rankedFallbacks = fallbacks)
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.RECOVERY).launchIn(backgroundScope)
+            runCurrent()
+            edges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(gateway) }
+            coVerify(exactly = 1) { isPublicProvider.store(false) }
+            assertEquals(false, fallbackActive)
         }
 
     @Test
@@ -536,6 +800,70 @@ class AutomaticServerRepositoryTest {
         }
 
     @Test
+    fun offlineGatewayFailuresDoNotCountTowardUnavailability() =
+        runTest {
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            stubGatewayProbe(reachable = false)
+            every { networkConnectivityProvider.isOnline() } returns false
+            val banner = collectBanner()
+
+            // Multiple offline failures should not count
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            assertEquals(false, banner.last())
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            assertEquals(false, banner.last())
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            assertEquals(false, banner.last())
+
+            // Gateway unavailable should never be reported
+            coVerify(exactly = 0) { synchronizer.getFastestServers(fallbacks) }
+        }
+
+    @Test
+    fun offlineFailureFollowedByOnlineFailuresStillNeedsTwoOnlineFailures() =
+        runTest {
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            stubGatewayProbe(reachable = false)
+            val banner = collectBanner()
+
+            // First failure while offline (doesn't count)
+            every { networkConnectivityProvider.isOnline() } returns false
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            assertEquals(false, banner.last())
+
+            // Come back online, now failures count
+            every { networkConnectivityProvider.isOnline() } returns true
+
+            // First online failure (counts as first)
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            assertEquals(false, banner.last())
+
+            // Second online failure (counts as second, now report)
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            assertEquals(true, banner.last())
+        }
+
+    @Test
+    fun connectivityTriggerAlsoSkipsOfflineFailures() =
+        runTest {
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            every { networkConnectivityProvider.isOnline() } returns false
+            val banner = collectBanner()
+
+            // Multiple offline connectivity failures should not count
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
+            assertEquals(false, banner.last())
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
+            assertEquals(false, banner.last())
+        }
+
+    @Test
     fun healthTriggerOnTheGatewayUsesALightProbeInsteadOfTheBenchmark() =
         runTest {
             coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
@@ -716,6 +1044,15 @@ class AutomaticServerRepositoryTest {
         persistedWallet.value = wallet
         localBalances.value = balances
         stubTiers(gatewayReachable = true, rankedFallbacks = emptyList())
+    }
+
+    private fun stubPublic(current: LightWalletEndpoint) {
+        val wallet = wallet(current)
+        coEvery { isAutomaticProvider.get() } returns true
+        coEvery { isPublicProvider.get() } returns true
+        isPublicFlow.value = true
+        coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet
+        persistedWallet.value = wallet
     }
 
     private fun TestScope.collectBanner(): List<Boolean> {

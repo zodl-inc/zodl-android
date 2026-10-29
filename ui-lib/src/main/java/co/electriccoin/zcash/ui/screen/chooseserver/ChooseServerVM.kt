@@ -12,27 +12,29 @@ import co.electriccoin.zcash.ui.common.component.EndpointTextFieldInnerState
 import co.electriccoin.zcash.ui.common.component.EndpointTextFieldState
 import co.electriccoin.zcash.ui.common.datasource.resolveIsEndpointCustom
 import co.electriccoin.zcash.ui.common.model.FastestServersState
+import co.electriccoin.zcash.ui.common.model.ServerConnectionMode
+import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
-import co.electriccoin.zcash.ui.common.usecase.GetAutomaticEndpointUseCase
+import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedEndpointUseCase
-import co.electriccoin.zcash.ui.common.usecase.IsServerAutomaticUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveFastestServersUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveServerConnectionModeUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistEndpointException
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshFastestServersUseCase
 import co.electriccoin.zcash.ui.design.component.AlertDialogState
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.RadioButtonState
+import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.chooseserver.ohttpinfo.OhttpInfoArgs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -42,37 +44,43 @@ import kotlinx.coroutines.launch
 class ChooseServerVM(
     application: Application,
     observeFastestServers: ObserveFastestServersUseCase,
+    isOhttpFallbackActive: IsOhttpFallbackActiveProvider,
     getSelectedEndpoint: GetSelectedEndpointUseCase,
-    isServerAutomatic: IsServerAutomaticUseCase,
-    private val preselectFastestClearnet: Boolean,
-    private val autoStartProbing: Boolean,
+    observeServerConnectionMode: ObserveServerConnectionModeUseCase,
+    automaticServerRepository: AutomaticServerRepository,
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
     private val refreshFastestServersUseCase: RefreshFastestServersUseCase,
     private val persistServerSelection: PersistServerSelectionUseCase,
     private val navigationRouter: NavigationRouter,
-    private val getAutomaticEndpoint: GetAutomaticEndpointUseCase
 ) : AndroidViewModel(application) {
+    private val fastestServersFlow = observeFastestServers()
+
     private val innerState =
         MutableStateFlow(InnerState(availableServers = lightWalletEndpointProvider.getEndpoints()))
 
     private val innerStateSafe = innerState.filter { it.local != null && it.persisted != null }
 
     val state =
-        combine(observeFastestServers(), innerStateSafe) { fastestServers, inner ->
+        combine(
+            fastestServersFlow,
+            innerStateSafe,
+            automaticServerRepository.ohttpUnavailable
+        ) { fastest, inner, isOhttpUnavailable ->
             val local = inner.requireLocal()
             val persisted = inner.requirePersisted()
             ChooseServerState(
-                connectionMode = createConnectionMode(local, persisted, fastestServers),
-                fastest = createFastest(local, persisted, fastestServers),
-                other = createOther(local, persisted, fastestServers),
-                saveButton = createSaveButton(local, persisted),
+                connectionMode =
+                    createConnectionMode(
+                        local = local,
+                        persisted = persisted,
+                        fastestServers = fastest,
+                        isOhttpUnavailable = isOhttpUnavailable,
+                        gatewayRelayIndependence = inner.gatewayRelayIndependence,
+                    ),
+                fastest = createFastest(local, persisted, fastest),
+                other = createOther(local, persisted, fastest),
+                saveButton = createSaveButton(local, persisted, fastest),
                 dialogState = inner.dialogState,
-                explanatoryMessage =
-                    if (preselectFastestClearnet) {
-                        stringRes(R.string.choose_server_clearnet_preselection_message)
-                    } else {
-                        null
-                    },
                 onBack = ::onBack
             )
         }.stateIn(
@@ -85,44 +93,103 @@ class ChooseServerVM(
         local: InnerState.Local,
         persisted: InnerState.Persisted,
         fastestServers: FastestServersState,
-    ): ServerConnectionModeState =
-        ServerConnectionModeState(
-            automatic =
+        isOhttpUnavailable: Boolean,
+        gatewayRelayIndependence: Map<String, Boolean>,
+    ): ServerConnectionModeState {
+        val isTesting = fastestServers.isLoading
+        val testingBadge =
+            ModeBadgeState(
+                text = stringRes(R.string.serverSetup_testing),
+                style = ModeBadgeStyle.WARNING,
+                showsProgress = true
+            )
+        return ServerConnectionModeState(
+            private =
                 RadioButtonState(
-                    text = stringRes(R.string.serverSetup_automatic),
+                    text = stringRes(R.string.serverSetup_private),
+                    subtitle = privateSubtitle(gatewayRelayIndependence),
+                    isChecked = local.mode == ServerConnectionMode.PRIVATE,
+                    onClick = ::onPrivateModeClicked,
+                    hapticFeedbackType =
+                        if (local.mode == ServerConnectionMode.PRIVATE) null else HapticFeedbackType.SegmentTick
+                ),
+            public =
+                RadioButtonState(
+                    text = stringRes(R.string.serverSetup_public),
                     subtitle =
-                        if (local.isAutomatic) {
-                            val automaticEndpoint =
-                                if (persisted.isAutomatic) {
+                        if (local.mode == ServerConnectionMode.PUBLIC) {
+                            endpointLabel(
+                                if (persisted.mode == ServerConnectionMode.PUBLIC) {
                                     persisted.endpoint
                                 } else {
-                                    // Switching from Manual to Automatic always starts from OHTTP.
-                                    getAutomaticEndpoint(isFallbackActive = false, persisted = persisted.endpoint)
+                                    fastestPublicServer(fastestServers)
+                                        ?: lightWalletEndpointProvider.getFallbackEndpoints().firstOrNull()
+                                        ?: persisted.endpoint
                                 }
-                            endpointLabel(automaticEndpoint)
+                            )
                         } else {
                             null
                         },
-                    isChecked = local.isAutomatic,
-                    onClick = ::onAutomaticModeClicked,
-                    hapticFeedbackType = if (local.isAutomatic) null else HapticFeedbackType.SegmentTick
+                    isChecked = local.mode == ServerConnectionMode.PUBLIC,
+                    onClick = ::onPublicModeClicked,
+                    hapticFeedbackType =
+                        if (local.mode == ServerConnectionMode.PUBLIC) null else HapticFeedbackType.SegmentTick
                 ),
             manual =
                 RadioButtonState(
                     text = stringRes(R.string.serverSetup_manual),
                     subtitle =
-                        if (!local.isAutomatic && fastestServers.isLoading) {
+                        if (local.mode == ServerConnectionMode.MANUAL && isTesting) {
                             stringRes(R.string.serverSetup_performingTest)
                         } else {
                             null
                         },
-                    isChecked = !local.isAutomatic,
+                    isChecked = local.mode == ServerConnectionMode.MANUAL,
                     onClick = ::onManualModeClicked,
-                    hapticFeedbackType = if (!local.isAutomatic) null else HapticFeedbackType.SegmentTick
+                    hapticFeedbackType =
+                        if (local.mode == ServerConnectionMode.MANUAL) null else HapticFeedbackType.SegmentTick
                 ),
-            automaticBadge =
-                if (fastestServers.isLoading) stringRes(R.string.serverSetup_testing) else null
+            privateBadge = createPrivateBadge(persisted, isOhttpUnavailable),
+            publicBadge = createPublicBadge(local, persisted, testingBadge, isTesting),
+            manualBadge = if (local.mode == ServerConnectionMode.MANUAL && isTesting) testingBadge else null,
+            onPrivateInfoClick = ::onPrivateInfoClicked,
         )
+    }
+
+    private fun createPrivateBadge(persisted: InnerState.Persisted, isOhttpUnavailable: Boolean): ModeBadgeState? =
+        when {
+            persisted.mode != ServerConnectionMode.PRIVATE -> {
+                null
+            }
+
+            isOhttpUnavailable -> {
+                ModeBadgeState(stringRes(R.string.serverSetup_unavailable), ModeBadgeStyle.ERROR)
+            }
+
+            else -> {
+                ModeBadgeState(stringRes(R.string.serverSetup_active), ModeBadgeStyle.SUCCESS)
+            }
+        }
+
+    private fun createPublicBadge(
+        local: InnerState.Local,
+        persisted: InnerState.Persisted,
+        testingBadge: ModeBadgeState,
+        isTesting: Boolean,
+    ): ModeBadgeState? =
+        when {
+            local.mode == ServerConnectionMode.PUBLIC && isTesting -> {
+                testingBadge
+            }
+
+            persisted.mode == ServerConnectionMode.PUBLIC -> {
+                ModeBadgeState(stringRes(R.string.serverSetup_active), ModeBadgeStyle.SUCCESS)
+            }
+
+            else -> {
+                null
+            }
+        }
 
     private fun createFastest(
         local: InnerState.Local,
@@ -133,23 +200,19 @@ class ChooseServerVM(
             title = stringRes(R.string.serverSetup_fastestServers),
             servers =
                 fastestServers.servers
+                    ?.filterNot { isGateway(it) }
                     ?.map { endpoint ->
                         createDefaultServerState(
                             endpoint = endpoint,
                             local = local,
                             persistedEndpoint = persisted.endpoint,
-                            isManualSelected = !local.isAutomatic
+                            isManualSelected = local.mode == ServerConnectionMode.MANUAL
                         )
                     }.orEmpty(),
             isLoading = fastestServers.isLoading,
             retryButton =
                 ButtonState(
-                    text =
-                        if (preselectFastestClearnet && !autoStartProbing && fastestServers.servers == null) {
-                            stringRes(R.string.serverSetup_measure_servers)
-                        } else {
-                            stringRes(R.string.serverSetup_refresh)
-                        },
+                    text = stringRes(R.string.serverSetup_refresh),
                     isEnabled = !local.isSaveInProgress,
                     onClick = ::onRefreshClicked
                 )
@@ -164,20 +227,21 @@ class ChooseServerVM(
         val customEndpointState = createCustomServerState(local = local, persisted = persisted)
         return ServerListState.Other(
             title =
-                if (fastestServers.servers.isNullOrEmpty()) {
+                if (fastestServers.servers?.filterNot { isGateway(it) }.isNullOrEmpty()) {
                     stringRes(R.string.serverSetup_allServers)
                 } else {
                     stringRes(R.string.serverSetup_otherServers)
                 },
             servers =
                 innerState.value.availableServers
+                    .filterNot { isGateway(it) }
                     .filter { !fastestServers.servers.orEmpty().contains(it) }
                     .map<LightWalletEndpoint, ServerState> { endpoint ->
                         createDefaultServerState(
                             endpoint = endpoint,
                             local = local,
                             persistedEndpoint = persistedEndpoint,
-                            isManualSelected = !local.isAutomatic
+                            isManualSelected = local.mode == ServerConnectionMode.MANUAL
                         )
                     }.toMutableList()
                     .apply {
@@ -187,7 +251,11 @@ class ChooseServerVM(
         )
     }
 
-    private fun createSaveButton(local: InnerState.Local, persisted: InnerState.Persisted): ButtonState {
+    private fun createSaveButton(
+        local: InnerState.Local,
+        persisted: InnerState.Persisted,
+        fastestServers: FastestServersState,
+    ): ButtonState {
         val isSaveInProgress = local.isSaveInProgress
         return ButtonState(
             text =
@@ -196,7 +264,11 @@ class ChooseServerVM(
                 } else {
                     stringRes(R.string.serverSetup_save)
                 },
-            isEnabled = !isSaveInProgress && hasUnsavedChanges(local, persisted),
+            // Public is still being tested: Save waits for the test result (Figma "Public (Testing)").
+            isEnabled =
+                !isSaveInProgress &&
+                    !(local.mode == ServerConnectionMode.PUBLIC && fastestServers.isLoading) &&
+                    hasUnsavedChanges(local, persisted),
             isLoading = isSaveInProgress,
             onClick = ::onSaveButtonClicked,
             hapticFeedbackType = HapticFeedbackType.Confirm
@@ -213,15 +285,17 @@ class ChooseServerVM(
         }
 
         combine(
-            isServerAutomatic.observe(),
-            getSelectedEndpoint.observe().filterNotNull()
-        ) { isAutomatic, endpoint -> isAutomatic to endpoint }
-            .onEach { (isAutomatic, endpoint) ->
+            observeServerConnectionMode(),
+            getSelectedEndpoint.observe().filterNotNull(),
+            isOhttpFallbackActive.observe(),
+        ) { mode, endpoint, isFallback -> Triple(mode, endpoint, isFallback) }
+            .onEach { (mode, endpoint, isFallback) ->
                 innerState.update { inner ->
                     val persisted =
                         InnerState.Persisted(
                             endpoint = endpoint,
-                            isAutomatic = isAutomatic,
+                            mode = mode,
+                            isOutageSwitch = mode == ServerConnectionMode.PUBLIC && isFallback,
                             isCustomEndpoint = resolveIsEndpointCustom(endpoint, inner.availableServers),
                         )
                     inner.copy(
@@ -230,65 +304,39 @@ class ChooseServerVM(
                     )
                 }
             }.launchIn(viewModelScope)
-
-        if (preselectFastestClearnet) {
-            if (autoStartProbing) {
-                refreshFastestServersUseCase()
-            }
-            // Preselect once per ViewModel: the first finished result with a clearnet candidate. Later
-            // emissions (e.g. a refresh) and any selection the user has already made are never overwritten.
-            viewModelScope.launch {
-                val clearnetEndpoints = lightWalletEndpointProvider.getFallbackEndpoints()
-                val fastestClearnet =
-                    observeFastestServers()
-                        .mapNotNull { fastestServers ->
-                            fastestServers.servers
-                                ?.takeIf { !fastestServers.isLoading }
-                                ?.firstOrNull { it in clearnetEndpoints }
-                        }.first()
-                innerState.first { it.local != null }
-                innerState.update { inner ->
-                    inner.local?.let { local ->
-                        if (!local.hasUserSelection && local.selectedEndpoint == inner.persisted?.endpoint) {
-                            inner.copy(local = local.copy(isAutomatic = false, selectedEndpoint = fastestClearnet))
-                        } else {
-                            inner
-                        }
-                    } ?: inner
-                }
-            }
-        }
     }
 
     private fun createInitialLocalState(persisted: InnerState.Persisted): InnerState.Local {
         val endpoint = persisted.endpoint
         val isCustom = persisted.isCustomEndpoint
         return InnerState.Local(
-            isAutomatic = persisted.isAutomatic,
+            mode = persisted.mode,
             selectedEndpoint = endpoint.takeIf { !isCustom },
-            isCustomSelected = !persisted.isAutomatic && isCustom,
+            isCustomSelected = persisted.mode == ServerConnectionMode.MANUAL && isCustom,
             isSaveInProgress = false,
             customEndpoint =
                 if (isCustom) EndpointTextFieldInnerState.fromEndpoint(endpoint) else EndpointTextFieldInnerState()
         )
     }
 
-    private fun hasUnsavedChanges(local: InnerState.Local, persisted: InnerState.Persisted): Boolean =
-        when {
-            local.isAutomatic != persisted.isAutomatic -> {
+    private fun hasUnsavedChanges(local: InnerState.Local, persisted: InnerState.Persisted): Boolean {
+        // Manual needs a server to pin: right after tapping it from Private nothing is selected yet.
+        val manualEndpoint = if (local.isCustomSelected) local.customEndpoint.endpoint else local.selectedEndpoint
+        return when {
+            local.mode == ServerConnectionMode.MANUAL -> {
+                manualEndpoint != null &&
+                    (persisted.mode != ServerConnectionMode.MANUAL || manualEndpoint != persisted.endpoint)
+            }
+
+            local.mode != persisted.mode -> {
                 true
             }
 
-            local.isAutomatic -> {
-                false
-            }
-
             else -> {
-                val effectiveEndpoint =
-                    if (local.isCustomSelected) local.customEndpoint.endpoint else local.selectedEndpoint
-                effectiveEndpoint != null && effectiveEndpoint != persisted.endpoint
+                local.mode == ServerConnectionMode.PUBLIC && persisted.isOutageSwitch
             }
         }
+    }
 
     private fun onBack() {
         if (canUpdateSelection()) {
@@ -299,8 +347,8 @@ class ChooseServerVM(
     private fun createCustomServerState(local: InnerState.Local, persisted: InnerState.Persisted): ServerState.Custom {
         val isPersistedEndpointCustom = persisted.isCustomEndpoint
         val isEnabled = !local.isSaveInProgress
-        val isChecked = !local.isAutomatic && local.isCustomSelected
-        val isExpanded = isChecked || (!local.isAutomatic && isPersistedEndpointCustom)
+        val isChecked = local.mode == ServerConnectionMode.MANUAL && local.isCustomSelected
+        val isExpanded = isChecked || (local.mode == ServerConnectionMode.MANUAL && isPersistedEndpointCustom)
         return ServerState.Custom(
             radioButtonState =
                 RadioButtonState(
@@ -312,12 +360,7 @@ class ChooseServerVM(
                         },
                     isChecked = isChecked,
                     onClick = ::onCustomEndpointClicked,
-                    subtitle =
-                        if (isPersistedEndpointCustom && isGateway(persisted.endpoint)) {
-                            ohttpSubtitle(persisted.endpoint)
-                        } else {
-                            stringRes(R.string.serverSetup_customNotPrivate)
-                        },
+                    subtitle = stringRes(R.string.serverSetup_customNotPrivate),
                     hapticFeedbackType = if (isChecked) null else HapticFeedbackType.SegmentTick,
                 ),
             newServerTextFieldState =
@@ -338,7 +381,6 @@ class ChooseServerVM(
         persistedEndpoint: LightWalletEndpoint,
         isManualSelected: Boolean,
     ): ServerState.Default {
-        val defaultEndpoint = lightWalletEndpointProvider.getDefaultEndpoint()
         val isEndpointChecked =
             isManualSelected && !local.isCustomSelected && local.selectedEndpoint == endpoint
         return ServerState.Default(
@@ -348,12 +390,7 @@ class ChooseServerVM(
                     text = endpointLabel(endpoint),
                     isChecked = isEndpointChecked,
                     onClick = { onEndpointClicked(endpoint) },
-                    // Clearnet lightwalletd rows (the automatic fallback tier) are flagged as not private.
-                    subtitle =
-                        when {
-                            endpoint == defaultEndpoint -> ohttpSubtitle(endpoint)
-                            else -> stringRes(R.string.serverSetup_clearnetNotPrivate)
-                        },
+                    subtitle = stringRes(R.string.serverSetup_clearnetNotPrivate),
                     hapticFeedbackType = if (isEndpointChecked) null else HapticFeedbackType.SegmentTick,
                 ),
             badge = if (endpoint == persistedEndpoint) stringRes(R.string.serverSetup_active) else null,
@@ -366,12 +403,23 @@ class ChooseServerVM(
      */
     private fun isGateway(endpoint: LightWalletEndpoint) = lightWalletEndpointProvider.isOhttpGateway(endpoint)
 
-    private fun ohttpSubtitle(endpoint: LightWalletEndpoint) =
-        when (innerState.value.gatewayRelayIndependence[endpoint.host]) {
-            true -> stringRes(R.string.serverSetup_ohttpPrivate)
+    /**
+     * "ZODL servers", unless this build reaches the gateway through a relay the gateway operator also runs (the
+     * relay simulator), which gives no unlinkability, so it must not read as private.
+     */
+    private fun privateSubtitle(gatewayRelayIndependence: Map<String, Boolean>): StringResource {
+        val gatewayHost = lightWalletEndpointProvider.getDefaultEndpoint().host
+        return when (gatewayRelayIndependence[gatewayHost]) {
             false -> stringRes(R.string.serverSetup_ohttpTestRelayNotPrivate)
-            null -> null
+            else -> stringRes(R.string.serverSetup_privateSubtitle)
         }
+    }
+
+    /** The public server a finished speed test ranked first, if any. */
+    private fun fastestPublicServer(state: FastestServersState): LightWalletEndpoint? =
+        state.servers
+            ?.takeIf { !state.isLoading }
+            ?.firstOrNull { !isGateway(it) }
 
     private fun onRefreshClicked() {
         if (!canUpdateSelection()) return
@@ -385,19 +433,24 @@ class ChooseServerVM(
                 local =
                     inner.requireLocal().copy(
                         customEndpoint = new,
-                        isAutomatic = false,
+                        mode = ServerConnectionMode.MANUAL,
                         isCustomSelected = true,
                         selectedEndpoint = null,
-                        hasUserSelection = true,
                     )
             )
         }
     }
 
-    private fun onAutomaticModeClicked() {
+    private fun onPrivateInfoClicked() = navigationRouter.forward(OhttpInfoArgs)
+
+    private fun onPrivateModeClicked() = onAutomaticModeClicked(ServerConnectionMode.PRIVATE)
+
+    private fun onPublicModeClicked() = onAutomaticModeClicked(ServerConnectionMode.PUBLIC)
+
+    private fun onAutomaticModeClicked(mode: ServerConnectionMode) {
         if (!canUpdateSelection()) return
         innerState.update { inner ->
-            inner.copy(local = inner.requireLocal().copy(isAutomatic = true, hasUserSelection = true))
+            inner.copy(local = inner.requireLocal().copy(mode = mode))
         }
     }
 
@@ -409,10 +462,9 @@ class ChooseServerVM(
             inner.copy(
                 local =
                     inner.requireLocal().copy(
-                        isAutomatic = false,
-                        selectedEndpoint = if (!pickCustom) persisted.endpoint else null,
+                        mode = ServerConnectionMode.MANUAL,
+                        selectedEndpoint = persisted.endpoint.takeIf { !pickCustom && !isGateway(it) },
                         isCustomSelected = pickCustom,
-                        hasUserSelection = true
                     )
             )
         }
@@ -424,10 +476,9 @@ class ChooseServerVM(
             inner.copy(
                 local =
                     inner.requireLocal().copy(
-                        isAutomatic = false,
+                        mode = ServerConnectionMode.MANUAL,
                         selectedEndpoint = endpoint,
                         isCustomSelected = false,
-                        hasUserSelection = true,
                     )
             )
         }
@@ -439,10 +490,9 @@ class ChooseServerVM(
             inner.copy(
                 local =
                     inner.requireLocal().copy(
-                        isAutomatic = false,
+                        mode = ServerConnectionMode.MANUAL,
                         isCustomSelected = true,
                         selectedEndpoint = null,
-                        hasUserSelection = true,
                     )
             )
         }
@@ -459,8 +509,16 @@ class ChooseServerVM(
             if (local.isSaveInProgress) return@launch
             innerState.update { it.copy(local = it.requireLocal().copy(isSaveInProgress = true)) }
             try {
-                if (local.isAutomatic) {
-                    persistServerSelection.persistAutomatic()
+                if (local.mode == ServerConnectionMode.PRIVATE) {
+                    persistServerSelection.persistPrivate()
+                } else if (local.mode == ServerConnectionMode.PUBLIC) {
+                    val persisted = innerState.value.requirePersisted()
+                    persistServerSelection.persistPublic(
+                        // Confirming Public as deliberate must not also hop servers (it rebuilds the Synchronizer).
+                        fastest =
+                            persisted.endpoint.takeIf { persisted.mode == ServerConnectionMode.PUBLIC }
+                                ?: fastestPublicServer(fastestServersFlow.value)
+                    )
                 } else {
                     val ep = if (local.isCustomSelected) local.customEndpoint.endpoint else local.selectedEndpoint
                     if (ep == null) {
@@ -534,17 +592,18 @@ private data class InnerState(
     fun requirePersisted(): Persisted = requireNotNull(persisted) { "Persisted state has not been initialized" }
 
     data class Local(
-        val isAutomatic: Boolean,
+        val mode: ServerConnectionMode,
         val selectedEndpoint: LightWalletEndpoint?,
         val isCustomSelected: Boolean,
         val isSaveInProgress: Boolean,
         val customEndpoint: EndpointTextFieldInnerState,
-        val hasUserSelection: Boolean = false,
     )
 
     data class Persisted(
         val endpoint: LightWalletEndpoint,
-        val isAutomatic: Boolean,
+        val mode: ServerConnectionMode,
+        /** Public entered from the "private connection unavailable" prompt, so it is still a temporary switch. */
+        val isOutageSwitch: Boolean,
         val isCustomEndpoint: Boolean,
     )
 }

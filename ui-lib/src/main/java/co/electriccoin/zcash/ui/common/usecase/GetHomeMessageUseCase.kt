@@ -17,6 +17,7 @@ import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageData
 import co.electriccoin.zcash.ui.common.repository.MigrationHomeMessage
 import co.electriccoin.zcash.ui.common.repository.RuntimeMessage
+import co.electriccoin.zcash.ui.common.repository.isDisconnectedFor
 import co.electriccoin.zcash.ui.common.voting.VotingHomeMessageSource
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import kotlinx.coroutines.CancellationException
@@ -51,7 +52,7 @@ class GetHomeMessageUseCase(
     private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider,
     private val migrationHomeMessageSource: MigrationHomeMessageSource,
     private val votingHomeMessageSource: VotingHomeMessageSource,
-    private val automaticServerRepository: co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository,
+    private val observeOhttpOptInVisible: ObserveOhttpOptInVisibleUseCase,
 ) {
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     fun observe(): Flow<HomeMessageData?> =
@@ -65,8 +66,13 @@ class GetHomeMessageUseCase(
                     combine(
                         votingHomeMessageSource.observeIsCoinholderPollingMessageVisible(),
                         crashReportingStorageProvider.observe().map { it == null },
-                    ) { isCoinholderPollingVisible, isCrashReportingVisible ->
-                        TrailingPrioritizedInputs(isCoinholderPollingVisible, isCrashReportingVisible)
+                        observeOhttpOptInVisible(),
+                    ) { isCoinholderPollingVisible, isCrashReportingVisible, isOhttpOptInVisible ->
+                        TrailingPrioritizedInputs(
+                            isCoinholderPollingVisible,
+                            isCrashReportingVisible,
+                            isOhttpOptInVisible,
+                        )
                     },
                 ) { runtimeMessage, backup, isTorAvailable, isCCAvailable, trailing ->
                     createHomeMessage(
@@ -76,6 +82,7 @@ class GetHomeMessageUseCase(
                         isCurrencyConversionEnabled = isCCAvailable,
                         isCoinholderPollingVisible = trailing.isCoinholderPollingVisible,
                         isCrashReportingVisible = trailing.isCrashReportingVisible,
+                        isOhttpOptInVisible = trailing.isOhttpOptInVisible,
                     )
                 }
 
@@ -109,7 +116,7 @@ class GetHomeMessageUseCase(
                     flowOf(null)
                 }
 
-                account.isShieldingAvailable == true -> {
+                isShieldFundsMessageEligible(account) -> {
                     messageAvailabilityDataSource.canShowShieldMessage
                         .map { canShowShieldMessage ->
                             when {
@@ -130,11 +137,12 @@ class GetHomeMessageUseCase(
         val migration: MigrationHomeMessage?,
         val account: WalletAccount?,
         val walletSnapshot: WalletSnapshot,
-        val isOhttpUnavailable: Boolean
+        /** [WalletSnapshot.status] DISCONNECTED for the shared grace (see [observeRuntimeMessage]). */
+        val isDisconnectedSustained: Boolean,
     )
 
     /**
-     * [HomeMessageData.CoinholderPolling] and [HomeMessageData.CrashReport] bundled together into
+     * [HomeMessageData.CoinholderPolling], [HomeMessageData.CrashReport] and [HomeMessageData.OhttpOptIn] bundled into
      * one flow purely so the outer `observe()` combine (already at kotlinx's 5-flow overload
      * ceiling) doesn't need a 6th argument — same "bundle inputs into a data class" trick as
      * [RuntimeMessageInputs] above.
@@ -142,26 +150,36 @@ class GetHomeMessageUseCase(
     private data class TrailingPrioritizedInputs(
         val isCoinholderPollingVisible: Boolean,
         val isCrashReportingVisible: Boolean,
+        val isOhttpOptInVisible: Boolean,
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeRuntimeMessage(): Flow<RuntimeMessage?> {
+        /*
+         * The wallet snapshot alongside [isDisconnectedFor] of its status: a status that is DISCONNECTED for less
+         * than [co.electriccoin.zcash.ui.common.repository.DISCONNECTED_GRACE] - one failed call, the blip around
+         * a lifecycle change - shows no banner. The same grace the automatic server selection applies before it
+         * treats the status as a connectivity edge.
+         */
+        val snapshots = walletSnapshotDataSource.observe().filterNotNull()
+        val snapshotsWithGrace =
+            combine(snapshots, snapshots.map { it.status }.isDisconnectedFor()) { snapshot, sustained ->
+                snapshot to sustained
+            }
         return channelFlow {
             var firstSyncingMessage: HomeMessageData.Syncing? = null
             combine(
                 observeShieldFundsMessage(),
                 migrationHomeMessageSource.observe(),
                 accountDataSource.selectedAccount,
-                walletSnapshotDataSource.observe().filterNotNull(),
-                automaticServerRepository.ohttpUnavailable
-            ) { sf, mig, acc, ws, ohttpUnavailable ->
-                RuntimeMessageInputs(sf, mig, acc, ws, ohttpUnavailable)
+                snapshotsWithGrace,
+            ) { sf, mig, acc, (ws, disconnectedSustained) ->
+                RuntimeMessageInputs(sf, mig, acc, ws, disconnectedSustained)
             }.collect { inputs ->
                 val shieldFundsMessage = inputs.shieldFunds
                 val migrationMessage = inputs.migration
                 val account = inputs.account
                 val walletSnapshot = inputs.walletSnapshot
-                val isOhttpUnavailable = inputs.isOhttpUnavailable
 
                 if (walletSnapshot.status in
                     listOf(
@@ -175,8 +193,7 @@ class GetHomeMessageUseCase(
                 // Connectivity/sync states outrank migration: a user can't act on the migration banner
                 // while the wallet is disconnected, erroring, or still syncing.
                 val message =
-                    createOhttpUnavailableMessage(isOhttpUnavailable)
-                        ?: createDisconnectedMessage(walletSnapshot)
+                    createDisconnectedMessage(inputs.isDisconnectedSustained)
                         ?: createSynchronizerErrorMessage(walletSnapshot)
                         ?: createSyncingMessage(
                             walletSnapshot,
@@ -243,19 +260,9 @@ class GetHomeMessageUseCase(
         return HomeMessageData.Error(walletSnapshot.synchronizerError)
     }
 
-    private fun createDisconnectedMessage(walletSnapshot: WalletSnapshot): HomeMessageData.Disconnected? =
-        if (walletSnapshot.status == Synchronizer.Status.DISCONNECTED) {
-            HomeMessageData.Disconnected
-        } else {
-            null
-        }
-
-    private fun createOhttpUnavailableMessage(isOhttpUnavailable: Boolean): HomeMessageData.OhttpUnavailable? =
-        if (isOhttpUnavailable) {
-            HomeMessageData.OhttpUnavailable
-        } else {
-            null
-        }
+    /** Only a DISCONNECTED status sustained for the shared grace shows the banner (a blip shows nothing). */
+    private fun createDisconnectedMessage(isDisconnectedSustained: Boolean): HomeMessageData.Disconnected? =
+        if (isDisconnectedSustained) HomeMessageData.Disconnected else null
 
     private fun createSyncingMessage(
         walletSnapshot: WalletSnapshot,
@@ -279,6 +286,7 @@ internal fun createHomeMessage(
     isCurrencyConversionEnabled: Boolean,
     isCoinholderPollingVisible: Boolean,
     isCrashReportingVisible: Boolean,
+    isOhttpOptInVisible: Boolean = false,
 ): HomeMessageData? =
     when {
         backup is WalletBackupData.Available -> HomeMessageData.Backup
@@ -287,6 +295,7 @@ internal fun createHomeMessage(
         isTorVisible -> HomeMessageData.EnableTor
         isCurrencyConversionEnabled -> HomeMessageData.EnableCurrencyConversion
         isCrashReportingVisible -> HomeMessageData.CrashReport
+        isOhttpOptInVisible -> HomeMessageData.OhttpOptIn
         else -> null
     }
 
@@ -338,6 +347,13 @@ internal fun prioritizeHomeMessage(
         }
     }
 }
+
+/**
+ * Whether [account] may be offered the shield-funds message: it must be able to spend, since
+ * shielding spends its transparent funds, and hold enough of them to be worth shielding.
+ */
+internal fun isShieldFundsMessageEligible(account: WalletAccount): Boolean =
+    account.isSpendable && account.isShieldingAvailable == true
 
 internal const val SYNCING_BANNER_HIDE_BELOW_BLOCKS = 3456L
 

@@ -50,7 +50,7 @@ interface HttpClientProvider {
     suspend fun createOhttp(): OhttpHttpClient
 
     /**
-     * Runs [block] with an OHTTP client of its own for wallet-identifying third-party calls (NEAR quotes,
+     * Runs [block] with an OHTTP client of its own for wallet-identifying third-party calls (Flexa, NEAR quotes,
      * deposits and status carry addresses). With Tor ON its relay leg uses a fresh isolated Tor circuit,
      * released when [block] returns, so such calls cannot be linked through a shared circuit (ZIP #10).
      * With Tor OFF there is no circuit to isolate and the shared client is used.

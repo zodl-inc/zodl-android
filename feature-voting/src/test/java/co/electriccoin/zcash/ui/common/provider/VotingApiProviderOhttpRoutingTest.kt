@@ -6,6 +6,7 @@ import co.electriccoin.zcash.configuration.model.map.Configuration
 import co.electriccoin.zcash.ui.common.model.voting.EncryptedShare
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.SharePayload
+import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfig
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
@@ -94,6 +95,37 @@ class VotingApiProviderOhttpRoutingTest {
             assertTrue(
                 ohttpRequests.none { it.contains(SHARES_PATH) },
                 "postShare must not use OHTTP for a custom server"
+            )
+        }
+
+    @Test
+    fun customChainTypedAsTheBundledSourceFetchesItsConfigThroughOhttp() =
+        runBlocking {
+            val ohttpRequests = mutableListOf<String>()
+            val directRequests = mutableListOf<String>()
+            val provider =
+                providerWithOhttpTracking(
+                    ohttpRequests = ohttpRequests,
+                    directRequests = directRequests,
+                    torEnabled = false,
+                    isCustomServer = true,
+                    customPinnedSource = StaticVotingConfig.BUNDLED_PINNED_SOURCE,
+                    ohttpCanHandle = { true }
+                )
+
+            // The bundled checksum does not match the fake config, so the fetch fails: the routing of the
+            // fetch is what is checked here.
+            runCatching {
+                provider.fetchServiceConfig()
+            }
+
+            assertTrue(
+                ohttpRequests.any { it.contains("/pins/prod/") && it.contains("static-voting-config.json") },
+                "a custom chain typed as the bundled source counts as predefined: its config goes through the gateway"
+            )
+            assertTrue(
+                directRequests.none { it.contains("voting-config.json") },
+                "the predefined config is never fetched direct with Tor off"
             )
         }
 
@@ -233,6 +265,7 @@ class VotingApiProviderOhttpRoutingTest {
         directRequests: MutableList<String> = mutableListOf(),
         torEnabled: Boolean,
         isCustomServer: Boolean,
+        customPinnedSource: String = CUSTOM_PINNED_SOURCE,
         ohttpCanHandle: (String) -> Boolean = { !torEnabled && !isCustomServer }
     ): KtorVotingApiProvider =
         KtorVotingApiProvider(
@@ -304,7 +337,8 @@ class VotingApiProviderOhttpRoutingTest {
                         }
                 },
             configurationRepository = TestConfigurationRepository(),
-            votingChainConfigRepository = TestVotingChainConfigRepository(isCustom = isCustomServer),
+            votingChainConfigRepository =
+                TestVotingChainConfigRepository(isCustom = isCustomServer, pinnedSource = customPinnedSource),
             votingCryptoClient = unusedVotingCryptoClient()
         )
 
@@ -398,7 +432,8 @@ class VotingApiProviderOhttpRoutingTest {
     }
 
     private class TestVotingChainConfigRepository(
-        private val isCustom: Boolean
+        private val isCustom: Boolean,
+        private val pinnedSource: String = CUSTOM_PINNED_SOURCE
     ) : VotingChainConfigRepository {
         override val state: StateFlow<VotingChainConfigState> =
             MutableStateFlow(
@@ -415,7 +450,7 @@ class VotingApiProviderOhttpRoutingTest {
                                 VotingCustomChainConfig(
                                     id = "custom-chain",
                                     name = "Custom Chain",
-                                    pinnedSource = "https://custom.example.com/static-voting-config.json"
+                                    pinnedSource = pinnedSource
                                 )
                             )
                         } else {
@@ -445,6 +480,8 @@ class VotingApiProviderOhttpRoutingTest {
     }
 
     private companion object {
+        const val CUSTOM_PINNED_SOURCE = "https://custom.example.com/static-voting-config.json"
+
         const val VOTE_SERVER_URL = "https://vote.example.com"
         const val SHARES_PATH = "/shielded-vote/v1/shares"
         const val ROUNDS_PATH = "/shielded-vote/v1/rounds"

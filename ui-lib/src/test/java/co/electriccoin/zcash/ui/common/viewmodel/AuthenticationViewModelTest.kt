@@ -6,6 +6,7 @@ import co.electriccoin.zcash.preference.StandardPreferenceProvider
 import co.electriccoin.zcash.preference.api.PreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.PreferenceKey
 import co.electriccoin.zcash.spackle.AndroidApiVersion
+import co.electriccoin.zcash.ui.common.provider.AppAccessLockProvider
 import co.electriccoin.zcash.ui.common.provider.GetMonotonicTimeProvider
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.fixture.VersionInfoFixture
@@ -14,6 +15,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -179,6 +181,74 @@ class AuthenticationViewModelTest {
         }
 
     @Test
+    fun backgroundTimeoutLocksTheAppRightAwayWhenAuthenticationIsRequired() =
+        runTest {
+            val lock = mockk<AppAccessLockProvider>(relaxed = true)
+            val (viewModel, _, setMonotonicTimeMillis) =
+                newViewModel(secretState = SecretState.READY, appAccessLockProvider = lock)
+            backgroundScope.launch { viewModel.appAccessAuthenticationResultState.collect { } }
+            advanceUntilIdle()
+            viewModel.appAccessAuthentication.value = AuthenticationUIState.Successful
+
+            setMonotonicTimeMillis(0L)
+            viewModel.onEnteredBackground()
+            setMonotonicTimeMillis(16.minutes.inWholeMilliseconds)
+            viewModel.runAuthenticationRequiredCheck()
+
+            // Synchronously, before any recomposition and before the app is foregrounded again.
+            verify(exactly = 1) { lock.setLocked(true) }
+        }
+
+    @Test
+    fun backgroundTimeoutDoesNotLockWhenAuthenticationIsOff() =
+        runTest {
+            val lock = mockk<AppAccessLockProvider>(relaxed = true)
+            val (viewModel, _, setMonotonicTimeMillis) =
+                newViewModel(
+                    secretState = SecretState.READY,
+                    isAppAccessAuthenticationPreference = "false",
+                    appAccessLockProvider = lock,
+                )
+            backgroundScope.launch { viewModel.appAccessAuthenticationResultState.collect { } }
+            advanceUntilIdle()
+
+            setMonotonicTimeMillis(0L)
+            viewModel.onEnteredBackground()
+            setMonotonicTimeMillis(16.minutes.inWholeMilliseconds)
+            viewModel.runAuthenticationRequiredCheck()
+
+            verify(exactly = 0) { lock.setLocked(true) }
+        }
+
+    @Test
+    fun backgroundTimeoutDoesNotLockAWalletlessSession() =
+        runTest {
+            // Authentication is on by default, but without a wallet nothing would ever unlock the app again.
+            val lock = mockk<AppAccessLockProvider>(relaxed = true)
+            val (viewModel, _, setMonotonicTimeMillis) =
+                newViewModel(secretState = SecretState.NONE, appAccessLockProvider = lock)
+            backgroundScope.launch { viewModel.appAccessAuthenticationResultState.collect { } }
+            advanceUntilIdle()
+
+            setMonotonicTimeMillis(0L)
+            viewModel.onEnteredBackground()
+            setMonotonicTimeMillis(16.minutes.inWholeMilliseconds)
+            viewModel.runAuthenticationRequiredCheck()
+
+            verify(exactly = 0) { lock.setLocked(true) }
+        }
+
+    @Test
+    fun aCachedSuccessfulStateDoesNotUnlockAfterAReset() {
+        // A recreated Activity composes with the cached derived state while the reset already changed the raw one.
+        assertTrue(isAppAccessLocked(AuthenticationUIState.Successful, rawState = AuthenticationUIState.Initial))
+        assertFalse(isAppAccessLocked(AuthenticationUIState.Successful, rawState = AuthenticationUIState.Successful))
+        assertFalse(isAppAccessLocked(AuthenticationUIState.NotRequired, rawState = AuthenticationUIState.Initial))
+        assertTrue(isAppAccessLocked(AuthenticationUIState.Required, rawState = AuthenticationUIState.Successful))
+        assertTrue(isAppAccessLocked(AuthenticationUIState.Initial, rawState = AuthenticationUIState.Successful))
+    }
+
+    @Test
     fun authenticationCheckWithoutRecordedBackgroundTimeIsNoOp() =
         runTest {
             val (viewModel, _, _) = newViewModel(secretState = SecretState.READY)
@@ -192,7 +262,8 @@ class AuthenticationViewModelTest {
     private fun newViewModel(
         secretState: SecretState,
         isAppAccessAuthenticationPreference: String? = null,
-        isRunningUnderTestService: Boolean = false
+        isRunningUnderTestService: Boolean = false,
+        appAccessLockProvider: AppAccessLockProvider = mockk(relaxed = true),
     ): Triple<AuthenticationViewModel, MutableStateFlow<SecretState>, (Long) -> Unit> {
         val secretStateFlow = MutableStateFlow(secretState)
         val walletViewModel = mockk<WalletViewModel>()
@@ -216,7 +287,8 @@ class AuthenticationViewModelTest {
                 getMonotonicTime = getMonotonicTime,
                 getVersionInfo = getVersionInfo,
                 standardPreferenceProvider = standardPreferenceProvider,
-                walletViewModel = walletViewModel
+                walletViewModel = walletViewModel,
+                appAccessLockProvider = appAccessLockProvider,
             )
 
         return Triple(viewModel, secretStateFlow) { monotonicTimeMillis = it }

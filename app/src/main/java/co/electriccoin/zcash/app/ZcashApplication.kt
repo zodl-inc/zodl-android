@@ -28,8 +28,10 @@ import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import co.electriccoin.zcash.ui.common.repository.WalletSnapshotRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveKeepScreenOnSyncSessionUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveOhttpUnavailablePromptUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSeedMismatchUseCase
 import co.electriccoin.zcash.ui.common.usecase.SweepOrphanedGiftCardWalletsUseCase
+import co.electriccoin.zcash.viewingkey.di.featureViewingKeyModule
 import co.electriccoin.zcash.voting.di.featureVotingModule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -54,6 +56,7 @@ class ZcashApplication : CoroutineApplication() {
     private val observeSeedMismatch: ObserveSeedMismatchUseCase by inject()
     private val observeKeepScreenOnSyncSession: ObserveKeepScreenOnSyncSessionUseCase by inject()
     private val sweepOrphanedGiftCardWallets: SweepOrphanedGiftCardWalletsUseCase by inject()
+    private val observeOhttpUnavailablePrompt: ObserveOhttpUnavailablePromptUseCase by inject()
 
     override fun onCreate() {
         super.onCreate()
@@ -85,7 +88,8 @@ class ZcashApplication : CoroutineApplication() {
                 viewModelModule,
                 featureMigrationModule,
                 featureVotingModule,
-                featureLedgerModule
+                featureLedgerModule,
+                featureViewingKeyModule
             )
         }
 
@@ -103,6 +107,7 @@ class ZcashApplication : CoroutineApplication() {
         applicationScope.launch { observeSeedMismatch() }
         applicationScope.launch { observeKeepScreenOnSyncSession() }
         applicationScope.launch { sweepOrphanedGiftCardWallets() }
+        applicationScope.launch { observeOhttpUnavailablePrompt() }
     }
 
     /**

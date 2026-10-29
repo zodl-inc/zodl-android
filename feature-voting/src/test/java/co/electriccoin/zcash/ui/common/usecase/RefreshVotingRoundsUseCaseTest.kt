@@ -6,10 +6,12 @@ import co.electriccoin.zcash.ui.common.model.voting.DelegatedShareInfo
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.SharePayload
 import co.electriccoin.zcash.ui.common.model.voting.TallyResults
+import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.provider.RoundsListResult
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
+import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepositoryImpl
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
@@ -46,6 +48,32 @@ class RefreshVotingRoundsUseCaseTest {
             useCase()
 
             assertEquals(emptySet(), repository.snapshot.value.zodlEndorsedRoundIds)
+        }
+
+    @Test
+    fun refreshNeverPublishesRoundsBeforeTheirEndorsements() =
+        runBlocking {
+            val repository = VotingApiRepositoryImpl()
+            val endorsementsWhenRoundsStored = mutableListOf<Set<String>>()
+            val recordingRepository =
+                object : VotingApiRepository by repository {
+                    override fun storeRounds(
+                        rounds: List<VotingRound>,
+                        sessionsByRoundId: Map<String, VotingSession>
+                    ) {
+                        endorsementsWhenRoundsStored += repository.snapshot.value.zodlEndorsedRoundIds
+                        repository.storeRounds(rounds, sessionsByRoundId)
+                    }
+                }
+            val useCase =
+                RefreshVotingRoundsUseCase(
+                    votingApiProvider = FakeVotingApiProvider(endorsedRoundIds = setOf(ROUND_ID)),
+                    votingApiRepository = recordingRepository
+                )
+
+            useCase()
+
+            assertEquals(listOf(setOf(ROUND_ID)), endorsementsWhenRoundsStored)
         }
 
     private class FakeVotingApiProvider(

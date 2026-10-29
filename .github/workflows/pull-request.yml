@@ -244,7 +244,7 @@ jobs:
         timeout-minutes: 120
         run: |
           ./gradlew :configuration-api-lib:check :crash-lib:check :preference-api-lib:check :spackle-lib:check :ui-design-lib:check
-          ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest :feature-ledger:testZcashmainnetStoreDebugUnitTest :feature-migration:testZcashmainnetStoreDebugUnitTest :feature-voting:testZcashmainnetStoreDebugUnitTest
+          ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest :feature-ledger:testZcashmainnetStoreDebugUnitTest :feature-migration:testZcashmainnetStoreDebugUnitTest :feature-voting:testZcashmainnetStoreDebugUnitTest :feature-viewing-key:testZcashmainnetStoreDebugUnitTest
       - name: Collect Artifacts
         if: ${{ always() }}
         timeout-minutes: 1
@@ -558,9 +558,14 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: android
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: androiddebugkey
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: android
+          # TODO [#1789] Re-enable Flexa integrations for FOSS variant
+          # ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
         run: |
           ./gradlew clean :app:assembleZcashmainnetFossRelease
 
+      # The FOSS runtime classpath must resolve nothing F-Droid's inclusion policy forbids (the vendored
+      # Flexa SDK is offered on every distribution since the perf/status round of 2026-10-22, so the
+      # check runs here, on the branch the F-Droid build is made from, not only on feature/fdroid-parity).
       - name: Check FOSS dependencies
         timeout-minutes: 10
         run: |

@@ -44,6 +44,6 @@ The patch file is `patches/0001-okhttp-client-customizer.patch` (generated with 
 4. Align the dependency lists in `build.gradle.kts` with the new published `.module` files
    (check Maven Central or the upstream tag's `core/build.gradle` / `spend/build.gradle`).
 5. Update `FLEXA_VERSION`, `RELEASE_DATE` (from the upstream release), and the commit SHA in this README.
-6. Verify: CI builds the app; on the F-Droid build (`feature/fdroid-parity`) the "Check FOSS dependencies"
-   (`scripts/check-foss-dependencies.sh`) and "F-Droid scanner" steps must pass, and `third-party/flexa`
-   must contain no binaries.
+6. Verify: CI builds the app; the "Check FOSS dependencies" (`scripts/check-foss-dependencies.sh`, run on
+   the FOSS release runtime classpath by the `build` job of `pull-request.yml`) and "F-Droid scanner" steps
+   must pass, and `third-party/flexa` must contain no binaries.

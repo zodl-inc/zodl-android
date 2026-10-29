@@ -6,9 +6,11 @@ import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
 import co.electriccoin.zcash.ui.common.datasource.TexUnsupportedOnKSException
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposalNotCreatedException
 import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
+import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.common.usecase.Zip321ParseUriValidationUseCase.Zip321ParseUriValidation
@@ -79,7 +81,11 @@ class OnZip321ScannedUseCase(
                         result
                     }
 
-                    is ZashiAccount -> {
+                    is ViewOnlyAccount -> {
+                        throw AccountOperationUnsupportedException.viewOnly()
+                    }
+
+                    is ZodlAccount -> {
                         zashiProposalRepository.createZip321Proposal(zip321.zip321Uri)
                     }
                 }
@@ -138,7 +144,11 @@ class OnZip321ScannedUseCase(
                         result
                     }
 
-                    is ZashiAccount -> {
+                    is ViewOnlyAccount -> {
+                        throw AccountOperationUnsupportedException.viewOnly()
+                    }
+
+                    is ZodlAccount -> {
                         zashiProposalRepository.createZip321Proposal(zip321.zip321Uri)
                     }
                 }

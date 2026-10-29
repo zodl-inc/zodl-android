@@ -135,7 +135,6 @@ private fun Toolbar(
     ZashiSmallTopAppBar(
         title = "Query Database",
         modifier = modifier.testTag(DebugDBTag.DEBUG_DB_TOP_APP_BAR),
-        showTitleLogo = true,
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
         },

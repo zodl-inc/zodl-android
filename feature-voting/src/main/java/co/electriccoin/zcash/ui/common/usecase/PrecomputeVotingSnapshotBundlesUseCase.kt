@@ -54,6 +54,7 @@ class PrecomputeVotingSnapshotBundlesUseCase(
                 if (pirEndpoints.isEmpty()) return@withContext
 
                 val selectedAccount = getSelectedWalletAccount()
+                if (!selectedAccount.isSpendable) return@withContext
                 val accountUuid = selectedAccount.sdkAccount.accountUuid
                 val accountUuidString = accountUuid.toVotingAccountScopeId()
                 val walletDbPath = synchronizerProvider.getVotingWalletDbPath()

@@ -186,7 +186,6 @@ data class ExtendedTypography(
     val radioButton: TextStyle,
     // Grouping transaction item text styles to a wrapper class
     val transactionItemStyles: TransactionItemTextStyles,
-    val restoringTopAppBarStyle: TextStyle,
     val deleteWalletWarnStyle: TextStyle,
 )
 
@@ -362,11 +361,6 @@ val LocalExtendedTypography =
                             fontSize = 8.sp,
                             fontWeight = FontWeight.SemiBold
                         ),
-                ),
-            restoringTopAppBarStyle =
-                SecondaryTypography.labelMedium.copy(
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
                 ),
             deleteWalletWarnStyle =
                 PrimaryTypography.bodyLarge.copy(

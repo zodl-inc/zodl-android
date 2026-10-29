@@ -8,11 +8,15 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
+import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.ShareQRUseCase
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyContent
 import co.electriccoin.zcash.ui.design.util.Ellipsize
+import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByAddress
 import co.electriccoin.zcash.ui.screen.qrcode.ext.fromReceiveAddressType
@@ -30,6 +34,7 @@ class QrCodeVM(
     private val copyToClipboard: CopyToClipboardUseCase,
     private val navigationRouter: NavigationRouter,
     private val shareQR: ShareQRUseCase,
+    private val viewOnlyContent: ViewOnlyContent,
 ) : ViewModel() {
     internal val state =
         observeSelectedWalletAccount
@@ -65,12 +70,7 @@ class QrCodeVM(
                             }
                         },
                         onBack = ::onBack,
-                        qrCodeType =
-                            when (account) {
-                                is KeystoneAccount -> QrCodeType.KEYSTONE
-                                is LedgerAccount -> QrCodeType.LEDGER
-                                is ZashiAccount -> QrCodeType.ZASHI
-                            }
+                        title = addressTitle(account, walletAddress)
                     )
                 }
             }.stateIn(
@@ -80,6 +80,42 @@ class QrCodeVM(
             )
 
     private fun onBack() = navigationRouter.back()
+
+    private fun addressTitle(account: WalletAccount, walletAddress: WalletAddress): StringResource =
+        when (walletAddress) {
+            is WalletAddress.Unified -> {
+                when (account) {
+                    is KeystoneAccount -> stringRes(R.string.qr_code_wallet_address_shielded_keystone)
+                    is LedgerAccount -> stringRes(R.string.accounts_ledger_shieldedAddress)
+                    is ViewOnlyAccount -> viewOnlyContent.receiveShieldedTitle
+                    is ZodlAccount -> stringRes(R.string.accounts_zashi_shieldedAddress)
+                }
+            }
+
+            is WalletAddress.Sapling -> {
+                when (account) {
+                    is KeystoneAccount -> stringRes(R.string.qr_code_wallet_address_sapling_keystone)
+
+                    is LedgerAccount,
+                    is ViewOnlyAccount,
+                    is ZodlAccount -> stringRes(R.string.receive_saplingAddress)
+                }
+            }
+
+            is WalletAddress.Transparent -> {
+                when (account) {
+                    is ViewOnlyAccount -> viewOnlyContent.receiveTransparentTitle
+
+                    is KeystoneAccount,
+                    is LedgerAccount,
+                    is ZodlAccount -> stringRes(R.string.accounts_zashi_transparentAddress)
+                }
+            }
+
+            else -> {
+                error("Unsupported address type: $walletAddress")
+            }
+        }
 
     private fun onAddressCopyClick(address: String) = copyToClipboard(address)
 }

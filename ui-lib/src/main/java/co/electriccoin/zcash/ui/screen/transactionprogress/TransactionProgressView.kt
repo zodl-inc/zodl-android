@@ -2,7 +2,6 @@
 
 package co.electriccoin.zcash.ui.screen.transactionprogress
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -22,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -46,6 +44,7 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.Compose
 import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.StyledStringResource
@@ -254,11 +253,8 @@ internal fun TransactionProgressSubtitle(subtitle: StyledStringResource) {
 @Composable
 internal fun TransactionProgressImage(imageResource: ImageResource) {
     when (imageResource) {
-        is ImageResource.ByDrawable -> {
-            Image(
-                painter = painterResource(imageResource.resource),
-                contentDescription = null
-            )
+        is ImageResource.ByDrawable, is ImageResource.Layered -> {
+            imageResource.Compose()
         }
 
         ImageResource.Loading -> {

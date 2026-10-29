@@ -41,12 +41,15 @@ import co.electriccoin.zcash.ui.NavigationTargets
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.common.model.VersionInfo
+import co.electriccoin.zcash.ui.common.model.toStorageKeyId
 import co.electriccoin.zcash.ui.common.viewmodel.SecretState
 import co.electriccoin.zcash.ui.design.component.ConfigurationOverride
 import co.electriccoin.zcash.ui.design.component.UiMode
 import co.electriccoin.zcash.ui.screen.about.AboutArgs
+import co.electriccoin.zcash.ui.screen.accountlist.AccountListArgs
 import co.electriccoin.zcash.ui.screen.authentication.view.AnimationConstants.WELCOME_ANIM_TEST_TAG
 import co.electriccoin.zcash.ui.screen.balances.BalanceTag
+import co.electriccoin.zcash.ui.screen.editaccount.EditAccountArgs
 import co.electriccoin.zcash.ui.screen.feedback.FeedbackArgs
 import co.electriccoin.zcash.ui.screen.home.HomeTags
 import co.electriccoin.zcash.ui.screen.more.MoreArgs
@@ -54,6 +57,7 @@ import co.electriccoin.zcash.ui.screen.restore.height.RestoreHeightTags
 import co.electriccoin.zcash.ui.screen.restore.seed.RestoreSeedTag
 import co.electriccoin.zcash.ui.screen.restore.tor.RestoreTorTags
 import co.electriccoin.zcash.ui.screen.send.SendTag
+import co.electriccoin.zcash.ui.screen.viewingkey.importvk.ImportVKArgs
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackup
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
 import kotlinx.coroutines.Dispatchers
@@ -419,7 +423,41 @@ class ScreenshotTest : UiTestPrerequisites() {
 
         navigateTo(AboutArgs)
         aboutScreenshots(resContext, tag, composeTestRule)
+
+        navigateTo(AccountListArgs)
+        screenshotWhenShown(
+            title = resContext.getString(R.string.hwWallet_drawer_title),
+            tag = tag,
+            name = "Account List 1",
+            composeTestRule = composeTestRule
+        )
+
+        navigateTo(ImportVKArgs)
+        screenshotWhenShown(
+            title = resContext.getString(co.electriccoin.zcash.viewingkey.R.string.view_only_import_title),
+            tag = tag,
+            name = "Import Viewing Key 1",
+            composeTestRule = composeTestRule
+        )
+
+        navigateTo(EditAccountArgs(zodlKeyId()))
+        screenshotWhenShown(
+            title = resContext.getString(co.electriccoin.zcash.ui.design.R.string.editAccount_title),
+            tag = tag,
+            name = "Edit Account 1",
+            composeTestRule = composeTestRule
+        )
     }
+
+    /** The storage key id of the Zodl account, the first account of the wallet the test created. */
+    private fun zodlKeyId(): String =
+        runBlocking {
+            checkNotNull(composeTestRule.activity.walletViewModel.synchronizer.value)
+                .getAccounts()
+                .first()
+                .accountUuid
+                .toStorageKeyId()
+        }
 }
 
 @OptIn(ExperimentalTestApi::class)
@@ -628,6 +666,19 @@ private fun seedScreenshots(
         }
 
     ScreenshotTest.takeScreenshot(tag, "Seed 1")
+}
+
+/** Waits for a screen showing [title], matched ignoring case, then takes its screenshot as [name]. */
+@OptIn(ExperimentalTestApi::class)
+private fun screenshotWhenShown(
+    title: String,
+    tag: String,
+    name: String,
+    composeTestRule: ComposeTestRule
+) {
+    composeTestRule.waitUntilAtLeastOneExists(hasText(title, ignoreCase = true), DEFAULT_TIMEOUT_MILLISECONDS)
+
+    ScreenshotTest.takeScreenshot(tag, name)
 }
 
 @Suppress("SwallowedException", "TooGenericExceptionCaught")

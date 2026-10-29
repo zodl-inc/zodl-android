@@ -95,6 +95,18 @@
     <!-- ===== account_list ===== -->
     <string name="hwWallet_drawer_title">Wallets &amp; Hardware</string>
     <string name="hwWallet_connect">Connect Hardware Wallet</string>
+    <string name="hwWallet_section_zodl">Zodl Wallet</string>
+    <string name="hwWallet_section_keystone">Keystone Wallet</string>
+    <string name="hwWallet_section_keystone_plural">Keystone Wallets</string>
+    <string name="hwWallet_section_ledger">Ledger Wallet</string>
+    <string name="hwWallet_section_ledger_plural">Ledger Wallets</string>
+    <string name="hwWallet_walletOptions_contentDescription">Options for %1$s</string>
+    <string name="hwWallet_promo_title">Keystone Hardware Wallet</string>
+    <string name="hwWallet_promo_message">Get 5%% off an airgapped hardware wallet. Promo code “Zodl”.</string>
+    <string name="hwWallet_options_title">Wallet Options</string>
+    <string name="hwWallet_options_disconnect_title">Disconnect hardware wallet</string>
+    <string name="hwWallet_options_disconnect_keystone">Unpair your Keystone device.</string>
+    <string name="hwWallet_options_disconnect_ledger">Unpair your Ledger device.</string>
 
     <!-- ===== add_contact ===== -->
     <string name="addressBook_addNewContact">Add New Contact</string>
@@ -122,9 +134,9 @@
     <string name="settings_deleteZashi">Reset Zodl</string>
     <string name="taxExport_taxFile">Export Tax File</string>
     <string name="resyncWallet_title">Resync Wallet</string>
-    <string name="disconnectHWWallet_cta">Disconnect Hardware</string>
     <string name="disconnect_hardware_wallet_biometric_message">Confirm to disconnect your hardware wallet</string>
     <string name="disconnectHWWallet_title">DISCONNECT</string>
+    <string name="disconnectHWWallet_button">Disconnect</string>
     <string name="deleteKeystoneTitle">Disconnect Keystone</string>
     <string name="deleteKeystoneDesc">Disconnecting your hardware wallet will permanently delete some local data that can\'t be recovered from the blockchain.</string>
     <string name="disconnectHWWallet_mayInclude">This may include:</string>
@@ -205,8 +217,7 @@
     <string name="choose_server_save_success_dialog_title">Server saved</string>
     <string name="choose_server_save_success_dialog_text">The selected server endpoint has been
         successfully saved.</string>
-    <string name="serverSetup_ohttpPrivate">Private · OHTTP (default)</string>
-    <string name="serverSetup_clearnetNotPrivate">Clearnet · not private (fallback only)</string>
+    <string name="serverSetup_clearnetNotPrivate">Clearnet · not private</string>
     <string name="serverSetup_customNotPrivate">Custom · not private</string>
     <string name="serverSetup_ohttpTestRelayNotPrivate">OHTTP · test relay, not private</string>
     <string name="choose_server_ohttp_gateway_mainnet">Zodl Private Server</string>
@@ -214,20 +225,41 @@
     <string name="serverSetup_performingTest">Performing server test…</string>
     <string name="serverSetup_couldTakeTime">This may take a moment…</string>
     <string name="serverSetup_connectionMode">Connection mode</string>
-    <string name="serverSetup_automatic">Automatic</string>
+    <string name="serverSetup_private">Private</string>
+    <string name="serverSetup_privateSubtitle">ZODL servers</string>
+    <string name="serverSetup_public">Public</string>
+    <string name="serverSetup_unavailable">Unavailable</string>
+    <string name="serverSetup_privateInfo">Learn more about the private connection</string>
+    <string name="ohttpInfo_title">Private Connection</string>
+    <string name="ohttpInfo_body">Zodl sends its requests through a private relay using Oblivious HTTP (OHTTP), instead of connecting to servers directly.</string>
+    <string name="ohttpInfo_item1Title">Your IP stays yours</string>
+    <string name="ohttpInfo_item1Body">Servers that answer Zodl\'s requests can\'t see where they came from.</string>
+    <string name="ohttpInfo_item2Title">Your requests stay sealed</string>
+    <string name="ohttpInfo_item2Body">The relay in between passes them along without reading them.</string>
+    <string name="ohttpInfo_item3Title">You\'re always asked first</string>
+    <string name="ohttpInfo_item3Body">If the private relay goes down, Zodl won\'t switch to public servers without your OK.</string>
+    <string name="ohttpInfo_gotIt">Got it</string>
+    <string name="ohttpOptIn_widgetTitle">Private connection available</string>
+    <string name="ohttpOptIn_widgetSubtitle">Hide your IP address</string>
+    <string name="ohttpOptIn_widgetView">View</string>
+    <string name="ohttpOptIn_title">Hide Your IP Address</string>
+    <string name="ohttpOptIn_body">Zodl can send its requests through a private relay using Oblivious HTTP (OHTTP) instead of connecting to servers directly.</string>
+    <string name="ohttpOptIn_notNow">Not now</string>
+    <string name="ohttpOptIn_turnOn">Turn on private connection</string>
     <string name="serverSetup_manual">Manual</string>
     <string name="serverSetup_fastestServers">Fastest servers</string>
     <string name="serverSetup_otherServers">Other servers</string>
     <string name="serverSetup_allServers">Browse all servers</string>
     <string name="serverSetup_refresh">Refresh</string>
-    <string name="serverSetup_measure_servers">Measure servers</string>
     <string name="serverSetup_active">Active</string>
     <string name="serverSetup_testing">Testing</string>
     <string name="choose_server_multi_server_info">We may use multiple servers to optimize performance. To reduce metadata exposure, choose Manual connection mode to select your single server of choice, and ensure Tor is enabled in Advanced Settings.</string>
-    <string name="choose_server_clearnet_preselection_message">Private servers are unreachable. The fastest public server is pre-selected — public servers can see your IP address.</string>
-    <string name="ohttpUnavailable_title">Private connection unavailable</string>
-    <string name="ohttpUnavailable_body">Zodl couldn\'t reach private (OHTTP) servers. You can keep waiting or choose a public server. Public servers can see your IP address.</string>
-    <string name="ohttpUnavailable_chooseServer">Choose server</string>
+    <string name="ohttpUnavailableSheet_title">Private connection unavailable</string>
+    <string name="ohttpUnavailableSheet_body">Zodl can\'t reach its private relay right now. You can keep waiting or switch to public servers, which can see your IP address unless you turn on Tor below or use a VPN. Zodl will switch you back automatically once the relay is available.</string>
+    <string name="ohttpUnavailableSheet_torTitle">Enable Tor Protection</string>
+    <string name="ohttpUnavailableSheet_torBody">Hide your IP address by routing traffic through the Tor network.</string>
+    <string name="ohttpUnavailableSheet_keepWaiting">Keep waiting</string>
+    <string name="ohttpUnavailableSheet_switchToPublic">Switch to public servers</string>
 
     <!-- ===== connect_keystone ===== -->
     <string name="keystone_addHWWallet_scan">Scan your device’s QR code to connect.</string>
@@ -1596,5 +1628,27 @@ Your vote can no longer be submitted.</string>
     <string name="migrationHome_defaultSubtitle">Move your funds to Ironwood.</string>
     <string name="migrationHome_residueTitle">%1$s left in Orchard</string>
     <string name="migrationHome_residueSubtitle">Tap to decide what happens to it</string>
+
+    <string name="colorPicker_title">Colors</string>
+    <string name="colorPicker_grid">Grid</string>
+    <string name="colorPicker_spectrum">Spectrum</string>
+    <string name="colorPicker_sliders">Sliders</string>
+    <string name="colorPicker_red">Red</string>
+    <string name="colorPicker_green">Green</string>
+    <string name="colorPicker_blue">Blue</string>
+    <string name="colorPicker_hex">Hex Color #</string>
+    <string name="colorPicker_done">Done</string>
+    <string name="colorPicker_edit">Change color</string>
+    <string name="colorPicker_gridDescription">Color grid</string>
+    <string name="colorPicker_spectrumDescription">Color spectrum</string>
+    <string name="colorPicker_selectedHex">Selected color #%1$s</string>
+    <string name="editAccount_title">Edit Account</string>
+    <string name="accountName_heading">Customize Account</string>
+    <string name="accountName_message">Choose a name to tell it apart from your other accounts.</string>
+    <string name="accountName_label">Account Name</string>
+    <string name="accountName_placeholder">Enter...</string>
+    <string name="accountName_counter">%1$d/%2$d</string>
+    <string name="accountName_duplicate">An account with this name already exists</string>
+    <string name="editAccount_save">Save changes</string>
 
 </resources>

@@ -5,6 +5,7 @@ import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
+import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.styledStringResource
 import co.electriccoin.zcash.ui.fixture.ZashiMainTopAppBarStateFixture
@@ -33,7 +34,7 @@ class ReceiveViewTestSetup(
                                 items =
                                     listOf(
                                         ReceiveAddressState(
-                                            icon = R.drawable.ic_zec_round_full,
+                                            icon = imageRes(R.drawable.ic_zec_round_full),
                                             title = stringRes("Zodl"),
                                             subtitle =
                                                 styledStringResource(

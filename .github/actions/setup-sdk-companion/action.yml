@@ -4,7 +4,7 @@ description: >-
   the SDK repository named by sdk-repo, installs its Rust/NDK toolchain, and points
   Gradle's composite build at it via ORG_GRADLE_PROJECT_SDK_INCLUDED_BUILD_PATH — so a
   co-developed app PR can build/lint/test against unreleased SDK changes without waiting on
-  a Maven publish. Supported on main, maint/* branches, and branches targeting either.
+  a Maven publish. Not allowed on release/*, review/* or candidate/* branches (or PRs targeting them).
   No-ops (does nothing) whenever the pin is blank, which is the default, normal case for
   every branch that isn't actively co-developing against an SDK PR.
 outputs:
@@ -58,8 +58,8 @@ runs:
           exit 1
         fi
         TARGET="${{ github.event.pull_request.base.ref || github.base_ref || github.ref_name }}"
-        if [ -n "${PIN}" ] && [ "${TARGET}" != "main" ] && [[ "${TARGET}" != maint/* ]]; then
-          echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but this workflow's target branch is '${TARGET}'. SDK_COMMIT_PIN is only supported on main, maint/* branches, and branches targeting them — clear it before merging into release/review branches, which must always build against a real published SDK version." >&2
+        if [ -n "${PIN}" ] && [[ "${TARGET}" == release/* || "${TARGET}" == review/* || "${TARGET}" == candidate/* ]]; then
+          echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but this workflow's target branch is '${TARGET}'. SDK_COMMIT_PIN is not allowed on release/*, review/* or candidate/* branches, which must always build against a real published SDK version — clear it before merging into them." >&2
           exit 1
         fi
         if [ -z "${SDK_REPO}" ]; then
@@ -83,6 +83,27 @@ runs:
           /usr/local/share/powershell /usr/share/swift /usr/local/lib/node_modules \
           /opt/hostedtoolcache/CodeQL /opt/hostedtoolcache/go /opt/hostedtoolcache/PyPy
         sudo docker image prune --all --force > /dev/null 2>&1 || true
+        df -h /
+    - name: Add swap for the companion SDK build
+      if: steps.pin.outputs.commit != ''
+      shell: bash
+      run: |
+        # The standard runner (2 vCPU / 7GB) OOM-kills the runner agent while rustc/LLVM
+        # compiles the final backend-lib crate next to the Gradle daemon ("The runner has
+        # received a shutdown signal", exit 143). Extra swap absorbs that peak. The image
+        # may already carry a swap file (/swapfile or /mnt/swapfile), so use our own path.
+        SWAP=/swapfile2
+        free -h
+        df -h /
+        swapon --show
+        if ! swapon --show=NAME --noheadings | grep -qx "${SWAP}"; then
+          sudo fallocate -l 8G "${SWAP}" || sudo dd if=/dev/zero of="${SWAP}" bs=1M count=8192 status=none
+          sudo chmod 600 "${SWAP}"
+          sudo mkswap "${SWAP}"
+          sudo swapon "${SWAP}"
+        fi
+        swapon --show
+        free -h
         df -h /
     - name: Checkout companion SDK commit
       if: steps.pin.outputs.commit != ''
@@ -189,6 +210,14 @@ runs:
         # since this env var reaches only the companion build's tooling classpath
         # resolution, not the app's own dependency locking (if any).
         echo "ORG_GRADLE_PROJECT_ZCASH_IS_DEPENDENCY_LOCKING_ENABLED=false" >> "$GITHUB_ENV"
+        # Cap rustc's memory peak on the 7GB standard runner, which otherwise OOM-kills the
+        # runner agent during the final backend-lib compile: fewer parallel rustc processes
+        # and fewer LLVM codegen workers on the big final crate. opt-level stays untouched,
+        # since the emulator tests run Orchard proving through this library. The cargo
+        # process rust-android-gradle spawns inherits these from the Gradle daemon, and
+        # backend-lib's cargo block sets neither.
+        echo "CARGO_BUILD_JOBS=2" >> "$GITHUB_ENV"
+        echo "CARGO_PROFILE_RELEASE_CODEGEN_UNITS=4" >> "$GITHUB_ENV"
         echo "::notice::Building against ${SDK_REPO}@${{ steps.pin.outputs.commit }} (SDK_COMMIT_PIN), not the published Maven artifact."
     - name: Cap memory and parallelism for the companion SDK build
       if: steps.pin.outputs.commit != ''

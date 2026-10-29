@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.withLce
 import co.electriccoin.zcash.ui.common.usecase.CreateHWWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyContent
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -23,15 +24,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 
 /**
- * Confirms the estimated birthday height and imports the enrolled account at it.
+ * Confirms the estimated birthday height and imports the enrolled hardware-wallet account at it; a
+ * view-only import stores the height and goes on to name the account instead.
  */
 class HWEstimationVM(
     private val args: HWEstimationArgs,
     private val createHWWalletAccount: CreateHWWalletAccountUseCase,
     private val navigationRouter: NavigationRouter,
     private val errorStateMapper: ErrorMapperUseCase,
+    viewOnlyContent: ViewOnlyContent,
 ) : ViewModel() {
-    private val branding = brandingOf(args.enrollment)
+    private val branding = brandingOf(args.enrollment, viewOnlyContent)
     private val createAccountLce = mutableLce<Unit>()
 
     val state: StateFlow<LceState<EstimatedBlockHeightState>> =
@@ -67,15 +70,22 @@ class HWEstimationVM(
         primaryButton =
             ButtonState(
                 text = branding.connect,
+                isEnabled = !isLoading,
                 isLoading = isLoading,
                 onClick = ::onConfirmClick,
                 hapticFeedbackType = HapticFeedbackType.Confirm,
             ),
     )
 
+    /**
+     * A second tap while the import runs is ignored: restarting would cancel the running import
+     * inside the SDK call, after the account exists but before it is selected.
+     */
     private fun onConfirmClick() =
-        createAccountLce.execute {
-            createHWWalletAccount(args.enrollment, BlockHeight.new(args.blockHeight))
+        createAccountLce.guardLoading {
+            createAccountLce.execute {
+                createHWWalletAccount(args.enrollment, BlockHeight.new(args.blockHeight))
+            }
         }
 
     private fun onInfoClick() = navigationRouter.forward(HeightInfoArgs)

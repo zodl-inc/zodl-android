@@ -22,6 +22,7 @@ import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.model.OnboardingState
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.provider.IsIronwoodAnnouncementShownStorageProvider
+import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -95,6 +96,7 @@ class WalletRepositoryImpl(
     private val isIronwoodAnnouncementShownStorageProvider: IsIronwoodAnnouncementShownStorageProvider,
     private val sdkEncryptedPreferenceRecoveryProvider: SdkEncryptedPreferenceRecoveryProvider,
     private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
+    private val isPublicConnectionProvider: IsPublicConnectionProvider,
 ) : WalletRepository {
     /**
      * Scope the repository's `stateIn`-shared flows run on. Captured by those flows at
@@ -277,16 +279,35 @@ class WalletRepositoryImpl(
     private suspend fun migrateEndpointIfNeeded(wallet: PersistableWallet?) {
         if (wallet == null) return
         val endpoint = wallet.endpoint
+        // Manual on the OHTTP gateway is what Private is: same endpoint, no fastest-server lookup. Make it
+        // Private so it also gets the gateway health check and the unavailable prompt.
+        if (lightWalletEndpointProvider.isOhttpGateway(endpoint) && isServerSelectionAutomaticProvider.get() == false) {
+            isServerSelectionAutomaticProvider.store(true)
+            isPublicConnectionProvider.store(false)
+        }
         val isDecommissioned = endpoint.host in lightWalletEndpointProvider.getDecommissionedHosts()
+        // Public mode runs on clearnet by choice, so it is not "automatic but off the gateway".
         val isAutomaticOffGateway =
             !lightWalletEndpointProvider.isOhttpGateway(endpoint) &&
+                !isPublicConnectionProvider.get() &&
                 resolveIsServerSelectionAutomatic(
                     isAutomaticPreference = isServerSelectionAutomaticProvider.get(),
                     currentEndpoint = endpoint,
                     knownEndpoints = lightWalletEndpointProvider.getEndpoints(),
                 )
         if (isDecommissioned || isAutomaticOffGateway) {
-            persistWalletInternal(wallet.copy(endpoint = lightWalletEndpointProvider.getDefaultEndpoint()))
+            // Public stays on public servers: moving it to the gateway would leave it "Public" on the Private server.
+            val replacement =
+                lightWalletEndpointProvider
+                    .takeIf { isPublicConnectionProvider.get() }
+                    ?.getFallbackEndpoints()
+                    ?.firstOrNull()
+                    ?: lightWalletEndpointProvider.getDefaultEndpoint()
+            persistWalletInternal(wallet.copy(endpoint = replacement))
+            if (lightWalletEndpointProvider.isOhttpGateway(replacement)) {
+                isServerSelectionAutomaticProvider.store(true)
+                isPublicConnectionProvider.store(false)
+            }
         }
     }
 
