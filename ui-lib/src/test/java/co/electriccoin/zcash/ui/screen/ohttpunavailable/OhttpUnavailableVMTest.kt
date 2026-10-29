@@ -56,7 +56,8 @@ class OhttpUnavailableVMTest {
                 mockk<AutomaticServerRepository> {
                     every { isTransactionInProgress } returns transactionInProgress
                 },
-            observeFastestServers = mockk<ObserveFastestServersUseCase> { every { invoke() } returns fastestServers },
+            observeFastestServers =
+                mockk<ObserveFastestServersUseCase> { every { this@mockk() } returns fastestServers },
             lightWalletEndpointProvider = mockk<LightWalletEndpointProvider>(relaxed = true),
         )
 
