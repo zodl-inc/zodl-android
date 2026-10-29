@@ -75,21 +75,6 @@ import java.net.URI
 import java.util.UUID
 import kotlin.math.max
 
-/**
- * Snapshot of routing state (Tor mode and custom server flag) for a round operation.
- * ZIP #10 lines 2059-2063: the route decision is made per server from the server's exact host
- * name and the current Tor mode when a session is opened, and PIR calls follow the same decision
- * as vote-server calls. A Client MUST NOT mix routes inside one session.
- *
- * Current scope: covers the share posts of [delegateShares] (the postShare* calls and their
- * config fetches). Other round operations (PIR, vote-server GETs, tally result fetches) still
- * read routing state per request.
- */
-private data class RouteSnapshot(
-    val torEnabled: Boolean,
-    val isCustomServer: Boolean,
-)
-
 data class RoundsListResult(
     val rounds: List<VotingRound>,
     val sessionsByRoundId: Map<String, VotingSession>,
@@ -309,10 +294,6 @@ class KtorVotingApiProvider(
                     return@delegateShares emptyList()
                 }
 
-                // ZIP #10 lines 2059-2063: snapshot routing state once per session to avoid
-                // mixing routes mid-session (e.g. PIR over clearnet while vote server is OHTTP)
-                val routeSnapshot = snapshotRoute()
-
                 val config = getResolvedConfig().serviceConfig
                 val serverUrls =
                     config.voteServers
@@ -375,7 +356,7 @@ class KtorVotingApiProvider(
                                         val targets = healthyServers.shuffled().take(quorum)
                                         val acceptedByServers =
                                             client
-                                                .postShareToTargets(targets, body, supportsKtorTimeouts, routeSnapshot)
+                                                .postShareToTargets(targets, body, supportsKtorTimeouts)
                                                 .toMutableList()
                                         if (acceptedByServers.isEmpty()) {
                                             val fallbackTargets =
@@ -384,14 +365,7 @@ class KtorVotingApiProvider(
                                                     .filterNot { serverUrl -> serverUrl in targets }
                                                     .shuffled()
                                             for (fallbackTarget in fallbackTargets) {
-                                                val accepted =
-                                                    client.postShare(
-                                                        fallbackTarget,
-                                                        body,
-                                                        supportsKtorTimeouts,
-                                                        routeSnapshot
-                                                    )
-                                                if (accepted) {
+                                                if (client.postShare(fallbackTarget, body, supportsKtorTimeouts)) {
                                                     acceptedByServers += fallbackTarget
                                                     break
                                                 }
@@ -829,33 +803,20 @@ class KtorVotingApiProvider(
     }
 
     /**
-     * Snapshots the current routing state (Tor mode and custom server flag). Per ZIP #10, this
-     * should be called once per round operation to avoid mixing routes mid-session.
-     */
-    private suspend fun snapshotRoute() =
-        RouteSnapshot(
-            torEnabled = httpClientProvider.isTorEnabled(),
-            isCustomServer = isCustomVoteServer()
-        )
-
-    /**
      * Executes a GET request to a vote-server URL, routing through OHTTP when Tor is OFF for
      * predefined servers, or direct for custom user-selected voting configs.
      * Preserves failover semantics: OHTTP transport failures and non-2xx responses are thrown
      * as exceptions so the caller's failover logic can try the next server.
-     *
-     * @param routeSnapshot optional pre-captured routing state; when provided, prevents reading
-     *        Tor mode and custom-server flag per request (ZIP #10 requirement for round sessions)
      */
     private suspend inline fun <reified T> HttpClient.voteServerGet(
         url: String,
-        routeSnapshot: RouteSnapshot? = null,
         configureRequest: HttpRequestBuilder.() -> Unit = {},
     ): T {
-        val snapshot = routeSnapshot ?: snapshotRoute()
+        val torEnabled = httpClientProvider.isTorEnabled()
+        val isCustom = isCustomVoteServer()
         val ohttpClient = httpClientProvider.createOhttp()
 
-        return when (val route = resolveVoteRoute(url, snapshot.torEnabled, snapshot.isCustomServer, ohttpClient)) {
+        return when (val route = resolveVoteRoute(url, torEnabled, isCustom, ohttpClient)) {
             is VoteRoute.Ohttp -> {
                 val response =
                     try {
@@ -976,13 +937,12 @@ class KtorVotingApiProvider(
         targetUrls: List<String>,
         body: String,
         supportsKtorTimeouts: Boolean,
-        routeSnapshot: RouteSnapshot? = null,
     ): List<String> =
         coroutineScope {
             targetUrls
                 .map { targetUrl ->
                     async {
-                        if (postShare(targetUrl, body, supportsKtorTimeouts, routeSnapshot)) {
+                        if (postShare(targetUrl, body, supportsKtorTimeouts)) {
                             targetUrl
                         } else {
                             null
@@ -996,24 +956,20 @@ class KtorVotingApiProvider(
      * Routes a share POST through OHTTP when Tor is OFF for predefined servers, or direct
      * (Tor/clearnet) otherwise. Preserves all existing timeout, cancellation, and health-tracking
      * behavior.
-     *
-     * @param routeSnapshot optional pre-captured routing state; when provided, prevents reading
-     *        Tor mode and custom-server flag per request (ZIP #10 requirement for round sessions)
      */
     private suspend fun HttpClient.postShare(
         serverUrl: String,
         body: String,
         supportsKtorTimeouts: Boolean,
-        routeSnapshot: RouteSnapshot? = null,
     ): Boolean {
-        val snapshot = routeSnapshot ?: snapshotRoute()
+        val torEnabled = httpClientProvider.isTorEnabled()
+        val isCustom = isCustomVoteServer()
         val ohttpClient = httpClientProvider.createOhttp()
         val url = "$serverUrl/shielded-vote/v1/shares"
 
         val success =
             try {
-                val route = resolveVoteRoute(serverUrl, snapshot.torEnabled, snapshot.isCustomServer, ohttpClient)
-                when (route) {
+                when (val route = resolveVoteRoute(serverUrl, torEnabled, isCustom, ohttpClient)) {
                     is VoteRoute.Ohttp -> {
                         val response =
                             try {

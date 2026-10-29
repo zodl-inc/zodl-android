@@ -562,7 +562,7 @@ class AutomaticServerRepositoryTest {
         runTest {
             coEvery { isAutomaticProvider.get() } returns true
             coEvery { isPublicProvider.get() } returns true
-            coEvery { fallbackActiveProvider.get() } returns true
+            coEvery { fallbackFlag.get() } returns true
             coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(fallbacks.first())
             coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns ServerValidation.Valid
 
@@ -574,6 +574,28 @@ class AutomaticServerRepositoryTest {
             runCurrent()
 
             // RECOVERY evaluations probe via validateServerEndpoint, not the full getFastestServers benchmark
+            coVerify(exactly = 1) { synchronizer.validateServerEndpoint(any(), gateway) }
+            coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(gateway) }
+        }
+
+    @Test
+    fun connectivityTriggerOnFallbackUsesProbeGatewayNotFullBenchmark() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            coEvery { isPublicProvider.get() } returns true
+            coEvery { fallbackFlag.get() } returns true
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(fallbacks.first())
+            coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns ServerValidation.Valid
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.CONNECTIVITY).launchIn(backgroundScope)
+            runCurrent()
+            localBalances.value = emptyMap()
+            edges.emit(Unit)
+            runCurrent()
+
+            // CONNECTIVITY evaluations on fallback probe via validateServerEndpoint, not getFastestServers
             coVerify(exactly = 1) { synchronizer.validateServerEndpoint(any(), gateway) }
             coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
             coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(gateway) }

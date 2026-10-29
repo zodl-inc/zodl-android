@@ -380,7 +380,7 @@ class WalletRepositoryImplTest {
             val testedEndpoints = mutableListOf<List<LightWalletEndpoint>>()
             val synchronizer =
                 mockk<Synchronizer> {
-                    every { getFastestServers(any()) } answers {
+                    coEvery { getFastestServers(any()) } answers {
                         testedEndpoints += firstArg()
                         flowOf(FastestServersResult.Done(listOf(GATEWAY)))
                     }
@@ -412,7 +412,7 @@ class WalletRepositoryImplTest {
             val testedEndpoints = mutableListOf<List<LightWalletEndpoint>>()
             val synchronizer =
                 mockk<Synchronizer> {
-                    every { getFastestServers(any()) } answers {
+                    coEvery { getFastestServers(any()) } answers {
                         testedEndpoints += firstArg()
                         flowOf(FastestServersResult.Done(listOf(ZEC_ROCKS)))
                     }
@@ -444,7 +444,7 @@ class WalletRepositoryImplTest {
             val testedEndpoints = mutableListOf<List<LightWalletEndpoint>>()
             val synchronizer =
                 mockk<Synchronizer> {
-                    every { getFastestServers(any()) } answers {
+                    coEvery { getFastestServers(any()) } answers {
                         testedEndpoints += firstArg()
                         flowOf(FastestServersResult.Done(emptyList()))
                     }
@@ -541,9 +541,10 @@ class WalletRepositoryImplTest {
         val persistableWalletProvider =
             persistableWalletProviderOverride ?: FakePersistableWalletProvider(initialWallet, events)
 
+        val fakeSynchronizer = synchronizer
         val synchronizerProvider =
             mockk<SynchronizerProvider>(relaxed = true) {
-                every { synchronizer } returns MutableStateFlow(synchronizer)
+                every { synchronizer } returns MutableStateFlow(fakeSynchronizer)
             }
 
         val fakePrefs = RecordingPreferenceProvider(events)

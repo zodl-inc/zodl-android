@@ -513,11 +513,11 @@ class AutomaticServerRepositoryImpl(
     }
 
     /**
-     * Returns the first healthy OHTTP gateway, or null. For RECOVERY triggers (periodic checks while on the
-     * fallback) this uses lightweight [probeGateway] per gateway (one GetLightdInfo, 20 s cap) and returns
-     * the first that answers; for FOREGROUND and CONNECTIVITY it runs the full fastest-server benchmark.
-     * RECOVERY ticks run every 30 s (foreground) or 5 min (background): the full benchmark can take up to
-     * 90 s and would be cancelled by [switchLane]'s mapLatest before completing.
+     * Returns the first healthy OHTTP gateway, or null. When [SwitchTrigger.probesGatewayRecovery] is true
+     * (RECOVERY, FOREGROUND, CONNECTIVITY), this uses lightweight [probeGateway] per gateway (one GetLightdInfo,
+     * 20 s cap) and returns the first that answers. There is one gateway per network, so ranking buys nothing.
+     * RECOVERY ticks run every 30 s (foreground) or 5 min (background): the full benchmark takes 90 s + 20 s
+     * and would be cancelled by [switchLane]'s mapLatest before completing.
      */
     @Suppress("ReturnCount")
     private suspend fun evaluateReturnToPrivate(trigger: SwitchTrigger): LightWalletEndpoint? {
@@ -525,7 +525,7 @@ class AutomaticServerRepositoryImpl(
         if (gateways.isEmpty()) return null
         val synchronizer = synchronizerProvider.getSynchronizerOrNull() ?: return null
         return try {
-            if (trigger == SwitchTrigger.RECOVERY) {
+            if (trigger.probesGatewayRecovery) {
                 gateways.firstOrNull { probeGateway(synchronizer, it) }
             } else {
                 rankValidated(synchronizer, gateways).firstOrNull()
