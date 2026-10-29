@@ -278,8 +278,7 @@ class VoteChainConfigVM(
             // Validate using the decision this source would use if selected: custom sources
             // are never routed through OHTTP (ZIP #10), so validate them as custom even if
             // the current selection is still default.
-            val isBundledDefault = source.isBundledDefaultUrl()
-            val decision = votingRouteProvider.decision(forceCustomServer = !isBundledDefault)
+            val decision = votingRouteProvider.decision(isCustomServer = !source.isBundledDefaultUrl())
             votingApiProvider.validateConfigSource(source, decision)
             true
         } catch (throwable: Throwable) {

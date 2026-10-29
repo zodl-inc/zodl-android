@@ -86,6 +86,7 @@ class ViewOnlyVotingGuardTest {
                     votingKeystoneSessionHolder = mockk(relaxed = true),
                     votingProofPrecomputeRepository = votingProofPrecomputeRepository,
                 )
+                    votingRouteProvider = mockk(relaxed = true),
 
             val thrown =
                 assertFailsWith<AccountOperationUnsupportedException> {
@@ -111,6 +112,7 @@ class ViewOnlyVotingGuardTest {
                     votingProofPrecomputeRepository = votingProofPrecomputeRepository,
                     synchronizerProvider = mockk(relaxed = true),
                     getSelectedWalletAccount = getSelectedWalletAccount,
+                    votingRouteProvider = mockk(relaxed = true),
                 )
 
             val thrown = assertFailsWith<AccountOperationUnsupportedException> { useCase("round") }
@@ -133,6 +135,7 @@ class ViewOnlyVotingGuardTest {
                     synchronizerProvider = mockk(relaxed = true),
                     getSelectedWalletAccount = getSelectedWalletAccount,
                     votingChainConfigRepository = votingChainConfigRepository,
+                    votingRouteProvider = mockk(relaxed = true),
                 )
 
             assertEquals(VotingShareTrackingResult.Completed, useCase("round"))

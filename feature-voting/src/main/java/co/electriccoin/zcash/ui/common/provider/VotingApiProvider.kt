@@ -436,6 +436,7 @@ class KtorVotingApiProvider(
     ): CommitmentTreeLatest {
         val path = commitmentTreeLatestPath(roundIdHex)
         return executeWithVoteServerFailover(
+            decision,
             path,
             shouldTryNext = ::shouldTryNextVoteServerForRead,
         ) { baseUrl ->
@@ -456,6 +457,7 @@ class KtorVotingApiProvider(
         require(toHeight >= fromHeight) { "toHeight must be at least fromHeight" }
         val path = commitmentTreeLeavesPath(roundIdHex, fromHeight, toHeight)
         return executeWithVoteServerFailover(
+            decision,
             path,
             shouldTryNext = ::shouldTryNextVoteServerForRead,
         ) { baseUrl ->
@@ -932,8 +934,8 @@ class KtorVotingApiProvider(
 
 
     private suspend inline fun <T> executeWithKtorTimeoutSupport(
-        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision,
-        crossinline block: suspend HttpClient.(Boolean, co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision) -> T,
+        decision: VotingRouteDecision,
+        crossinline block: suspend HttpClient.(Boolean, VotingRouteDecision) -> T,
     ): T =
         withContext(Dispatchers.IO) {
             val (httpClient, supportsKtorTimeouts) = sharedHttpClient(decision.isTor)

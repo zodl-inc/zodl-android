@@ -9,6 +9,7 @@ import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import cash.z.ecc.android.sdk.model.voting.VotingRoundQuiescence
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
 import cash.z.ecc.android.sdk.model.voting.VotingRoundStepFailure
@@ -187,7 +188,10 @@ class SubmitVotesUseCaseBundleFailureRetryTest {
         val votingShareTrackingScheduler = mockk<VotingShareTrackingScheduler>(relaxed = true)
         val votingKeystoneSessionHolder = mockk<VotingKeystoneSessionHolder>(relaxed = true)
         val votingProofPrecomputeRepository = mockk<VotingProofPrecomputeRepository>(relaxed = true)
-        val votingRouteProvider = mockk<VotingRouteProvider>()
+        val votingRouteProvider =
+            mockk<VotingRouteProvider> {
+                coEvery { acquire() } returns VotingRoute(VotingRouteDecision(isTor = false, isCustomServer = false), null)
+            }
         val synchronizerProvider = mockk<SynchronizerProvider>()
         val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
         val getWalletSeedBytes = mockk<GetWalletSeedBytesUseCase>()
@@ -202,13 +206,13 @@ class SubmitVotesUseCaseBundleFailureRetryTest {
         every { synchronizer.network } returns ZcashNetwork.Testnet
         coEvery { synchronizer.getTreeState(any()) } returns ByteArray(32)
 
-        coEvery { resolveVotingRoundSession(roundId) } returns
+        coEvery { resolveVotingRoundSession(roundId, any()) } returns
             VotingRoundSessionContext(session = session, serviceConfig = serviceConfig)
         coEvery { getSelectedWalletAccount() } returns selectedAccount
         coEvery { getWalletSeedBytes() } returns ByteArray(32)
         coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
         coEvery { synchronizerProvider.getVotingWalletDbPath() } returns "/tmp/voting-wallet.db"
-        coEvery { prepareVotingRound(roundId) } returns
+        coEvery { prepareVotingRound(roundId, any()) } returns
             VotingRoundPreparationResult.Ready(
                 roundId = roundId,
                 bundleCount = 1,

@@ -4,6 +4,7 @@ import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.VotingRoundSession
 import cash.z.ecc.android.sdk.ext.toHex
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import cash.z.ecc.android.sdk.fixture.AccountFixture
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
@@ -79,6 +80,7 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
             val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
             val getWalletSeedBytes = mockk<GetWalletSeedBytesUseCase>()
             val votingRouteProvider = mockk<VotingRouteProvider>()
+            coEvery { votingRouteProvider.acquire() } returns VotingRoute(VotingRouteDecision(isTor = false, isCustomServer = false), null)
 
             val serviceConfig =
                 VotingServiceConfig(
@@ -91,12 +93,12 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
 
             val roundSession = mockk<VotingRoundSession>(relaxed = true)
 
-            coEvery { resolveVotingRoundSession(roundId) } returns
+            coEvery { resolveVotingRoundSession(roundId, any()) } returns
                 VotingRoundSessionContext(session = session, serviceConfig = serviceConfig)
             coEvery { getSelectedWalletAccount() } returns selectedAccount
             coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
             coEvery { synchronizerProvider.getVotingWalletDbPath() } returns "/tmp/voting-wallet.db"
-            coEvery { prepareVotingRound(roundId) } returns
+            coEvery { prepareVotingRound(roundId, any()) } returns
                 VotingRoundPreparationResult.Ready(
                     roundId = roundId,
                     bundleCount = 1,
@@ -189,6 +191,7 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
             val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
             val getWalletSeedBytes = mockk<GetWalletSeedBytesUseCase>()
             val votingRouteProvider = mockk<VotingRouteProvider>()
+            coEvery { votingRouteProvider.acquire() } returns VotingRoute(VotingRouteDecision(isTor = false, isCustomServer = false), null)
 
             val serviceConfig =
                 VotingServiceConfig(
@@ -202,12 +205,12 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
             val roundSession = mockk<VotingRoundSession>(relaxed = true)
             val callOrder = mutableListOf<String>()
 
-            coEvery { resolveVotingRoundSession(roundId) } returns
+            coEvery { resolveVotingRoundSession(roundId, any()) } returns
                 VotingRoundSessionContext(session = session, serviceConfig = serviceConfig)
             coEvery { getSelectedWalletAccount() } returns selectedAccount
             coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
             coEvery { synchronizerProvider.getVotingWalletDbPath() } returns "/tmp/voting-wallet.db"
-            coEvery { prepareVotingRound(roundId) } returns
+            coEvery { prepareVotingRound(roundId, any()) } returns
                 VotingRoundPreparationResult.Ready(
                     roundId = roundId,
                     bundleCount = 1,

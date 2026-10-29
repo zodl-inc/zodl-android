@@ -1,12 +1,12 @@
 package co.electriccoin.zcash.ui.common.provider
 
-import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.lightwallet.client.OhttpHttpClient
 import co.electriccoin.zcash.configuration.model.map.Configuration
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfig
 import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfigHashMismatchException
 import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
@@ -214,7 +214,7 @@ class VotingConfigWalkTest {
                     requestedUrls = requestedUrls
                 )
 
-            provider.fetchServiceConfig()
+            provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
 
             assertEquals(listOf(FIRST_URL, SECOND_URL, THIRD_URL), requestedUrls.map { it.substringBefore('?') })
         }
@@ -235,7 +235,7 @@ class VotingConfigWalkTest {
                 )
 
             assertFailsWith<VotingConfigException> {
-                provider.fetchServiceConfig()
+                provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
             }
 
             assertEquals(listOf(FIRST_URL), requestedUrls.map { it.substringBefore('?') })
@@ -257,7 +257,7 @@ class VotingConfigWalkTest {
                 )
 
             assertFailsWith<VotingConfigException> {
-                provider.fetchServiceConfig()
+                provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
             }
 
             assertEquals(listOf(FIRST_URL), requestedUrls.map { it.substringBefore('?') })
@@ -280,7 +280,7 @@ class VotingConfigWalkTest {
 
             val exception =
                 assertFailsWith<VotingConfigException> {
-                    provider.fetchServiceConfig()
+                    provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
                 }
 
             assertTrue(exception.message.orEmpty().contains("503"), exception.message.orEmpty())
@@ -305,7 +305,7 @@ class VotingConfigWalkTest {
 
             val exception =
                 assertFailsWith<VotingConfigException> {
-                    provider.fetchServiceConfig()
+                    provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
                 }
 
             assertEquals(2, requestedUrls.size)
@@ -329,7 +329,7 @@ class VotingConfigWalkTest {
                     noCacheHeaderSeen = noCacheHeaderSeen
                 )
 
-            provider.fetchServiceConfig()
+            provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
 
             assertEquals(listOf(true, true), noCacheHeaderSeen)
         }
@@ -351,7 +351,7 @@ class VotingConfigWalkTest {
                     requestedUrls = requestedUrls
                 )
 
-            provider.fetchServiceConfig()
+            provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
 
             assertEquals(1, requestedUrls.size)
             assertFalse(requestedUrls[0].contains("zodl_cache_bust="), requestedUrls[0])
@@ -370,7 +370,7 @@ class VotingConfigWalkTest {
                     requestedUrls = requestedUrls
                 )
 
-            provider.fetchServiceConfig()
+            provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
 
             assertEquals(1, requestedUrls.size)
             assertFalse(requestedUrls[0].contains("zodl_cache_bust="), requestedUrls[0])
@@ -393,7 +393,7 @@ class VotingConfigWalkTest {
                     requestedUrls = requestedUrls
                 )
 
-            provider.fetchServiceConfig()
+            provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
 
             assertEquals(2, requestedUrls.size)
             val firstToken = requestedUrls[0].substringAfter("zodl_cache_bust=")
@@ -418,9 +418,9 @@ class VotingConfigWalkTest {
             // here would short-circuit to the cache and never issue a second request at all.
             // invalidateConfigCache() forces the second call to actually re-walk, which is what
             // this test needs to observe a second, freshly-tokenened request.
-            provider.fetchServiceConfig()
+            provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
             provider.invalidateConfigCache()
-            provider.fetchServiceConfig()
+            provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
 
             assertEquals(2, requestedUrls.size)
             val firstToken = requestedUrls[0].substringAfter("zodl_cache_bust=")
@@ -581,9 +581,16 @@ class VotingConfigWalkTest {
                 KtorVotingApiProvider(
                     httpClientProvider =
                         object : HttpClientProvider {
-                            override suspend fun createOhttp(decision: VotingRouteDecision): OhttpHttpClient = passthroughOhttpClient { create() }
+                            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
 
                             override suspend fun supportsKtorTimeouts(): Boolean = true
+
+                            override suspend fun isTorEnabled(): Boolean = false
+
+                            override suspend fun createTor(): HttpClient = create()
+
+                            override suspend fun create(tor: Boolean): HttpClient =
+                                if (tor) createTor() else create()
 
                             override suspend fun create(): HttpClient =
                                 HttpClient(
@@ -604,7 +611,7 @@ class VotingConfigWalkTest {
 
             val exception =
                 assertFailsWith<StaticVotingConfigHashMismatchException> {
-                    provider.fetchServiceConfig()
+                    provider.fetchServiceConfig(decision = DEFAULT_OHTTP)
                 }
 
             assertEquals(
@@ -666,9 +673,16 @@ class VotingConfigWalkTest {
                 KtorVotingApiProvider(
                     httpClientProvider =
                         object : HttpClientProvider {
-                            override suspend fun createOhttp(decision: VotingRouteDecision): OhttpHttpClient = passthroughOhttpClient { create() }
+                            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
 
                             override suspend fun supportsKtorTimeouts(): Boolean = true
+
+                            override suspend fun isTorEnabled(): Boolean = false
+
+                            override suspend fun createTor(): HttpClient = create()
+
+                            override suspend fun create(tor: Boolean): HttpClient =
+                                if (tor) createTor() else create()
 
                             override suspend fun create(): HttpClient =
                                 HttpClient(
@@ -700,7 +714,7 @@ class VotingConfigWalkTest {
                     votingCryptoClient = unusedVotingCryptoClient()
                 )
 
-            provider.fetchServiceConfig()
+            provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
 
             assertEquals(listOf(FIRST_URL, SECOND_URL), requestedUrls.map { url -> url.substringBefore('?') })
         }
@@ -715,9 +729,16 @@ class VotingConfigWalkTest {
         KtorVotingApiProvider(
             httpClientProvider =
                 object : HttpClientProvider {
-                    override suspend fun createOhttp(decision: VotingRouteDecision): OhttpHttpClient = passthroughOhttpClient { create() }
+                    override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
 
                     override suspend fun supportsKtorTimeouts(): Boolean = true
+
+                    override suspend fun isTorEnabled(): Boolean = false
+
+                    override suspend fun createTor(): HttpClient = create()
+
+                    override suspend fun create(tor: Boolean): HttpClient =
+                        if (tor) createTor() else create()
 
                     override suspend fun create(): HttpClient =
                         HttpClient(
@@ -751,9 +772,16 @@ class VotingConfigWalkTest {
         KtorVotingApiProvider(
             httpClientProvider =
                 object : HttpClientProvider {
-                    override suspend fun createOhttp(decision: VotingRouteDecision): OhttpHttpClient = passthroughOhttpClient { create() }
+                    override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
 
                     override suspend fun supportsKtorTimeouts(): Boolean = true
+
+                    override suspend fun isTorEnabled(): Boolean = false
+
+                    override suspend fun createTor(): HttpClient = create()
+
+                    override suspend fun create(tor: Boolean): HttpClient =
+                        if (tor) createTor() else create()
 
                     override suspend fun create(): HttpClient =
                         HttpClient(
@@ -953,3 +981,8 @@ private suspend fun HttpClient.fetchStaticBytesOrThrow(url: String): ByteArray =
             "Static voting config fetch failed: ${exception.message ?: exception::class.simpleName}"
         )
     }
+
+// Routing the provider's fakes stand for: the test chain is a custom (non-bundled) source.
+private val CUSTOM_DIRECT = VotingRouteDecision(isTor = false, isCustomServer = true)
+private val CUSTOM_TOR = VotingRouteDecision(isTor = true, isCustomServer = true)
+private val DEFAULT_OHTTP = VotingRouteDecision(isTor = false, isCustomServer = false)

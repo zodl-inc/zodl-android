@@ -28,11 +28,10 @@ interface VotingRouteProvider {
      *
      * For browsing operations that don't need a session (refresh rounds, view results).
      *
-     * @param forceCustomServer when true, treats the decision as custom server regardless
-     * of the current chain config selection (used when validating a custom URL that's
-     * being added but not yet selected)
+     * @param isCustomServer when provided, uses this authoritative flag; when omitted,
+     * reads the current chain config selection
      */
-    suspend fun decision(forceCustomServer: Boolean = false): VotingRouteDecision
+    suspend fun decision(isCustomServer: Boolean? = null): VotingRouteDecision
 }
 
 class VotingRouteProviderImpl(
@@ -55,9 +54,9 @@ class VotingRouteProviderImpl(
         return VotingRoute(decision, torLease)
     }
 
-    override suspend fun decision(forceCustomServer: Boolean): VotingRouteDecision {
+    override suspend fun decision(isCustomServer: Boolean?): VotingRouteDecision {
         val isTor = httpClientProvider.isTorEnabled()
-        val isCustomServer = forceCustomServer || !votingChainConfigRepository.get().isOnDefaultConfig
-        return VotingRouteDecision(isTor, isCustomServer)
+        val customFlag = isCustomServer ?: !votingChainConfigRepository.get().isOnDefaultConfig
+        return VotingRouteDecision(isTor, customFlag)
     }
 }

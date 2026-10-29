@@ -61,7 +61,10 @@ class VotingApiProviderOhttpRoutingTest {
                 )
 
             runCatching {
-                provider.delegateShares(listOf(share))
+                provider.delegateShares(
+                    listOf(share),
+                    decision = VotingRouteDecision(isTor = false, isCustomServer = false),
+                )
             }
 
             assertTrue(
@@ -84,7 +87,10 @@ class VotingApiProviderOhttpRoutingTest {
                 )
 
             runCatching {
-                provider.delegateShares(listOf(testShare()))
+                provider.delegateShares(
+                    listOf(testShare()),
+                    decision = VotingRouteDecision(isTor = false, isCustomServer = true),
+                )
             }
 
             assertTrue(
@@ -114,7 +120,7 @@ class VotingApiProviderOhttpRoutingTest {
             // The bundled checksum does not match the fake config, so the fetch fails: the routing of the
             // fetch is what is checked here.
             runCatching {
-                provider.fetchServiceConfig()
+                provider.fetchServiceConfig(decision = VotingRouteDecision(isTor = false, isCustomServer = true))
             }
 
             assertTrue(
@@ -141,7 +147,7 @@ class VotingApiProviderOhttpRoutingTest {
                 )
 
             runCatching {
-                provider.fetchAllRounds()
+                provider.fetchAllRounds(decision = VotingRouteDecision(isTor = false, isCustomServer = true))
             }
 
             assertTrue(
@@ -168,7 +174,7 @@ class VotingApiProviderOhttpRoutingTest {
                 )
 
             runCatching {
-                provider.fetchServiceConfig()
+                provider.fetchServiceConfig(decision = VotingRouteDecision(isTor = false, isCustomServer = true))
             }
 
             assertTrue(
@@ -196,7 +202,10 @@ class VotingApiProviderOhttpRoutingTest {
                 )
 
             assertFailsWith<IllegalStateException> {
-                provider.delegateShares(listOf(testShare()))
+                provider.delegateShares(
+                    listOf(testShare()),
+                    decision = VotingRouteDecision(isTor = false, isCustomServer = false),
+                )
             }
 
             assertTrue(
@@ -224,7 +233,7 @@ class VotingApiProviderOhttpRoutingTest {
 
             val failure =
                 assertFailsWith<VotingServerFailoverException> {
-                    provider.fetchAllRounds()
+                    provider.fetchAllRounds(decision = VotingRouteDecision(isTor = false, isCustomServer = false))
                 }
 
             assertTrue(
@@ -244,6 +253,70 @@ class VotingApiProviderOhttpRoutingTest {
             )
         }
 
+    @Test
+    fun postShareDecisionWithTorOffBeatsTorOnAndCustomPreference() =
+        runBlocking {
+            val ohttpRequests = mutableListOf<String>()
+            val directRequests = mutableListOf<String>()
+            val torFlags = mutableListOf<Boolean>()
+            // The provider's preference is Tor on and a custom chain; the operation's decision is
+            // Tor off on a predefined server.
+            val provider =
+                providerWithOhttpTracking(
+                    ohttpRequests = ohttpRequests,
+                    directRequests = directRequests,
+                    decision = VotingRouteDecision(isTor = true, isCustomServer = true),
+                    ohttpCanHandle = { true },
+                    torFlags = torFlags
+                )
+
+            runCatching {
+                provider.delegateShares(
+                    listOf(testShare()),
+                    decision = VotingRouteDecision(isTor = false, isCustomServer = false),
+                )
+            }
+
+            // Every request of the call (config fetch, then the share POST) follows the decision.
+            assertTrue(ohttpRequests.isNotEmpty(), "the decision (Tor off, predefined) wins: requests go through OHTTP")
+            assertTrue(
+                directRequests.isEmpty(),
+                "nothing may follow the Tor-on / custom preference to a direct or Tor connection"
+            )
+            assertTrue(torFlags.none { it }, "no Tor client may be built for a Tor-off decision")
+        }
+
+    @Test
+    fun postShareDecisionWithTorOnBeatsTorOffPreference() =
+        runBlocking {
+            val ohttpRequests = mutableListOf<String>()
+            val directRequests = mutableListOf<String>()
+            val torFlags = mutableListOf<Boolean>()
+            // The provider's preference is Tor off on a predefined server (which would mean OHTTP);
+            // the operation's decision is Tor on.
+            val provider =
+                providerWithOhttpTracking(
+                    ohttpRequests = ohttpRequests,
+                    directRequests = directRequests,
+                    decision = VotingRouteDecision(isTor = false, isCustomServer = false),
+                    ohttpCanHandle = { true },
+                    torFlags = torFlags
+                )
+
+            runCatching {
+                provider.delegateShares(
+                    listOf(testShare()),
+                    decision = VotingRouteDecision(isTor = true, isCustomServer = false),
+                )
+            }
+
+            // Every request of the call (config fetch, then the share POST) follows the decision.
+            assertTrue(torFlags.isNotEmpty(), "the decision (Tor on) wins: a Tor client is built")
+            assertTrue(torFlags.all { it }, "every Ktor client built for a Tor-on decision is the Tor client")
+            assertTrue(directRequests.isNotEmpty(), "requests go over the Tor client")
+            assertTrue(ohttpRequests.isEmpty(), "nothing may follow the Tor-off preference into OHTTP")
+        }
+
     private fun testShare(): SharePayload =
         SharePayload(
             sharesHash = ByteArray(32) { 1 },
@@ -259,7 +332,8 @@ class VotingApiProviderOhttpRoutingTest {
         directRequests: MutableList<String> = mutableListOf(),
         decision: VotingRouteDecision,
         customPinnedSource: String = CUSTOM_PINNED_SOURCE,
-        ohttpCanHandle: (String) -> Boolean = { !decision.isTor && !decision.isCustomServer }
+        ohttpCanHandle: (String) -> Boolean = { !decision.isTor && !decision.isCustomServer },
+        torFlags: MutableList<Boolean> = mutableListOf()
     ): KtorVotingApiProvider =
         KtorVotingApiProvider(
             httpClientProvider =
@@ -269,6 +343,11 @@ class VotingApiProviderOhttpRoutingTest {
                     override suspend fun isTorEnabled(): Boolean = decision.isTor
 
                     override suspend fun createTor(): HttpClient = create()
+
+                    override suspend fun create(tor: Boolean): HttpClient {
+                        torFlags += tor
+                        return if (tor) createTor() else create()
+                    }
 
                     override suspend fun createOhttp(): OhttpHttpClient =
                         fakeOhttpClient(ohttpRequests, handles = ohttpCanHandle)

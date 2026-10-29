@@ -250,7 +250,8 @@ class PrepareVotingRoundUseCaseRecoveryTest {
                 votingHotkeySeedProvider = votingHotkeySeedProvider,
                 votingProofPrecomputeRepository = votingProofPrecomputeRepository,
                 synchronizerProvider = synchronizerProvider,
-                getSelectedWalletAccount = getSelectedWalletAccount
+                getSelectedWalletAccount = getSelectedWalletAccount,
+                votingRouteProvider = mockk(relaxed = true)
             )
 
         suspend fun stubHappyPathUpToDbOpen() {

@@ -28,6 +28,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationPirPrecomput
 import co.electriccoin.zcash.ui.common.model.voting.VotingHotkey
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirWarmupResult
+import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
 import co.electriccoin.zcash.ui.common.model.voting.VotingSnapshotBundlePrecomputeResult
 import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
@@ -179,7 +180,7 @@ interface VotingCryptoClient {
     @Throws(RuntimeException::class)
     suspend fun precomputeDelegationPir(
         dbHandle: Long,
-        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
+        route: VotingRoute,
         roundId: String,
         bundleIndex: Int,
         pirServerUrl: String,
@@ -208,7 +209,7 @@ interface VotingCryptoClient {
     @Throws(RuntimeException::class)
     suspend fun precomputePirProofs(
         dbHandle: Long,
-        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
+        route: VotingRoute,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
         notesJson: String
@@ -229,7 +230,7 @@ interface VotingCryptoClient {
     @Throws(RuntimeException::class)
     suspend fun precomputeSnapshotBundles(
         dbHandle: Long,
-        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
+        route: VotingRoute,
         roundId: String,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
@@ -253,7 +254,7 @@ interface VotingCryptoClient {
     @Throws(RuntimeException::class)
     suspend fun openRoundSession(
         dbHandle: Long,
-        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
+        route: VotingRoute,
         roundId: String,
         proposals: List<VotingProposalRosterEntry>,
         hotkeySecret: ByteArray?,
@@ -306,7 +307,7 @@ interface VotingCryptoClient {
     @Throws(RuntimeException::class)
     suspend fun syncVoteTree(
         dbHandle: Long,
-        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
+        route: VotingRoute,
         roundId: String,
         nodeUrl: String
     ): Long
@@ -571,7 +572,7 @@ class VotingCryptoClientImpl(
 
     override suspend fun precomputeDelegationPir(
         dbHandle: Long,
-        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
+        route: VotingRoute,
         roundId: String,
         bundleIndex: Int,
         pirServerUrl: String,
@@ -596,7 +597,7 @@ class VotingCryptoClientImpl(
 
     override suspend fun precomputePirProofs(
         dbHandle: Long,
-        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
+        route: VotingRoute,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
         notesJson: String
@@ -617,7 +618,7 @@ class VotingCryptoClientImpl(
 
     override suspend fun precomputeSnapshotBundles(
         dbHandle: Long,
-        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
+        route: VotingRoute,
         roundId: String,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
@@ -640,7 +641,7 @@ class VotingCryptoClientImpl(
 
     override suspend fun openRoundSession(
         dbHandle: Long,
-        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
+        route: VotingRoute,
         roundId: String,
         proposals: List<VotingProposalRosterEntry>,
         hotkeySecret: ByteArray?,
@@ -696,7 +697,7 @@ class VotingCryptoClientImpl(
 
     override suspend fun syncVoteTree(
         dbHandle: Long,
-        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute,
+        route: VotingRoute,
         roundId: String,
         nodeUrl: String
     ): Long =

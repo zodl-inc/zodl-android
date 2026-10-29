@@ -235,7 +235,7 @@ class VotingProofPrecomputeRepositoryImpl(
                     withPirFetchRetry("PIR proof warmup for account ${request.accountUuid}") {
                         votingCryptoClient.precomputePirProofs(
                             dbHandle = dbHandle,
-                            torLease = route.torLease,
+                            route = route,
                             pirServerUrl = pirServerUrl,
                             pirLayout = request.pirLayout,
                             notesJson = request.notesJson
@@ -294,7 +294,7 @@ class VotingProofPrecomputeRepositoryImpl(
                     withPirFetchRetry("Snapshot bundle precompute for round ${request.roundId}") {
                         votingCryptoClient.precomputeSnapshotBundles(
                             dbHandle = dbHandle,
-                            torLease = route.torLease,
+                            route = route,
                             roundId = request.roundId,
                             pirServerUrl = pirServerUrl,
                             pirLayout = request.pirLayout,

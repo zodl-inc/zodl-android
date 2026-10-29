@@ -39,7 +39,7 @@ interface HttpClientProvider {
      *
      * @param tor true for Tor routing, false for direct
      */
-    suspend fun create(tor: Boolean): HttpClient
+    suspend fun create(tor: Boolean): HttpClient = if (tor) createTor() else create()
 
     /**
      * Returns a client that always routes over Tor, regardless of the user's Tor preference. Used for

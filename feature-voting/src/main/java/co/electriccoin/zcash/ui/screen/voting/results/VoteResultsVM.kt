@@ -70,9 +70,10 @@ class VoteResultsVM(
             val cachedTally = votingApiRepository.snapshot.value.tallyResultsByRoundId[args.roundIdHex]
             val tally =
                 cachedTally
-                    ?: votingApiProvider.fetchTallyResults(args.roundIdHex, votingRouteProvider.decision()).also { results ->
-                        votingApiRepository.storeTallyResults(args.roundIdHex, results)
-                    }
+                    ?: votingApiProvider.fetchTallyResults(args.roundIdHex, votingRouteProvider.decision())
+                        .also { results ->
+                            votingApiRepository.storeTallyResults(args.roundIdHex, results)
+                        }
             val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
             val recovery = votingRecoveryRepository.get(accountUuid, args.roundIdHex)
 

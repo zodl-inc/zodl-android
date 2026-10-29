@@ -32,7 +32,7 @@ class HttpPirSnapshotResolverTest {
             val ohttp = mutableListOf<String>()
             val resolver = resolver(torEnabled = false, isCustom = false, direct = direct, ohttp = ohttp)
 
-            assertEquals(PIR_URL, resolver.resolve(listOf(PIR_URL), HEIGHT, VotingRouteDecision(isTor = false, isCustomServer = false)))
+            assertEquals(PIR_URL, resolver.resolve(VotingRouteDecision(isTor = false, isCustomServer = false), listOf(PIR_URL), HEIGHT))
             assertEquals(listOf("$PIR_URL/root"), ohttp)
             assertTrue(direct.isEmpty(), "predefined PIR probe must not go direct with Tor off")
         }
@@ -45,7 +45,7 @@ class HttpPirSnapshotResolverTest {
             val resolver = resolver(torEnabled = false, isCustom = false, direct = direct, ohttpClient = ohttpClient)
 
             assertFailsWith<PirSnapshotResolverException.NoMatchingEndpoint> {
-                resolver.resolve(listOf(PIR_URL), HEIGHT, VotingRouteDecision(isTor = false, isCustomServer = false))
+                resolver.resolve(VotingRouteDecision(isTor = false, isCustomServer = false), listOf(PIR_URL), HEIGHT)
             }
             assertTrue(direct.isEmpty(), "an unsupported predefined PIR host must not fall back to direct")
             coVerify(exactly = 0) { ohttpClient.execute(any()) }
@@ -58,7 +58,7 @@ class HttpPirSnapshotResolverTest {
             val ohttp = mutableListOf<String>()
             val resolver = resolver(torEnabled = false, isCustom = true, direct = direct, ohttp = ohttp)
 
-            assertEquals(PIR_URL, resolver.resolve(listOf(PIR_URL), HEIGHT, VotingRouteDecision(isTor = false, isCustomServer = true)))
+            assertEquals(PIR_URL, resolver.resolve(VotingRouteDecision(isTor = false, isCustomServer = true), listOf(PIR_URL), HEIGHT))
             assertEquals(listOf("/root"), direct)
             assertTrue(ohttp.isEmpty(), "a custom PIR server must never go through the gateway")
         }
@@ -70,9 +70,47 @@ class HttpPirSnapshotResolverTest {
             val ohttp = mutableListOf<String>()
             val resolver = resolver(torEnabled = true, isCustom = false, direct = direct, ohttp = ohttp)
 
-            assertEquals(PIR_URL, resolver.resolve(listOf(PIR_URL), HEIGHT, VotingRouteDecision(isTor = true, isCustomServer = false)))
+            assertEquals(PIR_URL, resolver.resolve(VotingRouteDecision(isTor = true, isCustomServer = false), listOf(PIR_URL), HEIGHT))
             assertEquals(listOf("/root"), direct)
             assertTrue(ohttp.isEmpty(), "with Tor on the PIR probe goes over Tor, not OHTTP")
+        }
+
+    @Test
+    fun decisionWithTorOffBeatsTorOnAndCustomPreference() =
+        runBlocking {
+            val direct = mutableListOf<String>()
+            val ohttp = mutableListOf<String>()
+            val torFlags = mutableListOf<Boolean>()
+            // Preference says Tor on and a custom chain; the operation's decision says Tor off, predefined.
+            val resolver =
+                resolver(torEnabled = true, isCustom = true, direct = direct, ohttp = ohttp, torFlags = torFlags)
+
+            assertEquals(
+                PIR_URL,
+                resolver.resolve(VotingRouteDecision(isTor = false, isCustomServer = false), listOf(PIR_URL), HEIGHT)
+            )
+            assertEquals(listOf("$PIR_URL/root"), ohttp)
+            assertTrue(direct.isEmpty(), "the decision (Tor off, predefined) wins: OHTTP, never direct or Tor")
+            assertTrue(torFlags.isEmpty(), "no Ktor client may be built for an OHTTP probe")
+        }
+
+    @Test
+    fun decisionWithTorOnBeatsTorOffPreference() =
+        runBlocking {
+            val direct = mutableListOf<String>()
+            val ohttp = mutableListOf<String>()
+            val torFlags = mutableListOf<Boolean>()
+            // Preference says Tor off (predefined, so OHTTP would be chosen); the decision says Tor on.
+            val resolver =
+                resolver(torEnabled = false, isCustom = false, direct = direct, ohttp = ohttp, torFlags = torFlags)
+
+            assertEquals(
+                PIR_URL,
+                resolver.resolve(VotingRouteDecision(isTor = true, isCustomServer = false), listOf(PIR_URL), HEIGHT)
+            )
+            assertEquals(listOf(true), torFlags, "the probe client must be the Tor client")
+            assertEquals(listOf("/root"), direct)
+            assertTrue(ohttp.isEmpty(), "the decision (Tor on) wins over the Tor-off preference: no OHTTP")
         }
 
     private fun resolver(
@@ -80,7 +118,8 @@ class HttpPirSnapshotResolverTest {
         isCustom: Boolean,
         direct: MutableList<String>,
         ohttp: MutableList<String> = mutableListOf(),
-        ohttpClient: OhttpHttpClient = ohttpClient(ohttp, canHandle = true)
+        ohttpClient: OhttpHttpClient = ohttpClient(ohttp, canHandle = true),
+        torFlags: MutableList<Boolean> = mutableListOf()
     ) = HttpPirSnapshotResolver(
         httpClientProvider =
             object : HttpClientProvider {
@@ -97,6 +136,11 @@ class HttpPirSnapshotResolverTest {
                     )
 
                 override suspend fun createTor(): HttpClient = create()
+
+                override suspend fun create(tor: Boolean): HttpClient {
+                    torFlags += tor
+                    return if (tor) createTor() else create()
+                }
 
                 override suspend fun createOhttp(): OhttpHttpClient = ohttpClient
 

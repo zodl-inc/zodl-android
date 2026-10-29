@@ -118,11 +118,16 @@ class KtorVotingApiProviderTest {
 
             assertEquals(
                 CommitmentTreeLatest(height = 20, nextIndex = 2),
-                provider.fetchCommitmentTreeLatest("round-id"),
+                provider.fetchCommitmentTreeLatest("round-id", decision = CUSTOM_DIRECT),
             )
             assertEquals(
                 CommitmentTreeLeafPage(blocks = emptyList(), nextFromHeight = 0),
-                provider.fetchCommitmentTreeLeafPage("round-id", fromHeight = 11, toHeight = 20),
+                provider.fetchCommitmentTreeLeafPage(
+                    "round-id",
+                    fromHeight = 11,
+                    toHeight = 20,
+                    decision = CUSTOM_DIRECT,
+                ),
             )
             assertEquals(
                 listOf(
@@ -181,7 +186,7 @@ class KtorVotingApiProviderTest {
             val requests = mutableListOf<String>()
             val provider = newProvider(requests)
 
-            provider.validateConfigSource(PinnedConfigSource.parse(STATIC_CONFIG_URL))
+            provider.validateConfigSource(PinnedConfigSource.parse(STATIC_CONFIG_URL), decision = CUSTOM_DIRECT)
 
             assertEquals(listOf("/static-voting-config.json"), requests)
         }
@@ -193,7 +198,7 @@ class KtorVotingApiProviderTest {
             val provider = newProvider(requests)
 
             assertFailsWith<VotingConfigException> {
-                provider.fetchServiceConfig()
+                provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
             }
 
             assertEquals(listOf("/static-voting-config.json", "/dynamic-voting-config.json"), requests)
@@ -227,7 +232,7 @@ class KtorVotingApiProviderTest {
                         ),
                 )
 
-            val serviceConfig = provider.fetchServiceConfig()
+            val serviceConfig = provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
 
             assertEquals(
                 listOf(
@@ -272,7 +277,7 @@ class KtorVotingApiProviderTest {
                 )
 
             assertFailsWith<VotingConfigException> {
-                provider.fetchServiceConfig()
+                provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
             }
 
             assertEquals(
@@ -297,7 +302,7 @@ class KtorVotingApiProviderTest {
             val timeoutCapabilities = mutableListOf<Pair<String, Long?>>()
             val provider = multiEndpointProvider(timeoutCapabilities = timeoutCapabilities, torEnabled = true)
 
-            provider.fetchServiceConfig()
+            provider.fetchServiceConfig(decision = CUSTOM_TOR)
 
             val configPaths = setOf("/static-voting-config.json", "/dynamic-voting-config.json")
             val configCapabilities = timeoutCapabilities.filter { (path, _) -> path in configPaths }
@@ -309,7 +314,11 @@ class KtorVotingApiProviderTest {
         runBlocking {
             val provider = hangingConfigProvider(hangingPath = "/static-voting-config.json")
 
-            val exception = assertFailsWith<StaticVotingConfigFetchFailedException> { provider.fetchServiceConfig() }
+            val exception = assertFailsWith<StaticVotingConfigFetchFailedException> {
+                provider.fetchServiceConfig(
+                    decision = DEFAULT_OHTTP,
+                )
+            }
 
             assertTrue(exception.message.orEmpty().contains("timed out"), exception.message.orEmpty())
         }
@@ -320,7 +329,7 @@ class KtorVotingApiProviderTest {
             val requests = mutableListOf<String>()
             val provider = hangingConfigProvider(hangingPath = "/first-dynamic-voting-config.json", requests = requests)
 
-            val serviceConfig = provider.fetchServiceConfig()
+            val serviceConfig = provider.fetchServiceConfig(decision = DEFAULT_OHTTP)
 
             assertEquals(
                 listOf(
@@ -339,7 +348,7 @@ class KtorVotingApiProviderTest {
             val timeoutCapabilities = mutableListOf<Pair<String, Long?>>()
             val provider = multiEndpointProvider(timeoutCapabilities = timeoutCapabilities)
 
-            provider.fetchAllRounds()
+            provider.fetchAllRounds(decision = CUSTOM_DIRECT)
 
             val roundsCapability = timeoutCapabilities.first { (path, _) -> path == ROUNDS_TEST_PATH }.second
             assertEquals(null, roundsCapability)
@@ -360,6 +369,9 @@ class KtorVotingApiProviderTest {
                             override suspend fun supportsKtorTimeouts(): Boolean = false
 
                             override suspend fun createTor(): HttpClient = create()
+
+                            override suspend fun create(tor: Boolean): HttpClient =
+                                if (tor) createTor() else create()
 
                             override suspend fun create(): HttpClient =
                                 HttpClient(
@@ -399,7 +411,7 @@ class KtorVotingApiProviderTest {
                     configRequestTimeoutMillis = TEST_TIMEOUT_MILLIS,
                 )
 
-            val serviceConfig = provider.fetchServiceConfig()
+            val serviceConfig = provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
 
             assertEquals(
                 listOf(
@@ -431,6 +443,9 @@ class KtorVotingApiProviderTest {
                             override suspend fun supportsKtorTimeouts(): Boolean = false
 
                             override suspend fun createTor(): HttpClient = create()
+
+                            override suspend fun create(tor: Boolean): HttpClient =
+                                if (tor) createTor() else create()
 
                             override suspend fun create(): HttpClient =
                                 HttpClient(
@@ -474,7 +489,7 @@ class KtorVotingApiProviderTest {
                 )
 
             assertFailsWith<VotingServerFailoverException> {
-                provider.fetchAllRounds()
+                provider.fetchAllRounds(decision = CUSTOM_DIRECT)
             }
 
             assertEquals(
@@ -493,8 +508,8 @@ class KtorVotingApiProviderTest {
             val requestLog = mutableListOf<String>()
             val provider = multiEndpointProvider(requestLog = requestLog)
 
-            provider.fetchAllRounds()
-            provider.fetchAllRounds()
+            provider.fetchAllRounds(decision = CUSTOM_DIRECT)
+            provider.fetchAllRounds(decision = CUSTOM_DIRECT)
 
             assertEquals(1, requestLog.count { path -> path == "/static-voting-config.json" })
             assertEquals(1, requestLog.count { path -> path == "/dynamic-voting-config.json" })
@@ -565,9 +580,9 @@ class KtorVotingApiProviderTest {
                     votingCryptoClient = unusedVotingCryptoClient(),
                 )
 
-            provider.fetchAllRounds()
+            provider.fetchAllRounds(decision = CUSTOM_DIRECT)
             repository.switchTo(sourceUrlB)
-            provider.fetchAllRounds()
+            provider.fetchAllRounds(decision = CUSTOM_DIRECT)
 
             assertEquals(1, requestLog.count { path -> path == "/static-config-a.json" })
             assertEquals(1, requestLog.count { path -> path == "/static-config-b.json" })
@@ -579,9 +594,9 @@ class KtorVotingApiProviderTest {
             val requestLog = mutableListOf<String>()
             val provider = multiEndpointProvider(requestLog = requestLog)
 
-            provider.fetchAllRounds()
+            provider.fetchAllRounds(decision = CUSTOM_DIRECT)
             provider.invalidateConfigCache()
-            provider.fetchAllRounds()
+            provider.fetchAllRounds(decision = CUSTOM_DIRECT)
 
             assertEquals(2, requestLog.count { path -> path == "/static-voting-config.json" })
             assertEquals(2, requestLog.count { path -> path == "/dynamic-voting-config.json" })
@@ -597,8 +612,8 @@ class KtorVotingApiProviderTest {
             val requestLog = mutableListOf<String>()
             val provider = multiEndpointProvider(requestLog = requestLog)
 
-            provider.fetchServiceConfig()
-            provider.fetchServiceConfig()
+            provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
+            provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
 
             // fetchServiceConfig() goes through getResolvedConfigWithTtl(), a DIFFERENT cache path
             // than fetchAllRounds()'s getResolvedConfig() (see resolvedConfigIsMemoizedAcrossConsecutiveCalls
@@ -613,9 +628,9 @@ class KtorVotingApiProviderTest {
             val requestLog = mutableListOf<String>()
             val provider = multiEndpointProvider(requestLog = requestLog)
 
-            provider.fetchServiceConfig()
+            provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
             provider.invalidateConfigCache()
-            provider.fetchServiceConfig()
+            provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
 
             // NOTE (Milan's #2483 round-2 review): this pins invalidation-forces-refetch on the
             // TTL path specifically (mirrors invalidateConfigCacheForcesRefetch above, which only
@@ -641,9 +656,9 @@ class KtorVotingApiProviderTest {
                     configCacheTtlMillis = SHORT_CONFIG_CACHE_TTL_MILLIS,
                 )
 
-            provider.fetchServiceConfig()
+            provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
             delay(SHORT_CONFIG_CACHE_TTL_MILLIS * 2)
-            provider.fetchServiceConfig()
+            provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
 
             // The real regression pin for the fallthrough bug an earlier review caught: unlike
             // invalidateConfigCacheForcesRefetchOnTheTtlPath above (cache-miss branch), this
@@ -717,8 +732,8 @@ class KtorVotingApiProviderTest {
             // two callers racing a cold/expired cache used to each independently decide "expired" and
             // both fire a real fetch. resolveConfigCached()'s single configMutex.withLock section now
             // makes the second, slightly-later caller wait for and reuse the first's in-flight fetch.
-            val first = async { provider.fetchServiceConfig() }
-            val second = async { provider.fetchServiceConfig() }
+            val first = async { provider.fetchServiceConfig(decision = CUSTOM_DIRECT) }
+            val second = async { provider.fetchServiceConfig(decision = CUSTOM_DIRECT) }
             first.await()
             second.await()
 
@@ -745,6 +760,9 @@ class KtorVotingApiProviderTest {
                             override suspend fun supportsKtorTimeouts(): Boolean = false
 
                             override suspend fun createTor(): HttpClient = create()
+
+                            override suspend fun create(tor: Boolean): HttpClient =
+                                if (tor) createTor() else create()
 
                             override suspend fun create(): HttpClient =
                                 HttpClient(
@@ -798,7 +816,7 @@ class KtorVotingApiProviderTest {
             // failure below.
             val exception =
                 assertFailsWith<IllegalStateException> {
-                    provider.delegateShares(listOf(share))
+                    provider.delegateShares(listOf(share), decision = CUSTOM_DIRECT)
                 }
             assertFalse(exception is CancellationException)
             assertEquals("No voting server accepted share ${share.encShare.shareIndex}", exception.message)
@@ -875,7 +893,7 @@ class KtorVotingApiProviderTest {
                 )
             val shares = (0 until SHARE_COUNT_ABOVE_SEMAPHORE_CAP).map { index -> makeDelegateSharePayload(index) }
 
-            val results = provider.delegateShares(shares)
+            val results = provider.delegateShares(shares, decision = CUSTOM_DIRECT)
 
             assertEquals(SHARE_COUNT_ABOVE_SEMAPHORE_CAP, results.size)
             // MAX_CONCURRENT_SHARE_DELEGATIONS in VotingApiProvider.kt is 16 and file-private, so its
@@ -915,6 +933,9 @@ class KtorVotingApiProviderTest {
 
                             override suspend fun createTor(): HttpClient = create()
 
+                            override suspend fun create(tor: Boolean): HttpClient =
+                                if (tor) createTor() else create()
+
                             override suspend fun create(): HttpClient =
                                 HttpClient(
                                     MockEngine { request ->
@@ -945,7 +966,7 @@ class KtorVotingApiProviderTest {
                     configRequestTimeoutMillis = TEST_TIMEOUT_MILLIS,
                 )
 
-            val job = async { provider.fetchServiceConfig() }
+            val job = async { provider.fetchServiceConfig(decision = CUSTOM_DIRECT) }
             delay(CANCELLATION_DELAY_MILLIS)
             job.cancel()
 
@@ -972,7 +993,7 @@ class KtorVotingApiProviderTest {
                     votingCryptoClient = unusedVotingCryptoClient(),
                 )
 
-            assertFailsWith<VotingConfigException> { provider.fetchServiceConfig() }
+            assertFailsWith<VotingConfigException> { provider.fetchServiceConfig(decision = CUSTOM_TOR) }
 
             assertEquals(1, attemptsByPath["/dynamic-voting-config.json"])
         }
@@ -989,7 +1010,7 @@ class KtorVotingApiProviderTest {
                     votingCryptoClient = unusedVotingCryptoClient(),
                 )
 
-            runCatching { provider.fetchAllRounds() }
+            runCatching { provider.fetchAllRounds(decision = CUSTOM_DIRECT) }
 
             assertEquals(CLIENT_RETRY_MAX_RETRIES + 1, attemptsByPath[ROUNDS_TEST_PATH])
         }
@@ -1009,6 +1030,9 @@ class KtorVotingApiProviderTest {
             override suspend fun supportsKtorTimeouts(): Boolean = true
 
             override suspend fun createTor(): HttpClient = create()
+
+            override suspend fun create(tor: Boolean): HttpClient =
+                if (tor) createTor() else create()
 
             override suspend fun create(): HttpClient =
                 HttpClient(
@@ -1073,6 +1097,9 @@ class KtorVotingApiProviderTest {
                     override suspend fun supportsKtorTimeouts(): Boolean = true
 
                     override suspend fun createTor(): HttpClient = create()
+
+                    override suspend fun create(tor: Boolean): HttpClient =
+                        if (tor) createTor() else create()
 
                     override suspend fun create(): HttpClient =
                         HttpClient(
@@ -1141,6 +1168,9 @@ class KtorVotingApiProviderTest {
                     override suspend fun supportsKtorTimeouts(): Boolean = true
 
                     override suspend fun createTor(): HttpClient = create()
+
+                    override suspend fun create(tor: Boolean): HttpClient =
+                        if (tor) createTor() else create()
 
                     override suspend fun create(): HttpClient =
                         HttpClient(
@@ -1538,3 +1568,8 @@ private fun votingConfigUrlConfiguration(url: String): Configuration =
             defaultValue: String
         ): String = if (key == ConfigurationEntries.VOTING_CONFIG_URL.key) url else defaultValue
     }
+
+// Routing the provider's fakes stand for: the test chain is a custom (non-bundled) source.
+private val CUSTOM_DIRECT = VotingRouteDecision(isTor = false, isCustomServer = true)
+private val CUSTOM_TOR = VotingRouteDecision(isTor = true, isCustomServer = true)
+private val DEFAULT_OHTTP = VotingRouteDecision(isTor = false, isCustomServer = false)

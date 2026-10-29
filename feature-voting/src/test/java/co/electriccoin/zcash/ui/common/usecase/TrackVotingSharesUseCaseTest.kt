@@ -12,13 +12,17 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
 import cash.z.ecc.android.sdk.model.voting.VotingShareTrackingQuiescence
 import cash.z.ecc.android.sdk.model.voting.VotingShareTrackingReport
 import co.electriccoin.zcash.ui.common.model.ZodlAccount
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import co.electriccoin.zcash.ui.common.provider.VotingRouteProvider
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
+import cash.z.ecc.android.sdk.model.voting.VotingTorLease
+import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -28,6 +32,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
+import kotlin.test.assertSame
 
 class TrackVotingSharesUseCaseTest {
     @Test
@@ -42,6 +47,8 @@ class TrackVotingSharesUseCaseTest {
             val votingChainConfigRepository = mockk<VotingChainConfigRepository>()
             coEvery { votingChainConfigRepository.get() } returns VotingChainConfigState()
 
+            val votingRouteProvider = mockk<VotingRouteProvider>(relaxed = true)
+
             val useCase =
                 TrackVotingSharesUseCase(
                     votingRecoveryRepository,
@@ -49,7 +56,8 @@ class TrackVotingSharesUseCaseTest {
                     votingApiProvider,
                     synchronizerProvider,
                     getSelectedWalletAccount,
-                    votingChainConfigRepository
+                    votingChainConfigRepository,
+                    votingRouteProvider
                 )
 
             // No recovery snapshot => invoke() short-circuits to Completed without opening a
@@ -112,6 +120,10 @@ class TrackVotingSharesUseCaseTest {
             val votingChainConfigRepository = mockk<VotingChainConfigRepository>()
             coEvery { votingChainConfigRepository.get() } returns VotingChainConfigState()
 
+            val votingRouteProvider = mockk<VotingRouteProvider>()
+            coEvery { votingRouteProvider.acquire() } returns
+                VotingRoute(VotingRouteDecision(isTor = false, isCustomServer = false), null)
+
             val useCase =
                 TrackVotingSharesUseCase(
                     votingRecoveryRepository,
@@ -119,7 +131,8 @@ class TrackVotingSharesUseCaseTest {
                     votingApiProvider,
                     synchronizerProvider,
                     getSelectedWalletAccount,
-                    votingChainConfigRepository
+                    votingChainConfigRepository,
+                    votingRouteProvider
                 )
 
             val result = useCase.invoke(roundId)
@@ -168,6 +181,9 @@ class TrackVotingSharesUseCaseTest {
             val votingChainConfigRepository = mockk<VotingChainConfigRepository>()
             coEvery { votingChainConfigRepository.get() } returns VotingChainConfigState()
 
+            val votingRouteProvider = mockk<VotingRouteProvider>()
+            coEvery { votingRouteProvider.acquire() } throws torInitializationError
+
             val useCase =
                 TrackVotingSharesUseCase(
                     votingRecoveryRepository,
@@ -175,7 +191,8 @@ class TrackVotingSharesUseCaseTest {
                     votingApiProvider,
                     synchronizerProvider,
                     getSelectedWalletAccount,
-                    votingChainConfigRepository
+                    votingChainConfigRepository,
+                    votingRouteProvider
                 )
 
             val exception =
@@ -183,8 +200,103 @@ class TrackVotingSharesUseCaseTest {
                     useCase.invoke(roundId)
                 }
             assertEquals(torInitializationError, exception)
-            // Acquired inside the DB try, so the Tor failure still closes the DB handle.
-            coVerify(exactly = 1) { votingCryptoClient.closeVotingDb(1L) }
+            // The route is acquired before the voting DB opens, so a Tor failure fails closed
+            // without opening (or leaking) a DB handle.
+            coVerify(exactly = 0) { votingCryptoClient.openVotingDb(any()) }
+        }
+
+    @Test
+    fun `a Tor and chain config flip mid-call does not change the route of fetchServiceConfig or session run`() =
+        runTest {
+            val roundId = "round-decision-stable"
+            val accountUuid = "account-decision-stable"
+            val initial = VotingRouteDecision(isTor = true, isCustomServer = false)
+            val flipped = VotingRouteDecision(isTor = false, isCustomServer = true)
+
+            val votingRecoveryRepository = mockk<VotingRecoveryRepository>(relaxed = true)
+            val votingCryptoClient = mockk<VotingCryptoClient>(relaxed = true)
+            val votingApiProvider = mockk<VotingApiProvider>()
+            val synchronizerProvider = mockk<SynchronizerProvider>()
+            val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
+            val synchronizer = mockk<Synchronizer>()
+            val session = mockk<VotingShareTrackingSession>(relaxed = true)
+            val torLease = mockk<VotingTorLease>(relaxed = true)
+            val report =
+                VotingShareTrackingReport(
+                    quiescence = VotingShareTrackingQuiescence.NothingToTrack,
+                    passes = 0,
+                    confirmed = emptyList(),
+                    resubmitted = emptyList(),
+                    ambiguous = emptyList(),
+                    unrecoverable = emptyList(),
+                    failures = emptyList()
+                )
+
+            coEvery { getSelectedWalletAccount() } returns zashiAccount()
+            // No stored vote server URLs, so the use case has to fetch the service config itself.
+            coEvery { votingRecoveryRepository.get(any(), roundId) } returns
+                VotingRecoverySnapshot(accountUuid = accountUuid, roundId = roundId, voteServerUrls = emptyList())
+            coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
+            coEvery { synchronizerProvider.getVotingWalletDbPath() } returns "/tmp/voting-wallet.db"
+            every { synchronizer.network } returns ZcashNetwork.Testnet
+            coEvery { votingCryptoClient.openVotingDb(any()) } returns 1L
+            coEvery { votingCryptoClient.openShareTrackingSession(any(), roundId) } returns session
+
+            val votingChainConfigRepository = mockk<VotingChainConfigRepository>()
+            coEvery { votingChainConfigRepository.get() } returns VotingChainConfigState()
+
+            var current = initial
+            val votingRouteProvider = mockk<VotingRouteProvider>()
+            coEvery { votingRouteProvider.acquire() } answers {
+                VotingRoute(current, if (current.isTor) torLease else null)
+            }
+            coEvery { votingRouteProvider.decision(any()) } answers { current }
+
+            val fetchDecisions = mutableListOf<VotingRouteDecision>()
+            coEvery { votingApiProvider.fetchServiceConfig(any()) } coAnswers {
+                fetchDecisions += firstArg<VotingRouteDecision>()
+                // The user turns Tor off and selects a custom chain between the config fetch and
+                // the tracking run.
+                current = flipped
+                VotingServiceConfig(
+                    voteServers =
+                        listOf(VotingServiceConfig.ServiceEndpoint(url = "https://vote.example", label = "v1"))
+                )
+            }
+            val runLeases = mutableListOf<VotingTorLease?>()
+            val runIsCustom = mutableListOf<Boolean>()
+            coEvery {
+                session.run(torLease = any(), isCustomServer = any(), helperUrls = any(), voteEndTimeSeconds = any())
+            } coAnswers {
+                runLeases += firstArg<VotingTorLease?>()
+                runIsCustom += secondArg<Boolean>()
+                report
+            }
+
+            val useCase =
+                TrackVotingSharesUseCase(
+                    votingRecoveryRepository,
+                    votingCryptoClient,
+                    votingApiProvider,
+                    synchronizerProvider,
+                    getSelectedWalletAccount,
+                    votingChainConfigRepository,
+                    votingRouteProvider
+                )
+
+            val result = useCase.invoke(roundId)
+
+            assertIs<VotingShareTrackingResult.Completed>(result)
+            assertEquals(flipped, current, "the preference really did flip mid-call")
+            coVerify(exactly = 1) { votingRouteProvider.acquire() }
+            coVerify(exactly = 0) { votingRouteProvider.decision(any()) }
+            assertEquals(listOf(initial), fetchDecisions)
+            // session.run gets the same route: the initial decision's Tor lease and its
+            // isCustomServer, not the flipped ones.
+            assertEquals(1, runLeases.size)
+            assertSame(torLease, runLeases.single())
+            assertEquals(listOf(initial.isCustomServer), runIsCustom)
+            coVerify(exactly = 1) { torLease.release() }
         }
 
     private fun zashiAccount(): ZodlAccount =

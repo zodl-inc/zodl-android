@@ -135,13 +135,13 @@ class SubmitVotesUseCase(
                 }
 
                 when (val preparation = prepareVotingRound(roundId, route.decision)) {
-                is VotingRoundPreparationResult.Ready -> {
-                    Unit
-                }
+                    is VotingRoundPreparationResult.Ready -> {
+                        Unit
+                    }
 
-                is VotingRoundPreparationResult.Ineligible -> {
-                    throw VotingSubmissionRecoverableException(VotingErrors.Ineligible)
-                }
+                    is VotingRoundPreparationResult.Ineligible -> {
+                        throw VotingSubmissionRecoverableException(VotingErrors.Ineligible)
+                    }
 
                     is VotingRoundPreparationResult.WalletSyncing -> {
                         throw VotingSubmissionRecoverableException(
@@ -153,7 +153,7 @@ class SubmitVotesUseCase(
                     }
                 }
 
-                    val sessionContext = resolveVotingRoundSession(roundId, route.decision)
+                val sessionContext = resolveVotingRoundSession(roundId, route.decision)
                 val session = sessionContext.session
                 val sessionRoundId = session.voteRoundId.toHex()
                 require(sessionRoundId.equals(roundId, ignoreCase = true)) {

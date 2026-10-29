@@ -7,6 +7,9 @@ import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingRouteProvider
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+import cash.z.ecc.android.sdk.model.voting.VotingTorLease
+import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -41,6 +44,7 @@ class VotingProofPrecomputeRepositoryTest {
                     synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = pirSnapshotResolver,
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                 )
             val request = pirWarmupRequest()
@@ -87,6 +91,7 @@ class VotingProofPrecomputeRepositoryTest {
                     synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                 )
             val request = pirWarmupRequest()
@@ -132,6 +137,7 @@ class VotingProofPrecomputeRepositoryTest {
                     synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = gatedCryptoClient,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                 )
             val request = pirWarmupRequest()
@@ -189,6 +195,7 @@ class VotingProofPrecomputeRepositoryTest {
                     synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                     // No retry backoff to wait out -- this test is about the swallow/cleanup
                     // behavior, not the new retry mechanism (see its own dedicated tests below).
@@ -222,6 +229,7 @@ class VotingProofPrecomputeRepositoryTest {
                     synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                     // This test counts PrecomputePirProofs calls per startPirWarmup invocation --
                     // disable the new in-call retry (its own dedicated tests below) so that count
@@ -266,6 +274,7 @@ class VotingProofPrecomputeRepositoryTest {
                     synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                     pirFetchRetryDelaysMs = longArrayOf(1L, 1L),
                 )
@@ -300,6 +309,7 @@ class VotingProofPrecomputeRepositoryTest {
                     synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = pirSnapshotResolver,
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                 )
             val request = snapshotBundlePrecomputeRequest()
@@ -338,6 +348,7 @@ class VotingProofPrecomputeRepositoryTest {
                     synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                 )
             val request = snapshotBundlePrecomputeRequest()
@@ -367,6 +378,7 @@ class VotingProofPrecomputeRepositoryTest {
                     synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                     // See pirWarmupFailureIsSwallowedAndStillClosesVotingDb's identical comment.
                     pirFetchRetryDelaysMs = LongArray(0),
@@ -393,6 +405,7 @@ class VotingProofPrecomputeRepositoryTest {
                     synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                     // See pirWarmupRetriesAfterAPreviousFailure's identical comment.
                     pirFetchRetryDelaysMs = LongArray(0),
@@ -429,6 +442,7 @@ class VotingProofPrecomputeRepositoryTest {
                     synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                     pirFetchRetryDelaysMs = longArrayOf(1L, 1L),
                 )
@@ -465,6 +479,7 @@ class VotingProofPrecomputeRepositoryTest {
                     synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example", gate = gate),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                 )
             val request = snapshotBundlePrecomputeRequest(accountUuid = "account-under-test")
@@ -506,6 +521,7 @@ class VotingProofPrecomputeRepositoryTest {
                     synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example", gate = gate),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                 )
             // Two distinct snapshot heights (distinct dedup keys) for the SAME account -- PIR
@@ -552,6 +568,7 @@ class VotingProofPrecomputeRepositoryTest {
                     synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                 )
 
@@ -608,15 +625,26 @@ private fun fakeSynchronizer(): Synchronizer =
         arrayOf(Synchronizer::class.java),
     ) { proxy, method, args ->
         when (method.name) {
-            "acquireVotingTorLease" -> TOR_LEASE
+            "acquireVotingTorLease" -> TOR_LEASE_HANDLE
             else -> method.handleObjectMethod(proxy, args)
         }
     } as Synchronizer
 
 private const val DB_HANDLE = 42L
 
-// One shared relaxed instance, so recorded calls compare equal by identity; release() is a no-op.
-private val TOR_LEASE: VotingRoute = mockk(relaxed = true)
+// One shared relaxed lease, so recorded calls compare equal by identity; release() is a no-op.
+private val TOR_LEASE_HANDLE: VotingTorLease = mockk(relaxed = true)
+
+// One shared Tor route wrapping a real lease mock, returned by every acquire(), so recorded calls
+// compare equal by identity and route.torLease is the lease above, not a relaxed placeholder.
+private val TOR_LEASE: VotingRoute =
+    VotingRoute(VotingRouteDecision(isTor = true, isCustomServer = false), TOR_LEASE_HANDLE)
+
+private fun fakeVotingRouteProvider(): VotingRouteProvider =
+    mockk {
+        coEvery { acquire() } returns TOR_LEASE
+        coEvery { decision(any()) } returns TOR_LEASE.decision
+    }
 private const val TIMEOUT_MS = 5_000L
 
 private class FakePirSnapshotResolver(

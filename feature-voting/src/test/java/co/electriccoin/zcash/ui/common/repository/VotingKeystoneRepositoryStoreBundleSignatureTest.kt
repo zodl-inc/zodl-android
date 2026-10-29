@@ -186,7 +186,8 @@ class VotingKeystoneRepositoryStoreBundleSignatureTest {
                 votingHotkeySeedProvider = votingHotkeySeedProvider,
                 synchronizerProvider = synchronizerProvider,
                 keystoneSDKProvider = keystoneSDKProvider,
-                votingProofPrecomputeRepository = votingProofPrecomputeRepository
+                votingProofPrecomputeRepository = votingProofPrecomputeRepository,
+                votingRouteProvider = mockk(relaxed = true)
             )
 
         init {
