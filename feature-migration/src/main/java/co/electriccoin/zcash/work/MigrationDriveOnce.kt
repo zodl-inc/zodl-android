@@ -15,11 +15,13 @@ import cash.z.ecc.android.sdk.TransferResult
 import co.electriccoin.zcash.migration.BuildConfig
 import co.electriccoin.zcash.migration.migrationLog
 import co.electriccoin.zcash.ui.common.model.migration.LiveMigrationSnapshot
+import co.electriccoin.zcash.ui.common.model.migration.estimatedSecondsBetweenHeights
 import co.electriccoin.zcash.ui.common.model.migration.toSnapshot
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.IsMigrationTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.LastNetworkActivityStorageProvider
 import co.electriccoin.zcash.ui.common.provider.MigrationNotifier
+import co.electriccoin.zcash.ui.common.provider.MigrationUpgradeNoticeStorageProvider
 import co.electriccoin.zcash.ui.common.provider.PendingMigrationTorFailureStorageProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import kotlinx.coroutines.delay
@@ -82,6 +84,7 @@ class MigrationDriveOnce(
     private val synchronizerProvider: SynchronizerProvider,
     private val lastNetworkActivity: LastNetworkActivityStorageProvider,
     private val applicationStateProvider: ApplicationStateProvider,
+    private val migrationUpgradeNotice: MigrationUpgradeNoticeStorageProvider,
 ) {
     /**
      * @param allowForcedBroadcastWindow Only `true` for [MigrationLiveDriver] — the worker (via
@@ -145,6 +148,15 @@ class MigrationDriveOnce(
 
                 MigrationAdvanceStep.Waiting -> {
                     waitingRun(sdk, accountKeyId)
+                }
+
+                is MigrationAdvanceStep.PausedForNetworkUpgrade -> {
+                    waitingRun(sdk, accountKeyId)
+                }
+
+                is MigrationAdvanceStep.InterruptedByNetworkUpgrade -> {
+                    interruptedRun(sdk, accountKeyId, step.activationHeight)
+                    DriveOnceResult.Terminal
                 }
             }
         } finally {
@@ -282,6 +294,11 @@ class MigrationDriveOnce(
                 // notifyRescheduleRequired notification would never fire on this path even though
                 // sdk.nextStep() already marks the migration Superseded either way.
                 replanRun(sdk, accountKeyId)
+                DriveOnceResult.Terminal
+            }
+
+            is MigrationAdvanceStep.InterruptedByNetworkUpgrade -> {
+                interruptedRun(sdk, accountKeyId, nextStep.activationHeight)
                 DriveOnceResult.Terminal
             }
 
@@ -627,6 +644,23 @@ class MigrationDriveOnce(
         )
     }
 
+    /**
+     * The NU7 activation left the run with a transaction built for the old consensus branch, which
+     * no block accepts. Cancelling ends the run and releases its unsent notes (transfers already
+     * confirmed stay migrated; funds in sent but unconfirmed ones can stay reserved until they expire
+     * and the wallet syncs), then the one-time Home notice offers a new migration of what is
+     * left. The notice is raised only after the cancel succeeded: a failed cancel throws, so the
+     * next drive sees the same interrupted answer and tries again.
+     */
+    private suspend fun interruptedRun(sdk: OrchardMigrationSdk, accountKeyId: String, activationHeight: Long) {
+        migrationLog(
+            "MigrationDriveOnce: the NU7 activation ($activationHeight) interrupted the run — cancelling it, " +
+                "the user is offered a new migration. (account=$accountKeyId)"
+        )
+        sdk.cancelMigrationRun()
+        migrationUpgradeNotice.markPending(accountKeyId)
+    }
+
     /** All transactions mined — nothing left to fold anywhere; just stop the chain. */
     private suspend fun completeRun(accountKeyId: String) {
         migrationLog("MigrationDriveOnce: migration complete — stopping the work chain. (account=$accountKeyId)")
@@ -703,6 +737,7 @@ class MigrationDriveOnce(
                 privacyBufferSeconds = sdk.privacySyncBufferDuration().inWholeSeconds,
                 nowEpochSeconds = nowEpochSeconds(),
                 peek = peek,
+                nu7ActivationHeight = sdk.nu7ActivationHeight,
             )
         val armed = maxOf(delay ?: migrationCadence(), floor)
         scheduleUnlessLiveLoop(accountKeyId, armed)
@@ -747,6 +782,7 @@ private suspend fun OrchardMigrationSdk.snapshot(): LiveMigrationSnapshot? =
             estimatedTip = if (est >= 0) est else it.tipHeight,
             secondsPerBlock = estimatedSecondsPerBlock(),
             nowEpochSeconds = nowEpochSeconds(),
+            nu7ActivationHeight = nu7ActivationHeight,
         )
     }
 
@@ -973,9 +1009,10 @@ internal fun computeEngineWakeDelay(
     est: Long,
     secondsPerBlock: Long,
     peek: MigrationPeek?,
+    nu7ActivationHeight: Long?,
 ): Duration? {
     if (est < 0L || peek == null) return null
-    return ((peek.height - est).coerceAtLeast(0L) * secondsPerBlock)
+    return estimatedSecondsBetweenHeights(est, maxOf(peek.height, est), secondsPerBlock, nu7ActivationHeight)
         .coerceAtLeast(MIN_REARM_SECONDS)
         .seconds
 }
@@ -1001,6 +1038,7 @@ internal fun nextWake(
     privacyBufferSeconds: Long,
     nowEpochSeconds: Long,
     peek: MigrationPeek?,
+    nu7ActivationHeight: Long?,
 ): Duration? {
     val broadcastReadyGapped = states != null && broadcastDueByEstimate(states, est)
     val gapDelay =
@@ -1010,6 +1048,6 @@ internal fun nextWake(
         } else {
             null
         }
-    val engineDelay = computeEngineWakeDelay(est, secondsPerBlock, peek)
+    val engineDelay = computeEngineWakeDelay(est, secondsPerBlock, peek, nu7ActivationHeight)
     return listOfNotNull(engineDelay, gapDelay).minOrNull()
 }

@@ -87,6 +87,8 @@ class MigrationSetupVMViewOnlyTest {
                                 },
                         ),
                     getMigrationPrivacyOrReviewDestination = mockk(relaxed = true),
+                    getMigrationGateInfo = mockk(relaxed = true),
+                    migrationUpgradeNotice = mockk(relaxed = true),
                 )
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect { } }
 
