@@ -338,7 +338,7 @@
     <!-- ===== exchange_rate ===== -->
     <string name="currencyConversion_ipTitle">Protección de dirección IP</string>
     <string name="currencyConversion_ipDesc">La función de conversión de moneda de Zodl no compromete tu dirección IP.</string>
-    <string name="exchange_rate_info_subtitle_1_no_cmc">Las tasas de cambio son obtenidas a travez de Tor para proteger tu dirección IP. Verifica si el uso de Tor esta permitido en tu region.</string>
+    <string name="exchange_rate_info_subtitle_1_no_cmc">Las tasas de cambio son obtenidas de forma privada vía OHTTP para proteger tu dirección IP.</string>
     <string name="currencyConversion_refresh">Actualización de tasa</string>
     <string name="currencyConversion_refreshDesc">La tasa se actualiza automáticamente y también se puede actualizar manualmente.</string>
     <string name="tooltip_exchangeRate_title">Tasa de cambio no disponible</string>

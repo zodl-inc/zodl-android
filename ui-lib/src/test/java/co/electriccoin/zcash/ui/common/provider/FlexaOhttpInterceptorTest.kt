@@ -569,6 +569,31 @@ class FlexaOhttpInterceptorTest {
         index: Int
     ) = runBlocking { withTimeout(WAIT_S * MILLIS) { while (sockets.size <= index) delay(POLL_MS) } }
 
+    @Test
+    fun thePlatformUserAgentIsNotForwardedToTheInnerRequest() {
+        val transport =
+            FakeTransport(
+                answer = {
+                    OhttpHttpClient.Response(200, ByteArray(0))
+                }
+            )
+
+        client(transport)
+            .newCall(
+                Request
+                    .Builder()
+                    .url("https://api.flexa.co/accounts/me")
+                    .header("User-Agent", "FlexaSDK/1.2.3 Android/13")
+                    .build()
+            ).execute()
+
+        val sent = transport.requests.single()
+        assertTrue(
+            sent.headers.none { (name, _) -> name.equals("User-Agent", ignoreCase = true) },
+            "User-Agent stays on the outer hop per ZIP #10 lines 704-707"
+        )
+    }
+
     private fun accountRequest() = Request.Builder().url("https://api.flexa.co/accounts/me").build()
 
     private fun eventsRequest() =

@@ -270,7 +270,9 @@ class AutomaticServerRepositoryImpl(
      *
      * The gateway health ticks run only while the app is in the foreground: they stop in the background
      * and start over (a full [GATEWAY_HEALTH_INTERVAL] after the foreground edge, which itself triggers an
-     * evaluation) when the app returns.
+     * evaluation) when the app returns. The fallback recovery ticks run every [FALLBACK_RECOVERY_INTERVAL]
+     * in the foreground and every [FALLBACK_RECOVERY_BACKGROUND_INTERVAL] in the background, so a wallet
+     * syncing in the background still returns to OHTTP.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     internal fun healthTicks(): Flow<SwitchTrigger> =
@@ -286,7 +288,19 @@ class AutomaticServerRepositoryImpl(
                         .distinctUntilChanged()
                         .flatMapLatest { (fallbackActive, isPublic) ->
                             if (fallbackActive) {
-                                ticks(FALLBACK_RECOVERY_INTERVAL, SwitchTrigger.RECOVERY)
+                                applicationStateProvider
+                                    .isInForeground
+                                    .distinctUntilChanged()
+                                    .flatMapLatest { foreground ->
+                                        ticks(
+                                            if (foreground) {
+                                                FALLBACK_RECOVERY_INTERVAL
+                                            } else {
+                                                FALLBACK_RECOVERY_BACKGROUND_INTERVAL
+                                            },
+                                            SwitchTrigger.RECOVERY
+                                        )
+                                    }
                             } else if (isPublic) {
                                 emptyFlow()
                             } else {
@@ -498,13 +512,20 @@ class AutomaticServerRepositoryImpl(
         }
     }
 
+    /**
+     * Returns the first healthy OHTTP gateway, or null. Called for the triggers with
+     * [SwitchTrigger.probesGatewayRecovery] (RECOVERY, FOREGROUND, CONNECTIVITY): one lightweight [probeGateway]
+     * per gateway (one GetLightdInfo, 20 s cap), the first that answers wins. There is one gateway per network, so
+     * ranking buys nothing. RECOVERY ticks run every 30 s (foreground) or 5 min (background): the full benchmark
+     * takes 90 s + 20 s and would be cancelled by [switchLane]'s mapLatest before completing.
+     */
     @Suppress("ReturnCount")
     private suspend fun evaluateReturnToPrivate(): LightWalletEndpoint? {
         val gateways = lightWalletEndpointProvider.getEndpoints().filter(lightWalletEndpointProvider::isOhttpGateway)
         if (gateways.isEmpty()) return null
         val synchronizer = synchronizerProvider.getSynchronizerOrNull() ?: return null
         return try {
-            rankValidated(synchronizer, gateways).firstOrNull()
+            gateways.firstOrNull { probeGateway(synchronizer, it) }
         } finally {
             evaluationInterval.markAttempted()
         }
@@ -614,7 +635,7 @@ enum class SwitchTrigger(
     val probesGatewayRecovery: Boolean = false,
 ) {
     FOREGROUND(bypassesInterval = false, probesGatewayRecovery = true),
-    CONNECTIVITY(bypassesInterval = true),
+    CONNECTIVITY(bypassesInterval = true, probesGatewayRecovery = true),
     HEALTH(bypassesInterval = true),
     RECOVERY(bypassesInterval = true, probesGatewayRecovery = true),
 }
@@ -631,8 +652,17 @@ private val VALIDATION_TIMEOUT = 20.seconds
 /** Public mode: how long a test block fetch may take before the SDK counts the server as slow. */
 private val PUBLIC_FETCH_THRESHOLD = 5.seconds
 
-/** How often, while on a clearnet fallback, to check whether the OHTTP gateway is back. */
-private val FALLBACK_RECOVERY_INTERVAL = 5.minutes
+/**
+ * How often, while on a clearnet fallback and in the foreground, to check whether the OHTTP gateway is back.
+ * The probe checks the gateway only via lightweight [probeGateway] (one GetLightdInfo per gateway, 20 s cap),
+ * never re-benchmarking clearnet servers. When the gateway does not answer, a CONNECTIVITY or FOREGROUND
+ * trigger goes on to re-rank the public tier, but in the foreground the next RECOVERY tick usually cancels that
+ * re-rank ([switchLane] is mapLatest), so the wallet mostly stays on its current fallback server.
+ */
+private val FALLBACK_RECOVERY_INTERVAL = 30.seconds
+
+/** The same check while the app is in the background, sparing the battery. */
+private val FALLBACK_RECOVERY_BACKGROUND_INTERVAL = 5.minutes
 
 /** Cap on validating one tier (the SDK benchmark itself times out per server well before this). */
 private val TIER_BENCHMARK_TIMEOUT = 90.seconds
