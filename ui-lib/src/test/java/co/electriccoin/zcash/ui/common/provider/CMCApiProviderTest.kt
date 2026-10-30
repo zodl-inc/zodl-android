@@ -112,6 +112,9 @@ private class RecordingHttpClientProvider : HttpClientProvider {
         error("CMC must never be fetched over the Tor client (OHTTP handles routing)")
     }
 
+    override suspend fun create(tor: Boolean): HttpClient =
+        if (tor) createTor() else create()
+
     override suspend fun createOhttp(): OhttpHttpClient {
         createOhttpCalls++
         return mockk<OhttpHttpClient> {

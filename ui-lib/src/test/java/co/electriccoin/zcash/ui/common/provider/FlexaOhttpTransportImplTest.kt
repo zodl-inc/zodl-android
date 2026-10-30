@@ -25,6 +25,9 @@ class FlexaOhttpTransportImplTest {
 
             override suspend fun createTor(): HttpClient = error("Flexa must not go Tor-direct")
 
+            override suspend fun create(tor: Boolean): HttpClient =
+                if (tor) createTor() else create()
+
             override suspend fun createOhttp(): OhttpHttpClient {
                 sharedCalls++
                 return client

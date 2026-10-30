@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import cash.z.ecc.android.sdk.Synchronizer
-import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.fixture.AccountFixture
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
@@ -186,7 +185,6 @@ class PrecomputeVotingSnapshotBundlesUseCaseTest {
 
         val synchronizer = mockk<Synchronizer>()
         every { synchronizer.network } returns ZcashNetwork.Testnet
-        coEvery { synchronizer.acquireVotingTorLease() } throws TorUnavailableException()
 
         coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
         coEvery { synchronizerProvider.getVotingWalletDbPath() } returns "/wallet/db"

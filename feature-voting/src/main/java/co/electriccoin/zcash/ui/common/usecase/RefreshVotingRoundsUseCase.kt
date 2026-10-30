@@ -10,6 +10,7 @@ import kotlinx.coroutines.coroutineScope
 class RefreshVotingRoundsUseCase(
     private val votingApiProvider: VotingApiProvider,
     private val votingApiRepository: VotingApiRepository,
+    private val votingRouteProvider: co.electriccoin.zcash.ui.common.provider.VotingRouteProvider,
     private val logEndorsementFailure: (Exception) -> Unit = ::logFailedZodlEndorsements,
 ) {
     /**
@@ -19,12 +20,13 @@ class RefreshVotingRoundsUseCase(
      * request takes (seconds over Tor): the empty-list sheet flashed up and went away again.
      */
     suspend operator fun invoke() {
-        votingApiProvider.fetchServiceConfig()
+        val decision = votingRouteProvider.decision()
+        votingApiProvider.fetchServiceConfig(decision)
         coroutineScope {
             val endorsedRoundIds =
                 async {
                     try {
-                        votingApiProvider.fetchZodlEndorsedRoundIds()
+                        votingApiProvider.fetchZodlEndorsedRoundIds(decision)
                     } catch (exception: Exception) {
                         if (exception is CancellationException) {
                             throw exception
@@ -33,7 +35,7 @@ class RefreshVotingRoundsUseCase(
                         emptySet()
                     }
                 }
-            val roundsResult = votingApiProvider.fetchAllRounds()
+            val roundsResult = votingApiProvider.fetchAllRounds(decision)
             votingApiRepository.storeZodlEndorsedRoundIds(endorsedRoundIds.await())
             votingApiRepository.storeRounds(roundsResult.rounds, roundsResult.sessionsByRoundId)
         }

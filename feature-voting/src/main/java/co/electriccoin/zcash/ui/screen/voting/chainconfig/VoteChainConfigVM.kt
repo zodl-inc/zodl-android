@@ -29,6 +29,7 @@ import kotlin.coroutines.cancellation.CancellationException
 class VoteChainConfigVM(
     private val votingChainConfigRepository: VotingChainConfigRepository,
     private val votingApiProvider: VotingApiProvider,
+    private val votingRouteProvider: co.electriccoin.zcash.ui.common.provider.VotingRouteProvider,
     private val navigationRouter: NavigationRouter,
     private val copyToClipboard: CopyToClipboardUseCase,
 ) : ViewModel() {
@@ -274,7 +275,11 @@ class VoteChainConfigVM(
     private suspend fun validatePinnedSourceOrShowError(source: PinnedConfigSource): Boolean {
         isValidating.value = true
         return try {
-            votingApiProvider.validateConfigSource(source)
+            // Validate using the decision this source would use if selected: custom sources
+            // are never routed through OHTTP (ZIP #10), so validate them as custom even if
+            // the current selection is still default.
+            val decision = votingRouteProvider.decision(isCustomServer = !source.isBundledDefaultUrl())
+            votingApiProvider.validateConfigSource(source, decision)
             true
         } catch (throwable: Throwable) {
             if (throwable is CancellationException) {

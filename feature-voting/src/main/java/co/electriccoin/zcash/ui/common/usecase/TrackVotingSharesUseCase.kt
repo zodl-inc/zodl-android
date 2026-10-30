@@ -6,7 +6,6 @@ import cash.z.ecc.android.sdk.model.voting.VotingShareTrackingQuiescence
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
-import co.electriccoin.zcash.ui.common.provider.acquireVotingTorLeaseOrNull
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
@@ -47,58 +46,55 @@ class TrackVotingSharesUseCase(
     private val votingApiProvider: VotingApiProvider,
     private val synchronizerProvider: SynchronizerProvider,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
-    private val votingChainConfigRepository: VotingChainConfigRepository,
+    private val votingRouteProvider: co.electriccoin.zcash.ui.common.provider.VotingRouteProvider,
 ) {
     suspend operator fun invoke(roundId: String): VotingShareTrackingResult =
         withContext(Dispatchers.IO) {
             val selectedAccount = getSelectedWalletAccount()
             if (!selectedAccount.isSpendable) return@withContext VotingShareTrackingResult.Completed
             val accountUuidString = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
-            val recovery =
-                votingRecoveryRepository.get(accountUuidString, roundId)
-                    ?: return@withContext VotingShareTrackingResult.Completed
-            val roundVoteServerUrls =
-                recovery.voteServerUrls
-                    .ifEmpty {
-                        runCatching {
-                            votingApiProvider
-                                .fetchServiceConfig()
-                                .voteServers
-                                .map { endpoint -> endpoint.url.trimEnd('/') }
-                                .distinct()
-                        }.getOrDefault(emptyList())
-                    }
-            if (roundVoteServerUrls.isEmpty()) {
-                return@withContext VotingShareTrackingResult.Pending(nextDelayMillis(roundId))
-            }
-
-            val synchronizer = synchronizerProvider.getSynchronizer()
-            val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
-            val networkId = synchronizer.network.toVotingNetworkId()
-            val votingDbPath =
-                File(walletDbPath)
-                    .parentFile
-                    ?.resolve("voting.sqlite3")
-                    ?.absolutePath
-                    ?: error("Unable to derive voting DB path from $walletDbPath")
-
-            val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
-            check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
-
+            val route = votingRouteProvider.acquire()
             try {
-                votingCryptoClient.setWalletId(dbHandle, accountUuidString, networkId)
-                // Same Tor-optional policy as SubmitVotesUseCase.kt -- null when Tor is disabled,
-                // a Tor init failure propagates. Released in its own finally, after the session
-                // is closed, so a throw from openShareTrackingSession cannot leak it either.
-                val torLease = synchronizer.acquireVotingTorLeaseOrNull()
-                val report =
-                    try {
-                        val session = votingCryptoClient.openShareTrackingSession(dbHandle, roundId)
-                        registerSession(roundId, session)
+                val recovery =
+                    votingRecoveryRepository.get(accountUuidString, roundId)
+                        ?: return@withContext VotingShareTrackingResult.Completed
+                val roundVoteServerUrls =
+                    recovery.voteServerUrls
+                        .ifEmpty {
+                            runCatching {
+                                votingApiProvider
+                                    .fetchServiceConfig(route.decision)
+                                    .voteServers
+                                    .map { endpoint -> endpoint.url.trimEnd('/') }
+                                    .distinct()
+                            }.getOrDefault(emptyList())
+                        }
+                if (roundVoteServerUrls.isEmpty()) {
+                    return@withContext VotingShareTrackingResult.Pending(nextDelayMillis(roundId))
+                }
+
+                val synchronizer = synchronizerProvider.getSynchronizer()
+                val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
+                val networkId = synchronizer.network.toVotingNetworkId()
+                val votingDbPath =
+                    File(walletDbPath)
+                        .parentFile
+                        ?.resolve("voting.sqlite3")
+                        ?.absolutePath
+                        ?: error("Unable to derive voting DB path from $walletDbPath")
+
+                val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
+                check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
+
+                try {
+                    votingCryptoClient.setWalletId(dbHandle, accountUuidString, networkId)
+                    val session = votingCryptoClient.openShareTrackingSession(dbHandle, roundId)
+                    registerSession(roundId, session)
+                    val report =
                         try {
                             session.run(
-                                torLease = torLease,
-                                isCustomServer = !votingChainConfigRepository.get().isOnDefaultConfig,
+                                torLease = route.torLease,
+                                isCustomServer = route.decision.isCustomServer,
                                 helperUrls = roundVoteServerUrls,
                                 voteEndTimeSeconds = recovery.voteEndEpochSeconds ?: -1L
                             )
@@ -108,43 +104,43 @@ class TrackVotingSharesUseCase(
                                 session.close()
                             }
                         }
-                    } finally {
-                        torLease?.release()
-                    }
 
-                when (report?.quiescence) {
-                    is VotingShareTrackingQuiescence.NothingToTrack,
-                    is VotingShareTrackingQuiescence.AllConfirmed -> {
-                        resetDelay(roundId)
-                        votingRecoveryRepository.setPhase(
-                            accountUuidString,
-                            roundId,
-                            VotingRecoveryPhase.SHARES_SUBMITTED
-                        )
-                        VotingShareTrackingResult.Completed
-                    }
+                    when (report?.quiescence) {
+                        is VotingShareTrackingQuiescence.NothingToTrack,
+                        is VotingShareTrackingQuiescence.AllConfirmed -> {
+                            resetDelay(roundId)
+                            votingRecoveryRepository.setPhase(
+                                accountUuidString,
+                                roundId,
+                                VotingRecoveryPhase.SHARES_SUBMITTED
+                            )
+                            VotingShareTrackingResult.Completed
+                        }
 
-                    is VotingShareTrackingQuiescence.VoteEndReached -> {
-                        // The vote window closed with shares still outstanding -- nothing left
-                        // to usefully retry; treat as terminal-complete rather than looping
-                        // forever past a round that can no longer accept share deliveries.
-                        resetDelay(roundId)
-                        VotingShareTrackingResult.Completed
-                    }
+                        is VotingShareTrackingQuiescence.VoteEndReached -> {
+                            // The vote window closed with shares still outstanding -- nothing left
+                            // to usefully retry; treat as terminal-complete rather than looping
+                            // forever past a round that can no longer accept share deliveries.
+                            resetDelay(roundId)
+                            VotingShareTrackingResult.Completed
+                        }
 
-                    is VotingShareTrackingQuiescence.Cancelled,
-                    is VotingShareTrackingQuiescence.AlreadyDriving,
-                    is VotingShareTrackingQuiescence.Failing,
-                    is VotingShareTrackingQuiescence.PassBudgetExhausted,
-                    is VotingShareTrackingQuiescence.Unknown,
-                    null -> {
-                        VotingShareTrackingResult.Pending(nextDelayMillis(roundId))
+                        is VotingShareTrackingQuiescence.Cancelled,
+                        is VotingShareTrackingQuiescence.AlreadyDriving,
+                        is VotingShareTrackingQuiescence.Failing,
+                        is VotingShareTrackingQuiescence.PassBudgetExhausted,
+                        is VotingShareTrackingQuiescence.Unknown,
+                        null -> {
+                            VotingShareTrackingResult.Pending(nextDelayMillis(roundId))
+                        }
+                    }
+                } finally {
+                    withContext(NonCancellable) {
+                        votingCryptoClient.closeVotingDb(dbHandle)
                     }
                 }
             } finally {
-                withContext(NonCancellable) {
-                    votingCryptoClient.closeVotingDb(dbHandle)
-                }
+                route.release()
             }
         }
 
