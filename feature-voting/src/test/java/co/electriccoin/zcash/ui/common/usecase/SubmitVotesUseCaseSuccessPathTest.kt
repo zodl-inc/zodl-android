@@ -195,7 +195,7 @@ class SubmitVotesUseCaseSuccessPathTest {
         }
 
     @Test
-    fun `a Tor init failure still closes the voting DB`() =
+    fun `a Tor init failure fails closed before the voting DB is opened`() =
         runTest {
             val env = Env()
             coEvery { env.votingRouteProvider.acquire() } throws
@@ -203,7 +203,8 @@ class SubmitVotesUseCaseSuccessPathTest {
 
             assertFailsWith<TorInitializationErrorException> { env.invoke(choices = mapOf(1 to 0)) }
 
-            coVerify(exactly = 1) { env.votingCryptoClient.closeVotingDb(any()) }
+            coVerify(exactly = 0) { env.votingCryptoClient.openVotingDb(any()) }
+            coVerify(exactly = 0) { env.votingCryptoClient.closeVotingDb(any()) }
         }
 
     @Test

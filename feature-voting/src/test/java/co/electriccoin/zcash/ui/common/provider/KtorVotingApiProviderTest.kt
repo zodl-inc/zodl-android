@@ -302,7 +302,7 @@ class KtorVotingApiProviderTest {
             val timeoutCapabilities = mutableListOf<Pair<String, Long?>>()
             val provider = multiEndpointProvider(timeoutCapabilities = timeoutCapabilities, torEnabled = true)
 
-            provider.fetchServiceConfig(decision = CUSTOM_TOR)
+            provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
 
             val configPaths = setOf("/static-voting-config.json", "/dynamic-voting-config.json")
             val configCapabilities = timeoutCapabilities.filter { (path, _) -> path in configPaths }
@@ -412,7 +412,7 @@ class KtorVotingApiProviderTest {
                     configRequestTimeoutMillis = TEST_TIMEOUT_MILLIS,
                 )
 
-            val serviceConfig = provider.fetchServiceConfig(decision = CUSTOM_DIRECT)
+            val serviceConfig = provider.fetchServiceConfig(decision = CUSTOM_TOR)
 
             assertEquals(
                 listOf(
@@ -490,7 +490,7 @@ class KtorVotingApiProviderTest {
                 )
 
             assertFailsWith<VotingServerFailoverException> {
-                provider.fetchAllRounds(decision = CUSTOM_DIRECT)
+                provider.fetchAllRounds(decision = CUSTOM_TOR)
             }
 
             assertEquals(
@@ -817,7 +817,7 @@ class KtorVotingApiProviderTest {
             // failure below.
             val exception =
                 assertFailsWith<IllegalStateException> {
-                    provider.delegateShares(listOf(share), decision = CUSTOM_DIRECT)
+                    provider.delegateShares(listOf(share), decision = CUSTOM_TOR)
                 }
             assertFalse(exception is CancellationException)
             assertEquals("No voting server accepted share ${share.encShare.shareIndex}", exception.message)
