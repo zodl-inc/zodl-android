@@ -3,6 +3,8 @@ package co.electriccoin.zcash.ui.common.parser
 import java.math.BigDecimal
 
 internal object Bip21Parser {
+    const val BITCOIN_CHAIN_TICKER = "btc"
+
     private const val SCHEME = "bitcoin:"
     private const val ADDRESS_PREFIX = "//"
     private const val QUERY_START = '?'

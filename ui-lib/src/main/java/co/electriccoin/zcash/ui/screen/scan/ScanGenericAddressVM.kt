@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.scan
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import co.electriccoin.zcash.ui.common.model.ZEC_TICKER
 import co.electriccoin.zcash.ui.common.parser.Bip21ParseResult
 import co.electriccoin.zcash.ui.common.parser.Bip21Parser
 import co.electriccoin.zcash.ui.common.usecase.NavigateToRedeemGiftCardUseCase
@@ -61,8 +62,9 @@ internal class ScanGenericAddressVM(
         state.update { ScanValidationState.VALID }
         navigateToScanAddress.onScanned(
             address = result.address,
-            amount = null,
-            args = args
+            amount = result.amount,
+            args = args,
+            amountChainTicker = result.amount?.let { Bip21Parser.BITCOIN_CHAIN_TICKER }
         )
         hasBeenScannedSuccessfully = true
     }
@@ -100,7 +102,12 @@ internal class ScanGenericAddressVM(
                 .nonNegativeAmount
                 ?.toZecValueString()
                 ?.toBigDecimal() ?: BigDecimal.ZERO
-        navigateToScanAddress.onScanned(address, amount, args)
+        navigateToScanAddress.onScanned(
+            address = address,
+            amount = amount,
+            args = args,
+            amountChainTicker = ZEC_TICKER
+        )
         hasBeenScannedSuccessfully = true
     }
 

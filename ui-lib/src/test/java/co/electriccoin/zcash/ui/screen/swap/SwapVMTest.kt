@@ -503,6 +503,71 @@ class SwapVMTest {
         }
 
     @Test
+    fun scanBitcoinAmountIsIgnored() =
+        runTest {
+            val harness =
+                harness(
+                    preselect = SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc"),
+                    scanResult =
+                        ScanResult(
+                            address = "bc1-address",
+                            amount = BigDecimal("0.001"),
+                            amountChainTicker = "btc"
+                        )
+                )
+            harness.collectState(this)
+            val amountBefore = harness.capturedState.amountTextState
+
+            harness.onQrCodeScannerClick()
+
+            assertEquals("bc1-address", harness.capturedState.addressText)
+            assertEquals(amountBefore, harness.capturedState.amountTextState)
+        }
+
+    @Test
+    fun scanZecAmountAppliesWhenSwappingFromZec() =
+        runTest {
+            val harness =
+                harness(
+                    preselect = SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc"),
+                    scanResult =
+                        ScanResult(
+                            address = "bc1-address",
+                            amount = BigDecimal("1.5"),
+                            amountChainTicker = "zec"
+                        )
+                )
+            harness.collectState(this)
+            harness.onChangeButtonClick()
+
+            harness.onQrCodeScannerClick()
+
+            assertEquals("bc1-address", harness.capturedState.addressText)
+            assertEquals(0, BigDecimal("1.5").compareTo(harness.capturedState.amountTextState.amount))
+        }
+
+    @Test
+    fun scanZecAmountIgnoredWhenSwappingIntoZec() =
+        runTest {
+            val harness =
+                harness(
+                    scanResult =
+                        ScanResult(
+                            address = "zcash-address",
+                            amount = BigDecimal("1.5"),
+                            amountChainTicker = "zec"
+                        )
+                )
+            harness.collectState(this)
+            val amountBefore = harness.capturedState.amountTextState
+
+            harness.onQrCodeScannerClick()
+
+            assertEquals("zcash-address", harness.capturedState.addressText)
+            assertEquals(amountBefore, harness.capturedState.amountTextState)
+        }
+
+    @Test
     fun addressChangeClearsSelectedContact() =
         runTest {
             val harness = harness(recipient = contactOnChain("btc"))

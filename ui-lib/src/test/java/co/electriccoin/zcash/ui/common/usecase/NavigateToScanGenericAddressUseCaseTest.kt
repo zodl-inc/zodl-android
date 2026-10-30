@@ -55,6 +55,26 @@ class NavigateToScanGenericAddressUseCaseTest {
             val scanResult = result.await()
             assertEquals("zs1address", scanResult?.address)
             assertNull(scanResult?.amount)
+            assertNull(scanResult?.amountChainTicker)
+        }
+
+    @Test
+    fun scanResolvesAmountChainTicker() =
+        runTest(UnconfinedTestDispatcher()) {
+            val result = async { useCase() }
+            val args = forwarded.single() as ScanGenericAddressArgs
+
+            useCase.onScanned(
+                address = "bc1address",
+                amount = BigDecimal("0.001"),
+                args = args,
+                amountChainTicker = "btc"
+            )
+
+            val scanResult = result.await()
+            assertEquals("bc1address", scanResult?.address)
+            assertEquals(0, BigDecimal("0.001").compareTo(scanResult?.amount))
+            assertEquals("btc", scanResult?.amountChainTicker)
         }
 
     @Test

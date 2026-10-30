@@ -9,6 +9,7 @@ import co.electriccoin.zcash.ui.screen.redeemgift.RecordingNavigationRouter
 import co.electriccoin.zcash.ui.screen.redeemgift.navigateToRedeemGiftCard
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,9 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import org.zecdev.zip321.model.Payment
+import org.zecdev.zip321.model.PaymentRequest
+import java.math.BigDecimal
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -55,7 +59,7 @@ class ScanGenericAddressVMTest {
     }
 
     @Test
-    fun bitcoinUriResolvesToBareAddressWithoutAmount() =
+    fun bitcoinUriResolvesAddressAmountAndChainTicker() =
         runTest(dispatcher) {
             val harness = createHarness()
 
@@ -64,7 +68,8 @@ class ScanGenericAddressVMTest {
 
             val result = assertNotNull(harness.scan.await())
             assertEquals(ADDRESS, result.address)
-            assertNull(result.amount)
+            assertEquals(0, BigDecimal("0.001").compareTo(result.amount))
+            assertEquals("btc", result.amountChainTicker)
             assertEquals(ScanValidationState.VALID, harness.vm.state.value)
             coVerify(exactly = 0) { zip321Parser(any()) }
         }
@@ -80,6 +85,7 @@ class ScanGenericAddressVMTest {
             val result = assertNotNull(harness.scan.await())
             assertEquals(ADDRESS, result.address)
             assertNull(result.amount)
+            assertNull(result.amountChainTicker)
             coVerify(exactly = 0) { zip321Parser(any()) }
         }
 
@@ -93,6 +99,8 @@ class ScanGenericAddressVMTest {
 
             val result = assertNotNull(harness.scan.await())
             assertEquals(ADDRESS, result.address)
+            assertEquals(0, BigDecimal.ONE.compareTo(result.amount))
+            assertEquals("btc", result.amountChainTicker)
             coVerify(exactly = 0) { zip321Parser(any()) }
         }
 
@@ -121,6 +129,7 @@ class ScanGenericAddressVMTest {
             val result = assertNotNull(harness.scan.await())
             assertEquals(ADDRESS, result.address)
             assertNull(result.amount)
+            assertNull(result.amountChainTicker)
             coVerify(exactly = 1) { zip321Parser(ADDRESS) }
         }
 
@@ -138,7 +147,31 @@ class ScanGenericAddressVMTest {
             val result = assertNotNull(harness.scan.await())
             assertEquals(ZCASH_ADDRESS, result.address)
             assertNull(result.amount)
+            assertNull(result.amountChainTicker)
             coVerify(exactly = 1) { zip321Parser(zip321Uri) }
+        }
+
+    @Test
+    fun zip321PaymentCarriesZecAmountTicker() =
+        runTest(dispatcher) {
+            val zip321Uri = "zcash:$ZCASH_ADDRESS?amount=1"
+            val payment =
+                mockk<Payment> {
+                    every { recipientAddress.value } returns ZCASH_ADDRESS
+                    every { nonNegativeAmount } returns null
+                }
+            val paymentRequest = mockk<PaymentRequest> { every { payments } returns listOf(payment) }
+            coEvery { zip321Parser(zip321Uri) } returns
+                Zip321ParseUriValidation.Valid(zip321Uri, paymentRequest)
+            val harness = createHarness()
+
+            harness.vm.onScanned(zip321Uri)
+            advanceUntilIdle()
+
+            val result = assertNotNull(harness.scan.await())
+            assertEquals(ZCASH_ADDRESS, result.address)
+            assertEquals(BigDecimal.ZERO, result.amount)
+            assertEquals("zec", result.amountChainTicker)
         }
 
     private fun TestScope.createHarness(): Harness {

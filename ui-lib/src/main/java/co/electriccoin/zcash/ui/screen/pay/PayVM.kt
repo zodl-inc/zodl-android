@@ -207,17 +207,34 @@ internal class PayVM(
             val result = navigateToScanAddress()
             if (result != null) {
                 navigationRouter.back()
-                internalState.update {
-                    it.copy(
-                        selectedABContact = null,
-                        address = result.address,
-                        amount =
-                            if (result.amount != null) {
-                                NumberTextFieldInnerState.fromAmount(result.amount)
-                            } else {
-                                it.amount
-                            }
-                    )
+                internalState.update { state ->
+                    val selectedChainTicker = state.asset?.chainTicker
+                    val canApplyAmount =
+                        result.amountChainTicker == null ||
+                            selectedChainTicker == null ||
+                            selectedChainTicker.equals(result.amountChainTicker, ignoreCase = true)
+                    val amount =
+                        result.amount
+                            ?.takeIf { canApplyAmount }
+                            ?.let(NumberTextFieldInnerState::fromAmount)
+                    if (amount == null) {
+                        state.copy(
+                            selectedABContact = null,
+                            address = result.address
+                        )
+                    } else {
+                        state.copy(
+                            selectedABContact = null,
+                            address = result.address,
+                            amount = amount,
+                            fiatAmount =
+                                exactOutputVMMapper.createFiatAmountInnerState(
+                                    amountInnerState = amount,
+                                    fiatInnerState = state.fiatAmount,
+                                    asset = state.asset
+                                )
+                        )
+                    }
                 }
             }
         }

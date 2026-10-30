@@ -22,6 +22,7 @@ import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapRefundWarningUseCas
 import co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.ScanResult
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldInnerState
+import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -343,6 +344,59 @@ class PayVMTest {
             assertEquals(0, BigDecimal("2.5").compareTo(harness.capturedState.amount.amount))
             assertNull(harness.capturedState.selectedABContact)
             verify { harness.navigationRouter.back() }
+        }
+
+    @Test
+    fun scanBitcoinAmountAppliesToBitcoinAssetAndRecomputesFiat() =
+        runTest {
+            val btc = SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc")
+            val scannedAmount = BigDecimal("0.001")
+            val recomputedFiat = NumberTextFieldInnerState.fromAmount(BigDecimal("100"))
+            val harness =
+                harness(
+                    preselect = btc,
+                    scanResult =
+                        ScanResult(
+                            address = "bc1-address",
+                            amount = scannedAmount,
+                            amountChainTicker = "btc"
+                        ),
+                    fiatRecompute = recomputedFiat
+                )
+            harness.collectState(this)
+            clearMocks(harness.mapper, answers = false)
+
+            harness.onQrCodeScannerClick()
+
+            assertEquals("bc1-address", harness.capturedState.address)
+            assertEquals(0, scannedAmount.compareTo(harness.capturedState.amount.amount))
+            assertEquals(recomputedFiat, harness.capturedState.fiatAmount)
+            verify(exactly = 1) { harness.mapper.createFiatAmountInnerState(any(), any(), btc) }
+        }
+
+    @Test
+    fun scanBitcoinAmountIgnoredWhenAnotherAssetIsSelected() =
+        runTest {
+            val eth = SwapAssetTestFixture.asset(tokenTicker = "eth", chainTicker = "eth")
+            val harness =
+                harness(
+                    preselect = eth,
+                    scanResult =
+                        ScanResult(
+                            address = "bc1-address",
+                            amount = BigDecimal("0.001"),
+                            amountChainTicker = "btc"
+                        ),
+                    assets = SwapAssetTestFixture.assetsData(data = listOf(eth))
+                )
+            harness.collectState(this)
+            val amountBefore = harness.capturedState.amount
+
+            harness.onQrCodeScannerClick()
+
+            assertEquals("bc1-address", harness.capturedState.address)
+            assertEquals(amountBefore, harness.capturedState.amount)
+            assertEquals("eth", harness.capturedState.asset?.tokenTicker)
         }
 
     @Test
