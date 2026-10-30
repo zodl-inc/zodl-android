@@ -92,7 +92,11 @@ class HttpPirSnapshotResolverTest {
 
                 assertEquals(
                     PIR_URL,
-                    resolver.resolve(VotingRouteDecision(isTor = false, isCustomServer = false), listOf(PIR_URL), HEIGHT)
+                    resolver.resolve(
+                        VotingRouteDecision(isTor = false, isCustomServer = false),
+                        listOf(PIR_URL),
+                        HEIGHT
+                    )
                 )
                 assertEquals(listOf("$PIR_URL/root"), ohttp)
                 assertTrue(direct.isEmpty(), "the decision (Tor off, predefined) wins: OHTTP, never direct or Tor")
@@ -113,7 +117,11 @@ class HttpPirSnapshotResolverTest {
 
                 assertEquals(
                     PIR_URL,
-                    resolver.resolve(VotingRouteDecision(isTor = true, isCustomServer = false), listOf(PIR_URL), HEIGHT)
+                    resolver.resolve(
+                        VotingRouteDecision(isTor = true, isCustomServer = false),
+                        listOf(PIR_URL),
+                        HEIGHT
+                    )
                 )
                 assertEquals(listOf(true), torFlags, "the probe client must be the Tor client")
                 assertEquals(listOf("/root"), direct)

@@ -280,7 +280,10 @@ class VotingApiProviderOhttpRoutingTest {
                 }
 
                 // Every request of the call (config fetch, then the share POST) follows the decision.
-                assertTrue(ohttpRequests.isNotEmpty(), "the decision (Tor off, predefined) wins: requests go through OHTTP")
+                assertTrue(
+                    ohttpRequests.isNotEmpty(),
+                    "the decision (Tor off, predefined) wins: requests go through OHTTP"
+                )
                 assertTrue(
                     directRequests.isEmpty(),
                     "nothing may follow the Tor-on / custom preference to a direct or Tor connection"
