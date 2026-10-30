@@ -1,8 +1,10 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import co.electriccoin.zcash.ui.common.model.voting.VotingConfigSourceSnapshot
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
 import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
+import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
 
 /**
  * Provides immutable voting routes for operations.
@@ -41,9 +43,9 @@ class VotingRouteProviderImpl(
 ) : VotingRouteProvider {
     override suspend fun acquire(): VotingRoute {
         val isTor = httpClientProvider.isTorEnabled()
-        val isCustomServer = !votingChainConfigRepository.get().isOnDefaultConfig
+        val chainConfig = votingChainConfigRepository.get()
 
-        val decision = VotingRouteDecision(isTor, isCustomServer)
+        val decision = VotingRouteDecision(isTor, !chainConfig.isOnDefaultConfig, chainConfig.sourceSnapshot())
         val torLease =
             if (isTor) {
                 synchronizerProvider.getSynchronizer().acquireVotingTorLease()
@@ -56,7 +58,11 @@ class VotingRouteProviderImpl(
 
     override suspend fun decision(isCustomServer: Boolean?): VotingRouteDecision {
         val isTor = httpClientProvider.isTorEnabled()
-        val customFlag = isCustomServer ?: !votingChainConfigRepository.get().isOnDefaultConfig
-        return VotingRouteDecision(isTor, customFlag)
+        val chainConfig = votingChainConfigRepository.get()
+        val customFlag = isCustomServer ?: !chainConfig.isOnDefaultConfig
+        return VotingRouteDecision(isTor, customFlag, chainConfig.sourceSnapshot())
     }
 }
+
+private fun VotingChainConfigState.sourceSnapshot(): VotingConfigSourceSnapshot =
+    selectedPinnedSource?.let(VotingConfigSourceSnapshot::Pinned) ?: VotingConfigSourceSnapshot.Default

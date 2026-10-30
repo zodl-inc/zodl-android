@@ -28,6 +28,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VoteCommitmentBundle
 import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundAuthenticationException
+import co.electriccoin.zcash.ui.common.model.voting.VotingConfigSourceSnapshot
 import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
@@ -502,7 +503,7 @@ class KtorVotingApiProvider(
         decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
     ): ResolvedVotingConfig =
         configMutex.withLock {
-            val sources = resolveConfigSources()
+            val sources = resolveConfigSources(decision)
             val cached = cachedResolvedConfig
             val fetchedAtMs = cachedResolvedConfigFetchedAtMs
             val sourcesMatch = cached != null && cached.sources == sources
@@ -518,8 +519,21 @@ class KtorVotingApiProvider(
             }
         }
 
-    private suspend fun resolveConfigSources(): List<PinnedConfigSource> {
-        val selectedPinnedSource = votingChainConfigRepository.get().selectedPinnedSource
+    /**
+     * The config sources of [decision]'s chain selection. A decision taken by [VotingRouteProvider]
+     * carries that selection, so a chain switch mid-operation cannot send this operation's config
+     * fetch to another chain's sources (or a predefined source direct); only a decision built
+     * without a snapshot reads the current selection.
+     */
+    private suspend fun resolveConfigSources(
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+    ): List<PinnedConfigSource> {
+        val selectedPinnedSource =
+            when (val snapshot = decision.configSource) {
+                VotingConfigSourceSnapshot.Unset -> votingChainConfigRepository.get().selectedPinnedSource
+                VotingConfigSourceSnapshot.Default -> null
+                is VotingConfigSourceSnapshot.Pinned -> snapshot.source
+            }
         if (selectedPinnedSource != null) {
             return resolvePinnedConfigSource(selectedPinnedSource)
         }

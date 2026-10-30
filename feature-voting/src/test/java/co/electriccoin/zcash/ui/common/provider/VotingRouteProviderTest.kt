@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.provider
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.model.voting.VotingTorLease
+import co.electriccoin.zcash.ui.common.model.voting.VotingConfigSourceSnapshot
 import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
@@ -46,7 +47,10 @@ class VotingRouteProviderTest {
 
             val route = provider.acquire()
 
-            assertEquals(VotingRouteDecision(isTor = false, isCustomServer = false), route.decision)
+            assertEquals(
+                VotingRouteDecision(isTor = false, isCustomServer = false, VotingConfigSourceSnapshot.Default),
+                route.decision
+            )
             assertNull(route.torLease)
             coVerify(exactly = 0) { sdkSynchronizer.acquireVotingTorLease() }
         }
@@ -61,7 +65,10 @@ class VotingRouteProviderTest {
 
             val route = provider.acquire()
 
-            assertEquals(VotingRouteDecision(isTor = true, isCustomServer = false), route.decision)
+            assertEquals(
+                VotingRouteDecision(isTor = true, isCustomServer = false, VotingConfigSourceSnapshot.Default),
+                route.decision
+            )
             assertSame(lease, route.torLease)
         }
 
@@ -85,8 +92,31 @@ class VotingRouteProviderTest {
             coEvery { chainConfig.get() } returns defaultConfig
             coEvery { httpClientProvider.isTorEnabled() } returns true
 
-            assertEquals(VotingRouteDecision(isTor = false, isCustomServer = true), route.decision)
+            assertEquals(
+                VotingRouteDecision(
+                    isTor = false,
+                    isCustomServer = true,
+                    configSource = VotingConfigSourceSnapshot.Pinned("https://custom.example/config.json")
+                ),
+                route.decision
+            )
             assertNull(route.torLease)
+        }
+
+    @Test
+    fun aChainSwitchAfterAcquisitionDoesNotChangeTheCapturedSource() =
+        runTest {
+            coEvery { httpClientProvider.isTorEnabled() } returns false
+            coEvery { chainConfig.get() } returns customConfig
+
+            val route = provider.acquire()
+            coEvery { chainConfig.get() } returns defaultConfig
+
+            assertEquals(
+                VotingConfigSourceSnapshot.Pinned("https://custom.example/config.json"),
+                route.decision.configSource
+            )
+            assertEquals(VotingConfigSourceSnapshot.Default, provider.decision(null).configSource)
         }
 
     @Test

@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.common.model.voting.EncryptedShare
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.SharePayload
 import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfig
+import co.electriccoin.zcash.ui.common.model.voting.VotingConfigSourceSnapshot
 import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
@@ -325,6 +326,38 @@ class VotingApiProviderOhttpRoutingTest {
             }
         }
 
+    @Test
+    fun configFetchUsesTheDecisionsSourceAfterAChainSwitch() =
+        runBlocking {
+            withTimeout(TEST_TIMEOUT_MS) {
+                val ohttpRequests = mutableListOf<String>()
+                val directRequests = mutableListOf<String>()
+                // The operation took its decision on the custom chain; the user has since switched
+                // back to the default chain, which with Tor off would be fetched through OHTTP.
+                val decision =
+                    VotingRouteDecision(
+                        isTor = false,
+                        isCustomServer = true,
+                        configSource = VotingConfigSourceSnapshot.Pinned(CUSTOM_PINNED_SOURCE)
+                    )
+                val provider =
+                    providerWithOhttpTracking(
+                        ohttpRequests = ohttpRequests,
+                        directRequests = directRequests,
+                        decision = decision,
+                        repositoryIsCustom = false
+                    )
+
+                runCatching { provider.fetchServiceConfig(decision = decision) }
+
+                assertTrue(
+                    directRequests.any { it.contains("/static-voting-config.json") },
+                    "the config comes from the decision's custom source, fetched direct"
+                )
+                assertTrue(ohttpRequests.isEmpty(), "the switch to the default chain must not reach this operation")
+            }
+        }
+
     private fun testShare(): SharePayload =
         SharePayload(
             sharesHash = ByteArray(32) { 1 },
@@ -341,7 +374,8 @@ class VotingApiProviderOhttpRoutingTest {
         decision: VotingRouteDecision,
         customPinnedSource: String = CUSTOM_PINNED_SOURCE,
         ohttpCanHandle: (String) -> Boolean = { !decision.isTor && !decision.isCustomServer },
-        torFlags: MutableList<Boolean> = mutableListOf()
+        torFlags: MutableList<Boolean> = mutableListOf(),
+        repositoryIsCustom: Boolean = decision.isCustomServer
     ): KtorVotingApiProvider =
         KtorVotingApiProvider(
             httpClientProvider =
@@ -418,7 +452,7 @@ class VotingApiProviderOhttpRoutingTest {
                 },
             configurationRepository = TestConfigurationRepository(),
             votingChainConfigRepository =
-                TestVotingChainConfigRepository(isCustom = decision.isCustomServer, pinnedSource = customPinnedSource),
+                TestVotingChainConfigRepository(isCustom = repositoryIsCustom, pinnedSource = customPinnedSource),
             votingCryptoClient = unusedVotingCryptoClient()
         )
 
