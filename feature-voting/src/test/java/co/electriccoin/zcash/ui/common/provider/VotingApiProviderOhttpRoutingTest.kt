@@ -28,6 +28,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -256,65 +257,69 @@ class VotingApiProviderOhttpRoutingTest {
     @Test
     fun postShareDecisionWithTorOffBeatsTorOnAndCustomPreference() =
         runBlocking {
-            val ohttpRequests = mutableListOf<String>()
-            val directRequests = mutableListOf<String>()
-            val torFlags = mutableListOf<Boolean>()
-            // The provider's preference is Tor on and a custom chain; the operation's decision is
-            // Tor off on a predefined server.
-            val provider =
-                providerWithOhttpTracking(
-                    ohttpRequests = ohttpRequests,
-                    directRequests = directRequests,
-                    decision = VotingRouteDecision(isTor = true, isCustomServer = true),
-                    ohttpCanHandle = { true },
-                    torFlags = torFlags
-                )
+            withTimeout(TEST_TIMEOUT_MS) {
+                val ohttpRequests = mutableListOf<String>()
+                val directRequests = mutableListOf<String>()
+                val torFlags = mutableListOf<Boolean>()
+                // The provider's preference is Tor on and a custom chain; the operation's decision is
+                // Tor off on a predefined server.
+                val provider =
+                    providerWithOhttpTracking(
+                        ohttpRequests = ohttpRequests,
+                        directRequests = directRequests,
+                        decision = VotingRouteDecision(isTor = true, isCustomServer = true),
+                        ohttpCanHandle = { true },
+                        torFlags = torFlags
+                    )
 
-            runCatching {
-                provider.delegateShares(
-                    listOf(testShare()),
-                    decision = VotingRouteDecision(isTor = false, isCustomServer = false),
+                runCatching {
+                    provider.delegateShares(
+                        listOf(testShare()),
+                        decision = VotingRouteDecision(isTor = false, isCustomServer = false),
+                    )
+                }
+
+                // Every request of the call (config fetch, then the share POST) follows the decision.
+                assertTrue(ohttpRequests.isNotEmpty(), "the decision (Tor off, predefined) wins: requests go through OHTTP")
+                assertTrue(
+                    directRequests.isEmpty(),
+                    "nothing may follow the Tor-on / custom preference to a direct or Tor connection"
                 )
+                assertTrue(torFlags.none { it }, "no Tor client may be built for a Tor-off decision")
             }
-
-            // Every request of the call (config fetch, then the share POST) follows the decision.
-            assertTrue(ohttpRequests.isNotEmpty(), "the decision (Tor off, predefined) wins: requests go through OHTTP")
-            assertTrue(
-                directRequests.isEmpty(),
-                "nothing may follow the Tor-on / custom preference to a direct or Tor connection"
-            )
-            assertTrue(torFlags.none { it }, "no Tor client may be built for a Tor-off decision")
         }
 
     @Test
     fun postShareDecisionWithTorOnBeatsTorOffPreference() =
         runBlocking {
-            val ohttpRequests = mutableListOf<String>()
-            val directRequests = mutableListOf<String>()
-            val torFlags = mutableListOf<Boolean>()
-            // The provider's preference is Tor off on a predefined server (which would mean OHTTP);
-            // the operation's decision is Tor on.
-            val provider =
-                providerWithOhttpTracking(
-                    ohttpRequests = ohttpRequests,
-                    directRequests = directRequests,
-                    decision = VotingRouteDecision(isTor = false, isCustomServer = false),
-                    ohttpCanHandle = { true },
-                    torFlags = torFlags
-                )
+            withTimeout(TEST_TIMEOUT_MS) {
+                val ohttpRequests = mutableListOf<String>()
+                val directRequests = mutableListOf<String>()
+                val torFlags = mutableListOf<Boolean>()
+                // The provider's preference is Tor off on a predefined server (which would mean OHTTP);
+                // the operation's decision is Tor on.
+                val provider =
+                    providerWithOhttpTracking(
+                        ohttpRequests = ohttpRequests,
+                        directRequests = directRequests,
+                        decision = VotingRouteDecision(isTor = false, isCustomServer = false),
+                        ohttpCanHandle = { true },
+                        torFlags = torFlags
+                    )
 
-            runCatching {
-                provider.delegateShares(
-                    listOf(testShare()),
-                    decision = VotingRouteDecision(isTor = true, isCustomServer = false),
-                )
+                runCatching {
+                    provider.delegateShares(
+                        listOf(testShare()),
+                        decision = VotingRouteDecision(isTor = true, isCustomServer = false),
+                    )
+                }
+
+                // Every request of the call (config fetch, then the share POST) follows the decision.
+                assertTrue(torFlags.isNotEmpty(), "the decision (Tor on) wins: a Tor client is built")
+                assertTrue(torFlags.all { it }, "every Ktor client built for a Tor-on decision is the Tor client")
+                assertTrue(directRequests.isNotEmpty(), "requests go over the Tor client")
+                assertTrue(ohttpRequests.isEmpty(), "nothing may follow the Tor-off preference into OHTTP")
             }
-
-            // Every request of the call (config fetch, then the share POST) follows the decision.
-            assertTrue(torFlags.isNotEmpty(), "the decision (Tor on) wins: a Tor client is built")
-            assertTrue(torFlags.all { it }, "every Ktor client built for a Tor-on decision is the Tor client")
-            assertTrue(directRequests.isNotEmpty(), "requests go over the Tor client")
-            assertTrue(ohttpRequests.isEmpty(), "nothing may follow the Tor-off preference into OHTTP")
         }
 
     private fun testShare(): SharePayload =
@@ -599,3 +604,6 @@ private fun unusedVotingCryptoClient(): VotingCryptoClient =
     ) { _, method, _ ->
         error("Unexpected VotingCryptoClient call: ${method.name}")
     } as VotingCryptoClient
+
+/** Upper bound for a routing test; a retry loop that never ends fails here instead of hanging CI. */
+private const val TEST_TIMEOUT_MS = 60_000L

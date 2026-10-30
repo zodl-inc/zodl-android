@@ -13,6 +13,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -81,39 +82,43 @@ class HttpPirSnapshotResolverTest {
     @Test
     fun decisionWithTorOffBeatsTorOnAndCustomPreference() =
         runBlocking {
-            val direct = mutableListOf<String>()
-            val ohttp = mutableListOf<String>()
-            val torFlags = mutableListOf<Boolean>()
-            // Preference says Tor on and a custom chain; the operation's decision says Tor off, predefined.
-            val resolver =
-                resolver(torEnabled = true, direct = direct, ohttp = ohttp, torFlags = torFlags)
+            withTimeout(TEST_TIMEOUT_MS) {
+                val direct = mutableListOf<String>()
+                val ohttp = mutableListOf<String>()
+                val torFlags = mutableListOf<Boolean>()
+                // Preference says Tor on and a custom chain; the operation's decision says Tor off, predefined.
+                val resolver =
+                    resolver(torEnabled = true, direct = direct, ohttp = ohttp, torFlags = torFlags)
 
-            assertEquals(
-                PIR_URL,
-                resolver.resolve(VotingRouteDecision(isTor = false, isCustomServer = false), listOf(PIR_URL), HEIGHT)
-            )
-            assertEquals(listOf("$PIR_URL/root"), ohttp)
-            assertTrue(direct.isEmpty(), "the decision (Tor off, predefined) wins: OHTTP, never direct or Tor")
-            assertTrue(torFlags.isEmpty(), "no Ktor client may be built for an OHTTP probe")
+                assertEquals(
+                    PIR_URL,
+                    resolver.resolve(VotingRouteDecision(isTor = false, isCustomServer = false), listOf(PIR_URL), HEIGHT)
+                )
+                assertEquals(listOf("$PIR_URL/root"), ohttp)
+                assertTrue(direct.isEmpty(), "the decision (Tor off, predefined) wins: OHTTP, never direct or Tor")
+                assertTrue(torFlags.isEmpty(), "no Ktor client may be built for an OHTTP probe")
+            }
         }
 
     @Test
     fun decisionWithTorOnBeatsTorOffPreference() =
         runBlocking {
-            val direct = mutableListOf<String>()
-            val ohttp = mutableListOf<String>()
-            val torFlags = mutableListOf<Boolean>()
-            // Preference says Tor off (predefined, so OHTTP would be chosen); the decision says Tor on.
-            val resolver =
-                resolver(torEnabled = false, direct = direct, ohttp = ohttp, torFlags = torFlags)
+            withTimeout(TEST_TIMEOUT_MS) {
+                val direct = mutableListOf<String>()
+                val ohttp = mutableListOf<String>()
+                val torFlags = mutableListOf<Boolean>()
+                // Preference says Tor off (predefined, so OHTTP would be chosen); the decision says Tor on.
+                val resolver =
+                    resolver(torEnabled = false, direct = direct, ohttp = ohttp, torFlags = torFlags)
 
-            assertEquals(
-                PIR_URL,
-                resolver.resolve(VotingRouteDecision(isTor = true, isCustomServer = false), listOf(PIR_URL), HEIGHT)
-            )
-            assertEquals(listOf(true), torFlags, "the probe client must be the Tor client")
-            assertEquals(listOf("/root"), direct)
-            assertTrue(ohttp.isEmpty(), "the decision (Tor on) wins over the Tor-off preference: no OHTTP")
+                assertEquals(
+                    PIR_URL,
+                    resolver.resolve(VotingRouteDecision(isTor = true, isCustomServer = false), listOf(PIR_URL), HEIGHT)
+                )
+                assertEquals(listOf(true), torFlags, "the probe client must be the Tor client")
+                assertEquals(listOf("/root"), direct)
+                assertTrue(ohttp.isEmpty(), "the decision (Tor on) wins over the Tor-off preference: no OHTTP")
+            }
         }
 
     private fun resolver(
@@ -168,3 +173,6 @@ class HttpPirSnapshotResolverTest {
         const val ROOT_JSON = """{"height":3000000}"""
     }
 }
+
+/** Upper bound for a routing test; a retry loop that never ends fails here instead of hanging CI. */
+private const val TEST_TIMEOUT_MS = 60_000L
