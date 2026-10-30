@@ -110,19 +110,27 @@ class VotingApiProviderOhttpRoutingTest {
         runBlocking {
             val ohttpRequests = mutableListOf<String>()
             val directRequests = mutableListOf<String>()
+            // The provider's decision for such a chain: predefined (isOnDefaultConfig), its source captured.
+            val decision =
+                VotingRouteDecision(
+                    isTor = false,
+                    isCustomServer = false,
+                    configSource = VotingConfigSourceSnapshot.Pinned(StaticVotingConfig.BUNDLED_PINNED_SOURCE)
+                )
             val provider =
                 providerWithOhttpTracking(
                     ohttpRequests = ohttpRequests,
                     directRequests = directRequests,
-                    decision = VotingRouteDecision(isTor = false, isCustomServer = true),
+                    decision = decision,
                     customPinnedSource = StaticVotingConfig.BUNDLED_PINNED_SOURCE,
-                    ohttpCanHandle = { true }
+                    ohttpCanHandle = { true },
+                    repositoryIsCustom = true
                 )
 
             // The bundled checksum does not match the fake config, so the fetch fails: the routing of the
             // fetch is what is checked here.
             runCatching {
-                provider.fetchServiceConfig(decision = VotingRouteDecision(isTor = false, isCustomServer = true))
+                provider.fetchServiceConfig(decision = decision)
             }
 
             assertTrue(
