@@ -1,0 +1,58 @@
+# Checks that every tagged release/ branch has been merged back into its
+# maintenance line, and flowed forward to main. A release that is only
+# cherry-picked back leaves its tag unreachable from any live branch, so the
+# released commit stops being part of the history it shipped from.
+#
+# Advisory only: continue-on-error keeps this from blocking. Read the detail in
+# the run summary.
+#
+# Only missing from its OWN maint line fails; not having reached main yet is a
+# warning, since the merge-forward jobs already track that.
+#
+# Run locally with:
+#   ./.github/scripts/check-release-merged-back.sh
+# or, when the canonical remote in your clone is not named origin:
+#   REMOTE=upstream ./.github/scripts/check-release-merged-back.sh
+
+name: Release Merged Back
+
+on:
+  pull_request:
+    branches:
+      # `maint/**` rather than `maint/v*` so the check also runs on pull
+      # requests into a maintenance branch cut before the maint/vX.Y.x naming
+      # was settled on.
+      - 'maint/**'
+      - main
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release_merged_back:
+    name: release branches merged back
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        timeout-minutes: 5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          # Read-only job, and the tag fetch below works unauthenticated against
+          # this public repository, so the credential is not needed past
+          # checkout and should not be left in .git/config.
+          persist-credentials: false
+      - name: Check release branches
+        timeout-minutes: 5
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          # Tags are what mark a release branch as released, so fetch them.
+          git fetch --quiet --tags origin '+refs/heads/*:refs/remotes/origin/*'
+          ./.github/scripts/check-release-merged-back.sh "${BASE_REF}"
