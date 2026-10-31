@@ -7,6 +7,12 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Fixed:
+
+- CrossPay now reads the amount from Bitcoin payment QR codes (`bitcoin:` URIs), fills only the Bitcoin address in the
+  recipient field, and prefills the requested BTC amount when BTC is selected. Malformed Bitcoin payment URIs are
+  rejected.
+
 ## [3.19.0 (3234)] - 2026-10-29
 
 ### Changed:
