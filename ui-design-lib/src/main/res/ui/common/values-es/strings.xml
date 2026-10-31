@@ -635,6 +635,7 @@
     <string name="scan_cameraSettings">La cámara no está autorizada. Por favor, ve a la configuración del sistema de Zodl y actívala.</string>
     <string name="scan_state_failed">Falló la inicialización de la cámara. Inténtalo de nuevo, por favor.</string>
     <string name="scan_invalidQR">Este código QR no contiene una dirección Zcash válida.</string>
+    <string name="scan_invalidAddressQr">Este código QR no contiene una dirección válida.</string>
     <string name="scan_invalidImage">Esta imagen no contiene una dirección Zcash válida.</string>
     <string name="scan_severalCodesFound">Esta imagen contiene varias direcciones Zcash válidas.</string>
     <string name="scan_torch_content_description">Alternar linterna de la cámara</string>

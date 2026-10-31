@@ -11,6 +11,7 @@ import co.electriccoin.zcash.ui.common.model.SwapDirection
 import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_FROM_ZEC
 import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_INTO_ZEC
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.ZEC_TICKER
 import co.electriccoin.zcash.ui.common.model.canSpend
 import co.electriccoin.zcash.ui.common.model.toSwapMode
 import co.electriccoin.zcash.ui.common.repository.DEFAULT_SLIPPAGE
@@ -263,16 +264,18 @@ internal class SwapVM(
             val result = navigateToScanAddress()
             if (result != null) {
                 navigationRouter.back()
-                internalState.update {
-                    it.copy(
+                internalState.update { state ->
+                    val canApplyAmount =
+                        result.amountChainTicker == null ||
+                            (result.amountChainTicker == ZEC_TICKER && state.swapDirection == SWAP_FROM_ZEC)
+                    val amount =
+                        result.amount
+                            ?.takeIf { canApplyAmount }
+                            ?.let(NumberTextFieldInnerState::fromAmount)
+                    state.copy(
                         selectedContact = null,
                         addressText = result.address,
-                        amountTextState =
-                            if (result.amount != null) {
-                                NumberTextFieldInnerState.fromAmount(result.amount)
-                            } else {
-                                it.amountTextState
-                            }
+                        amountTextState = amount ?: state.amountTextState
                     )
                 }
             }

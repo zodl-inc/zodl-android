@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.util.SettingsUtil
@@ -44,6 +45,7 @@ fun ScanGenericAddressScreen(args: ScanGenericAddressArgs) {
         },
         onScanStateChange = {},
         validationResult = state,
+        invalidQrText = stringResource(R.string.scan_invalidAddressQr),
     )
 }
 

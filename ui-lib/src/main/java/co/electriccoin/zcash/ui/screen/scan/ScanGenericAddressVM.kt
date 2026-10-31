@@ -2,6 +2,9 @@ package co.electriccoin.zcash.ui.screen.scan
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import co.electriccoin.zcash.ui.common.model.ZEC_TICKER
+import co.electriccoin.zcash.ui.common.parser.Bip21ParseResult
+import co.electriccoin.zcash.ui.common.parser.Bip21Parser
 import co.electriccoin.zcash.ui.common.usecase.NavigateToRedeemGiftCardUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToScanGenericAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.Zip321ParseUriValidationUseCase
@@ -38,10 +41,10 @@ internal class ScanGenericAddressVM(
                         return@withLock
                     }
                     runCatching {
-                        when (val zip321Result = parseZip321(result)) {
-                            is Zip321ParseUriValidation.Valid -> onZip321Scanned(zip321Result)
-                            is Zip321ParseUriValidation.SingleAddress -> onZip321SingleAddressScanned(zip321Result)
-                            else -> onAddressScanned(result)
+                        when (val bip21Result = Bip21Parser.parse(result)) {
+                            is Bip21ParseResult.Valid -> onBip21Scanned(bip21Result)
+                            is Bip21ParseResult.Invalid -> onInvalidScan()
+                            Bip21ParseResult.NotBitcoinUri -> onNonBitcoinScanned(result)
                         }
                     }
                 }
@@ -55,20 +58,34 @@ internal class ScanGenericAddressVM(
         navigateToRedeemGiftCard.replaceWithRedeem(link.trim())
     }
 
-    private suspend fun onAddressScanned(result: String) {
+    private suspend fun onBip21Scanned(result: Bip21ParseResult.Valid) {
         state.update { ScanValidationState.VALID }
         navigateToScanAddress.onScanned(
-            address = result,
-            amount = null,
-            args = args
+            address = result.address,
+            amount = result.amount,
+            args = args,
+            amountChainTicker = result.amount?.let { Bip21Parser.BITCOIN_CHAIN_TICKER }
         )
         hasBeenScannedSuccessfully = true
     }
 
-    private suspend fun onZip321SingleAddressScanned(result: Zip321ParseUriValidation.SingleAddress) {
+    private suspend fun onNonBitcoinScanned(result: String) {
+        when (val zip321Result = parseZip321(result)) {
+            is Zip321ParseUriValidation.Valid -> onZip321Scanned(zip321Result)
+            is Zip321ParseUriValidation.SingleAddress -> onAddressScanned(zip321Result.address)
+            else -> onAddressScanned(result)
+        }
+    }
+
+    private fun onInvalidScan() {
+        hasBeenScannedSuccessfully = false
+        state.update { ScanValidationState.INVALID }
+    }
+
+    private suspend fun onAddressScanned(result: String) {
         state.update { ScanValidationState.VALID }
         navigateToScanAddress.onScanned(
-            address = result.address,
+            address = result,
             amount = null,
             args = args
         )
@@ -85,7 +102,12 @@ internal class ScanGenericAddressVM(
                 .nonNegativeAmount
                 ?.toZecValueString()
                 ?.toBigDecimal() ?: BigDecimal.ZERO
-        navigateToScanAddress.onScanned(address, amount, args)
+        navigateToScanAddress.onScanned(
+            address = address,
+            amount = amount,
+            args = args,
+            amountChainTicker = ZEC_TICKER
+        )
         hasBeenScannedSuccessfully = true
     }
 
