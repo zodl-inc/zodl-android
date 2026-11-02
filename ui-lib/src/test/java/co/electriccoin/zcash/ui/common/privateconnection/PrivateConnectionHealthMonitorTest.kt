@@ -29,6 +29,10 @@ import kotlin.test.assertNull
 /** The executor around the policy, on virtual time: timers, probes, gate and ownership. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PrivateConnectionHealthMonitorTest {
+    private companion object {
+        const val PROBE_START_AFTER_NANOS = 10L
+    }
+
     private val route = OhttpHealthRoute("gateway.test", "https://relay.test", viaTor = false)
     private val evidence = MutableSharedFlow<OhttpHealthSnapshot>(extraBufferCapacity = 16)
     private val completions = MutableSharedFlow<OhttpHealthOperationCompleted>(extraBufferCapacity = 16)
@@ -50,7 +54,8 @@ class PrivateConnectionHealthMonitorTest {
             probe = { r, generation ->
                 probes += 1
                 probeBehaviour?.invoke(probes)
-                val start = now()
+                /* A real probe starts after the failure that triggered it, never at the same instant. */
+                val start = now() + PROBE_START_AFTER_NANOS
                 ProbeResult(probeOutcome, r, generation, start, start + 1)
             },
             pathUpdates = flowOf(Path.AVAILABLE),
@@ -343,6 +348,53 @@ class PrivateConnectionHealthMonitorTest {
             monitor.pause()
 
             monitor.start(route.copy(viaTor = true))
+            runCurrent()
+            assertNull(monitor.outage.value)
+        }
+
+    @Test
+    fun `Keep waiting on a sheet that survived the background clears it, and a later failed send brings it back`() =
+        runTest {
+            val monitor = monitor().also { it.start(route) }
+            runCurrent()
+            confirmOutage(monitor)
+
+            // The user leaves and returns while the sheet is still up: the resumed ownership has not presented it.
+            monitor.pause()
+            runCurrent()
+            monitor.start(route)
+            runCurrent()
+            assertNotNull(monitor.outage.value)
+
+            monitor.acknowledge()
+            runCurrent()
+            assertNull(monitor.outage.value)
+
+            // A send that starts after the acknowledgement (and after the resumed ownership began) and fails.
+            advanceTimeBy(1_000)
+            val operation = OhttpHealthOperation("op-2", startedAtNanos = now())
+            advanceTimeBy(500)
+            val failed = failure(operation = operation)
+            completions.emit(OhttpHealthOperationCompleted(operation, true, failed.observations))
+            runCurrent()
+            advanceTimeBy(6_000)
+            runCurrent()
+            assertEquals(operation, monitor.outage.value?.operation)
+        }
+
+    @Test
+    fun `a late presentation cannot show an outage after the route was given up`() =
+        runTest {
+            probeBehaviour = { delay(3_000) }
+            val monitor = monitor().also { it.start(route) }
+            runCurrent()
+            advanceTimeBy(1_000)
+            evidence.emit(failure())
+            runCurrent()
+            // The probe is in flight; the route is given up (a switch to Public) before it answers.
+            advanceTimeBy(2_500)
+            monitor.stop()
+            advanceTimeBy(10_000)
             runCurrent()
             assertNull(monitor.outage.value)
         }

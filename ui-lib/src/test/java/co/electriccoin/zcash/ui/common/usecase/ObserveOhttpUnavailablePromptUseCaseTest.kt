@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.usecase
 import androidx.navigation.NavBackStackEntry
 import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.privateconnection.RequestHealthDetection
 import co.electriccoin.zcash.ui.common.provider.AppAccessLockProvider
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
@@ -28,6 +29,7 @@ class ObserveOhttpUnavailablePromptUseCaseTest {
     private val inTransaction = MutableStateFlow(false)
     private val navigationRouter = mockk<NavigationRouter>(relaxed = true)
 
+    private var detection = true
     private val useCase =
         ObserveOhttpUnavailablePromptUseCase(
             automaticServerRepository =
@@ -38,6 +40,7 @@ class ObserveOhttpUnavailablePromptUseCaseTest {
             applicationStateProvider = mockk<ApplicationStateProvider> { every { isInForeground } returns foreground },
             appAccessLockProvider = mockk<AppAccessLockProvider> { every { isLocked } returns locked },
             navigationRouter = navigationRouter,
+            requestHealthDetection = RequestHealthDetection { detection },
         )
 
     /**
@@ -138,5 +141,21 @@ class ObserveOhttpUnavailablePromptUseCaseTest {
             runCurrent()
 
             assertEquals(NavigationCommand.Forward(listOf(OhttpUnavailableArgs)), block.captured(null))
+        }
+
+    /** Without the request-health detection (release builds) the prompt behaves as before: recovery leaves it open. */
+    @Test
+    fun recoveryDoesNotCloseThePromptWithoutTheRequestHealthDetection() =
+        runTest {
+            detection = false
+            backgroundScope.launch { useCase() }
+            unavailable.value = true
+            runCurrent()
+            verify(exactly = 1) { navigationRouter.custom(any()) }
+
+            unavailable.value = false
+            runCurrent()
+
+            verify(exactly = 1) { navigationRouter.custom(any()) }
         }
 }

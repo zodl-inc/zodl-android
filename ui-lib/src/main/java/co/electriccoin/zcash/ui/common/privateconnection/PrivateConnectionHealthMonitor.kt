@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** A confirmed private-connection outage that should be presented, with the user action that revealed it (if any). */
@@ -65,7 +66,7 @@ class PrivateConnectionHealthMonitor(
     private val pathUpdates: Flow<Path>,
     /** True when Tor is ready, or not needed; a Tor route is not diagnosed while it is not. */
     private val torReady: Flow<Boolean>,
-    /** Foreground, unlocked, no send in progress: when the outage may be shown. */
+    /** Foreground and unlocked: when the outage may be shown. */
     private val presentationAllowed: Flow<Boolean>,
     private val clock: () -> Long = OhttpHealthClock::nowNanos,
 ) {
@@ -99,7 +100,9 @@ class PrivateConnectionHealthMonitor(
 
     /**
      * Starts owning [route]. An ownership of the same route that was paused (or is being replaced) hands its
-     * confirmed outage over, so a background trip or a rebuild does not forget an acknowledged episode.
+     * confirmed outage over, so a background trip or a rebuild does not forget an acknowledged episode. A different
+     * route (a Tor toggle changes it) starts clean: the shown outage is cleared, and a still-dead relay is
+     * confirmed again.
      */
     @Synchronized
     fun start(route: OhttpHealthRoute) {
@@ -111,7 +114,7 @@ class PrivateConnectionHealthMonitor(
         val continuity = carried?.takeIf { it.first == route }?.second
         if (continuity == null) {
             carried = null
-            _outage.value = null
+            _outage.update { null }
         }
         generation += 1
         val now = clock()
@@ -161,7 +164,7 @@ class PrivateConnectionHealthMonitor(
         ownership?.let { retire(it) }
         ownership = null
         carried = null
-        _outage.value = null
+        _outage.update { null }
     }
 
     /** The user chose "Keep waiting" or dismissed the sheet: the outage is acknowledged. */
@@ -179,19 +182,27 @@ class PrivateConnectionHealthMonitor(
         owned.job.cancel()
     }
 
+    /**
+     * Handles one event under the same lock as [start], [pause] and [stop]: the ownership check and every write
+     * of the outage are atomic with respect to them, so a late `Present` can never show an outage after the
+     * route was given up (a switch to Public, for instance).
+     */
     private fun apply(
         owned: Ownership,
         event: Event,
-    ) {
-        if (ownership !== owned) return
+    ) = synchronized(this) {
+        if (ownership !== owned) return@synchronized
         val commands = owned.state.handle(event, clock())
-        // Evidence events are frequent and carry no decision: log what decides something.
+        /* Evidence events are frequent and carry no decision: log what decides something. */
         if (event !is Event.Observation && event !is Event.PresentationGateChanged || commands.isNotEmpty()) {
             Twig.info { "Private connection health: ${event.describe()} -> ${commands.map { it.toString() }}" }
         }
         commands.forEach { execute(owned, it) }
-        // An outage is only ever shown for a live episode: a recovered or handed-over route clears it.
-        if (owned.state.episode == null && _outage.value != null) _outage.value = null
+        /* What the user dismissed is no longer shown, whether or not the policy had marked it as presented (a
+        paused ownership that resumed has not). */
+        if (event == Event.Acknowledged) _outage.update { null }
+        /* An outage is only ever shown for a live episode: a recovered or handed-over route clears it. */
+        if (owned.state.episode == null) _outage.update { null }
     }
 
     private fun execute(
@@ -201,8 +212,7 @@ class PrivateConnectionHealthMonitor(
         when (command) {
             is Command.ScheduleGrace -> {
                 owned.grace?.cancel()
-                // Rounded up: a timer that fires before the deadline is ignored by the policy and would leave
-                // the investigation stuck.
+                /* Rounded up: a timer that fires before the deadline is ignored by the policy and would leave the investigation stuck. */
                 val delayMs = ((command.deadline - clock() + NANOS_PER_MILLI - 1) / NANOS_PER_MILLI).coerceAtLeast(0)
                 owned.grace =
                     owned.scope.launch {
@@ -225,8 +235,8 @@ class PrivateConnectionHealthMonitor(
                 owned.probe?.cancel()
                 owned.probe = null
             }
-            is Command.Present -> _outage.value = PrivateConnectionOutage(command.episode, command.operation)
-            Command.DismissOutage -> _outage.value = null
+            is Command.Present -> _outage.update { PrivateConnectionOutage(command.episode, command.operation) }
+            Command.DismissOutage -> _outage.update { null }
         }
     }
 

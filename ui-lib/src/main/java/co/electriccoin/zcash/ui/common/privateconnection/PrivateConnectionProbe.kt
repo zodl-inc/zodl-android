@@ -74,7 +74,7 @@ class PrivateConnectionProbe(
                 return it
             }
             return when (validation) {
-                // The probe's budget ran out: the route did not deliver in time.
+                /* The probe's budget ran out: the route did not deliver in time. */
                 null -> OhttpHealthOutcome.TransportUnavailable
                 ServerValidation.Valid -> OhttpHealthOutcome.Usable
                 ServerValidation.Running -> OhttpHealthOutcome.Inconclusive

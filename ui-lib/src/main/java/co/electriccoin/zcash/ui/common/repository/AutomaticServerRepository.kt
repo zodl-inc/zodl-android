@@ -6,20 +6,20 @@ import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.FastestServersResult
 import cash.z.ecc.android.sdk.type.ServerValidation
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
-import co.electriccoin.zcash.ui.common.privateconnection.NoPrivateConnectionHealth
-import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealthOwner
-import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionTarget
-import co.electriccoin.zcash.ui.common.privateconnection.RequestHealthDetection
-import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.datasource.resolveIsEndpointCustom
 import co.electriccoin.zcash.ui.common.datasource.resolveIsServerSelectionAutomatic
 import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.ServerFallbackPolicy
+import co.electriccoin.zcash.ui.common.privateconnection.NoPrivateConnectionHealth
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealthOwner
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionTarget
+import co.electriccoin.zcash.ui.common.privateconnection.RequestHealthDetection
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
+import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.NetworkConnectivityProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -363,7 +363,7 @@ class AutomaticServerRepositoryImpl(
                             if (fallbackActive) {
                                 ticks(FALLBACK_RECOVERY_INTERVAL, SwitchTrigger.RECOVERY)
                             } else if (isPublic || requestHealthDetection.isEnabled()) {
-                                // The request-health detection runs its own fallback probe in Private mode.
+                                /* The request-health detection runs its own fallback probe in Private mode. */
                                 emptyFlow()
                             } else {
                                 applicationStateProvider
@@ -520,7 +520,7 @@ class AutomaticServerRepositoryImpl(
                 }
 
                 is ServerFallbackPolicy.DecisionResult.StayAndReportGatewayUnavailable -> {
-                    // With the request-health detection on, the outage is confirmed there, not here.
+                    /* With the request-health detection on, the outage is confirmed there, not here. */
                     if (!requestHealthDetection.isEnabled()) reportGatewayUnavailable(clearsAtStart)
                     Twig.info {
                         "Automatic server: OHTTP-first current=${current.host} " +

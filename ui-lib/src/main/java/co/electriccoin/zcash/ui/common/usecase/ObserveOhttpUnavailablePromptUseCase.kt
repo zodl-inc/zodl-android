@@ -4,6 +4,7 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import cash.z.ecc.android.sdk.internal.Twig
 import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.privateconnection.RequestHealthDetection
 import co.electriccoin.zcash.ui.common.provider.AppAccessLockProvider
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
@@ -27,6 +28,7 @@ class ObserveOhttpUnavailablePromptUseCase(
     private val applicationStateProvider: ApplicationStateProvider,
     private val appAccessLockProvider: AppAccessLockProvider,
     private val navigationRouter: NavigationRouter,
+    private val requestHealthDetection: RequestHealthDetection,
 ) {
     /**
      * Observes OHTTP unavailability and shows the prompt when appropriate.
@@ -49,8 +51,8 @@ class ObserveOhttpUnavailablePromptUseCase(
                     try {
                         awaitCancellation()
                     } finally {
-                        // The outage is over (or this episode was replaced): the prompt has nothing left to say.
-                        closePrompt()
+                        /* The outage is over (or this episode was replaced): the prompt has nothing left to say. */
+                        if (requestHealthDetection.isEnabled()) closePrompt()
                     }
                 }
             }

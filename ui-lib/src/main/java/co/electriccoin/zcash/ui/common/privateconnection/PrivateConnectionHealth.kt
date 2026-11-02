@@ -321,7 +321,7 @@ object PrivateConnectionHealth {
         ): List<Command> {
             if (!isApplicableFailure(result.observedAtNanos)) return becomeUnknown()
             if (confirming || episode != null) {
-                // Concurrent failures cannot slide this investigation's anchor or defer outage confirmation.
+                /* Concurrent failures cannot slide this investigation's anchor or defer outage confirmation. */
                 if (failureAnchor == null || result.startedAtNanos <= failureAnchor) return becomeUnknown()
                 latestFailureAt = maxOf(latestFailureAt ?: 0L, result.observedAtNanos)
                 availability = Availability.UNAVAILABLE
@@ -439,7 +439,7 @@ object PrivateConnectionHealth {
             now: Long,
         ): List<Command> {
             if (observation.route != route || !(observation.historical || isCurrent(observation))) return emptyList()
-            // A retained pause remains binding after subscription replacement, even without an original owner.
+            /* A retained pause remains binding after subscription replacement, even without an original owner. */
             val outcome = observation.outcome
             if (outcome is OhttpHealthOutcome.RateLimited && outcome.retryNotBeforeNanos > now) {
                 pauseUntil = maxOf(pauseUntil ?: 0L, outcome.retryNotBeforeNanos)
@@ -470,7 +470,7 @@ object PrivateConnectionHealth {
             latestFailureAt = maxOf(latestFailureAt ?: 0L, time)
             if (episode != null) return emptyList()
             var commands: List<Command> = emptyList()
-            // The first real failure owns the grace even if a generic-error classification is still running.
+            /* The first real failure owns the grace even if a generic-error classification is still running. */
             if (investigation == Investigation.CLASSIFICATION) commands = stopInvestigation(disarm = false)
             if (!armed || investigation != null || !mayDiagnose(now)) return commands
             availability = Availability.SUSPECTED

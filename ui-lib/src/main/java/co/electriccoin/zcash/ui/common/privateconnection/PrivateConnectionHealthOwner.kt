@@ -89,7 +89,7 @@ class PrivateConnectionHealthOwnerImpl(
     private val monitor =
         PrivateConnectionHealthMonitor(
             scope = scope,
-            // The synchronizer is looked up when it is needed, not remembered: a rebuilt one replaces the old.
+            /* The synchronizer is looked up when it is needed, not remembered: a rebuilt one replaces the old. */
             observeEvidence = { route ->
                 flow {
                     synchronizerProvider.getSynchronizerOrNull()?.let { emitAll(it.observeOhttpHealth(route)) }
@@ -100,7 +100,7 @@ class PrivateConnectionHealthOwnerImpl(
                 val synchronizer = synchronizerProvider.getSynchronizerOrNull()
                 val watched = endpoint
                 if (synchronizer == null || watched == null) {
-                    // Nothing to probe with: the policy never counts this as an outage.
+                    /* Nothing to probe with: the policy never counts this as an outage. */
                     PrivateConnectionHealth.ProbeResult(OhttpHealthOutcome.Inconclusive, route, generation, 0L, 0L)
                 } else {
                     probe.run(synchronizer, watched, route, generation)
@@ -110,7 +110,7 @@ class PrivateConnectionHealthOwnerImpl(
                 networkConnectivityProvider
                     .observeOnline()
                     .map { online -> if (online) Path.AVAILABLE else Path.UNAVAILABLE },
-            // Android has no Tor readiness gate yet: a Tor route is diagnosed as soon as it is owned.
+            /* Android has no Tor readiness gate yet: a Tor route is diagnosed as soon as it is owned. */
             torReady = flowOf(true),
             presentationAllowed =
                 combine(applicationStateProvider.isInForeground, appAccessLockProvider.isLocked) { foreground, locked ->

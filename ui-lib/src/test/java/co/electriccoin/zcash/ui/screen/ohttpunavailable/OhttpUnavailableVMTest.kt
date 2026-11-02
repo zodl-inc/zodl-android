@@ -121,6 +121,17 @@ class OhttpUnavailableVMTest {
         }
 
     @Test
+    fun aTransactionStartingWhileTheSheetIsOpenAcknowledgesTheOutage() =
+        runTest {
+            stateOf(createVm())
+            verify(exactly = 0) { automaticServerRepository.acknowledgeOhttpUnavailable() }
+            transactionInProgress.value = true
+            advanceUntilIdle()
+            // Closing it for a send is a dismissal: a failed send must be able to bring it back.
+            verify(exactly = 1) { automaticServerRepository.acknowledgeOhttpUnavailable() }
+        }
+
+    @Test
     fun aTransactionStartingWhileTheSheetIsOpenAsksToCloseIt() =
         runTest(dispatcher) {
             stateOf(createVm())
