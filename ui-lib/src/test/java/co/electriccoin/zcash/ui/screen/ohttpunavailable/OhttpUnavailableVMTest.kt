@@ -36,6 +36,11 @@ class OhttpUnavailableVMTest {
     private val persist = mockk<PersistServerSelectionUseCase>(relaxed = true)
     private val navigationRouter = mockk<NavigationRouter>(relaxed = true)
     private val transactionInProgress = MutableStateFlow(false)
+    private val automaticServerRepository =
+        mockk<AutomaticServerRepository> {
+            every { isTransactionInProgress } returns transactionInProgress
+            every { acknowledgeOhttpUnavailable() } returns Unit
+        }
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -49,10 +54,7 @@ class OhttpUnavailableVMTest {
             setTorEnabled = setTorEnabled,
             persistServerSelection = persist,
             navigationRouter = navigationRouter,
-            automaticServerRepository =
-                mockk<AutomaticServerRepository> {
-                    every { isTransactionInProgress } returns transactionInProgress
-                },
+            automaticServerRepository = automaticServerRepository,
         )
 
     private fun kotlinx.coroutines.test.TestScope.stateOf(vm: OhttpUnavailableVM): OhttpUnavailableState {
@@ -87,6 +89,14 @@ class OhttpUnavailableVMTest {
             verify(exactly = 1) { navigationRouter.back() }
             coVerify(exactly = 0) { persist.persistPublic(any(), any(), any()) }
             coVerify(exactly = 0) { persist.persistPrivate() }
+        }
+
+    @Test
+    fun keepWaitingAcknowledgesTheOutage() =
+        runTest(dispatcher) {
+            stateOf(createVm()).onKeepWaiting()
+            advanceUntilIdle()
+            verify(exactly = 1) { automaticServerRepository.acknowledgeOhttpUnavailable() }
         }
 
     @Test

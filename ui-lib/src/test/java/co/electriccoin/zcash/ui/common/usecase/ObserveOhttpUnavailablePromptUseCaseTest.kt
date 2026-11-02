@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import androidx.navigation.NavBackStackEntry
 import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.provider.AppAccessLockProvider
@@ -17,6 +18,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ObserveOhttpUnavailablePromptUseCaseTest {
@@ -58,11 +60,30 @@ class ObserveOhttpUnavailablePromptUseCaseTest {
             runCurrent()
             verify(exactly = 1) { navigationRouter.custom(any()) }
 
+            // Recovery closes the prompt (one more navigation) and ends the episode; the next outage opens it again.
             unavailable.value = false
             runCurrent()
+            verify(exactly = 2) { navigationRouter.custom(any()) }
             unavailable.value = true
             runCurrent()
-            verify(exactly = 2) { navigationRouter.custom(any()) }
+            verify(exactly = 3) { navigationRouter.custom(any()) }
+        }
+
+    /** The prompt only pops itself: a send flow pushed above it must not be popped by a recovery. */
+    @Test
+    fun recoveryClosesThePromptOnlyWhenItIsOnTop() =
+        runTest {
+            val commands = mutableListOf<(NavBackStackEntry?) -> NavigationCommand?>()
+            every { navigationRouter.custom(capture(commands)) } returns Unit
+            backgroundScope.launch { useCase() }
+            unavailable.value = true
+            runCurrent()
+            unavailable.value = false
+            runCurrent()
+
+            assertEquals(2, commands.size)
+            // Nothing on screen (or something else on top): the recovery pops nothing.
+            assertNull(commands.last().invoke(null))
         }
 
     @Test

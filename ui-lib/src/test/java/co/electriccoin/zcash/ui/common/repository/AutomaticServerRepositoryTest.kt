@@ -9,10 +9,16 @@ import cash.z.ecc.android.sdk.type.ServerValidation
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealth
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealthOwner
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionOutage
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionTarget
+import co.electriccoin.zcash.ui.common.privateconnection.RequestHealthDetection
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
+import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.NetworkConnectivityProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -1039,6 +1045,150 @@ class AutomaticServerRepositoryTest {
             assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
             assertEquals(true, banner.last())
             coVerify(exactly = 0) { synchronizer.getFastestServers(fallbacks) }
+        }
+
+    /** The owner of the request-health detection, recorded: what it was asked to watch, and the outage it reports. */
+    private class RecordingHealthOwner : PrivateConnectionHealthOwner {
+        val outageState = MutableStateFlow<PrivateConnectionOutage?>(null)
+        val targets = mutableListOf<PrivateConnectionTarget?>()
+        var acknowledged = 0
+        var genericErrors = 0
+
+        override val outage: kotlinx.coroutines.flow.Flow<PrivateConnectionOutage?> = outageState
+
+        override suspend fun own(target: PrivateConnectionTarget?) {
+            targets += target
+        }
+
+        override fun acknowledge() {
+            acknowledged += 1
+        }
+
+        override fun onGenericError() {
+            genericErrors += 1
+        }
+    }
+
+    private val healthOwner = RecordingHealthOwner()
+    private val torEnabled = MutableStateFlow<Boolean?>(false)
+    private val torProvider = mockk<IsTorEnabledStorageProvider>(relaxed = true) { every { observe() } returns torEnabled }
+
+    /** The repository with the request-health detection on: it owns the outage, the legacy confirmation is off. */
+    private fun detectingRepository() =
+        AutomaticServerRepositoryImpl(
+            application = mockk(relaxed = true),
+            walletRepository = walletRepository,
+            zashiProposalRepository = zashiProposalRepository,
+            keystoneProposalRepository = keystoneProposalRepository,
+            ledgerProposalPipeline = ledgerProposalPipeline,
+            applicationStateProvider = applicationStateProvider,
+            synchronizerProvider = synchronizerProvider,
+            persistableWalletProvider = persistableWalletProvider,
+            lightWalletEndpointProvider = lightWalletEndpointProvider,
+            isServerSelectionAutomaticProvider = isAutomaticProvider,
+            isOhttpFallbackActiveProvider = fallbackFlag,
+            isPublicConnectionProvider = isPublicProvider,
+            networkConnectivityProvider = networkConnectivityProvider,
+            serverSelectionMutex = serverSelectionMutex,
+            evaluationInterval = EvaluationInterval(MINIMUM_EVALUATION_INTERVAL, timeSource),
+            privateConnectionHealth = healthOwner,
+            requestHealthDetection = RequestHealthDetection { true },
+            isTorEnabledStorageProvider = torProvider,
+        )
+
+    @Test
+    fun withTheRequestHealthDetectionOnTheLegacyConfirmationNeverReports() =
+        runTest {
+            val detecting = detectingRepository()
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            stubGatewayProbe(reachable = false)
+            val banner = mutableListOf<Boolean>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { detecting.ohttpUnavailable.toList(banner) }
+
+            repeat(4) { assertNull(detecting.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY)) }
+
+            assertEquals(false, banner.last())
+        }
+
+    @Test
+    fun theConfirmedOutageOfTheRequestHealthDetectionRaisesAndClearsTheBanner() =
+        runTest {
+            val detecting = detectingRepository()
+            val banner = mutableListOf<Boolean>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { detecting.ohttpUnavailable.toList(banner) }
+            runCurrent()
+            assertEquals(false, banner.last())
+
+            healthOwner.outageState.value =
+                PrivateConnectionOutage(PrivateConnectionHealth.Episode(1, 3_000_000_000), null)
+            runCurrent()
+            assertEquals(true, banner.last())
+
+            // Leaving Automatic hides the outage at the source, as for the legacy signal.
+            automaticPreference.value = false
+            coEvery { isAutomaticProvider.get() } returns false
+            runCurrent()
+            assertEquals(false, banner.last())
+        }
+
+    @Test
+    fun acknowledgingTheOutageIsHandedToTheRequestHealthDetection() {
+        repository.acknowledgeOhttpUnavailable()
+        // The default owner ignores it; the detecting repository forwards it.
+        detectingRepository().acknowledgeOhttpUnavailable()
+        assertEquals(1, healthOwner.acknowledged)
+    }
+
+    @Test
+    fun theRequestHealthDetectionWatchesTheGatewayOnlyInPrivateModeInTheForeground() =
+        runTest {
+            val detecting = detectingRepository()
+            val gatewayWallet = wallet(gateway)
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns gatewayWallet
+            persistedWallet.value = gatewayWallet
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { detecting.watchPrivateConnection().toList() }
+            runCurrent()
+            assertEquals(PrivateConnectionTarget(gateway, viaTor = false), healthOwner.targets.last())
+
+            torEnabled.value = true
+            runCurrent()
+            assertEquals(PrivateConnectionTarget(gateway, viaTor = true), healthOwner.targets.last())
+
+            foreground.value = false
+            runCurrent()
+            assertNull(healthOwner.targets.last())
+
+            foreground.value = true
+            runCurrent()
+            assertEquals(PrivateConnectionTarget(gateway, viaTor = true), healthOwner.targets.last())
+
+            isPublicFlow.value = true
+            runCurrent()
+            assertNull(healthOwner.targets.last())
+        }
+
+    @Test
+    fun aClearnetServerIsNeverWatchedAsThePrivateRoute() =
+        runTest {
+            val detecting = detectingRepository()
+            val clearnet = wallet(known.last())
+            persistedWallet.value = clearnet
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { detecting.watchPrivateConnection().toList() }
+            runCurrent()
+            assertNull(healthOwner.targets.last())
+        }
+
+    @Test
+    fun theGatewayHealthTickIsReplacedByTheRequestHealthDetection() =
+        runTest {
+            val detecting = detectingRepository()
+            val ticks = mutableListOf<SwitchTrigger>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { detecting.healthTicks().toList(ticks) }
+            runCurrent()
+            advanceTimeBy(30.minutes)
+            runCurrent()
+            assertEquals(emptyList(), ticks)
         }
 
     /** A wallet on a clearnet server while the OHTTP gateway answers, so a switch back to it is due. */

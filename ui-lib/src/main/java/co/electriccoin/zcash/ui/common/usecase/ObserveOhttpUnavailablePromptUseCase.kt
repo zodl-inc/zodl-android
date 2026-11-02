@@ -16,8 +16,8 @@ import kotlinx.coroutines.flow.first
 
 /**
  * Opens the "private connection unavailable" prompt once per outage episode, on whatever screen the user is on.
- * An episode ends when [AutomaticServerRepository.ohttpUnavailable] turns false again; "Keep waiting" does not
- * re-arm it. If the outage is confirmed while the app is in the background, or while it waits for the user to pass
+ * An episode ends when [AutomaticServerRepository.ohttpUnavailable] turns false again, which also closes the
+ * prompt if it is still on top; "Keep waiting" does not re-arm it. If the outage is confirmed while the app is in the background, or while it waits for the user to pass
  * app access authentication, the prompt waits until the app is in the foreground and unlocked: it changes the
  * network settings, so it must never be usable in front of the lock screen. It also waits while a send or signing
  * flow is in progress: the switch rebuilds the Synchronizer, which the automatic lane never does mid-transaction.
@@ -46,10 +46,25 @@ class ObserveOhttpUnavailablePromptUseCase(
                     ) { foreground, locked, inTransaction -> foreground && !locked && !inTransaction }
                         .first { it }
                     showPrompt()
-                    awaitCancellation()
+                    try {
+                        awaitCancellation()
+                    } finally {
+                        // The outage is over (or this episode was replaced): the prompt has nothing left to say.
+                        closePrompt()
+                    }
                 }
             }
     }
+
+    /** Closes the prompt only when it is the screen on top: a send flow pushed above it must not be popped. */
+    private fun closePrompt() =
+        navigationRouter.custom { current ->
+            if (current?.destination?.hasRoute(OhttpUnavailableArgs::class) == true) {
+                NavigationCommand.Back
+            } else {
+                null
+            }
+        }
 
     /** The prompt can be left open while the gateway flaps and starts a new episode: never stack a second one. */
     private fun showPrompt() =
