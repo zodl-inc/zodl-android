@@ -63,9 +63,10 @@ class DebugVM(
 
     /** Debug-internal builds only: the class lives in the app's internal-debug source set, so look it up by name. */
     private val blackholeTrigger =
-        Intent()
-            .setComponent(ComponentName(context.packageName, BLACKHOLE_TRIGGER_ACTIVITY))
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        Intent().apply {
+            component = ComponentName(context.packageName, BLACKHOLE_TRIGGER_ACTIVITY)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
 
     init {
         blackholePrefs.registerOnSharedPreferenceChangeListener(blackholeListener)

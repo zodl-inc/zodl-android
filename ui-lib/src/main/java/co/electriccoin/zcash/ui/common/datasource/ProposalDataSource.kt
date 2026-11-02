@@ -16,6 +16,8 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
 import cash.z.ecc.android.sdk.model.proposeSend
 import cash.z.ecc.android.sdk.type.AddressType
+import co.electriccoin.lightwallet.client.health.OhttpHealthCenter
+import co.electriccoin.lightwallet.client.health.runOhttpOperation
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.model.NetworkDimension
@@ -256,8 +258,21 @@ class ProposalDataSourceImpl(
                 .redactPcztForSigner(pczt)
         }
 
-    @Suppress("CyclomaticComplexMethod", "TooGenericExceptionCaught")
+    /**
+     * One explicit user send: its OHTTP requests are attributed to it, and when it ends the health center is told
+     * whether it failed and which call decided that, so the private-connection outage detection can tell a send that
+     * failed because the private route is down from one that failed for any other reason.
+     */
     private suspend fun submitTransactionInternal(
+        logTag: String,
+        block: suspend (Synchronizer) -> List<CreatedTransaction>
+    ): SubmitResult =
+        OhttpHealthCenter.shared.runOhttpOperation(isFailure = { it is SubmitResult.Failure }) {
+            submitTransactionAttributed(logTag, block)
+        }
+
+    @Suppress("CyclomaticComplexMethod", "TooGenericExceptionCaught")
+    private suspend fun submitTransactionAttributed(
         logTag: String,
         block: suspend (Synchronizer) -> List<CreatedTransaction>
     ): SubmitResult =

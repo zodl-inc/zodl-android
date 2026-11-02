@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.ui.common.datasource
 
 import cash.z.ecc.android.sdk.type.AddressType
+import co.electriccoin.lightwallet.client.health.OhttpHealthCenter
+import co.electriccoin.lightwallet.client.health.runOhttpOperation
 import co.electriccoin.zcash.ui.common.model.DynamicSwapAddress
 import co.electriccoin.zcash.ui.common.model.SwapAddress
 import co.electriccoin.zcash.ui.common.model.SwapAsset
@@ -34,13 +36,13 @@ import co.electriccoin.zcash.ui.common.provider.TokenIconProvider
 import co.electriccoin.zcash.ui.common.provider.TokenNameProvider
 import co.electriccoin.zcash.ui.common.repository.GiftCardSecretDetector.mayContainGiftCardSecret
 import co.electriccoin.zcash.ui.util.loggableNot
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.math.MathContext
 import java.math.RoundingMode
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class NearSwapDataSource(
     private val nearApiProvider: NearApiProvider,
@@ -70,8 +72,32 @@ class NearSwapDataSource(
             blockchain = blockchainProvider.getBlockchain(dto.blockchain),
         )
 
-    @Suppress("MagicNumber", "CyclomaticComplexMethod")
+    /** A quote is an explicit user request: its OHTTP call is attributed to it (see [runOhttpOperation]). */
     override suspend fun requestQuote(
+        swapMode: SwapMode,
+        amount: BigDecimal,
+        refundAddress: String,
+        originAsset: SwapAsset,
+        destinationAddress: String,
+        destinationAsset: SwapAsset,
+        slippage: BigDecimal,
+        affiliateAddress: String
+    ): SwapQuote =
+        OhttpHealthCenter.shared.runOhttpOperation {
+            requestQuoteAttributed(
+                swapMode = swapMode,
+                amount = amount,
+                refundAddress = refundAddress,
+                originAsset = originAsset,
+                destinationAddress = destinationAddress,
+                destinationAsset = destinationAsset,
+                slippage = slippage,
+                affiliateAddress = affiliateAddress
+            )
+        }
+
+    @Suppress("MagicNumber", "CyclomaticComplexMethod")
+    private suspend fun requestQuoteAttributed(
         swapMode: SwapMode,
         amount: BigDecimal,
         refundAddress: String,
@@ -199,12 +225,14 @@ class NearSwapDataSource(
     }
 
     override suspend fun submitDepositTransaction(txHash: String, depositAddress: String) {
-        nearApiProvider.submitDepositTransaction(
-            SubmitDepositTransactionRequest(
-                txHash = txHash,
-                depositAddress = depositAddress
+        OhttpHealthCenter.shared.runOhttpOperation {
+            nearApiProvider.submitDepositTransaction(
+                SubmitDepositTransactionRequest(
+                    txHash = txHash,
+                    depositAddress = depositAddress
+                )
             )
-        )
+        }
     }
 
     override suspend fun checkSwapStatus(depositAddress: String, supportedTokens: List<SwapAsset>): SwapQuoteStatus {
