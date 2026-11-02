@@ -136,7 +136,15 @@ class DebugVM(
             ListItemState(
                 title = stringRes("OHTTP relay blackhole (VPN): ${if (isBlackholeOn) "ON" else "OFF"}"),
                 onClick = ::onBlackholeToggleClick
-            ).takeIf { isBlackholeAvailable() }
+            ).takeIf { isBlackholeAvailable() },
+            ListItemState(
+                title = stringRes("P0 SPIKE: OHTTP health stream -> logcat (start)"),
+                onClick = { startHealthSpike(viaTor = false) }
+            ),
+            ListItemState(
+                title = stringRes("P0 SPIKE: OHTTP health stream -> logcat (start, Tor)"),
+                onClick = { startHealthSpike(viaTor = true) }
+            )
         )
 
     val state: StateFlow<DebugState> =
@@ -157,6 +165,18 @@ class DebugVM(
     private fun onBlackholeToggleClick() {
         val turnOn = !isBlackholeOn.value
         context.startActivity(Intent(blackholeTrigger).apply { if (!turnOn) putExtra("op", "stop") })
+    }
+
+    // Throwaway P0 spike: the SDK's OhttpHealthSpike object is reached by reflection, so ui-lib needs
+    // no dependency on slipstream-lib. It logs every engine health snapshot under tag OhttpHealthSpike.
+    private fun startHealthSpike(viaTor: Boolean) {
+        runCatching {
+            val spike = Class.forName("com.zodl.slipstream.OhttpHealthSpike")
+            val instance = spike.getField("INSTANCE").get(null)
+            spike.methods
+                .first { it.name == "start" }
+                .invoke(instance, HEALTH_SPIKE_SCOPE, "ohttp-gateway.example", viaTor)
+        }.onFailure { android.util.Log.e("OhttpHealthSpike", "spike start failed", it) }
     }
 
     override fun onCleared() {
@@ -319,3 +339,5 @@ class DebugVM(
 private const val BLACKHOLE_TRIGGER_ACTIVITY = "co.electriccoin.zcash.spike.BlackholeTriggerActivity"
 private const val BLACKHOLE_PREFS = "ohttp_blackhole"
 private const val BLACKHOLE_KEY_ON = "on"
+private val HEALTH_SPIKE_SCOPE =
+    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
