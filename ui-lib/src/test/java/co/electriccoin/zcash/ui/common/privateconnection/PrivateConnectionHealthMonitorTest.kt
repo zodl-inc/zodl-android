@@ -15,6 +15,7 @@ import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -24,7 +25,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 /** The executor around the policy, on virtual time: timers, probes, gate and ownership. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -37,6 +37,9 @@ class PrivateConnectionHealthMonitorTest {
     private var probes = 0
     private var probeOutcome: OhttpHealthOutcome = OhttpHealthOutcome.TransportUnavailable
 
+    /** Runs inside every probe, before it answers: delay it, or make it throw. */
+    private var probeBehaviour: (suspend (call: Int) -> Unit)? = null
+
     private fun TestScope.now() = testScheduler.currentTime * 1_000_000
 
     private fun TestScope.monitor() =
@@ -46,6 +49,7 @@ class PrivateConnectionHealthMonitorTest {
             completions = completions,
             probe = { r, generation ->
                 probes += 1
+                probeBehaviour?.invoke(probes)
                 val start = now()
                 ProbeResult(probeOutcome, r, generation, start, start + 1)
             },
@@ -215,6 +219,131 @@ class PrivateConnectionHealthMonitorTest {
             runCurrent()
             assertEquals(0, probes)
             assertNull(monitor.outage.value)
-            assertTrue(true)
+        }
+
+    @Test
+    fun `a probe that throws does not wedge the investigation`() =
+        runTest {
+            probeBehaviour = { call -> if (call == 1) throw IllegalStateException("synchronizer closed") }
+            val monitor = monitor().also { it.start(route) }
+            runCurrent()
+            advanceTimeBy(1_000)
+            evidence.emit(failure())
+            runCurrent()
+            advanceTimeBy(2_500)
+            runCurrent()
+            // The throw ended the investigation as inconclusive: nothing is shown, and nothing is stuck.
+            assertEquals(1, probes)
+            assertNull(monitor.outage.value)
+
+            // The 120 s fallback probes again and the outage is confirmed the normal way.
+            advanceTimeBy(125_000)
+            runCurrent()
+            advanceTimeBy(10_000)
+            runCurrent()
+            assertNotNull(monitor.outage.value)
+        }
+
+    @Test
+    fun `stopping during an in-flight probe cancels it and shows nothing`() =
+        runTest {
+            probeBehaviour = { delay(4_000) }
+            val monitor = monitor().also { it.start(route) }
+            runCurrent()
+            advanceTimeBy(1_000)
+            evidence.emit(failure())
+            runCurrent()
+            advanceTimeBy(2_500)
+            runCurrent()
+            assertEquals(1, probes)
+            monitor.stop()
+            advanceTimeBy(20_000)
+            runCurrent()
+            assertEquals(1, probes)
+            assertNull(monitor.outage.value)
+        }
+
+    private suspend fun TestScope.confirmOutage(monitor: PrivateConnectionHealthMonitor) {
+        advanceTimeBy(1_000)
+        evidence.emit(failure())
+        runCurrent()
+        advanceTimeBy(2_500)
+        runCurrent()
+        assertNotNull(monitor.outage.value)
+    }
+
+    @Test
+    fun `a pause keeps the shown outage and a recovery after it clears the outage`() =
+        runTest {
+            val monitor = monitor().also { it.start(route) }
+            runCurrent()
+            confirmOutage(monitor)
+
+            monitor.pause()
+            runCurrent()
+            assertNotNull(monitor.outage.value)
+
+            monitor.start(route)
+            runCurrent()
+            assertNotNull(monitor.outage.value)
+
+            advanceTimeBy(1_000)
+            evidence.emit(success())
+            runCurrent()
+            assertNull(monitor.outage.value)
+        }
+
+    @Test
+    fun `Keep waiting survives a trip to the background`() =
+        runTest {
+            val monitor = monitor().also { it.start(route) }
+            runCurrent()
+            confirmOutage(monitor)
+            monitor.acknowledge()
+            runCurrent()
+            assertNull(monitor.outage.value)
+
+            monitor.pause()
+            runCurrent()
+            advanceTimeBy(5_000)
+            monitor.start(route)
+            runCurrent()
+
+            // The relay is still dead: the carried acknowledgement keeps the sheet away.
+            advanceTimeBy(1_000)
+            evidence.emit(failure())
+            runCurrent()
+            advanceTimeBy(130_000)
+            runCurrent()
+            assertNull(monitor.outage.value)
+        }
+
+    @Test
+    fun `a stop forgets the acknowledgement`() =
+        runTest {
+            val monitor = monitor().also { it.start(route) }
+            runCurrent()
+            confirmOutage(monitor)
+            monitor.acknowledge()
+            runCurrent()
+
+            monitor.stop()
+            runCurrent()
+            monitor.start(route)
+            runCurrent()
+            confirmOutage(monitor)
+        }
+
+    @Test
+    fun `another route does not inherit what a paused one knew`() =
+        runTest {
+            val monitor = monitor().also { it.start(route) }
+            runCurrent()
+            confirmOutage(monitor)
+            monitor.pause()
+
+            monitor.start(route.copy(viaTor = true))
+            runCurrent()
+            assertNull(monitor.outage.value)
         }
 }

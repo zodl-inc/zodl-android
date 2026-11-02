@@ -8,6 +8,7 @@ import co.electriccoin.lightwallet.client.health.OhttpHealthOutcome
 import co.electriccoin.lightwallet.client.health.OhttpHealthRoute
 import co.electriccoin.lightwallet.client.health.OhttpHealthSnapshot
 import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealth.Command
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealth.Continuity
 import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealth.Episode
 import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealth.Event
 import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealth.Path
@@ -16,6 +17,7 @@ import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -38,14 +40,17 @@ data class PrivateConnectionOutage(
  * readiness and the presentation gate, and carries out its commands (the 2 s grace timer, the bounded
  * confirmation probe, the 120 s fallback tick, showing and dismissing the outage).
  *
- * One coroutine handles every event in order, so the policy is never touched concurrently. [start]
- * begins owning a route; [stop] retires the ownership and fences every late event and callback.
+ * One coroutine handles every event in order, so the policy is never touched concurrently. Everything an
+ * ownership starts lives under one [Job] of its own, so retiring it cancels the timers, the probe and the
+ * evidence collectors together.
  *
- * The owner decides when a route is owned (the Private gateway, in the foreground, while the user
- * has not chosen the public fallback) and calls [start]/[stop]; this class does not look at the
- * wallet's server selection.
+ * [start] begins owning a route. [pause] gives the ownership up for a while (the background) and keeps
+ * what the policy knows about a confirmed outage, including the user's "Keep waiting", for the next [start]
+ * of the same route; the shown outage is left alone. [stop] ends it for good: the outage is cleared and
+ * nothing is carried. The owner decides when a route is owned; this class does not look at the wallet's
+ * server selection.
  */
-@Suppress("LongParameterList")
+@Suppress("LongParameterList", "TooManyFunctions")
 class PrivateConnectionHealthMonitor(
     private val scope: CoroutineScope,
     /** The retained request-health evidence of a route (engine and client sources merged). */
@@ -53,8 +58,8 @@ class PrivateConnectionHealthMonitor(
     /** Completed explicit user operations, with the evidence of the attempt that decided their result. */
     private val completions: Flow<OhttpHealthOperationCompleted>,
     /**
-     * One bounded read-only probe of [route], through the same privacy route. Must not throw for a
-     * failed probe: a failure is [ProbeResult.outcome]. [generation] identifies the ownership.
+     * One bounded read-only probe of [route], through the same privacy route. A failed probe is
+     * [ProbeResult.outcome]; one that throws is treated as inconclusive. [generation] identifies the ownership.
      */
     private val probe: suspend (route: OhttpHealthRoute, generation: Long) -> ProbeResult,
     private val pathUpdates: Flow<Path>,
@@ -70,65 +75,87 @@ class PrivateConnectionHealthMonitor(
     val outage: StateFlow<PrivateConnectionOutage?> = _outage.asStateFlow()
 
     private var generation = 0L
+
     @Volatile
     private var ownership: Ownership? = null
-    private var carried: PrivateConnectionHealth.Continuity? = null
+
+    /** What a paused ownership knew, and of which route; used only when the same route is owned again. */
+    private var carried: Pair<OhttpHealthRoute, Continuity>? = null
 
     private class Ownership(
         val route: OhttpHealthRoute,
         val generation: Long,
         val state: State,
         val events: Channel<Event>,
-        val jobs: MutableList<Job>,
+        val job: Job,
+        val scope: CoroutineScope,
     ) {
+        @Volatile
         var grace: Job? = null
+
+        @Volatile
         var probe: Job? = null
     }
 
     /**
-     * Starts owning [route]. A previous ownership of the same route hands its confirmed outage over, so a
-     * rebuild (a Tor toggle, a new synchronizer) does not forget an acknowledged episode.
+     * Starts owning [route]. An ownership of the same route that was paused (or is being replaced) hands its
+     * confirmed outage over, so a background trip or a rebuild does not forget an acknowledged episode.
      */
     @Synchronized
     fun start(route: OhttpHealthRoute) {
         val previous = ownership
         if (previous != null) {
-            if (previous.route == route) carried = previous.state.continuity(clock())
+            carried = route.takeIf { previous.route == it }?.let { it to previous.state.continuity(clock()) }
             retire(previous)
+        }
+        val continuity = carried?.takeIf { it.first == route }?.second
+        if (continuity == null) {
+            carried = null
+            _outage.value = null
         }
         generation += 1
         val now = clock()
-        val state = State(route, generation, carried?.takeIf { previous?.route == route }, ownershipStartedAt = now)
-        val owned = Ownership(route, generation, state, Channel(Channel.UNLIMITED), mutableListOf())
+        val state = State(route, generation, continuity, ownershipStartedAt = now)
+        val job = SupervisorJob(scope.coroutineContext[Job])
+        val own = CoroutineScope(scope.coroutineContext + job)
+        val owned = Ownership(route, generation, state, Channel(Channel.UNLIMITED), job, own)
         ownership = owned
-        if (previous?.route != route) _outage.value = null
 
-        owned.jobs += scope.launch { for (event in owned.events) apply(owned, event) }
-        owned.jobs +=
-            observeEvidence(route)
-                .onEach { snapshot -> snapshot.observations.forEach { owned.events.trySend(Event.Observation(it)) } }
-                .catch { if (it is CancellationException) throw it }
-                .launchIn(scope)
-        owned.jobs +=
-            completions
-                .onEach { completed ->
-                    owned.events.trySend(
-                        Event.OperationCompleted(completed.operation, completed.failed, completed.observations),
-                    )
-                }.launchIn(scope)
-        owned.jobs += pathUpdates.onEach { owned.events.trySend(Event.PathChanged(it)) }.launchIn(scope)
-        owned.jobs += torReady.onEach { owned.events.trySend(Event.TorReadinessChanged(it)) }.launchIn(scope)
-        owned.jobs += presentationAllowed.onEach { owned.events.trySend(Event.PresentationGateChanged(it)) }.launchIn(scope)
-        owned.jobs +=
-            scope.launch {
-                while (true) {
-                    delay(PrivateConnectionHealth.FALLBACK_NANOS / NANOS_PER_MILLI)
-                    owned.events.trySend(Event.FallbackTick)
-                }
+        own.launch { for (event in owned.events) apply(owned, event) }
+        observeEvidence(route)
+            .onEach { snapshot -> snapshot.observations.forEach { owned.events.trySend(Event.Observation(it)) } }
+            .catch { failure ->
+                if (failure is CancellationException) throw failure
+                Twig.error(failure) { "Private connection health: the evidence stream failed" }
+            }.launchIn(own)
+        completions
+            .onEach { completed ->
+                owned.events.trySend(Event.OperationCompleted(completed.operation, completed.failed, completed.observations))
+            }.launchIn(own)
+        pathUpdates.onEach { owned.events.trySend(Event.PathChanged(it)) }.launchIn(own)
+        torReady.onEach { owned.events.trySend(Event.TorReadinessChanged(it)) }.launchIn(own)
+        presentationAllowed.onEach { owned.events.trySend(Event.PresentationGateChanged(it)) }.launchIn(own)
+        own.launch {
+            while (true) {
+                delay(PrivateConnectionHealth.FALLBACK_NANOS / NANOS_PER_MILLI)
+                owned.events.trySend(Event.FallbackTick)
             }
+        }
     }
 
-    /** Stops owning the route (a background edge, the public fallback, a route change). Clears the outage. */
+    /**
+     * Gives the ownership up without forgetting: the policy's continuity of the route is kept for the next
+     * [start] of the same route, and the shown outage stays as it is.
+     */
+    @Synchronized
+    fun pause() {
+        val owned = ownership ?: return
+        carried = owned.route to owned.state.continuity(clock())
+        retire(owned)
+        ownership = null
+    }
+
+    /** Stops owning the route for good (the public fallback, a manual server, a route change). Clears the outage. */
     @Synchronized
     fun stop() {
         ownership?.let { retire(it) }
@@ -148,23 +175,19 @@ class PrivateConnectionHealthMonitor(
     }
 
     private fun retire(owned: Ownership) {
-        owned.events.trySend(Event.OwnershipRetired)
         owned.events.close()
-        owned.jobs.forEach { it.cancel() }
-        owned.grace?.cancel()
-        owned.probe?.cancel()
+        owned.job.cancel()
     }
 
     private fun apply(
         owned: Ownership,
         event: Event,
     ) {
-        if (ownership !== owned && event != Event.OwnershipRetired) return
+        if (ownership !== owned) return
         val commands = owned.state.handle(event, clock())
-        // Evidence events are frequent and carry no decision; log the ones that do, and every command.
-        val failure = event is Event.Observation && event.observation.outcome == OhttpHealthOutcome.TransportUnavailable
-        if (failure || event !is Event.Observation && event !is Event.PresentationGateChanged || commands.isNotEmpty()) {
-            Twig.info { "Private connection health: ${event.describe()} -> ${commands.map { it.describe() }}" }
+        // Evidence events are frequent and carry no decision: log what decides something.
+        if (event !is Event.Observation && event !is Event.PresentationGateChanged || commands.isNotEmpty()) {
+            Twig.info { "Private connection health: ${event.describe()} -> ${commands.map { it.toString() }}" }
         }
         commands.forEach { execute(owned, it) }
         // An outage is only ever shown for a live episode: a recovered or handed-over route clears it.
@@ -182,7 +205,7 @@ class PrivateConnectionHealthMonitor(
                 // the investigation stuck.
                 val delayMs = ((command.deadline - clock() + NANOS_PER_MILLI - 1) / NANOS_PER_MILLI).coerceAtLeast(0)
                 owned.grace =
-                    scope.launch {
+                    owned.scope.launch {
                         delay(delayMs)
                         owned.events.trySend(Event.GraceExpired(command.id))
                     }
@@ -194,9 +217,8 @@ class PrivateConnectionHealthMonitor(
             is Command.Probe -> {
                 owned.probe?.cancel()
                 owned.probe =
-                    scope.launch {
-                        val result = probe(owned.route, owned.generation)
-                        owned.events.trySend(Event.ProbeCompleted(command.id, result))
+                    owned.scope.launch {
+                        owned.events.trySend(Event.ProbeCompleted(command.id, runProbe(owned)))
                     }
             }
             Command.CancelProbe -> {
@@ -208,8 +230,21 @@ class PrivateConnectionHealthMonitor(
         }
     }
 
-    private companion object {
-        const val NANOS_PER_MILLI = 1_000_000L
+    /**
+     * A probe that throws must still end its investigation, or nothing could ever be presented again; it is
+     * inconclusive, which the policy never counts as an outage.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun runProbe(owned: Ownership): ProbeResult {
+        val started = clock()
+        return try {
+            probe(owned.route, owned.generation)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            Twig.error(failure) { "Private connection health: the probe failed unexpectedly" }
+            ProbeResult(OhttpHealthOutcome.Inconclusive, owned.route, owned.generation, started, clock())
+        }
     }
 
     private fun Event.describe(): String =
@@ -220,5 +255,7 @@ class PrivateConnectionHealthMonitor(
             else -> toString()
         }
 
-    private fun Command.describe(): String = toString()
+    private companion object {
+        const val NANOS_PER_MILLI = 1_000_000L
+    }
 }

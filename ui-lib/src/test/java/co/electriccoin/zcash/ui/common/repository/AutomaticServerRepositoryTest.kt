@@ -1050,14 +1050,24 @@ class AutomaticServerRepositoryTest {
     /** The owner of the request-health detection, recorded: what it was asked to watch, and the outage it reports. */
     private class RecordingHealthOwner : PrivateConnectionHealthOwner {
         val outageState = MutableStateFlow<PrivateConnectionOutage?>(null)
-        val targets = mutableListOf<PrivateConnectionTarget?>()
+
+        /** Every instruction it received, in order: an owned target, or "pause" / "stop". */
+        val calls = mutableListOf<Any>()
         var acknowledged = 0
         var genericErrors = 0
 
         override val outage: kotlinx.coroutines.flow.Flow<PrivateConnectionOutage?> = outageState
 
-        override suspend fun own(target: PrivateConnectionTarget?) {
-            targets += target
+        override suspend fun own(target: PrivateConnectionTarget) {
+            calls += target
+        }
+
+        override fun pause() {
+            calls += "pause"
+        }
+
+        override fun stop() {
+            calls += "stop"
         }
 
         override fun acknowledge() {
@@ -1149,23 +1159,25 @@ class AutomaticServerRepositoryTest {
             persistedWallet.value = gatewayWallet
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { detecting.watchPrivateConnection().toList() }
             runCurrent()
-            assertEquals(PrivateConnectionTarget(gateway, viaTor = false), healthOwner.targets.last())
+            assertEquals(PrivateConnectionTarget(gateway, viaTor = false), healthOwner.calls.last())
 
             torEnabled.value = true
             runCurrent()
-            assertEquals(PrivateConnectionTarget(gateway, viaTor = true), healthOwner.targets.last())
+            assertEquals(PrivateConnectionTarget(gateway, viaTor = true), healthOwner.calls.last())
 
+            // The background pauses the watch (it keeps what it knows); coming back owns the route again.
             foreground.value = false
             runCurrent()
-            assertNull(healthOwner.targets.last())
+            assertEquals("pause", healthOwner.calls.last())
 
             foreground.value = true
             runCurrent()
-            assertEquals(PrivateConnectionTarget(gateway, viaTor = true), healthOwner.targets.last())
+            assertEquals(PrivateConnectionTarget(gateway, viaTor = true), healthOwner.calls.last())
 
+            // Public ends it for good.
             isPublicFlow.value = true
             runCurrent()
-            assertNull(healthOwner.targets.last())
+            assertEquals("stop", healthOwner.calls.last())
         }
 
     @Test
@@ -1176,7 +1188,19 @@ class AutomaticServerRepositoryTest {
             persistedWallet.value = clearnet
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { detecting.watchPrivateConnection().toList() }
             runCurrent()
-            assertNull(healthOwner.targets.last())
+            assertEquals("stop", healthOwner.calls.last())
+        }
+
+    @Test
+    fun theBackgroundOfAClearnetServerStopsInsteadOfPausing() =
+        runTest {
+            val detecting = detectingRepository()
+            persistedWallet.value = wallet(known.last())
+            foreground.value = false
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { detecting.watchPrivateConnection().toList() }
+            runCurrent()
+            // Nothing to remember for a route that is not the Private one.
+            assertEquals("stop", healthOwner.calls.last())
         }
 
     @Test

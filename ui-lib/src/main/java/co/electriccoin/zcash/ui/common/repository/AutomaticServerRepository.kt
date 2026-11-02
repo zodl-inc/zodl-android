@@ -219,10 +219,23 @@ class AutomaticServerRepositoryImpl(
         }
     }
 
+    /** What the request-health detection should do about the Private route. */
+    private sealed interface PrivateWatch {
+        data class Own(
+            val target: PrivateConnectionTarget,
+        ) : PrivateWatch
+
+        /** The route still qualifies but the app is in the background: stop for now, remember what is known. */
+        data object Pause : PrivateWatch
+
+        /** The route does not qualify (Public, a manual server, no gateway): stop for good. */
+        data object Stop : PrivateWatch
+    }
+
     /**
      * The Private route the request-health detection watches: the gateway the wallet is on, while Automatic is on
-     * in Private mode and the app is in the foreground. Anything else (Public, a manual server, the background)
-     * stops watching and clears a shown outage.
+     * in Private mode. In the foreground it is watched; in the background the detection pauses and keeps its
+     * state; anything else (Public, a manual server, no gateway) stops it and clears a shown outage.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     internal fun watchPrivateConnection(): Flow<Unit> =
@@ -240,16 +253,20 @@ class AutomaticServerRepositoryImpl(
             val endpoint = values[3] as LightWalletEndpoint?
             val viaTor = values[4] as Boolean
             val hasSynchronizer = values[5] != null
-            if (automatic && !isPublic && foreground && hasSynchronizer && endpoint != null &&
-                lightWalletEndpointProvider.isOhttpGateway(endpoint)
-            ) {
-                PrivateConnectionTarget(endpoint, viaTor)
-            } else {
-                null
+            when {
+                !automatic || isPublic || !hasSynchronizer || endpoint == null ||
+                    !lightWalletEndpointProvider.isOhttpGateway(endpoint) -> PrivateWatch.Stop
+                !foreground -> PrivateWatch.Pause
+                else -> PrivateWatch.Own(PrivateConnectionTarget(endpoint, viaTor))
             }
         }.distinctUntilChanged()
-            .mapLatest { target -> privateConnectionHealth.own(target) }
-            .catch { Twig.error(it) { "Automatic server: the private connection watch failed" } }
+            .mapLatest { watch ->
+                when (watch) {
+                    is PrivateWatch.Own -> privateConnectionHealth.own(watch.target)
+                    PrivateWatch.Pause -> privateConnectionHealth.pause()
+                    PrivateWatch.Stop -> privateConnectionHealth.stop()
+                }
+            }.catch { Twig.error(it) { "Automatic server: the private connection watch failed" } }
 
     /** A synchronizer error, or a DISCONNECTED status that lasts [DISCONNECTED_GRACE]: no request identity. */
     private fun genericErrors(): Flow<Unit> = connectivityEdges().map { }

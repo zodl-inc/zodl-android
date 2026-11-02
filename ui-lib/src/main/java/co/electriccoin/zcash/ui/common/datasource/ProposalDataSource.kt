@@ -267,7 +267,7 @@ class ProposalDataSourceImpl(
         logTag: String,
         block: suspend (Synchronizer) -> List<CreatedTransaction>
     ): SubmitResult =
-        OhttpHealthCenter.shared.runOhttpOperation(isFailure = { it is SubmitResult.Failure }) {
+        OhttpHealthCenter.shared.runOhttpOperation(isFailure = { it.isOperationFailure() }) {
             submitTransactionAttributed(logTag, block)
         }
 
@@ -537,3 +537,10 @@ private const val MULTI_SUBMIT_EMPTY_TRANSACTION_CODE = -1
 private const val MULTI_SUBMIT_EMPTY_TRANSACTION_DESCRIPTION = "No transactions created"
 private const val MULTI_SUBMIT_GRPC_FAILURE_STATUS = "grpcFailure"
 private const val MULTI_SUBMIT_REJECTED_STATUS_PREFIX = "rejected code: "
+
+/**
+ * Whether a send's result is a failed operation for the outage detection: anything but a full success. A relay that
+ * is down surfaces as a gRPC failure, or as a partial result across several transactions, not as a rejection; the
+ * policy still requires the deciding call's evidence to be a transport failure, so a rejection stays harmless.
+ */
+internal fun SubmitResult.isOperationFailure(): Boolean = this !is SubmitResult.Success

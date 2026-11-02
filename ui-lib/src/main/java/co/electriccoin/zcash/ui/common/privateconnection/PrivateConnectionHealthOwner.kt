@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.common.privateconnection
 
-import cash.z.ecc.android.sdk.Synchronizer
 import co.electriccoin.lightwallet.client.health.OhttpHealthCenter
 import co.electriccoin.lightwallet.client.health.OhttpHealthOutcome
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
@@ -15,7 +14,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
@@ -38,8 +39,17 @@ interface PrivateConnectionHealthOwner {
     /** The confirmed outage to show, or null. */
     val outage: Flow<PrivateConnectionOutage?>
 
-    /** Starts (or restarts) watching [target], or stops watching for null. */
-    suspend fun own(target: PrivateConnectionTarget?)
+    /** Starts (or restarts) watching [target]. */
+    suspend fun own(target: PrivateConnectionTarget)
+
+    /**
+     * Stops watching for a while (the app went to the background) without forgetting a confirmed outage or the
+     * user's "Keep waiting"; the shown outage stays.
+     */
+    fun pause()
+
+    /** Stops watching for good (Public or a manual server, no gateway): the outage is cleared. */
+    fun stop()
 
     /** The user chose "Keep waiting" or dismissed the prompt. */
     fun acknowledge()
@@ -52,7 +62,11 @@ interface PrivateConnectionHealthOwner {
 object NoPrivateConnectionHealth : PrivateConnectionHealthOwner {
     override val outage: Flow<PrivateConnectionOutage?> = emptyFlow()
 
-    override suspend fun own(target: PrivateConnectionTarget?) = Unit
+    override suspend fun own(target: PrivateConnectionTarget) = Unit
+
+    override fun pause() = Unit
+
+    override fun stop() = Unit
 
     override fun acknowledge() = Unit
 
@@ -70,30 +84,26 @@ class PrivateConnectionHealthOwnerImpl(
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     @Volatile
-    private var current: Watched? = null
-
-    private class Watched(
-        val synchronizer: Synchronizer,
-        val endpoint: LightWalletEndpoint,
-    )
+    private var endpoint: LightWalletEndpoint? = null
 
     private val monitor =
         PrivateConnectionHealthMonitor(
             scope = scope,
-            observeEvidence = { route -> current?.synchronizer?.observeOhttpHealth(route) ?: emptyFlow() },
+            // The synchronizer is looked up when it is needed, not remembered: a rebuilt one replaces the old.
+            observeEvidence = { route ->
+                flow {
+                    synchronizerProvider.getSynchronizerOrNull()?.let { emitAll(it.observeOhttpHealth(route)) }
+                }
+            },
             completions = center.completions,
             probe = { route, generation ->
-                val watched = current
-                if (watched == null) {
-                    PrivateConnectionHealth.ProbeResult(
-                        OhttpHealthOutcome.Cancelled,
-                        route,
-                        generation,
-                        0L,
-                        0L,
-                    )
+                val synchronizer = synchronizerProvider.getSynchronizerOrNull()
+                val watched = endpoint
+                if (synchronizer == null || watched == null) {
+                    // Nothing to probe with: the policy never counts this as an outage.
+                    PrivateConnectionHealth.ProbeResult(OhttpHealthOutcome.Inconclusive, route, generation, 0L, 0L)
                 } else {
-                    probe.run(watched.synchronizer, watched.endpoint, route, generation)
+                    probe.run(synchronizer, watched, route, generation)
                 }
             },
             pathUpdates =
@@ -110,21 +120,22 @@ class PrivateConnectionHealthOwnerImpl(
 
     override val outage: Flow<PrivateConnectionOutage?> = monitor.outage
 
-    override suspend fun own(target: PrivateConnectionTarget?) {
-        if (target == null) {
-            current = null
-            monitor.stop()
-            return
-        }
+    override suspend fun own(target: PrivateConnectionTarget) {
         val synchronizer = synchronizerProvider.getSynchronizerOrNull()
         val route = synchronizer?.ohttpHealthRoute(target.endpoint.host, target.viaTor)
-        if (synchronizer == null || route == null) {
-            current = null
-            monitor.stop()
+        if (route == null) {
+            stop()
             return
         }
-        current = Watched(synchronizer, target.endpoint)
+        endpoint = target.endpoint
         monitor.start(route)
+    }
+
+    override fun pause() = monitor.pause()
+
+    override fun stop() {
+        endpoint = null
+        monitor.stop()
     }
 
     override fun acknowledge() = monitor.acknowledge()
