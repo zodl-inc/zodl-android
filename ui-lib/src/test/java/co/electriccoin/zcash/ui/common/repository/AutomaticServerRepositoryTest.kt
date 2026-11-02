@@ -1,3 +1,5 @@
+@file:Suppress("MaxLineLength")
+
 package co.electriccoin.zcash.ui.common.repository
 
 import cash.z.ecc.android.sdk.Synchronizer

@@ -44,6 +44,7 @@ import java.math.RoundingMode
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
 
+@Suppress("TooManyFunctions")
 class NearSwapDataSource(
     private val nearApiProvider: NearApiProvider,
     private val tokenIconProvider: TokenIconProvider,
@@ -96,7 +97,7 @@ class NearSwapDataSource(
             )
         }
 
-    @Suppress("MagicNumber", "CyclomaticComplexMethod")
+    @Suppress("MagicNumber", "CyclomaticComplexMethod", "ThrowsCount")
     private suspend fun requestQuoteAttributed(
         swapMode: SwapMode,
         amount: BigDecimal,

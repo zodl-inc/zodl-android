@@ -1,3 +1,5 @@
+@file:Suppress("ReturnCount", "ComplexCondition", "CyclomaticComplexMethod", "TooManyFunctions")
+
 package co.electriccoin.zcash.ui.common.privateconnection
 
 import co.electriccoin.lightwallet.client.health.OhttpHealthObservation
@@ -257,7 +259,8 @@ object PrivateConnectionHealth {
         }
 
         private fun retire(): List<Command> {
-            val commands = stopInvestigation(disarm = true) + if (isPresented) listOf(Command.DismissOutage) else emptyList()
+            val dismiss = if (isPresented) listOf(Command.DismissOutage) else emptyList()
+            val commands = stopInvestigation(disarm = true) + dismiss
             retired = true
             isPresented = false
             pendingPresentation = null
@@ -423,9 +426,17 @@ object PrivateConnectionHealth {
                 .sortedWith(
                     Comparator { lhs, rhs ->
                         when {
-                            lhs.observedAtNanos != rhs.observedAtNanos -> lhs.observedAtNanos.compareTo(rhs.observedAtNanos)
-                            lhs.source != rhs.source -> if (lhs.source == OhttpHealthSource.NATIVE) -1 else 1
-                            else -> lhs.requestId.compareTo(rhs.requestId)
+                            lhs.observedAtNanos != rhs.observedAtNanos -> {
+                                lhs.observedAtNanos.compareTo(rhs.observedAtNanos)
+                            }
+
+                            lhs.source != rhs.source -> {
+                                if (lhs.source == OhttpHealthSource.NATIVE) -1 else 1
+                            }
+
+                            else -> {
+                                lhs.requestId.compareTo(rhs.requestId)
+                            }
                         }
                     }
                 )
@@ -531,7 +542,8 @@ object PrivateConnectionHealth {
         ): List<Command> {
             latestFailureAt?.let { if (start <= it) return emptyList() }
             latestSuccessStart?.let { if (start < it) return emptyList() }
-            val commands = stopInvestigation(disarm = false) + if (isPresented) listOf(Command.DismissOutage) else emptyList()
+            val dismiss = if (isPresented) listOf(Command.DismissOutage) else emptyList()
+            val commands = stopInvestigation(disarm = false) + dismiss
             latestSuccessAt = end
             latestSuccessStart = start
             availability = Availability.HEALTHY

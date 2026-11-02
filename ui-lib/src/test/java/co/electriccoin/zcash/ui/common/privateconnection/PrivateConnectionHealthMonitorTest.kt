@@ -1,3 +1,5 @@
+@file:Suppress("MaxLineLength")
+
 package co.electriccoin.zcash.ui.common.privateconnection
 
 import co.electriccoin.lightwallet.client.health.OhttpHealthObservation
@@ -37,7 +39,6 @@ class PrivateConnectionHealthMonitorTest {
     private val evidence = MutableSharedFlow<OhttpHealthSnapshot>(extraBufferCapacity = 16)
     private val completions = MutableSharedFlow<OhttpHealthOperationCompleted>(extraBufferCapacity = 16)
     private val gate = MutableStateFlow(true)
-    private var probeResult: (ProbeResult.() -> ProbeResult)? = null
     private var probes = 0
     private var probeOutcome: OhttpHealthOutcome = OhttpHealthOutcome.TransportUnavailable
 
@@ -234,7 +235,7 @@ class PrivateConnectionHealthMonitorTest {
     @Test
     fun `a probe that throws does not wedge the investigation`() =
         runTest {
-            probeBehaviour = { call -> if (call == 1) throw IllegalStateException("synchronizer closed") }
+            probeBehaviour = { call -> if (call == 1) error("synchronizer closed") }
             val monitor = monitor().also { it.start(route) }
             runCurrent()
             advanceTimeBy(1_000)

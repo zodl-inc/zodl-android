@@ -1,3 +1,5 @@
+@file:Suppress("MaxLineLength")
+
 package co.electriccoin.zcash.ui.common.privateconnection
 
 import cash.z.ecc.android.sdk.exception.CompactBlockProcessorException

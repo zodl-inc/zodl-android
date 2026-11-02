@@ -133,7 +133,9 @@ class PrivateConnectionHealthMonitor(
             }.launchIn(own)
         completions
             .onEach { completed ->
-                owned.events.trySend(Event.OperationCompleted(completed.operation, completed.failed, completed.observations))
+                owned.events.trySend(
+                    Event.OperationCompleted(completed.operation, completed.failed, completed.observations)
+                )
             }.launchIn(own)
         pathUpdates.onEach { owned.events.trySend(Event.PathChanged(it)) }.launchIn(own)
         torReady.onEach { owned.events.trySend(Event.TorReadinessChanged(it)) }.launchIn(own)
@@ -212,7 +214,8 @@ class PrivateConnectionHealthMonitor(
         when (command) {
             is Command.ScheduleGrace -> {
                 owned.grace?.cancel()
-                // Rounded up: a timer that fires before the deadline is ignored by the policy and would leave the investigation stuck.
+                // Rounded up: a timer that fires before the deadline is ignored by the policy and would leave
+                // the investigation stuck.
                 val delayMs = ((command.deadline - clock() + NANOS_PER_MILLI - 1) / NANOS_PER_MILLI).coerceAtLeast(0)
                 owned.grace =
                     owned.scope.launch {

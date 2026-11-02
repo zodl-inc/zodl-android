@@ -1,3 +1,5 @@
+@file:Suppress("MaxLineLength")
+
 package co.electriccoin.zcash.ui.common.datasource
 
 import co.electriccoin.zcash.ui.common.model.SubmitResult

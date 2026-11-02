@@ -1,3 +1,5 @@
+@file:Suppress("MagicNumber", "TooGenericExceptionCaught")
+
 package co.electriccoin.zcash.spike
 
 import android.app.Activity

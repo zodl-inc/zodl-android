@@ -238,6 +238,7 @@ class AutomaticServerRepositoryImpl(
      * state; anything else (Public, a manual server, no gateway) stops it and clears a shown outage.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
+    @Suppress("MagicNumber")
     internal fun watchPrivateConnection(): Flow<Unit> =
         combine(
             isServerAutomatic,

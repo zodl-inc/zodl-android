@@ -18,10 +18,11 @@ import kotlinx.coroutines.flow.first
 /**
  * Opens the "private connection unavailable" prompt once per outage episode, on whatever screen the user is on.
  * An episode ends when [AutomaticServerRepository.ohttpUnavailable] turns false again, which also closes the
- * prompt if it is still on top; "Keep waiting" does not re-arm it. If the outage is confirmed while the app is in the background, or while it waits for the user to pass
- * app access authentication, the prompt waits until the app is in the foreground and unlocked: it changes the
- * network settings, so it must never be usable in front of the lock screen. It also waits while a send or signing
- * flow is in progress: the switch rebuilds the Synchronizer, which the automatic lane never does mid-transaction.
+ * prompt if it is still on top; "Keep waiting" does not re-arm it. If the outage is confirmed while the app is in
+ * the background, or while it waits for the user to pass app access authentication, the prompt waits until the
+ * app is in the foreground and unlocked: it changes the network settings, so it must never be usable in front of
+ * the lock screen. It also waits while a send or signing flow is in progress: the switch rebuilds the
+ * Synchronizer, which the automatic lane never does mid-transaction.
  */
 class ObserveOhttpUnavailablePromptUseCase(
     private val automaticServerRepository: AutomaticServerRepository,

@@ -1,3 +1,5 @@
+@file:Suppress("MaxLineLength")
+
 package co.electriccoin.zcash.ui.common.privateconnection
 
 import co.electriccoin.lightwallet.client.health.OhttpHealthObservation
