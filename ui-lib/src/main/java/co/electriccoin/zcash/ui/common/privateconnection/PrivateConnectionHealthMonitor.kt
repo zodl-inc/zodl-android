@@ -1,8 +1,10 @@
 package co.electriccoin.zcash.ui.common.privateconnection
 
+import cash.z.ecc.android.sdk.internal.Twig
 import co.electriccoin.lightwallet.client.health.OhttpHealthClock
 import co.electriccoin.lightwallet.client.health.OhttpHealthOperation
 import co.electriccoin.lightwallet.client.health.OhttpHealthOperationCompleted
+import co.electriccoin.lightwallet.client.health.OhttpHealthOutcome
 import co.electriccoin.lightwallet.client.health.OhttpHealthRoute
 import co.electriccoin.lightwallet.client.health.OhttpHealthSnapshot
 import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealth.Command
@@ -159,6 +161,11 @@ class PrivateConnectionHealthMonitor(
     ) {
         if (ownership !== owned && event != Event.OwnershipRetired) return
         val commands = owned.state.handle(event, clock())
+        // Evidence events are frequent and carry no decision; log the ones that do, and every command.
+        val failure = event is Event.Observation && event.observation.outcome == OhttpHealthOutcome.TransportUnavailable
+        if (failure || event !is Event.Observation && event !is Event.PresentationGateChanged || commands.isNotEmpty()) {
+            Twig.info { "Private connection health: ${event.describe()} -> ${commands.map { it.describe() }}" }
+        }
         commands.forEach { execute(owned, it) }
         // An outage is only ever shown for a live episode: a recovered or handed-over route clears it.
         if (owned.state.episode == null && _outage.value != null) _outage.value = null
@@ -204,4 +211,14 @@ class PrivateConnectionHealthMonitor(
     private companion object {
         const val NANOS_PER_MILLI = 1_000_000L
     }
+
+    private fun Event.describe(): String =
+        when (this) {
+            is Event.Observation -> "observation(${observation.source} ${observation.scope} ${observation.outcome})"
+            is Event.ProbeCompleted -> "probeCompleted(#$id ${result.outcome})"
+            is Event.OperationCompleted -> "operationCompleted(failed=$failed, evidence=${observations.size})"
+            else -> toString()
+        }
+
+    private fun Command.describe(): String = toString()
 }
