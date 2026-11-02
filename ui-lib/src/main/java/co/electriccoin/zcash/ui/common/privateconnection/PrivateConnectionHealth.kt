@@ -191,11 +191,26 @@ object PrivateConnectionHealth {
         ): List<Command> {
             if (retired) return emptyList()
             return when (event) {
-                is Event.Observation -> receive(event.observation, now)
-                is Event.OperationCompleted -> complete(event.operation, event.failed, event.observations, now)
-                Event.ClassificationRequested -> startProbe(now)
-                is Event.GraceExpired -> expireGrace(event.id, now)
-                is Event.ProbeCompleted -> completeProbe(event.id, event.result, now)
+                is Event.Observation -> {
+                    receive(event.observation, now)
+                }
+
+                is Event.OperationCompleted -> {
+                    complete(event.operation, event.failed, event.observations, now)
+                }
+
+                Event.ClassificationRequested -> {
+                    startProbe(now)
+                }
+
+                is Event.GraceExpired -> {
+                    expireGrace(event.id, now)
+                }
+
+                is Event.ProbeCompleted -> {
+                    completeProbe(event.id, event.result, now)
+                }
+
                 Event.FallbackTick -> {
                     armed = true
                     val success = latestSuccessAt
@@ -207,14 +222,27 @@ object PrivateConnectionHealth {
                         startProbe(now)
                     }
                 }
-                is Event.PathChanged -> changePath(event.path, now)
-                is Event.TorReadinessChanged -> changeTorReadiness(event.ready, now)
+
+                is Event.PathChanged -> {
+                    changePath(event.path, now)
+                }
+
+                is Event.TorReadinessChanged -> {
+                    changeTorReadiness(event.ready, now)
+                }
+
                 is Event.PresentationGateChanged -> {
                     presentationAllowed = event.allowed
                     presentIfAllowed(now)
                 }
-                Event.Acknowledged -> acknowledge(now)
-                Event.OwnershipRetired -> retire()
+
+                Event.Acknowledged -> {
+                    acknowledge(now)
+                }
+
+                Event.OwnershipRetired -> {
+                    retire()
+                }
             }
         }
 
@@ -304,12 +332,19 @@ object PrivateConnectionHealth {
                         recover(result.startedAtNanos, result.observedAtNanos)
                     }
                 }
-                OhttpHealthOutcome.TransportUnavailable -> probeFailure(result, confirming, failureAnchor, now)
+
+                OhttpHealthOutcome.TransportUnavailable -> {
+                    probeFailure(result, confirming, failureAnchor, now)
+                }
+
                 is OhttpHealthOutcome.RateLimited -> {
                     pauseUntil = maxOf(pauseUntil ?: 0L, outcome.retryNotBeforeNanos)
                     becomeUnknown()
                 }
-                else -> becomeUnknown()
+
+                else -> {
+                    becomeUnknown()
+                }
             }
         }
 
@@ -321,7 +356,7 @@ object PrivateConnectionHealth {
         ): List<Command> {
             if (!isApplicableFailure(result.observedAtNanos)) return becomeUnknown()
             if (confirming || episode != null) {
-                /* Concurrent failures cannot slide this investigation's anchor or defer outage confirmation. */
+                // Concurrent failures cannot slide this investigation's anchor or defer outage confirmation.
                 if (failureAnchor == null || result.startedAtNanos <= failureAnchor) return becomeUnknown()
                 latestFailureAt = maxOf(latestFailureAt ?: 0L, result.observedAtNanos)
                 availability = Availability.UNAVAILABLE
@@ -439,7 +474,7 @@ object PrivateConnectionHealth {
             now: Long,
         ): List<Command> {
             if (observation.route != route || !(observation.historical || isCurrent(observation))) return emptyList()
-            /* A retained pause remains binding after subscription replacement, even without an original owner. */
+            // A retained pause remains binding after subscription replacement, even without an original owner.
             val outcome = observation.outcome
             if (outcome is OhttpHealthOutcome.RateLimited && outcome.retryNotBeforeNanos > now) {
                 pauseUntil = maxOf(pauseUntil ?: 0L, outcome.retryNotBeforeNanos)
@@ -453,10 +488,17 @@ object PrivateConnectionHealth {
                 return emptyList()
             }
             return when {
-                outcome == OhttpHealthOutcome.Usable && observation.scope == OhttpHealthScope.ROUTE ->
+                outcome == OhttpHealthOutcome.Usable && observation.scope == OhttpHealthScope.ROUTE -> {
                     recover(observation.startedAtNanos, observation.observedAtNanos)
-                outcome == OhttpHealthOutcome.TransportUnavailable -> suspect(observation.observedAtNanos, now)
-                else -> emptyList()
+                }
+
+                outcome == OhttpHealthOutcome.TransportUnavailable -> {
+                    suspect(observation.observedAtNanos, now)
+                }
+
+                else -> {
+                    emptyList()
+                }
             }
         }
 
@@ -470,7 +512,7 @@ object PrivateConnectionHealth {
             latestFailureAt = maxOf(latestFailureAt ?: 0L, time)
             if (episode != null) return emptyList()
             var commands: List<Command> = emptyList()
-            /* The first real failure owns the grace even if a generic-error classification is still running. */
+            // The first real failure owns the grace even if a generic-error classification is still running.
             if (investigation == Investigation.CLASSIFICATION) commands = stopInvestigation(disarm = false)
             if (!armed || investigation != null || !mayDiagnose(now)) return commands
             availability = Availability.SUSPECTED

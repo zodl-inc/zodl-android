@@ -18,6 +18,7 @@ private const val KEY_ON = "on"
 /** Spike: routes only relay IPs into a TUN for this app and drops every packet. */
 class BlackholeVpnService : VpnService() {
     @Volatile private var tun: ParcelFileDescriptor? = null
+
     @Volatile private var running = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -26,26 +27,38 @@ class BlackholeVpnService : VpnService() {
             stopSelf()
             return START_NOT_STICKY
         }
-        val hosts = (intent?.getStringExtra("hosts")
-            ?: "relay-prod.example").split(",")
+        val hosts =
+            (
+                intent?.getStringExtra("hosts")
+                    ?: "relay-prod.example"
+            ).split(",")
         Thread { startVpn(hosts) }.start()
         return START_NOT_STICKY
     }
 
     private fun startVpn(hosts: List<String>) {
         stopVpn()
-        val addrs = hosts.flatMap { h ->
-            runCatching { InetAddress.getAllByName(h).toList() }
-                .onFailure { Log.e(TAG, "resolve $h failed", it) }
-                .getOrDefault(emptyList())
-                .also { Log.i(TAG, "resolved $h -> ${it.map { a -> a.hostAddress }}") }
-        }.distinct()
-        val b = Builder().setSession("ohttp-blackhole").setBlocking(true)
-            .addAddress("10.77.0.2", 32)
-            .addAddress("fd00:77::2", 128)
-            .addAllowedApplication(packageName)
+        val addrs =
+            hosts
+                .flatMap { h ->
+                    runCatching { InetAddress.getAllByName(h).toList() }
+                        .onFailure { Log.e(TAG, "resolve $h failed", it) }
+                        .getOrDefault(emptyList())
+                        .also { Log.i(TAG, "resolved $h -> ${it.map { a -> a.hostAddress }}") }
+                }.distinct()
+        val b =
+            Builder()
+                .setSession("ohttp-blackhole")
+                .setBlocking(true)
+                .addAddress("10.77.0.2", 32)
+                .addAddress("fd00:77::2", 128)
+                .addAllowedApplication(packageName)
         addrs.forEach { b.addRoute(it, if (it.address.size == 4) 32 else 128) }
-        val fd = b.establish() ?: run { Log.e(TAG, "establish() null (no consent?)"); return }
+        val fd =
+            b.establish() ?: run {
+                Log.e(TAG, "establish() null (no consent?)")
+                return
+            }
         tun = fd
         running = true
         setOn(true)

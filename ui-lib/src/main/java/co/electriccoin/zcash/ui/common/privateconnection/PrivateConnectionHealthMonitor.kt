@@ -193,15 +193,15 @@ class PrivateConnectionHealthMonitor(
     ) = synchronized(this) {
         if (ownership !== owned) return@synchronized
         val commands = owned.state.handle(event, clock())
-        /* Evidence events are frequent and carry no decision: log what decides something. */
-        if (event !is Event.Observation && event !is Event.PresentationGateChanged || commands.isNotEmpty()) {
+        // Evidence events are frequent and carry no decision: log what decides something.
+        if ((event !is Event.Observation && event !is Event.PresentationGateChanged) || commands.isNotEmpty()) {
             Twig.info { "Private connection health: ${event.describe()} -> ${commands.map { it.toString() }}" }
         }
         commands.forEach { execute(owned, it) }
         /* What the user dismissed is no longer shown, whether or not the policy had marked it as presented (a
         paused ownership that resumed has not). */
         if (event == Event.Acknowledged) _outage.update { null }
-        /* An outage is only ever shown for a live episode: a recovered or handed-over route clears it. */
+        // An outage is only ever shown for a live episode: a recovered or handed-over route clears it.
         if (owned.state.episode == null) _outage.update { null }
     }
 
@@ -212,7 +212,7 @@ class PrivateConnectionHealthMonitor(
         when (command) {
             is Command.ScheduleGrace -> {
                 owned.grace?.cancel()
-                /* Rounded up: a timer that fires before the deadline is ignored by the policy and would leave the investigation stuck. */
+                // Rounded up: a timer that fires before the deadline is ignored by the policy and would leave the investigation stuck.
                 val delayMs = ((command.deadline - clock() + NANOS_PER_MILLI - 1) / NANOS_PER_MILLI).coerceAtLeast(0)
                 owned.grace =
                     owned.scope.launch {
@@ -220,10 +220,12 @@ class PrivateConnectionHealthMonitor(
                         owned.events.trySend(Event.GraceExpired(command.id))
                     }
             }
+
             Command.CancelGrace -> {
                 owned.grace?.cancel()
                 owned.grace = null
             }
+
             is Command.Probe -> {
                 owned.probe?.cancel()
                 owned.probe =
@@ -231,12 +233,19 @@ class PrivateConnectionHealthMonitor(
                         owned.events.trySend(Event.ProbeCompleted(command.id, runProbe(owned)))
                     }
             }
+
             Command.CancelProbe -> {
                 owned.probe?.cancel()
                 owned.probe = null
             }
-            is Command.Present -> _outage.update { PrivateConnectionOutage(command.episode, command.operation) }
-            Command.DismissOutage -> _outage.update { null }
+
+            is Command.Present -> {
+                _outage.update { PrivateConnectionOutage(command.episode, command.operation) }
+            }
+
+            Command.DismissOutage -> {
+                _outage.update { null }
+            }
         }
     }
 

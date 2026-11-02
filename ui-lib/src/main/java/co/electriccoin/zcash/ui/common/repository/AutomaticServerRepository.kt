@@ -256,7 +256,9 @@ class AutomaticServerRepositoryImpl(
             when {
                 !automatic || isPublic || !hasSynchronizer || endpoint == null ||
                     !lightWalletEndpointProvider.isOhttpGateway(endpoint) -> PrivateWatch.Stop
+
                 !foreground -> PrivateWatch.Pause
+
                 else -> PrivateWatch.Own(PrivateConnectionTarget(endpoint, viaTor))
             }
         }.distinctUntilChanged()
@@ -363,7 +365,7 @@ class AutomaticServerRepositoryImpl(
                             if (fallbackActive) {
                                 ticks(FALLBACK_RECOVERY_INTERVAL, SwitchTrigger.RECOVERY)
                             } else if (isPublic || requestHealthDetection.isEnabled()) {
-                                /* The request-health detection runs its own fallback probe in Private mode. */
+                                // The request-health detection runs its own fallback probe in Private mode.
                                 emptyFlow()
                             } else {
                                 applicationStateProvider
@@ -520,7 +522,7 @@ class AutomaticServerRepositoryImpl(
                 }
 
                 is ServerFallbackPolicy.DecisionResult.StayAndReportGatewayUnavailable -> {
-                    /* With the request-health detection on, the outage is confirmed there, not here. */
+                    // With the request-health detection on, the outage is confirmed there, not here.
                     if (!requestHealthDetection.isEnabled()) reportGatewayUnavailable(clearsAtStart)
                     Twig.info {
                         "Automatic server: OHTTP-first current=${current.host} " +

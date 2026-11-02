@@ -99,14 +99,21 @@ class PrivateConnectionHealthEdgeCasesTest {
             state.handle(Event.GraceExpired(2), 3_000_000_000)
             val head =
                 observation(
-                    OhttpHealthOutcome.Usable, start = 3_000_000_001, end = 3_500_000_000, version = 2,
-                    purpose = OhttpHealthPurpose.DIAGNOSTIC, stage = OhttpHealthStage.RESPONSE_HEAD,
+                    OhttpHealthOutcome.Usable,
+                    start = 3_000_000_001,
+                    end = 3_500_000_000,
+                    version = 2,
+                    purpose = OhttpHealthPurpose.DIAGNOSTIC,
+                    stage = OhttpHealthStage.RESPONSE_HEAD,
                 )
             assertTrue(state.handle(Event.Observation(head), 3_500_000_000).isEmpty())
             val body =
                 observation(
-                    start = 3_000_000_001, end = 4_000_000_000, version = 3,
-                    purpose = OhttpHealthPurpose.DIAGNOSTIC, stage = OhttpHealthStage.RESPONSE_BODY,
+                    start = 3_000_000_001,
+                    end = 4_000_000_000,
+                    version = 3,
+                    purpose = OhttpHealthPurpose.DIAGNOSTIC,
+                    stage = OhttpHealthStage.RESPONSE_BODY,
                 )
             if (!resultFirst) assertTrue(state.handle(Event.Observation(body), 4_000_000_000).isEmpty())
             assertEquals(
@@ -226,7 +233,9 @@ class PrivateConnectionHealthEdgeCasesTest {
                 val success = observation(OhttpHealthOutcome.Usable, start = 0, end = 20, version = 100)
                 val failure =
                     observation(
-                        start = 1, end = 10, version = 1,
+                        start = 1,
+                        end = 10,
+                        version = 1,
                         source = if (crossSource) OhttpHealthSource.NATIVE else OhttpHealthSource.CLIENT,
                     )
                 if (successFirst) {
@@ -356,12 +365,21 @@ class PrivateConnectionHealthEdgeCasesTest {
         val operation = operation(5_000_000_000)
         val head =
             observation(
-                OhttpHealthOutcome.Usable, start = 5_000_000_000, end = 6_000_000_000, version = 2, requestId = 41,
-                operation = operation, stage = OhttpHealthStage.RESPONSE_HEAD,
+                OhttpHealthOutcome.Usable,
+                start = 5_000_000_000,
+                end = 6_000_000_000,
+                version = 2,
+                requestId = 41,
+                operation = operation,
+                stage = OhttpHealthStage.RESPONSE_HEAD,
             )
         val body =
             observation(
-                start = 5_000_000_000, end = 7_000_000_000, version = 3, requestId = 41, operation = operation,
+                start = 5_000_000_000,
+                end = 7_000_000_000,
+                version = 3,
+                requestId = 41,
+                operation = operation,
                 stage = OhttpHealthStage.RESPONSE_BODY,
             )
         val another = observation(start = 7_000_000_000, end = 8_000_000_000, version = 4, requestId = 42, operation = operation)

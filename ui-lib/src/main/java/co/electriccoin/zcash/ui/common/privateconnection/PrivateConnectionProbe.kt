@@ -74,21 +74,38 @@ class PrivateConnectionProbe(
                 return it
             }
             return when (validation) {
-                /* The probe's budget ran out: the route did not deliver in time. */
-                null -> OhttpHealthOutcome.TransportUnavailable
-                ServerValidation.Valid -> OhttpHealthOutcome.Usable
-                ServerValidation.Running -> OhttpHealthOutcome.Inconclusive
-                is ServerValidation.InValid ->
+                // The probe's budget ran out: the route did not deliver in time.
+                null -> {
+                    OhttpHealthOutcome.TransportUnavailable
+                }
+
+                ServerValidation.Valid -> {
+                    OhttpHealthOutcome.Usable
+                }
+
+                ServerValidation.Running -> {
+                    OhttpHealthOutcome.Inconclusive
+                }
+
+                is ServerValidation.InValid -> {
                     when {
-                        OhttpHealthOutcome.TransportUnavailable in diagnostics -> OhttpHealthOutcome.TransportUnavailable
-                        validation.reason is CompactBlockProcessorException -> OhttpHealthOutcome.ConfigurationFailure
-                        else ->
+                        OhttpHealthOutcome.TransportUnavailable in diagnostics -> {
+                            OhttpHealthOutcome.TransportUnavailable
+                        }
+
+                        validation.reason is CompactBlockProcessorException -> {
+                            OhttpHealthOutcome.ConfigurationFailure
+                        }
+
+                        else -> {
                             diagnostics.firstOrNull {
                                 it == OhttpHealthOutcome.ConfigurationFailure ||
                                     it == OhttpHealthOutcome.PolicyRejected ||
                                     it == OhttpHealthOutcome.ResponseRejected
                             } ?: OhttpHealthOutcome.TransportUnavailable
+                        }
                     }
+                }
             }
         }
     }

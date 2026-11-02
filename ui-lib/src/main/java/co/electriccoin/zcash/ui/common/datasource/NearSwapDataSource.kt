@@ -36,13 +36,13 @@ import co.electriccoin.zcash.ui.common.provider.TokenIconProvider
 import co.electriccoin.zcash.ui.common.provider.TokenNameProvider
 import co.electriccoin.zcash.ui.common.repository.GiftCardSecretDetector.mayContainGiftCardSecret
 import co.electriccoin.zcash.ui.util.loggableNot
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.math.MathContext
 import java.math.RoundingMode
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 class NearSwapDataSource(
     private val nearApiProvider: NearApiProvider,

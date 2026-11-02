@@ -55,7 +55,7 @@ class OhttpUnavailableVM(
     init {
         viewModelScope.launch {
             automaticServerRepository.isTransactionInProgress.first { it }
-            /* Closing it for a send is a dismissal: only a later failing user action shows it again. */
+            // Closing it for a send is a dismissal: only a later failing user action shows it again.
             automaticServerRepository.acknowledgeOhttpUnavailable()
             closeIfOnTop()
         }

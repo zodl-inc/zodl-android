@@ -13,9 +13,9 @@ import co.electriccoin.lightwallet.client.health.OhttpHealthStage
 import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealth.Path
 import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealth.ProbeResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -54,7 +54,7 @@ class PrivateConnectionHealthMonitorTest {
             probe = { r, generation ->
                 probes += 1
                 probeBehaviour?.invoke(probes)
-                /* A real probe starts after the failure that triggered it, never at the same instant. */
+                // A real probe starts after the failure that triggered it, never at the same instant.
                 val start = now() + PROBE_START_AFTER_NANOS
                 ProbeResult(probeOutcome, r, generation, start, start + 1)
             },
@@ -108,7 +108,12 @@ class PrivateConnectionHealthMonitorTest {
             runCurrent()
             assertEquals(1, probes)
             assertNotNull(monitor.outage.value)
-            assertEquals(1L, monitor.outage.value?.episode?.id)
+            assertEquals(
+                1L,
+                monitor.outage.value
+                    ?.episode
+                    ?.id
+            )
         }
 
     @Test

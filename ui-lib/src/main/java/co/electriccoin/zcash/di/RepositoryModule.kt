@@ -66,7 +66,7 @@ val repositoryModule =
         singleOf(::WalletSnapshotRepositoryImpl) bind WalletSnapshotRepository::class
         singleOf(::ApplicationStateRepositoryImpl) bind ApplicationStateRepository::class
         single { EvaluationInterval(minimumInterval = MINIMUM_EVALUATION_INTERVAL) }
-        /* The request-health outage detection (MOB-2300): on in debug builds only until it has been validated on devices; the previous detection stays in charge elsewhere. */
+        // The request-health outage detection (MOB-2300): on in debug builds only until it has been validated on devices; the previous detection stays in charge elsewhere.
         single { RequestHealthDetection { BuildConfig.DEBUG } }
         single { PrivateConnectionProbe(application = get()) }
         single<PrivateConnectionHealthOwner> {

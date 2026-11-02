@@ -51,7 +51,7 @@ class ObserveOhttpUnavailablePromptUseCase(
                     try {
                         awaitCancellation()
                     } finally {
-                        /* The outage is over (or this episode was replaced): the prompt has nothing left to say. */
+                        // The outage is over (or this episode was replaced): the prompt has nothing left to say.
                         if (requestHealthDetection.isEnabled()) closePrompt()
                     }
                 }
