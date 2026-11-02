@@ -74,7 +74,7 @@ jobs:
 
   static_analysis_detekt:
     needs: validate_gradle_wrapper
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
     steps:
@@ -113,7 +113,7 @@ jobs:
 
   static_analysis_ktlint:
     needs: validate_gradle_wrapper
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
     steps:
@@ -152,7 +152,7 @@ jobs:
 
   static_analysis_android_lint:
     needs: validate_gradle_wrapper
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
     steps:
@@ -204,7 +204,7 @@ jobs:
 
   test_kotlin_modules:
     needs: validate_gradle_wrapper
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
     steps:
@@ -440,7 +440,7 @@ jobs:
 
   build:
     needs: [validate_gradle_wrapper]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
     steps:
