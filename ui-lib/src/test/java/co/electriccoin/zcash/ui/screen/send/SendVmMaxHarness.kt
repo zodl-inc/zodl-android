@@ -80,6 +80,7 @@ internal class SendVmMaxHarness {
                 coEvery { getSynchronizer() } returns mockk { every { network } returns ZcashNetwork.Mainnet }
             }
         return SendViewModel(
+            args = Send(),
             exchangeRateRepository = mockk<ExchangeRateRepository>(relaxed = true),
             observeContactByAddress = mockk<ObserveContactByAddressUseCase>(relaxed = true),
             observeContactPicked = mockk<ObserveABContactPickedUseCase> { every { this@mockk() } returns emptyFlow() },

@@ -40,6 +40,7 @@ import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationUIState
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.SecretState
+import co.electriccoin.zcash.ui.common.viewmodel.SharedPaymentViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.isAppAccessLocked
 import co.electriccoin.zcash.ui.design.component.BlankSurface
@@ -88,6 +89,8 @@ class MainActivity : FragmentActivity() {
     private val handleExternalLink: HandleExternalLinkUseCase by inject()
     private val appAccessLockProvider: AppAccessLockProvider by inject()
 
+    private val sharedPaymentViewModel by viewModel<SharedPaymentViewModel>()
+
     /**
      * Initializes the activity. A recreated Activity starts locked; the first composition of
      * AuthenticationForAppAccess determines the actual lock state.
@@ -106,13 +109,23 @@ class MainActivity : FragmentActivity() {
 
         monitorForBackgroundSync()
 
+        // A recreated Activity is handed its launch Intent again; the share in it was accepted the first time.
+        if (savedInstanceState == null) {
+            sharedPaymentViewModel.accept(intent)
+        }
         handleViewIntent(intent, isRecreated = savedInstanceState != null)
         handleMigrationIntent(intent)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                sharedPaymentViewModel.handlePending()
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
+        sharedPaymentViewModel.accept(intent)
         handleViewIntent(intent, isRecreated = false)
         handleMigrationIntent(intent)
     }
@@ -127,6 +140,7 @@ class MainActivity : FragmentActivity() {
         intent: Intent,
         isRecreated: Boolean
     ) {
+        if (intent.action != Intent.ACTION_VIEW) return
         val data = intent.data ?: return
         val isFromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
         val isGiftCardLink = handleExternalLink(host = data.host, isRedelivery = isRecreated || isFromHistory)
