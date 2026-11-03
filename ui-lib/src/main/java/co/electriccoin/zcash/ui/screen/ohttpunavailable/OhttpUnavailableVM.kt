@@ -3,11 +3,15 @@ package co.electriccoin.zcash.ui.screen.ohttpunavailable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavDestination.Companion.hasRoute
+import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.FastestServersState
+import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
 import co.electriccoin.zcash.ui.common.usecase.IsTorEnabledUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveFastestServersUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.SetTorEnabledUseCase
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -32,6 +36,8 @@ class OhttpUnavailableVM(
     private val persistServerSelection: PersistServerSelectionUseCase,
     private val navigationRouter: NavigationRouter,
     private val automaticServerRepository: AutomaticServerRepository,
+    private val observeFastestServers: ObserveFastestServersUseCase,
+    private val lightWalletEndpointProvider: LightWalletEndpointProvider,
 ) : ViewModel() {
     val state: StateFlow<OhttpUnavailableState?> =
         isTorEnabled
@@ -84,16 +90,35 @@ class OhttpUnavailableVM(
     private fun onTorToggle(enabled: Boolean) = viewModelScope.launch { setTorEnabled(enabled) }
 
     /**
-     * Marked as outage-induced, so the wallet returns to Private by itself once the relay answers. The
-     * transaction check runs again under the server-selection lock, since a send can start while the
-     * sheet is open; a refused switch leaves the sheet open.
+     * Marked as outage-induced, so the wallet returns to Private by itself once the relay answers.
+     * Uses the fastest public server only from a finished result that already exists, never a new
+     * benchmark (ZIP #10 rule 3). The sheet shows in Private mode, where the fastest-servers
+     * benchmark measures only the gateway, so this is normally null and the default public server
+     * is used; the automatic switch ranks the public servers later, once Public is saved. The
+     * transaction check runs again under the server-selection lock, since a send can start while
+     * the sheet is open; a refused switch leaves the sheet open.
      */
     private fun onSwitchToPublic() =
         viewModelScope.launch {
             val inTransaction: suspend () -> Boolean = { automaticServerRepository.isTransactionInProgress.first() }
             if (inTransaction()) return@launch
-            if (persistServerSelection.persistPublic(afterPrivateUnavailable = true, abortIf = inTransaction)) {
+            val fastest = fastestPublicServer(observeFastestServers().value)
+            if (persistServerSelection.persistPublic(
+                    afterPrivateUnavailable = true,
+                    fastest = fastest,
+                    abortIf = inTransaction
+                )
+            ) {
                 navigationRouter.back()
             }
         }
+
+    /**
+     * Returns the fastest non-gateway server from the given [FastestServersState], or null if the
+     * state is still loading or has no public servers.
+     */
+    private fun fastestPublicServer(state: FastestServersState): LightWalletEndpoint? =
+        state.servers
+            ?.takeIf { !state.isLoading }
+            ?.firstOrNull { !lightWalletEndpointProvider.isOhttpGateway(it) }
 }

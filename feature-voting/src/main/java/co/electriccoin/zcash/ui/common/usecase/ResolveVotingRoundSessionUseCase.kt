@@ -19,9 +19,12 @@ class ResolveVotingRoundSessionUseCase(
     private val votingApiRepository: VotingApiRepository,
     private val votingConfigRepository: VotingConfigRepository
 ) {
-    suspend operator fun invoke(roundId: String): VotingRoundSessionContext {
+    suspend operator fun invoke(
+        roundId: String,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+    ): VotingRoundSessionContext {
         val normalizedRoundId = roundId.lowercase()
-        val serviceConfig = votingApiProvider.fetchServiceConfig()
+        val serviceConfig = votingApiProvider.fetchServiceConfig(decision)
         votingConfigRepository.store(
             VotingConfigSnapshot(
                 serviceConfig = serviceConfig,
@@ -29,7 +32,7 @@ class ResolveVotingRoundSessionUseCase(
             )
         )
 
-        val roundsResult = votingApiProvider.fetchAllRounds()
+        val roundsResult = votingApiProvider.fetchAllRounds(decision)
         votingApiRepository.storeRounds(roundsResult.rounds, roundsResult.sessionsByRoundId)
 
         val session =

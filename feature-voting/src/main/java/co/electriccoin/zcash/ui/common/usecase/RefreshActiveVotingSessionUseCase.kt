@@ -11,9 +11,11 @@ class RefreshActiveVotingSessionUseCase(
     private val votingApiProvider: VotingApiProvider,
     private val votingConfigRepository: VotingConfigRepository,
     private val votingApiRepository: VotingApiRepository,
+    private val votingRouteProvider: co.electriccoin.zcash.ui.common.provider.VotingRouteProvider,
 ) {
     suspend operator fun invoke() {
-        val serviceConfig = votingApiProvider.fetchServiceConfig()
+        val decision = votingRouteProvider.decision()
+        val serviceConfig = votingApiProvider.fetchServiceConfig(decision)
         votingConfigRepository.store(
             VotingConfigSnapshot(
                 serviceConfig = serviceConfig,
@@ -21,7 +23,7 @@ class RefreshActiveVotingSessionUseCase(
             )
         )
 
-        val roundsResult = votingApiProvider.fetchAllRounds()
+        val roundsResult = votingApiProvider.fetchAllRounds(decision)
         votingApiRepository.storeRounds(roundsResult.rounds, roundsResult.sessionsByRoundId)
     }
 }

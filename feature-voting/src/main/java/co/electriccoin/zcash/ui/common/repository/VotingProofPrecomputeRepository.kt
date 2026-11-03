@@ -5,7 +5,6 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
-import co.electriccoin.zcash.ui.common.provider.acquireVotingTorLeaseOrNull
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -115,7 +114,7 @@ interface VotingProofPrecomputeRepository {
 class VotingProofPrecomputeRepositoryImpl(
     private val votingCryptoClient: VotingCryptoClient,
     private val pirSnapshotResolver: PirSnapshotResolver,
-    private val synchronizerProvider: SynchronizerProvider,
+    private val votingRouteProvider: co.electriccoin.zcash.ui.common.provider.VotingRouteProvider,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
     // Injectable so tests exercising the "one failure is enough" dedup-key behavior
     // aren't forced to actually wait out real backoff delays -- see withPirFetchRetry's own
@@ -219,49 +218,45 @@ class VotingProofPrecomputeRepositoryImpl(
 
     private suspend fun runPirWarmup(request: VotingPirWarmupRequest) {
         runCatching {
-            val pirServerUrl =
-                pirSnapshotResolver.resolve(
-                    endpoints = request.pirEndpoints,
-                    expectedSnapshotHeight = request.snapshotHeight
-                )
-            val dbHandle = votingCryptoClient.openVotingDb(request.votingDbPath)
-            check(dbHandle != 0L) { "Failed to open voting DB at ${request.votingDbPath}" }
-
+            val route = votingRouteProvider.acquire()
             try {
-                votingCryptoClient.setWalletId(dbHandle, request.walletId, request.networkId)
-                // Acquired here, inside the job that actually uses it, rather than by the caller
-                // before startPirWarmup -- startPirWarmup no-ops on an existing dedup-key job (see
-                // its own comment above), and a lease taken by the caller for that no-op path would
-                // never be released. Inside the DB try, so a Tor init failure or cancellation still
-                // closes the DB handle below. Same Tor-optional policy as SubmitVotesUseCase.kt.
-                val torLease = synchronizerProvider.getSynchronizer().acquireVotingTorLeaseOrNull()
+                val pirServerUrl =
+                    pirSnapshotResolver.resolve(
+                        decision = route.decision,
+                        endpoints = request.pirEndpoints,
+                        expectedSnapshotHeight = request.snapshotHeight
+                    )
+                val dbHandle = votingCryptoClient.openVotingDb(request.votingDbPath)
+                check(dbHandle != 0L) { "Failed to open voting DB at ${request.votingDbPath}" }
+
                 try {
+                    votingCryptoClient.setWalletId(dbHandle, request.walletId, request.networkId)
                     withPirFetchRetry("PIR proof warmup for account ${request.accountUuid}") {
                         votingCryptoClient.precomputePirProofs(
                             dbHandle = dbHandle,
-                            torLease = torLease,
+                            route = route,
                             pirServerUrl = pirServerUrl,
                             pirLayout = request.pirLayout,
                             notesJson = request.notesJson
                         )
                     }
                 } finally {
-                    torLease?.release()
+                    // cancelAndAwaitPrecompute cancels this
+                    // job while it may be blocked inside the native, non-cancellable precompute call
+                    // -- cancellation only actually takes effect once that call returns. By then this
+                    // coroutine's Job is already Cancelling/Cancelled, so a plain suspend call here
+                    // (closeVotingDb itself uses withContext(Dispatchers.IO)) would throw
+                    // CancellationException immediately instead of running, leaking the dbHandle and
+                    // the shared native lock it holds -- exactly the outcome this whole fix exists to
+                    // prevent. NonCancellable guarantees this cleanup actually runs, same pattern
+                    // SubmitVotesUseCase.kt already uses for its own roundSession.close()/
+                    // closeVotingDb() cleanup.
+                    withContext(NonCancellable) {
+                        votingCryptoClient.closeVotingDb(dbHandle)
+                    }
                 }
             } finally {
-                // cancelAndAwaitPrecompute cancels this
-                // job while it may be blocked inside the native, non-cancellable precompute call
-                // -- cancellation only actually takes effect once that call returns. By then this
-                // coroutine's Job is already Cancelling/Cancelled, so a plain suspend call here
-                // (closeVotingDb itself uses withContext(Dispatchers.IO)) would throw
-                // CancellationException immediately instead of running, leaking the dbHandle and
-                // the shared native lock it holds -- exactly the outcome this whole fix exists to
-                // prevent. NonCancellable guarantees this cleanup actually runs, same pattern
-                // SubmitVotesUseCase.kt already uses for its own roundSession.close()/
-                // closeVotingDb() cleanup.
-                withContext(NonCancellable) {
-                    votingCryptoClient.closeVotingDb(dbHandle)
-                }
+                route.release()
             }
         }.onSuccess { result ->
             // This result used to be built and dropped
@@ -282,24 +277,23 @@ class VotingProofPrecomputeRepositoryImpl(
 
     private suspend fun runSnapshotBundlePrecompute(request: VotingSnapshotBundlePrecomputeRequest) {
         runCatching {
-            val pirServerUrl =
-                pirSnapshotResolver.resolve(
-                    endpoints = request.pirEndpoints,
-                    expectedSnapshotHeight = request.expectedSnapshotHeight
-                )
-            val dbHandle = votingCryptoClient.openVotingDb(request.votingDbPath)
-            check(dbHandle != 0L) { "Failed to open voting DB at ${request.votingDbPath}" }
-
+            val route = votingRouteProvider.acquire()
             try {
-                votingCryptoClient.setWalletId(dbHandle, request.walletId, request.networkId)
-                // See runPirWarmup's identical comment above -- same no-op-on-existing-job hazard,
-                // same fix.
-                val torLease = synchronizerProvider.getSynchronizer().acquireVotingTorLeaseOrNull()
+                val pirServerUrl =
+                    pirSnapshotResolver.resolve(
+                        decision = route.decision,
+                        endpoints = request.pirEndpoints,
+                        expectedSnapshotHeight = request.expectedSnapshotHeight
+                    )
+                val dbHandle = votingCryptoClient.openVotingDb(request.votingDbPath)
+                check(dbHandle != 0L) { "Failed to open voting DB at ${request.votingDbPath}" }
+
                 try {
+                    votingCryptoClient.setWalletId(dbHandle, request.walletId, request.networkId)
                     withPirFetchRetry("Snapshot bundle precompute for round ${request.roundId}") {
                         votingCryptoClient.precomputeSnapshotBundles(
                             dbHandle = dbHandle,
-                            torLease = torLease,
+                            route = route,
                             roundId = request.roundId,
                             pirServerUrl = pirServerUrl,
                             pirLayout = request.pirLayout,
@@ -307,13 +301,13 @@ class VotingProofPrecomputeRepositoryImpl(
                         )
                     }
                 } finally {
-                    torLease?.release()
+                    // See runPirWarmup's identical comment above -- same reasoning.
+                    withContext(NonCancellable) {
+                        votingCryptoClient.closeVotingDb(dbHandle)
+                    }
                 }
             } finally {
-                // See runPirWarmup's identical comment above -- same reasoning.
-                withContext(NonCancellable) {
-                    votingCryptoClient.closeVotingDb(dbHandle)
-                }
+                route.release()
             }
         }.onSuccess { result ->
             // Same observability gap as runPirWarmup above.
