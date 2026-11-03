@@ -564,6 +564,42 @@ class AutomaticServerRepositoryTest {
             coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
         }
 
+    /**
+     * RECOVERY ticks run every 30 s (foreground) or 5 min (background) to check whether the gateway is back.
+     * The full fastest-server benchmark can take up to 90 s and would be cancelled by switchLane's mapLatest
+     * before completing. RECOVERY evaluations use lightweight probeGateway (one GetLightdInfo per gateway,
+     * 20 s cap) instead of the full benchmark.
+     */
+    @Test
+    fun recoveryTriggerUsesProbeGatewayNotFullBenchmark() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            fallbackActive = true
+            coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns ServerValidation.Valid
+
+            val result = repository.evaluateServerSwitch(SwitchTrigger.RECOVERY)
+
+            // RECOVERY evaluations probe via validateServerEndpoint, not the full getFastestServers benchmark
+            assertEquals(gateway, result)
+            coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
+            coVerify(exactly = 1) { synchronizer.validateServerEndpoint(any(), gateway) }
+        }
+
+    @Test
+    fun connectivityTriggerOnFallbackUsesProbeGatewayNotFullBenchmark() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            fallbackActive = true
+            coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns ServerValidation.Valid
+
+            val result = repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY)
+
+            // CONNECTIVITY evaluations on fallback probe via validateServerEndpoint, not getFastestServers
+            assertEquals(gateway, result)
+            coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
+            coVerify(exactly = 1) { synchronizer.validateServerEndpoint(any(), gateway) }
+        }
+
     @Test
     fun scenario1And2GatewayReachableStaysOnOhttpWithoutProbingClearnet() =
         runTest {
@@ -948,7 +984,7 @@ class AutomaticServerRepositoryTest {
         }
 
     @Test
-    fun fallbackRecoveryTicksKeepTheirOwnIntervalAndAreNotGatedByTheForeground() =
+    fun fallbackRecoveryTicksRunInTheBackgroundEveryFiveMinutes() =
         runTest {
             fallbackActiveFlow.value = true
             foreground.value = false
@@ -959,6 +995,20 @@ class AutomaticServerRepositoryTest {
             advanceTimeBy(5.minutes + 1.seconds)
 
             assertEquals(listOf(SwitchTrigger.RECOVERY), ticks)
+        }
+
+    @Test
+    fun fallbackRecoveryTicksRunEveryThirtySecondsInTheForeground() =
+        runTest {
+            fallbackActiveFlow.value = true
+            foreground.value = true
+            val ticks = mutableListOf<SwitchTrigger>()
+            repository.healthTicks().onEach { ticks += it }.launchIn(backgroundScope)
+            runCurrent()
+
+            advanceTimeBy(60.seconds + 1.seconds)
+
+            assertEquals(listOf(SwitchTrigger.RECOVERY, SwitchTrigger.RECOVERY), ticks)
         }
 
     @Test
@@ -1259,6 +1309,8 @@ class AutomaticServerRepositoryTest {
             val servers = if (isOhttpTier) (if (gatewayReachable) listOf(gateway) else emptyList()) else rankedFallbacks
             flowOf(FastestServersResult.Done(servers))
         }
+        coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns
+            if (gatewayReachable) ServerValidation.Valid else ServerValidation.InValid(IllegalStateException("down"))
     }
 
     private fun wallet(walletEndpoint: LightWalletEndpoint) =

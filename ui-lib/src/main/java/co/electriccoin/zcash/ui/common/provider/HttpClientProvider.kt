@@ -35,6 +35,13 @@ interface HttpClientProvider {
     suspend fun create(): HttpClient
 
     /**
+     * Creates a client for the given routing decision.
+     *
+     * @param tor true for Tor routing, false for direct
+     */
+    suspend fun create(tor: Boolean): HttpClient = if (tor) createTor() else create()
+
+    /**
      * Returns a client that always routes over Tor, regardless of the user's Tor preference. Used for
      * requests that must never touch clearnet (e.g. exchange-rate fetching, MOB-1378).
      */
@@ -93,6 +100,9 @@ class HttpClientProviderImpl(
 
     override suspend fun create(): HttpClient =
         if (isTorEnabledStorageProvider.get() == true) createTor() else createDirect()
+
+    override suspend fun create(tor: Boolean): HttpClient =
+        if (tor) createTor() else createDirect()
 
     override suspend fun supportsKtorTimeouts(): Boolean = isTorEnabledStorageProvider.get() != true
 
@@ -189,9 +199,9 @@ class HttpClientProviderImpl(
         HttpClient(OkHttp) {
             configureHttpClient(installTimeouts = true)
             engine {
-                // MOB-1378: Currency Conversion exchange rates must only ever be fetched over Tor (the
+                // MOB-1378: Currency Conversion exchange rates must only ever be fetched privately (the
                 // in-app copy promises rates are fetched over Tor to protect the user's IP). CMCApiProvider
-                // already routes through createTor(), so this clearnet client should never see a CMC
+                // already routes through createOhttp(), so this clearnet client should never see a CMC
                 // request — this interceptor is a backstop that fails loudly if a future caller regresses
                 // to create(), rather than silently leaking the user's IP / request timing.
                 addInterceptor { chain ->

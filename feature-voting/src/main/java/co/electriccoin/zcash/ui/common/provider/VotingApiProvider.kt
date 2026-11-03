@@ -26,8 +26,10 @@ import co.electriccoin.zcash.ui.common.model.voting.TxEvent
 import co.electriccoin.zcash.ui.common.model.voting.TxEventAttribute
 import co.electriccoin.zcash.ui.common.model.voting.VoteCommitmentBundle
 import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
+import co.electriccoin.zcash.ui.common.model.voting.VotingConfigSourceSnapshot
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundAuthenticationException
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.model.voting.ZodlEndorsedRoundsResponse
@@ -85,7 +87,10 @@ data class RoundsListResult(
 }
 
 interface VotingApiProvider {
-    suspend fun validateConfigSource(source: PinnedConfigSource)
+    suspend fun validateConfigSource(
+        source: PinnedConfigSource,
+        decision: VotingRouteDecision
+    )
 
     /**
      * Drops any in-memory resolved-config cache so the next caller (typically
@@ -96,9 +101,11 @@ interface VotingApiProvider {
      */
     suspend fun invalidateConfigCache()
 
-    suspend fun fetchServiceConfig(): VotingServiceConfig
+    suspend fun fetchServiceConfig(
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+    ): VotingServiceConfig
 
-    suspend fun fetchActiveVotingSession(): VotingSession?
+    suspend fun fetchActiveVotingSession(decision: VotingRouteDecision): VotingSession?
 
     /**
      * Fetches `/rounds` and returns both the user-facing [VotingRound] cards and
@@ -107,20 +114,32 @@ interface VotingApiProvider {
      * from navigation without consulting `/rounds/active` — the iOS pattern of
      * "rounds list is authoritative" (`VotingStore+Session.swift:69-77`, `:588-640`).
      */
-    suspend fun fetchAllRounds(): RoundsListResult
+    suspend fun fetchAllRounds(
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+    ): RoundsListResult
 
-    suspend fun fetchZodlEndorsedRoundIds(): Set<String>
+    suspend fun fetchZodlEndorsedRoundIds(decision: VotingRouteDecision): Set<String>
 
-    suspend fun fetchTallyResults(roundIdHex: String): TallyResults
+    suspend fun fetchTallyResults(
+        roundIdHex: String,
+        decision: VotingRouteDecision
+    ): TallyResults
 
-    suspend fun delegateShares(shares: List<SharePayload>): List<DelegatedShareInfo>
+    suspend fun delegateShares(
+        shares: List<SharePayload>,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+    ): List<DelegatedShareInfo>
 
-    suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest
+    suspend fun fetchCommitmentTreeLatest(
+        roundIdHex: String,
+        decision: VotingRouteDecision
+    ): CommitmentTreeLatest
 
     suspend fun fetchCommitmentTreeLeafPage(
         roundIdHex: String,
         fromHeight: Long,
         toHeight: Long,
+        decision: VotingRouteDecision,
     ): CommitmentTreeLeafPage
 }
 
@@ -182,8 +201,11 @@ class KtorVotingApiProvider(
     // comment at its call site for why an uncapped fan-out is a real client- and server-side risk.
     private val shareDelegationSemaphore = Semaphore(MAX_CONCURRENT_SHARE_DELEGATIONS)
 
-    override suspend fun validateConfigSource(source: PinnedConfigSource) {
-        fetchStaticConfig(listOf(source))
+    override suspend fun validateConfigSource(
+        source: PinnedConfigSource,
+        decision: VotingRouteDecision
+    ) {
+        fetchStaticConfig(listOf(source), decision)
     }
 
     override suspend fun invalidateConfigCache() {
@@ -209,17 +231,20 @@ class KtorVotingApiProvider(
     // screen entry, pull-to-refresh, and a config-source change, so the submit flow's own config
     // reads are only as fresh as whatever that screen-level invalidation + this TTL last left
     // cached, not independently guaranteed fresh by the submit flow itself.
-    override suspend fun fetchServiceConfig(): VotingServiceConfig = getResolvedConfigWithTtl().serviceConfig
+    override suspend fun fetchServiceConfig(
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+    ): VotingServiceConfig = getResolvedConfigWithTtl(decision).serviceConfig
 
-    override suspend fun fetchActiveVotingSession(): VotingSession? =
+    override suspend fun fetchActiveVotingSession(decision: VotingRouteDecision): VotingSession? =
         try {
             executeWithVoteServerFailover(
+                decision,
                 ACTIVE_ROUNDS_PATH,
                 shouldTryNext = ::shouldTryNextVoteServerForRead,
             ) { baseUrl ->
-                val response = voteServerGet<ChainActiveRoundResponse>("$baseUrl$ACTIVE_ROUNDS_PATH")
+                val response = voteServerGet<ChainActiveRoundResponse>("$baseUrl$ACTIVE_ROUNDS_PATH", decision)
                 response.round?.toVotingSession()?.let { session ->
-                    authenticateVotingSession(session)
+                    authenticateVotingSession(session, decision)
                 }
             }
         } catch (exception: Exception) {
@@ -230,20 +255,23 @@ class KtorVotingApiProvider(
             }
         }
 
-    override suspend fun fetchAllRounds(): RoundsListResult =
+    override suspend fun fetchAllRounds(
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+    ): RoundsListResult =
         executeWithVoteServerFailover(
+            decision,
             ROUNDS_PATH,
             shouldTryNext = ::shouldTryNextVoteServerForRead,
         ) { baseUrl ->
             val response =
-                voteServerGet<ChainRoundsResponse>("$baseUrl$ROUNDS_PATH") {
+                voteServerGet<ChainRoundsResponse>("$baseUrl$ROUNDS_PATH", decision) {
                     noCache()
                 }
             val dtos = response.rounds.orEmpty()
             val rounds = mutableListOf<VotingRound>()
             val sessions = mutableMapOf<String, VotingSession>()
             for (dto in dtos) {
-                val session = authenticateVotingSessionOrNull(dto.toVotingSession()) ?: continue
+                val session = authenticateVotingSessionOrNull(dto.toVotingSession(), decision) ?: continue
                 val round = dto.toVotingRound()
                 rounds += round
                 sessions[round.id.lowercase()] = session
@@ -251,17 +279,18 @@ class KtorVotingApiProvider(
             RoundsListResult(rounds = rounds, sessionsByRoundId = sessions)
         }
 
-    override suspend fun fetchZodlEndorsedRoundIds(): Set<String> {
+    override suspend fun fetchZodlEndorsedRoundIds(decision: VotingRouteDecision): Set<String> {
         val failureStatuses = mutableListOf<HttpStatusCode?>()
         return try {
             executeWithVoteServerFailover(
+                decision = decision,
                 path = ENDORSED_ROUNDS_PATH,
                 shouldTryNext = { throwable ->
                     failureStatuses += (throwable as? ResponseException)?.response?.status
                     shouldTryNextVoteServerForRead(throwable)
                 },
             ) { baseUrl ->
-                voteServerGet<ZodlEndorsedRoundsResponse>("$baseUrl$ENDORSED_ROUNDS_PATH") {
+                voteServerGet<ZodlEndorsedRoundsResponse>("$baseUrl$ENDORSED_ROUNDS_PATH", decision) {
                     noCache()
                 }.roundIdsHex()
             }
@@ -274,27 +303,34 @@ class KtorVotingApiProvider(
         }
     }
 
-    override suspend fun fetchTallyResults(roundIdHex: String): TallyResults {
+    override suspend fun fetchTallyResults(
+        roundIdHex: String,
+        decision: VotingRouteDecision
+    ): TallyResults {
         val ballotDivisorZatoshi = votingCryptoClient.ballotDivisorZatoshi()
         return executeWithVoteServerFailover(
+            decision,
             tallyResultsPath(roundIdHex),
             shouldTryNext = ::shouldTryNextVoteServerForRead,
         ) { baseUrl ->
-            voteServerGet<ChainTallyResultsResponse>("$baseUrl${tallyResultsPath(roundIdHex)}")
+            voteServerGet<ChainTallyResultsResponse>("$baseUrl${tallyResultsPath(roundIdHex)}", decision)
                 .toTallyResults(roundIdHex, ballotDivisorZatoshi)
         }
     }
 
-    override suspend fun delegateShares(shares: List<SharePayload>): List<DelegatedShareInfo> {
+    override suspend fun delegateShares(
+        shares: List<SharePayload>,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+    ): List<DelegatedShareInfo> {
         val startMs = System.currentTimeMillis()
         votingLog("delegateShares START shares=${shares.size}")
         return try {
-            executeWithKtorTimeoutSupport delegateShares@{ supportsKtorTimeouts ->
+            executeWithKtorTimeoutSupport(decision) delegateShares@{ supportsKtorTimeouts, dec ->
                 if (shares.isEmpty()) {
                     return@delegateShares emptyList()
                 }
 
-                val config = getResolvedConfig().serviceConfig
+                val config = getResolvedConfig(dec).serviceConfig
                 val serverUrls =
                     config.voteServers
                         .map { endpoint -> endpoint.url.trimEnd('/') }
@@ -349,14 +385,14 @@ class KtorVotingApiProvider(
                         .map { share ->
                             async {
                                 shareDelegationSemaphore.withPermit {
-                                    httpClientProvider.create().use { client ->
+                                    httpClientProvider.create(dec.isTor).use { client ->
                                         val body = share.toApiBody()
                                         val healthyServers = serverHealthTracker.healthyServers(serverUrls)
                                         val quorum = max(1, (healthyServers.size + 1) / 2)
                                         val targets = healthyServers.shuffled().take(quorum)
                                         val acceptedByServers =
                                             client
-                                                .postShareToTargets(targets, body, supportsKtorTimeouts)
+                                                .postShareToTargets(targets, body, supportsKtorTimeouts, dec)
                                                 .toMutableList()
                                         if (acceptedByServers.isEmpty()) {
                                             val fallbackTargets =
@@ -365,7 +401,7 @@ class KtorVotingApiProvider(
                                                     .filterNot { serverUrl -> serverUrl in targets }
                                                     .shuffled()
                                             for (fallbackTarget in fallbackTargets) {
-                                                if (client.postShare(fallbackTarget, body, supportsKtorTimeouts)) {
+                                                if (client.postShare(fallbackTarget, body, supportsKtorTimeouts, dec)) {
                                                     acceptedByServers += fallbackTarget
                                                     break
                                                 }
@@ -395,13 +431,17 @@ class KtorVotingApiProvider(
         }
     }
 
-    override suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest {
+    override suspend fun fetchCommitmentTreeLatest(
+        roundIdHex: String,
+        decision: VotingRouteDecision
+    ): CommitmentTreeLatest {
         val path = commitmentTreeLatestPath(roundIdHex)
         return executeWithVoteServerFailover(
+            decision,
             path,
             shouldTryNext = ::shouldTryNextVoteServerForRead,
         ) { baseUrl ->
-            val tree = voteServerGet<ChainCommitmentTreeLatestResponse>("$baseUrl$path").tree
+            val tree = voteServerGet<ChainCommitmentTreeLatestResponse>("$baseUrl$path", decision).tree
             require(tree.height >= 0) { "Commitment tree height must be non-negative" }
             require(tree.nextIndex >= 0) { "Commitment tree next_index must be non-negative" }
             CommitmentTreeLatest(height = tree.height, nextIndex = tree.nextIndex)
@@ -412,20 +452,24 @@ class KtorVotingApiProvider(
         roundIdHex: String,
         fromHeight: Long,
         toHeight: Long,
+        decision: VotingRouteDecision,
     ): CommitmentTreeLeafPage {
         require(fromHeight >= 0) { "fromHeight must be non-negative" }
         require(toHeight >= fromHeight) { "toHeight must be at least fromHeight" }
         val path = commitmentTreeLeavesPath(roundIdHex, fromHeight, toHeight)
         return executeWithVoteServerFailover(
+            decision,
             path,
             shouldTryNext = ::shouldTryNextVoteServerForRead,
         ) { baseUrl ->
-            voteServerGet<ChainCommitmentTreeLeavesResponse>("$baseUrl$path").toModel()
+            voteServerGet<ChainCommitmentTreeLeavesResponse>("$baseUrl$path", decision).toModel()
         }
     }
 
-    private suspend fun getResolvedConfig(forceRefresh: Boolean = false): ResolvedVotingConfig =
-        resolveConfigCached(useTtl = false, forceRefresh = forceRefresh)
+    private suspend fun getResolvedConfig(
+        decision: VotingRouteDecision,
+        forceRefresh: Boolean = false
+    ): ResolvedVotingConfig = resolveConfigCached(useTtl = false, forceRefresh = forceRefresh, decision = decision)
 
     /**
      * Like [getResolvedConfig] but additionally requires a source-matching cache entry to be
@@ -434,10 +478,13 @@ class KtorVotingApiProvider(
      * site's comment for why this matters). A cache miss, a source change, or an expired entry
      * all fall through to a real fetch.
      */
-    private suspend fun getResolvedConfigWithTtl(): ResolvedVotingConfig =
+    private suspend fun getResolvedConfigWithTtl(
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+    ): ResolvedVotingConfig =
         resolveConfigCached(
             useTtl = true,
             forceRefresh = false,
+            decision = decision
         )
 
     /**
@@ -453,9 +500,10 @@ class KtorVotingApiProvider(
     private suspend fun resolveConfigCached(
         useTtl: Boolean,
         forceRefresh: Boolean,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
     ): ResolvedVotingConfig =
         configMutex.withLock {
-            val sources = resolveConfigSources()
+            val sources = resolveConfigSources(decision)
             val cached = cachedResolvedConfig
             val fetchedAtMs = cachedResolvedConfigFetchedAtMs
             val sourcesMatch = cached != null && cached.sources == sources
@@ -464,15 +512,28 @@ class KtorVotingApiProvider(
             if (!forceRefresh && sourcesMatch && withinTtl) {
                 cached
             } else {
-                fetchTrustedConfig(sources).also { resolved ->
+                fetchTrustedConfig(sources, decision).also { resolved ->
                     cachedResolvedConfig = resolved
                     cachedResolvedConfigFetchedAtMs = System.currentTimeMillis()
                 }
             }
         }
 
-    private suspend fun resolveConfigSources(): List<PinnedConfigSource> {
-        val selectedPinnedSource = votingChainConfigRepository.get().selectedPinnedSource
+    /**
+     * The config sources of [decision]'s chain selection. A decision taken by [VotingRouteProvider]
+     * carries that selection, so a chain switch mid-operation cannot send this operation's config
+     * fetch to another chain's sources (or a predefined source direct); only a decision built
+     * without a snapshot reads the current selection.
+     */
+    private suspend fun resolveConfigSources(
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+    ): List<PinnedConfigSource> {
+        val selectedPinnedSource =
+            when (val snapshot = decision.configSource) {
+                VotingConfigSourceSnapshot.Unset -> votingChainConfigRepository.get().selectedPinnedSource
+                VotingConfigSourceSnapshot.Default -> null
+                is VotingConfigSourceSnapshot.Pinned -> snapshot.source
+            }
         if (selectedPinnedSource != null) {
             return resolvePinnedConfigSource(selectedPinnedSource)
         }
@@ -482,9 +543,12 @@ class KtorVotingApiProvider(
         return resolvePinnedConfigSource(configUrl)
     }
 
-    private suspend fun fetchStaticConfig(sources: List<PinnedConfigSource>): StaticVotingConfig =
-        executeWithKtorTimeoutSupport { supportsKtorTimeouts ->
-            fetchStaticConfigWalk(sources, supportsKtorTimeouts)
+    private suspend fun fetchStaticConfig(
+        sources: List<PinnedConfigSource>,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+    ): StaticVotingConfig =
+        executeWithKtorTimeoutSupport(decision) { supportsKtorTimeouts, dec ->
+            fetchStaticConfigWalk(sources, supportsKtorTimeouts, dec)
         }
 
     /**
@@ -501,6 +565,7 @@ class KtorVotingApiProvider(
     private suspend fun HttpClient.fetchStaticConfigWalk(
         sources: List<PinnedConfigSource>,
         supportsKtorTimeouts: Boolean,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
     ): StaticVotingConfig =
         walkConfigSources(
             sources = sources,
@@ -508,7 +573,7 @@ class KtorVotingApiProvider(
             describe = { source -> source.url },
             shouldTryNext = ::isRetryableStaticVotingConfigFailure,
         ) { source ->
-            val bytes = fetchStaticConfigBytes(source.url, supportsKtorTimeouts)
+            val bytes = fetchStaticConfigBytes(source.url, supportsKtorTimeouts, decision)
             StaticVotingConfig.decodeAndVerify(data = bytes, expectedSHA256 = source.sha256)
         }
 
@@ -516,13 +581,14 @@ class KtorVotingApiProvider(
     private suspend fun HttpClient.fetchStaticConfigBytes(
         url: String,
         supportsKtorTimeouts: Boolean,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
     ): ByteArray {
         // Privacy: with Tor off, the predefined config goes through the OHTTP gateway so the config host
         // never sees the device IP (content-addressed URL, so the gateway cache makes repeats free); a
         // user-selected custom config goes direct and never through the gateway (ZIP #10). With Tor on,
         // this client is already Tor-backed. Failures become StaticVotingConfigFetchFailedException so
         // the mirror walk retries the next source.
-        if (!httpClientProvider.isTorEnabled() && !isCustomVoteServer()) {
+        if (!decision.isTor && !decision.isCustomServer) {
             val ohttpClient = httpClientProvider.createOhttp()
             if (!ohttpClient.canHandle(url)) {
                 throw UnsupportedPrivateDestinationException(
@@ -577,9 +643,12 @@ class KtorVotingApiProvider(
         return response.body
     }
 
-    private suspend fun fetchTrustedConfig(sources: List<PinnedConfigSource>): ResolvedVotingConfig {
-        val staticConfig = fetchStaticConfig(sources)
-        val rawServiceConfig = fetchDynamicServiceConfig(staticConfig.resolvedDynamicConfigUrls())
+    private suspend fun fetchTrustedConfig(
+        sources: List<PinnedConfigSource>,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+    ): ResolvedVotingConfig {
+        val staticConfig = fetchStaticConfig(sources, decision)
+        val rawServiceConfig = fetchDynamicServiceConfig(staticConfig.resolvedDynamicConfigUrls(), decision)
         val serviceConfig = rawServiceConfig.retainingRoundsWithValidSignatures(staticConfig.trustedKeys)
 
         return ResolvedVotingConfig(
@@ -590,9 +659,12 @@ class KtorVotingApiProvider(
         )
     }
 
-    private suspend fun fetchDynamicServiceConfig(urls: List<String>): VotingServiceConfig =
-        executeWithKtorTimeoutSupport { supportsKtorTimeouts ->
-            fetchDynamicServiceConfigWalk(urls, supportsKtorTimeouts)
+    private suspend fun fetchDynamicServiceConfig(
+        urls: List<String>,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+    ): VotingServiceConfig =
+        executeWithKtorTimeoutSupport(decision) { supportsKtorTimeouts, dec ->
+            fetchDynamicServiceConfigWalk(urls, supportsKtorTimeouts, dec)
         }
 
     /**
@@ -609,6 +681,7 @@ class KtorVotingApiProvider(
     private suspend fun HttpClient.fetchDynamicServiceConfigWalk(
         urls: List<String>,
         supportsKtorTimeouts: Boolean,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
     ): VotingServiceConfig {
         val normalizedUrls = urls.map(String::trim).filter(String::isNotEmpty).distinct()
         val cacheBustToken = UUID.randomUUID().toString()
@@ -619,7 +692,7 @@ class KtorVotingApiProvider(
             describe = { url -> url },
             shouldTryNext = ::isRetryableDynamicVotingConfigFailure,
         ) { url ->
-            fetchSingleDynamicServiceConfig(url, cacheBustToken, supportsKtorTimeouts)
+            fetchSingleDynamicServiceConfig(url, cacheBustToken, supportsKtorTimeouts, decision)
         }
     }
 
@@ -627,8 +700,9 @@ class KtorVotingApiProvider(
         url: String,
         cacheBustToken: String,
         supportsKtorTimeouts: Boolean,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
     ): VotingServiceConfig {
-        val body = fetchDynamicConfigBody(url, cacheBustToken, supportsKtorTimeouts)
+        val body = fetchDynamicConfigBody(url, cacheBustToken, supportsKtorTimeouts, decision)
         return VotingServiceConfig.decode(body).also(VotingServiceConfig::validate)
     }
 
@@ -657,8 +731,9 @@ class KtorVotingApiProvider(
         url: String,
         cacheBustToken: String,
         supportsKtorTimeouts: Boolean,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
     ): String {
-        if (!httpClientProvider.isTorEnabled() && !isCustomVoteServer()) {
+        if (!decision.isTor && !decision.isCustomServer) {
             val ohttpClient = httpClientProvider.createOhttp()
             if (!ohttpClient.canHandle(url)) {
                 throw UnsupportedPrivateDestinationException(
@@ -715,8 +790,11 @@ class KtorVotingApiProvider(
         return response.body.decodeToString()
     }
 
-    private suspend fun authenticateVotingSession(session: VotingSession): VotingSession {
-        val resolvedConfig = getResolvedConfig()
+    private suspend fun authenticateVotingSession(
+        session: VotingSession,
+        decision: VotingRouteDecision
+    ): VotingSession {
+        val resolvedConfig = getResolvedConfig(decision)
         val roundIdHex = session.voteRoundId.toLowerHex()
         val status =
             RoundAuthenticator.authenticate(
@@ -732,9 +810,12 @@ class KtorVotingApiProvider(
         return session
     }
 
-    private suspend fun authenticateVotingSessionOrNull(session: VotingSession): VotingSession? =
+    private suspend fun authenticateVotingSessionOrNull(
+        session: VotingSession,
+        decision: VotingRouteDecision
+    ): VotingSession? =
         try {
-            authenticateVotingSession(session)
+            authenticateVotingSession(session, decision)
         } catch (exception: VotingRoundAuthenticationException) {
             Log.w(
                 TAG,
@@ -743,25 +824,12 @@ class KtorVotingApiProvider(
             null
         }
 
-    private suspend fun configuredVoteServerUrls(): List<String> =
-        getResolvedConfig()
+    private suspend fun configuredVoteServerUrls(decision: VotingRouteDecision): List<String> =
+        getResolvedConfig(decision)
             .serviceConfig
             .voteServers
             .map(VotingServiceConfig.ServiceEndpoint::url)
             .normalizedVoteServerUrls()
-
-    /**
-     * Returns true if vote servers are from a user-selected custom voting config, false if they're
-     * from the default (bundled static config + ZODL's dynamic voting config).
-     *
-     * Custom servers route direct (clearnet when Tor is OFF, Tor when Tor is ON) and never through
-     * OHTTP. Predefined servers route through OHTTP when Tor is OFF and fail closed if the gateway
-     * cannot handle them.
-     *
-     * When the user selects a custom voting config (via VotingChainConfigRepository), ALL vote
-     * servers from that config's serviceConfig are treated as custom.
-     */
-    private suspend fun isCustomVoteServer(): Boolean = !votingChainConfigRepository.get().isOnDefaultConfig
 
     /**
      * Vote server routing decision based on Tor status, server type, and OHTTP capability.
@@ -782,21 +850,20 @@ class KtorVotingApiProvider(
      */
     private suspend fun resolveVoteRoute(
         url: String,
-        torEnabled: Boolean,
-        isCustom: Boolean,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision,
         ohttpClient: OhttpHttpClient,
     ): VoteRoute {
-        if (!torEnabled && !isCustom && !ohttpClient.canHandle(url)) {
+        if (!decision.isTor && !decision.isCustomServer && !ohttpClient.canHandle(url)) {
             error("Cannot reach predefined vote server at unsupported destination $url with Tor disabled")
         }
-        return if (!torEnabled && !isCustom) {
+        return if (!decision.isTor && !decision.isCustomServer) {
             VoteRoute.Ohttp(ohttpClient)
         } else {
             val desc =
                 when {
-                    isCustom && torEnabled -> "custom server via Tor"
-                    isCustom && !torEnabled -> "custom server direct (clearnet)"
-                    else -> "predefined server via Tor/direct client (tor=$torEnabled)"
+                    decision.isCustomServer && decision.isTor -> "custom server via Tor"
+                    decision.isCustomServer && !decision.isTor -> "custom server direct (clearnet)"
+                    else -> "predefined server via Tor/direct client (tor=${decision.isTor})"
                 }
             VoteRoute.Direct(desc)
         }
@@ -810,13 +877,12 @@ class KtorVotingApiProvider(
      */
     private suspend inline fun <reified T> HttpClient.voteServerGet(
         url: String,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision,
         configureRequest: HttpRequestBuilder.() -> Unit = {},
     ): T {
-        val torEnabled = httpClientProvider.isTorEnabled()
-        val isCustom = isCustomVoteServer()
         val ohttpClient = httpClientProvider.createOhttp()
 
-        return when (val route = resolveVoteRoute(url, torEnabled, isCustom, ohttpClient)) {
+        return when (val route = resolveVoteRoute(url, decision, ohttpClient)) {
             is VoteRoute.Ohttp -> {
                 val response =
                     try {
@@ -846,26 +912,14 @@ class KtorVotingApiProvider(
     }
 
     private suspend fun <T> executeWithVoteServerFailover(
+        decision: VotingRouteDecision,
         path: String,
         shouldTryNext: (Throwable) -> Boolean = ::shouldTryNextVoteServer,
         block: suspend HttpClient.(String) -> T,
     ): T {
-        val serverUrls = configuredVoteServerUrls()
-        return executeWithKtorTimeoutSupport { supportsKtorTimeouts ->
+        val serverUrls = configuredVoteServerUrls(decision)
+        return executeWithKtorTimeoutSupport(decision) { supportsKtorTimeouts, _ ->
             voteServerFailover(path, serverUrls, shouldTryNext, supportsKtorTimeouts, block)
-        }
-    }
-
-    private suspend fun <T> executeWithVoteServerFailover(
-        client: HttpClient,
-        path: String,
-        shouldTryNext: (Throwable) -> Boolean = ::shouldTryNextVoteServer,
-        block: suspend HttpClient.(String) -> T,
-    ): T {
-        val serverUrls = configuredVoteServerUrls()
-        val supportsKtorTimeouts = httpClientProvider.supportsKtorTimeouts()
-        return withContext(Dispatchers.IO) {
-            client.voteServerFailover(path, serverUrls, shouldTryNext, supportsKtorTimeouts, block)
         }
     }
 
@@ -892,24 +946,18 @@ class KtorVotingApiProvider(
             },
         )
 
-    /**
-     * A fresh client for one bundle chain to own for the duration of its run. Under Tor each client
-     * gets its own circuit, so chains do not queue behind one another on a single connection; the
-     * caller closes it.
-     */
-    suspend fun createIsolatedClient(): HttpClient = httpClientProvider.create()
-
     private suspend inline fun <T> executeWithKtorTimeoutSupport(
-        crossinline block: suspend HttpClient.(Boolean) -> T,
+        decision: VotingRouteDecision,
+        crossinline block: suspend HttpClient.(Boolean, VotingRouteDecision) -> T,
     ): T =
         withContext(Dispatchers.IO) {
-            val (httpClient, supportsKtorTimeouts) = sharedHttpClient()
-            block(httpClient, supportsKtorTimeouts)
+            val (httpClient, supportsKtorTimeouts) = sharedHttpClient(decision.isTor)
+            block(httpClient, supportsKtorTimeouts, decision)
         }
 
-    private suspend fun sharedHttpClient(): Pair<HttpClient, Boolean> =
+    private suspend fun sharedHttpClient(isTor: Boolean): Pair<HttpClient, Boolean> =
         httpClientMutex.withLock {
-            val supportsKtorTimeouts = httpClientProvider.supportsKtorTimeouts()
+            val supportsKtorTimeouts = !isTor
             val existing = cachedHttpClient
             if (existing != null && cachedHttpClientSupportsKtorTimeouts == supportsKtorTimeouts) {
                 existing to supportsKtorTimeouts
@@ -926,7 +974,7 @@ class KtorVotingApiProvider(
                 // call to attempt a fresh rebuild instead.
                 cachedHttpClient = null
                 cachedHttpClientSupportsKtorTimeouts = null
-                val fresh = httpClientProvider.create()
+                val fresh = httpClientProvider.create(isTor)
                 cachedHttpClient = fresh
                 cachedHttpClientSupportsKtorTimeouts = supportsKtorTimeouts
                 fresh to supportsKtorTimeouts
@@ -937,12 +985,13 @@ class KtorVotingApiProvider(
         targetUrls: List<String>,
         body: String,
         supportsKtorTimeouts: Boolean,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision,
     ): List<String> =
         coroutineScope {
             targetUrls
                 .map { targetUrl ->
                     async {
-                        if (postShare(targetUrl, body, supportsKtorTimeouts)) {
+                        if (postShare(targetUrl, body, supportsKtorTimeouts, decision)) {
                             targetUrl
                         } else {
                             null
@@ -961,15 +1010,14 @@ class KtorVotingApiProvider(
         serverUrl: String,
         body: String,
         supportsKtorTimeouts: Boolean,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision,
     ): Boolean {
-        val torEnabled = httpClientProvider.isTorEnabled()
-        val isCustom = isCustomVoteServer()
         val ohttpClient = httpClientProvider.createOhttp()
         val url = "$serverUrl/shielded-vote/v1/shares"
 
         val success =
             try {
-                when (val route = resolveVoteRoute(serverUrl, torEnabled, isCustom, ohttpClient)) {
+                when (val route = resolveVoteRoute(serverUrl, decision, ohttpClient)) {
                     is VoteRoute.Ohttp -> {
                         val response =
                             try {

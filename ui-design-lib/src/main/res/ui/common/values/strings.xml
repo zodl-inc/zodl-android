@@ -350,7 +350,7 @@
     <!-- ===== exchange_rate ===== -->
     <string name="currencyConversion_ipTitle">IP Address Protection</string>
     <string name="currencyConversion_ipDesc">Zodl\'s currency conversion feature doesn\'t compromise your IP address.</string>
-    <string name="exchange_rate_info_subtitle_1_no_cmc">Exchange rates are fetched over Tor to protect your IP address. Ensure Tor use is allowed in your region.</string>
+    <string name="exchange_rate_info_subtitle_1_no_cmc">Exchange rates are fetched privately via OHTTP to protect your IP address.</string>
     <string name="currencyConversion_refresh">Rate Refresh</string>
     <string name="currencyConversion_refreshDesc">The rate is refreshed automatically and can also be refreshed manually.</string>
     <string name="tooltip_exchangeRate_title">Exchange rate unavailable</string>

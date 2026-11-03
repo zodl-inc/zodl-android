@@ -3,8 +3,11 @@ package co.electriccoin.zcash.ui.screen.ohttpunavailable
 import androidx.navigation.NavBackStackEntry
 import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.model.FastestServersState
+import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
 import co.electriccoin.zcash.ui.common.usecase.IsTorEnabledUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveFastestServersUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.SetTorEnabledUseCase
 import io.mockk.coEvery
@@ -41,6 +44,7 @@ class OhttpUnavailableVMTest {
             every { isTransactionInProgress } returns transactionInProgress
             every { acknowledgeOhttpUnavailable() } returns Unit
         }
+    private val fastestServers = MutableStateFlow(FastestServersState(servers = null, isLoading = false))
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -55,6 +59,9 @@ class OhttpUnavailableVMTest {
             persistServerSelection = persist,
             navigationRouter = navigationRouter,
             automaticServerRepository = automaticServerRepository,
+            observeFastestServers =
+                mockk<ObserveFastestServersUseCase> { every { this@mockk() } returns fastestServers },
+            lightWalletEndpointProvider = mockk<LightWalletEndpointProvider>(relaxed = true),
         )
 
     private fun kotlinx.coroutines.test.TestScope.stateOf(vm: OhttpUnavailableVM): OhttpUnavailableState {

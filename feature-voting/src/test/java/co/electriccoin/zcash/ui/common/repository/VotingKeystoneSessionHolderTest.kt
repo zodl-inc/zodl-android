@@ -2,10 +2,10 @@ package co.electriccoin.zcash.ui.common.repository
 
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.VotingRoundSession
-import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
 import cash.z.ecc.android.sdk.model.voting.VotingTorLease
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import io.mockk.coEvery
@@ -44,12 +44,11 @@ class VotingKeystoneSessionHolderTest {
     fun `a session parked with Tor off is not reused once Tor is on`() =
         runTest {
             val env = environment()
-            coEvery { env.synchronizer.acquireVotingTorLease() } throws
-                TorUnavailableException() andThen env.torLeaseB
+            coEvery { env.synchronizer.acquireVotingTorLease() } returns env.torLeaseB
             val holder = env.holder()
 
-            env.ensureDelegationPipeline(holder, roundId = ROUND_ID, accountUuidString = ACCOUNT_A)
-            env.ensureDelegationPipeline(holder, roundId = ROUND_ID, accountUuidString = ACCOUNT_A)
+            env.ensureDelegationPipeline(holder, ROUND_ID, ACCOUNT_A, decision = TOR_OFF)
+            env.ensureDelegationPipeline(holder, ROUND_ID, ACCOUNT_A, decision = TOR_ON)
 
             // Milan's review of PR #6: backing out of Sign with Tor off, turning Tor on and then
             // submitting used to finish the round on the parked plain-HTTP session.
@@ -57,7 +56,7 @@ class VotingKeystoneSessionHolderTest {
             coVerify(exactly = 1) {
                 env.votingCryptoClient.openRoundSession(
                     dbHandle = DB_HANDLE_B,
-                    torLease = env.torLeaseB,
+                    route = match { it.decision == TOR_ON && it.torLease === env.torLeaseB },
                     roundId = any(),
                     proposals = any(),
                     hotkeySecret = any(),
@@ -66,8 +65,7 @@ class VotingKeystoneSessionHolderTest {
                     configuredHelperUrls = any(),
                     voteTreeNodeUrls = any(),
                     ceremonyStartSeconds = any(),
-                    voteEndTimeSeconds = any(),
-                    isCustomServer = any()
+                    voteEndTimeSeconds = any()
                 )
             }
             coVerify(exactly = 0) { env.torLeaseB.release() }
@@ -186,7 +184,7 @@ class VotingKeystoneSessionHolderTest {
             coEvery {
                 env.votingCryptoClient.openRoundSession(
                     dbHandle = DB_HANDLE_B,
-                    torLease = any(),
+                    route = any(),
                     roundId = any(),
                     proposals = any(),
                     hotkeySecret = any(),
@@ -195,8 +193,7 @@ class VotingKeystoneSessionHolderTest {
                     configuredHelperUrls = any(),
                     voteTreeNodeUrls = any(),
                     ceremonyStartSeconds = any(),
-                    voteEndTimeSeconds = any(),
-                    isCustomServer = any()
+                    voteEndTimeSeconds = any()
                 )
             } returns env.roundSessionB
 
@@ -211,7 +208,7 @@ class VotingKeystoneSessionHolderTest {
                 ceremonyStartSeconds = 0L,
                 voteEndTimeSeconds = 0L,
                 delegationInputs = mockk<VotingDelegationInputs>(),
-                isCustomServer = true
+                decision = TOR_ON_CUSTOM
             )
 
             coVerify(exactly = 1) { env.roundSessionA.close() }
@@ -222,7 +219,7 @@ class VotingKeystoneSessionHolderTest {
             coVerify(exactly = 1) {
                 env.votingCryptoClient.openRoundSession(
                     dbHandle = DB_HANDLE_B,
-                    torLease = any(),
+                    route = match { it.decision == TOR_ON_CUSTOM },
                     roundId = any(),
                     proposals = any(),
                     hotkeySecret = any(),
@@ -231,10 +228,52 @@ class VotingKeystoneSessionHolderTest {
                     configuredHelperUrls = any(),
                     voteTreeNodeUrls = any(),
                     ceremonyStartSeconds = any(),
-                    voteEndTimeSeconds = any(),
-                    isCustomServer = true
+                    voteEndTimeSeconds = any()
                 )
             }
+        }
+
+    @Test
+    fun `reuse and reopen follow the passed decision, not the preference at call time`() =
+        runTest {
+            val env = environment()
+            val torLeaseC = mockk<VotingTorLease>(relaxed = true)
+            coEvery { env.synchronizer.acquireVotingTorLease() } returnsMany
+                listOf(env.torLeaseA, env.torLeaseB, torLeaseC)
+            val holder = env.holder()
+
+            env.ensureDelegationPipeline(holder, ROUND_ID, ACCOUNT_A, decision = TOR_ON)
+            // The user flips the Tor preference here. The holder never reads it: the caller's
+            // route still carries TOR_ON, so the open session is reused...
+            env.ensureDelegationPipeline(holder, ROUND_ID, ACCOUNT_A, decision = TOR_ON)
+
+            coVerify(exactly = 1) { env.votingCryptoClient.openVotingDb(any()) }
+            coVerify(exactly = 0) { env.roundSessionA.close() }
+            coVerify(exactly = 1) { env.torLeaseB.release() }
+
+            // ...and only a different decision reopens. The lease state matches (Tor on both
+            // times), so the reopen comes from the decision comparison alone.
+            env.ensureDelegationPipeline(holder, ROUND_ID, ACCOUNT_A, decision = TOR_ON_CUSTOM)
+
+            coVerify(exactly = 1) { env.roundSessionA.close() }
+            coVerify(exactly = 1) { env.torLeaseA.release() }
+            coVerify(exactly = 2) { env.votingCryptoClient.openVotingDb(any()) }
+            coVerify(exactly = 1) {
+                env.votingCryptoClient.openRoundSession(
+                    dbHandle = DB_HANDLE_B,
+                    route = match { it.decision == TOR_ON_CUSTOM && it.torLease === torLeaseC },
+                    roundId = any(),
+                    proposals = any(),
+                    hotkeySecret = any(),
+                    chainEndpoints = any(),
+                    operationEpoch = any(),
+                    configuredHelperUrls = any(),
+                    voteTreeNodeUrls = any(),
+                    ceremonyStartSeconds = any(),
+                    voteEndTimeSeconds = any()
+                )
+            }
+            coVerify(exactly = 0) { torLeaseC.release() }
         }
 
     private class Environment(
@@ -251,7 +290,8 @@ class VotingKeystoneSessionHolderTest {
         suspend fun ensureDelegationPipeline(
             holder: VotingKeystoneSessionHolder,
             roundId: String,
-            accountUuidString: String
+            accountUuidString: String,
+            decision: VotingRouteDecision = TOR_ON
         ) = holder.ensureDelegationPipeline(
             roundId = roundId,
             votingDbPath = "/tmp/voting.sqlite3",
@@ -263,7 +303,7 @@ class VotingKeystoneSessionHolderTest {
             ceremonyStartSeconds = 0L,
             voteEndTimeSeconds = 0L,
             delegationInputs = mockk<VotingDelegationInputs>(),
-            isCustomServer = false
+            decision = decision
         )
     }
 
@@ -288,7 +328,7 @@ class VotingKeystoneSessionHolderTest {
         coEvery {
             votingCryptoClient.openRoundSession(
                 dbHandle = DB_HANDLE_A,
-                torLease = any(),
+                route = any(),
                 roundId = any(),
                 proposals = any(),
                 hotkeySecret = any(),
@@ -297,14 +337,13 @@ class VotingKeystoneSessionHolderTest {
                 configuredHelperUrls = any(),
                 voteTreeNodeUrls = any(),
                 ceremonyStartSeconds = any(),
-                voteEndTimeSeconds = any(),
-                isCustomServer = any()
+                voteEndTimeSeconds = any()
             )
         } returns roundSessionA
         coEvery {
             votingCryptoClient.openRoundSession(
                 dbHandle = DB_HANDLE_B,
-                torLease = any(),
+                route = any(),
                 roundId = any(),
                 proposals = any(),
                 hotkeySecret = any(),
@@ -313,8 +352,7 @@ class VotingKeystoneSessionHolderTest {
                 configuredHelperUrls = any(),
                 voteTreeNodeUrls = any(),
                 ceremonyStartSeconds = any(),
-                voteEndTimeSeconds = any(),
-                isCustomServer = any()
+                voteEndTimeSeconds = any()
             )
         } returns roundSessionB
 
@@ -331,6 +369,9 @@ class VotingKeystoneSessionHolderTest {
 
     private companion object {
         const val ROUND_ID = "round-id"
+        val TOR_OFF = VotingRouteDecision(isTor = false, isCustomServer = false)
+        val TOR_ON = VotingRouteDecision(isTor = true, isCustomServer = false)
+        val TOR_ON_CUSTOM = VotingRouteDecision(isTor = true, isCustomServer = true)
         const val ACCOUNT_A = "account-a"
         const val ACCOUNT_B = "account-b"
         const val DB_HANDLE_A = 11L

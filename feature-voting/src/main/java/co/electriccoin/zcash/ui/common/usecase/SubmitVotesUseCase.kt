@@ -23,7 +23,6 @@ import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
-import co.electriccoin.zcash.ui.common.provider.acquireVotingTorLeaseOrNull
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSessionHolder
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
 import co.electriccoin.zcash.ui.common.repository.VotingProposalSelection
@@ -79,6 +78,7 @@ class SubmitVotesUseCase(
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingKeystoneSessionHolder: VotingKeystoneSessionHolder,
     private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository,
+    private val votingRouteProvider: co.electriccoin.zcash.ui.common.provider.VotingRouteProvider,
 ) {
     @Suppress("LongMethod")
     suspend operator fun invoke(
@@ -115,87 +115,80 @@ class SubmitVotesUseCase(
             // this reason.
             votingProofPrecomputeRepository.cancelAndAwaitPrecompute(accountUuidString, roundId)
 
-            if (selectedAccount is KeystoneAccount) {
-                // Every bundle already carries a persisted Keystone signature by the time
-                // submission reaches this point -- the Sign screen only navigates back to
-                // VoteConfirmSubmission once ScanKeystoneVotingPCZTViewModel.onScanned's
-                // isFinished branch fires for the last bundle. What remains is exactly what
-                // VotingKeystoneSessionHolder's already-open, already-delegation-satisfied
-                // session needs: one more run() call to advance vote casting to completion.
-                return@withContext submitKeystoneVotes(
-                    roundId = roundId,
-                    choices = choices,
-                    accountUuidString = accountUuidString,
-                    canonicalAccountUuid = selectedAccount.sdkAccount.accountUuid.toCanonicalUuidString(),
-                    onProgress = onProgress
-                )
-            }
-
-            when (val preparation = prepareVotingRound(roundId)) {
-                is VotingRoundPreparationResult.Ready -> {
-                    Unit
-                }
-
-                is VotingRoundPreparationResult.Ineligible -> {
-                    throw VotingSubmissionRecoverableException(VotingErrors.Ineligible)
-                }
-
-                is VotingRoundPreparationResult.WalletSyncing -> {
-                    throw VotingSubmissionRecoverableException(
-                        VotingErrors.WalletSyncing(
-                            scannedHeight = preparation.scannedHeight,
-                            snapshotHeight = preparation.snapshotHeight
-                        )
+            val route = votingRouteProvider.acquire()
+            try {
+                if (selectedAccount is KeystoneAccount) {
+                    // Every bundle already carries a persisted Keystone signature by the time
+                    // submission reaches this point -- the Sign screen only navigates back to
+                    // VoteConfirmSubmission once ScanKeystoneVotingPCZTViewModel.onScanned's
+                    // isFinished branch fires for the last bundle. What remains is exactly what
+                    // VotingKeystoneSessionHolder's already-open, already-delegation-satisfied
+                    // session needs: one more run() call to advance vote casting to completion.
+                    return@withContext submitKeystoneVotes(
+                        roundId = roundId,
+                        choices = choices,
+                        accountUuidString = accountUuidString,
+                        canonicalAccountUuid = selectedAccount.sdkAccount.accountUuid.toCanonicalUuidString(),
+                        onProgress = onProgress,
+                        route = route
                     )
                 }
-            }
 
-            val sessionContext = resolveVotingRoundSession(roundId)
-            val session = sessionContext.session
-            val sessionRoundId = session.voteRoundId.toHex()
-            require(sessionRoundId.equals(roundId, ignoreCase = true)) {
-                "Round $roundId does not match active session $sessionRoundId"
-            }
+                when (val preparation = prepareVotingRound(roundId, route.decision)) {
+                    is VotingRoundPreparationResult.Ready -> {
+                        Unit
+                    }
 
-            val serviceConfig = sessionContext.serviceConfig
-            val voteServerUrls =
-                serviceConfig.voteServers
-                    .map { endpoint -> endpoint.url.trimEnd('/') }
-                    .distinct()
-            if (voteServerUrls.isEmpty()) {
-                throw VotingSubmissionRecoverableException(VotingErrors.MissingVotingServerUrl)
-            }
+                    is VotingRoundPreparationResult.Ineligible -> {
+                        throw VotingSubmissionRecoverableException(VotingErrors.Ineligible)
+                    }
 
-            val synchronizer = synchronizerProvider.getSynchronizer()
-            val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
-            val votingDbPath =
-                File(walletDbPath)
-                    .parentFile
-                    ?.resolve("voting.sqlite3")
-                    ?.absolutePath
-                    ?: error("Unable to derive voting DB path from $walletDbPath")
-            val networkId = synchronizer.network.toVotingNetworkId()
-            val hotkeySecret =
-                votingHotkeySeedProvider.get(accountUuidString)
-                    ?: throw VotingSubmissionRecoverableException(VotingErrors.MissingHotkeySeed(roundId))
-            val treeStateBytes = synchronizer.getTreeState(BlockHeight.new(session.snapshotHeight))
+                    is VotingRoundPreparationResult.WalletSyncing -> {
+                        throw VotingSubmissionRecoverableException(
+                            VotingErrors.WalletSyncing(
+                                scannedHeight = preparation.scannedHeight,
+                                snapshotHeight = preparation.snapshotHeight
+                            )
+                        )
+                    }
+                }
 
-            val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
-            check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
+                val sessionContext = resolveVotingRoundSession(roundId, route.decision)
+                val session = sessionContext.session
+                val sessionRoundId = session.voteRoundId.toHex()
+                require(sessionRoundId.equals(roundId, ignoreCase = true)) {
+                    "Round $roundId does not match active session $sessionRoundId"
+                }
 
-            try {
-                votingCryptoClient.setWalletId(dbHandle, accountUuidString, networkId)
+                val serviceConfig = sessionContext.serviceConfig
+                val voteServerUrls =
+                    serviceConfig.voteServers
+                        .map { endpoint -> endpoint.url.trimEnd('/') }
+                        .distinct()
+                if (voteServerUrls.isEmpty()) {
+                    throw VotingSubmissionRecoverableException(VotingErrors.MissingVotingServerUrl)
+                }
 
-                // Tor is a user preference here, not a hard requirement -- mirrors the pre-4.0
-                // architecture (VotingApiProvider builds a plain or Tor-routed client depending on
-                // the user's preference). A null lease means Tor is disabled (plain HTTP); a Tor
-                // init failure propagates rather than silently deanonymizing this submission (see
-                // acquireVotingTorLeaseOrNull). Acquired inside the DB try and released in its own
-                // finally, so no throw or cancellation between here and openRoundSession can leak
-                // either the lease or the DB handle. The lease releases against the Tor client that
-                // issued it, so a synchronizer rebuild during the run cannot break the release.
-                val torLease = synchronizer.acquireVotingTorLeaseOrNull()
+                val synchronizer = synchronizerProvider.getSynchronizer()
+                val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
+                val votingDbPath =
+                    File(walletDbPath)
+                        .parentFile
+                        ?.resolve("voting.sqlite3")
+                        ?.absolutePath
+                        ?: error("Unable to derive voting DB path from $walletDbPath")
+                val networkId = synchronizer.network.toVotingNetworkId()
+                val hotkeySecret =
+                    votingHotkeySeedProvider.get(accountUuidString)
+                        ?: throw VotingSubmissionRecoverableException(VotingErrors.MissingHotkeySeed(roundId))
+                val treeStateBytes = synchronizer.getTreeState(BlockHeight.new(session.snapshotHeight))
+
+                val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
+                check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
+
                 try {
+                    votingCryptoClient.setWalletId(dbHandle, accountUuidString, networkId)
+
                     val proposals =
                         session.proposals.map { proposal ->
                             VotingProposalRosterEntry(proposalId = proposal.id, numOptions = proposal.options.size)
@@ -203,7 +196,7 @@ class SubmitVotesUseCase(
                     val roundSession =
                         votingCryptoClient.openRoundSession(
                             dbHandle = dbHandle,
-                            torLease = torLease,
+                            route = route,
                             roundId = roundId,
                             proposals = proposals,
                             hotkeySecret = hotkeySecret,
@@ -395,14 +388,12 @@ class SubmitVotesUseCase(
                         closeRoundSessionLogged(roundSession, roundId)
                     }
                 } finally {
-                    // After roundSession.close(): the session uses the runtime until then.
-                    // release() is idempotent and completes even when this coroutine is cancelled.
-                    torLease?.release()
+                    withContext(NonCancellable) {
+                        votingCryptoClient.closeVotingDb(dbHandle)
+                    }
                 }
             } finally {
-                withContext(NonCancellable) {
-                    votingCryptoClient.closeVotingDb(dbHandle)
-                }
+                route.release()
             }
         }
 
@@ -441,9 +432,10 @@ class SubmitVotesUseCase(
         choices: Map<Int, Int>,
         accountUuidString: String,
         canonicalAccountUuid: String,
-        onProgress: (VotingSubmissionProgress) -> Unit
+        onProgress: (VotingSubmissionProgress) -> Unit,
+        route: co.electriccoin.zcash.ui.common.model.voting.VotingRoute
     ): VotingSubmissionResult {
-        val sessionContext = resolveVotingRoundSession(roundId)
+        val sessionContext = resolveVotingRoundSession(roundId, route.decision)
         val session = sessionContext.session
         val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
         val votingDbPath =
@@ -508,7 +500,7 @@ class SubmitVotesUseCase(
             ceremonyStartSeconds = session.ceremonyStart.epochSecond,
             voteEndTimeSeconds = session.voteEndTime.epochSecond,
             delegationInputs = delegationInputs,
-            isCustomServer = votingCryptoClient.isCustomServer()
+            decision = route.decision
         )
 
         votingRecoveryRepository.storeProposalSelections(

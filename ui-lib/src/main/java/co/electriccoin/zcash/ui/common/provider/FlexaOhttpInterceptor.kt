@@ -387,10 +387,11 @@ private fun MediaType?.isEventStream() = this != null && type == "text" && subty
 
 /**
  * Fields of the outer hop that have no meaning in an inner request, besides those the Connection field
- * names (RFC 9110 section 7.6.1, RFC 9113 section 8.2.2).
+ * names (RFC 9110 section 7.6.1, RFC 9113 section 8.2.2). Includes user-agent per ZIP #10 lines 704-707:
+ * third-party calls SHOULD NOT send a platform User-Agent in the inner request.
  */
 private val CONNECTION_FIELDS =
-    setOf("connection", "keep-alive", "proxy-connection", "transfer-encoding", "upgrade", "te", "host")
+    setOf("connection", "keep-alive", "proxy-connection", "transfer-encoding", "upgrade", "te", "host", "user-agent")
 
 private const val ACCEPT = "Accept"
 private const val AUTHORIZATION = "Authorization"
