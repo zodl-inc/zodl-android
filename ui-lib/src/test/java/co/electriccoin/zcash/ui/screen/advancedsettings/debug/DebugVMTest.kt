@@ -1,12 +1,9 @@
 package co.electriccoin.zcash.ui.screen.advancedsettings.debug
 
 import android.content.Context
-import cash.z.ecc.android.sdk.Synchronizer
-import co.electriccoin.lightwallet.client.health.OhttpHealthRoute
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.common.migration.MigrationGate
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
-import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.design.util.StringResource
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -39,7 +36,6 @@ class DebugVMTest {
     private val migrationGate = mockk<MigrationGate>(relaxed = true)
 
     private val context = mockk<Context>(relaxed = true)
-    private val synchronizerProvider = mockk<SynchronizerProvider>(relaxed = true)
     private val lightWalletEndpointProvider = mockk<LightWalletEndpointProvider>(relaxed = true)
 
     private fun vm() =
@@ -53,7 +49,6 @@ class DebugVMTest {
             context = context,
             navigationRouter = mockk(relaxed = true),
             simulateSeedNotRelevant = simulateSeedNotRelevant,
-            synchronizerProvider = synchronizerProvider,
             lightWalletEndpointProvider = lightWalletEndpointProvider,
         )
 
@@ -62,14 +57,11 @@ class DebugVMTest {
             (it.title as? StringResource.ByString)?.value?.startsWith("OHTTP relay blackhole") == true
         }
 
-    private fun stubGateway(relayUrl: String?) {
+    private fun stubGateway(relayHost: String?) {
         val gateway = LightWalletEndpoint("ohttp-gateway.test", 443, true)
         every { lightWalletEndpointProvider.getEndpoints() } returns listOf(gateway)
         every { lightWalletEndpointProvider.isOhttpGateway(gateway) } returns true
-        val synchronizer = mockk<Synchronizer>()
-        coEvery { synchronizer.ohttpHealthRoute("ohttp-gateway.test", false) } returns
-            relayUrl?.let { OhttpHealthRoute("ohttp-gateway.test", it, viaTor = false) }
-        coEvery { synchronizerProvider.getSynchronizerOrNull() } returns synchronizer
+        coEvery { lightWalletEndpointProvider.relayHostFor("ohttp-gateway.test") } returns relayHost
     }
 
     private fun DebugVM.simulateSeedNotRelevantItem() =
@@ -185,7 +177,7 @@ class DebugVMTest {
     @Test
     fun turningTheBlackholeOnStartsItWhenTheSdkNamesARelay() =
         runTest {
-            stubGateway(relayUrl = "https://relay.example.test/relay")
+            stubGateway(relayHost = "relay.example.test")
             val vm = vm()
             val collectJob = launch { vm.state.collect {} }
             advanceUntilIdle()
@@ -200,7 +192,7 @@ class DebugVMTest {
     @Test
     fun turningTheBlackholeOnDoesNothingWhenNoRelayIsKnown() =
         runTest {
-            stubGateway(relayUrl = null)
+            stubGateway(relayHost = null)
             val vm = vm()
             val collectJob = launch { vm.state.collect {} }
             advanceUntilIdle()

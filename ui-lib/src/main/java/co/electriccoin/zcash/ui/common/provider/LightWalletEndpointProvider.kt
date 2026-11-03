@@ -8,6 +8,7 @@ import co.electriccoin.lightwallet.client.LightWalletClient
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.lightwallet.client.usesIndependentRelay
 import co.electriccoin.zcash.spackle.Twig
+import java.net.URI
 import kotlin.coroutines.cancellation.CancellationException
 
 // TODO [#1273]: Add ChooseServer Tests #1273
@@ -65,6 +66,21 @@ class LightWalletEndpointProvider(
 
     /** True for a Zodl OHTTP gateway, i.e. an endpoint the SDK reaches over OHTTP. */
     fun isOhttpGateway(endpoint: LightWalletEndpoint): Boolean = isOhttpGatewayHost(endpoint.host)
+
+    /**
+     * The host of the relay this build reaches [gatewayHost] through, or null when it has none (OHTTP is then
+     * off for that gateway) or it cannot be determined. It comes from the same codec as [usesIndependentRelay].
+     */
+    @Suppress("TooGenericExceptionCaught")
+    suspend fun relayHostFor(gatewayHost: String): String? =
+        try {
+            OhttpCodecFactory.create().relayUrlFor(gatewayHost)?.let { URI(it).host }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Twig.warn(e) { "Could not tell which OHTTP relay is in use" }
+            null
+        }
 
     /**
      * False when this build reaches [gatewayHost] through a relay its operator also runs (a build-time relay
