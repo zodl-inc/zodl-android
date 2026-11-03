@@ -121,7 +121,7 @@ jobs:
         variant: ${{ fromJSON(needs.prepare_matrix.outputs.variants) }}
     steps:
       - name: Checkout
-        timeout-minutes: 1
+        timeout-minutes: 5
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0  # To fetch all commits for the git-commit-count version code
