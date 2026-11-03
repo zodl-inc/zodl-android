@@ -192,6 +192,35 @@ class TrackVotingSharesUseCaseTest {
         }
 
     @Test
+    fun `invoke acquires no route and completes when there is nothing to track`() =
+        runTest {
+            val roundId = "round-nothing-to-track"
+
+            val votingRecoveryRepository = mockk<VotingRecoveryRepository>(relaxed = true)
+            val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
+            coEvery { getSelectedWalletAccount() } returns zashiAccount()
+            coEvery { votingRecoveryRepository.get(any(), roundId) } returns null
+
+            // Tor being unavailable must not fail a pass that has nothing to deliver.
+            val votingRouteProvider = mockk<VotingRouteProvider>()
+            coEvery { votingRouteProvider.acquire() } throws
+                TorInitializationErrorException(Exception("bootstrap failed"))
+
+            val useCase =
+                TrackVotingSharesUseCase(
+                    votingRecoveryRepository,
+                    mockk<VotingCryptoClient>(relaxed = true),
+                    mockk<VotingApiProvider>(),
+                    mockk<SynchronizerProvider>(),
+                    getSelectedWalletAccount,
+                    votingRouteProvider
+                )
+
+            assertEquals(VotingShareTrackingResult.Completed, useCase.invoke(roundId))
+            coVerify(exactly = 0) { votingRouteProvider.acquire() }
+        }
+
+    @Test
     fun `a Tor and chain config flip mid-call does not change the route of fetchServiceConfig or session run`() =
         runTest {
             val roundId = "round-decision-stable"

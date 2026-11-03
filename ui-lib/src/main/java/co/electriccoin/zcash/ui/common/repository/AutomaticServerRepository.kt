@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
@@ -53,6 +54,7 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
@@ -313,15 +315,31 @@ class AutomaticServerRepositoryImpl(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     internal fun switchLane(triggers: Flow<SwitchTrigger>): Flow<LightWalletEndpoint> =
-        triggers
-            .catch { Twig.error(it) { "Automatic server: a trigger signal failed" } }
-            .filter { it.bypassesInterval || evaluationInterval.hasElapsed() }
-            .mapLatest { trigger ->
-                guarded("evaluate a server switch") { resolveSwitchCandidate(trigger) }
-            }.filterNotNull()
-            .onEach { candidate ->
-                guarded("switch to ${candidate.host}:${candidate.port}") { applyServerSwitch(candidate) }
-            }
+        flow {
+            // Evaluations accepted and not yet finished. A RECOVERY tick is the lightest check and runs every
+            // 30 s in the foreground, so letting it replace a running evaluation (mapLatest) would cancel every
+            // CONNECTIVITY or FOREGROUND re-rank before it completes. It is skipped instead; the next tick
+            // comes after the evaluation ends. Counted when accepted, before the hop into mapLatest, so a tick
+            // right behind a trigger already sees it.
+            val inFlight = AtomicInteger(0)
+            emitAll(
+                triggers
+                    .catch { Twig.error(it) { "Automatic server: a trigger signal failed" } }
+                    .filter { it.bypassesInterval || evaluationInterval.hasElapsed() }
+                    .filter { it != SwitchTrigger.RECOVERY || inFlight.get() == 0 }
+                    .onEach { inFlight.incrementAndGet() }
+                    .mapLatest { trigger ->
+                        try {
+                            guarded("evaluate a server switch") { resolveSwitchCandidate(trigger) }
+                        } finally {
+                            inFlight.decrementAndGet()
+                        }
+                    }.filterNotNull()
+                    .onEach { candidate ->
+                        guarded("switch to ${candidate.host}:${candidate.port}") { applyServerSwitch(candidate) }
+                    }
+            )
+        }
 
     /**
      * A synchronizer error, or a DISCONNECTED status that lasts [DISCONNECTED_GRACE] ([isDisconnectedFor]).
@@ -573,7 +591,7 @@ class AutomaticServerRepositoryImpl(
     private suspend fun evaluatePublicServerSwitch(trigger: SwitchTrigger): LightWalletEndpoint? {
         if (isAppInTransactionState) return null
         if (isOhttpFallbackActiveProvider.get() && trigger.probesGatewayRecovery) {
-            evaluateReturnToPrivate()?.let { return it }
+            evaluateReturnToPrivate(trigger)?.let { return it }
         }
         if (trigger != SwitchTrigger.FOREGROUND && trigger != SwitchTrigger.CONNECTIVITY) return null
         val current = persistableWalletProvider.getPersistableWallet()?.endpoint ?: return null
@@ -597,17 +615,19 @@ class AutomaticServerRepositoryImpl(
      * [SwitchTrigger.probesGatewayRecovery] (RECOVERY, FOREGROUND, CONNECTIVITY): one lightweight [probeGateway]
      * per gateway (one GetLightdInfo, 20 s cap), the first that answers wins. There is one gateway per network, so
      * ranking buys nothing. RECOVERY ticks run every 30 s (foreground) or 5 min (background): the full benchmark
-     * takes 90 s + 20 s and would be cancelled by [switchLane]'s mapLatest before completing.
+     * takes 90 s + 20 s, so a tick never runs it, and [switchLane] skips a tick while an evaluation is running.
      */
     @Suppress("ReturnCount")
-    private suspend fun evaluateReturnToPrivate(): LightWalletEndpoint? {
+    private suspend fun evaluateReturnToPrivate(trigger: SwitchTrigger): LightWalletEndpoint? {
         val gateways = lightWalletEndpointProvider.getEndpoints().filter(lightWalletEndpointProvider::isOhttpGateway)
         if (gateways.isEmpty()) return null
         val synchronizer = synchronizerProvider.getSynchronizerOrNull() ?: return null
         return try {
             gateways.firstOrNull { probeGateway(synchronizer, it) }
         } finally {
-            evaluationInterval.markAttempted()
+            // A RECOVERY tick is the periodic probe itself. Marking it would restart the evaluation interval
+            // every 30 s and filter out every FOREGROUND trigger for as long as the fallback lasts.
+            if (trigger != SwitchTrigger.RECOVERY) evaluationInterval.markAttempted()
         }
     }
 
@@ -738,8 +758,8 @@ private val PUBLIC_FETCH_THRESHOLD = 5.seconds
  * How often, while on a clearnet fallback and in the foreground, to check whether the OHTTP gateway is back.
  * The probe checks the gateway only via lightweight [probeGateway] (one GetLightdInfo per gateway, 20 s cap),
  * never re-benchmarking clearnet servers. When the gateway does not answer, a CONNECTIVITY or FOREGROUND
- * trigger goes on to re-rank the public tier, but in the foreground the next RECOVERY tick usually cancels that
- * re-rank ([switchLane] is mapLatest), so the wallet mostly stays on its current fallback server.
+ * trigger goes on to re-rank the public tier. [switchLane] skips the RECOVERY ticks that fall into such a
+ * re-rank instead of letting them cancel it, and a tick does not restart the evaluation interval.
  */
 private val FALLBACK_RECOVERY_INTERVAL = 30.seconds
 

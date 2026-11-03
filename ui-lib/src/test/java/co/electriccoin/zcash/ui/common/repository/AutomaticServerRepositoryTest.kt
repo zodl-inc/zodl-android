@@ -34,6 +34,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -503,6 +504,76 @@ class AutomaticServerRepositoryTest {
 
             assertNull(repository.evaluateServerSwitch(SwitchTrigger.RECOVERY))
             coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
+        }
+
+    @Test
+    fun aRecoveryTickDoesNotCancelARunningReRankOnTheFallback() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            fallbackActive = true
+            localBalances.value = emptyMap()
+            stubGatewayProbe(reachable = false)
+            // The public re-rank is slower than the 30 s recovery cadence.
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } coAnswers {
+                delay(40.seconds)
+                fallbacks[1]
+            }
+
+            val triggers = MutableSharedFlow<SwitchTrigger>()
+            repository.switchLane(triggers).launchIn(backgroundScope)
+            runCurrent()
+
+            triggers.emit(SwitchTrigger.CONNECTIVITY)
+            runCurrent()
+            advanceTimeBy(30.seconds)
+            triggers.emit(SwitchTrigger.RECOVERY)
+            runCurrent()
+            advanceTimeBy(15.seconds)
+            runCurrent()
+
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(fallbacks[1]) }
+            // The tick was skipped, not run: only the CONNECTIVITY evaluation probed the gateway.
+            coVerify(exactly = 1) { synchronizer.validateServerEndpoint(any(), gateway) }
+        }
+
+    @Test
+    fun aRecoveryTickRunsAgainAfterTheReRankEnded() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            fallbackActive = true
+            stubGatewayProbe(reachable = false)
+
+            val triggers = MutableSharedFlow<SwitchTrigger>()
+            repository.switchLane(triggers).launchIn(backgroundScope)
+            runCurrent()
+
+            triggers.emit(SwitchTrigger.RECOVERY)
+            runCurrent()
+            triggers.emit(SwitchTrigger.RECOVERY)
+            runCurrent()
+
+            coVerify(exactly = 2) { synchronizer.validateServerEndpoint(any(), gateway) }
+        }
+
+    @Test
+    fun aRecoveryTickDoesNotRestartTheEvaluationInterval() =
+        runTest {
+            stubPublic(current = fallbacks[0])
+            fallbackActive = true
+            stubGatewayProbe(reachable = false)
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns null
+
+            val triggers = MutableSharedFlow<SwitchTrigger>()
+            repository.switchLane(triggers).launchIn(backgroundScope)
+            runCurrent()
+
+            triggers.emit(SwitchTrigger.RECOVERY)
+            runCurrent()
+            triggers.emit(SwitchTrigger.FOREGROUND)
+            runCurrent()
+
+            // The probe did not count as an attempt, so the foreground edge still gets its re-rank.
+            coVerify(exactly = 1) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
         }
 
     @Test

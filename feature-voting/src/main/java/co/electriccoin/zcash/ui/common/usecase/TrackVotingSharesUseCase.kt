@@ -53,11 +53,13 @@ class TrackVotingSharesUseCase(
             val selectedAccount = getSelectedWalletAccount()
             if (!selectedAccount.isSpendable) return@withContext VotingShareTrackingResult.Completed
             val accountUuidString = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
+            // Nothing to track means no route is needed: acquiring first would lease or bootstrap Tor on every
+            // tracking pass, and fail it when Tor is unavailable, for a round with nothing to deliver.
+            val recovery =
+                votingRecoveryRepository.get(accountUuidString, roundId)
+                    ?: return@withContext VotingShareTrackingResult.Completed
             val route = votingRouteProvider.acquire()
             try {
-                val recovery =
-                    votingRecoveryRepository.get(accountUuidString, roundId)
-                        ?: return@withContext VotingShareTrackingResult.Completed
                 val roundVoteServerUrls =
                     recovery.voteServerUrls
                         .ifEmpty {
