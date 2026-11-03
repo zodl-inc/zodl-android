@@ -7,6 +7,18 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Added:
+
+- Zodl is now in the system share sheet. A Zcash address, a `zcash:` payment link or an image of a payment QR code
+  shared from another app opens the Send screen with the recipient, amount and memo filled in, for you to review and
+  confirm; a shared payment never opens the transaction review by itself. A shared gift card link or gift card QR
+  code opens the gift card scanner instead, a view-only account is told that sending isn't available, and sharing
+  before there is a wallet asks you to create or restore one.
+
+### Fixed:
+
+- Scanning a very large image no longer risks running out of memory: it is scaled down before its QR code is read.
+
 ## [3.19.0 (3234)] - 2026-10-29
 
 ### Changed:

@@ -14,6 +14,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
 import cash.z.ecc.android.sdk.model.toZecString
 import cash.z.ecc.android.sdk.type.AddressType
@@ -114,7 +115,7 @@ internal fun WrapSend(
 ) {
     val scope = rememberCoroutineScope()
 
-    val viewModel = koinViewModel<SendViewModel>()
+    val viewModel = koinViewModel<SendViewModel> { parametersOf(sendArguments) }
 
     val validateAddress = koinInject<ValidateAddressUseCase>()
 
@@ -136,27 +137,17 @@ internal fun WrapSend(
     val observeClearSend = koinInject<ObserveClearSendUseCase>()
     val prefillSend = koinInject<PrefillSendUseCase>()
 
-    if (sendArguments.recipientAddress != null && sendArguments.recipientAddressType != null) {
-        viewModel.onRecipientAddressChanged(
-            RecipientAddressState.new(
-                sendArguments.recipientAddress,
-                when (sendArguments.recipientAddressType) {
-                    cash.z.ecc.sdk.model.AddressType.UNIFIED -> AddressType.Unified
-                    cash.z.ecc.sdk.model.AddressType.TRANSPARENT -> AddressType.Transparent
-                    cash.z.ecc.sdk.model.AddressType.SAPLING -> AddressType.Shielded
-                    cash.z.ecc.sdk.model.AddressType.TEX -> AddressType.Tex
-                }
-            )
-        )
-    }
-
     // Amount computation:
     val (amountState, setAmountState) =
         rememberSaveable(stateSaver = AmountState.getSaver(context)) {
+            val routeAmount = sendArguments.amount?.let { stringRes(Zatoshi(it), TickerLocation.HIDDEN) }
             // Default amount state
             mutableStateOf(
                 AmountState.newFromZec(
-                    value = zecSend?.amount?.toZecString(NUMBER_FORMAT_LOCALE) ?: "",
+                    value =
+                        zecSend?.amount?.toZecString(NUMBER_FORMAT_LOCALE)
+                            ?: routeAmount?.getString(context)
+                            ?: "",
                     fiatValue = "",
                     isTransparentOrTextRecipient =
                         recipientAddressState.type?.let { it == AddressType.Transparent }
@@ -197,7 +188,7 @@ internal fun WrapSend(
     // Memo computation:
     val (memoState, setMemoState) =
         rememberSaveable(stateSaver = MemoState.Saver) {
-            mutableStateOf(MemoState.new(zecSend?.memo?.value ?: ""))
+            mutableStateOf(MemoState.new(zecSend?.memo?.value ?: sendArguments.memo.orEmpty()))
         }
 
     LaunchedEffect(Unit) {
