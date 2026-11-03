@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 
 class SendViewModel(
+    args: Send,
     exchangeRateRepository: ExchangeRateRepository,
     private val observeContactByAddress: ObserveContactByAddressUseCase,
     private val observeContactPicked: ObserveABContactPickedUseCase,
@@ -41,7 +42,10 @@ class SendViewModel(
     private val navigateToSelectRecipient: NavigateToSelectRecipientUseCase,
     private val navigationRouter: NavigationRouter,
 ) : ViewModel() {
-    val recipientAddressState = MutableStateFlow(RecipientAddressState.new("", null))
+    val recipientAddressState =
+        MutableStateFlow(
+            RecipientAddressState.new(args.recipientAddress.orEmpty(), args.recipientAddressType?.toSdkAddressType())
+        )
 
     private var onCreateZecSendClickJob: Job? = null
 

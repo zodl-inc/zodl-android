@@ -57,6 +57,7 @@ class SendViewModelLedgerTest {
 
     private fun vm(createProposal: CreateProposalUseCase) =
         SendViewModel(
+            args = Send(),
             exchangeRateRepository = mockk(relaxed = true),
             observeContactByAddress = mockk(relaxed = true),
             observeContactPicked = mockk(relaxed = true),
