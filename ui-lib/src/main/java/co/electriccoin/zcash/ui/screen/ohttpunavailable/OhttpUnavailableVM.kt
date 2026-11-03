@@ -55,6 +55,8 @@ class OhttpUnavailableVM(
     init {
         viewModelScope.launch {
             automaticServerRepository.isTransactionInProgress.first { it }
+            // Closing it for a send is a dismissal: only a later failing user action shows it again.
+            automaticServerRepository.acknowledgeOhttpUnavailable()
             closeIfOnTop()
         }
     }
@@ -69,8 +71,15 @@ class OhttpUnavailableVM(
             }
         }
 
-    /** The wallet keeps trying the private connection in the background; closing the sheet is all there is to do. */
-    private fun onBack() = navigationRouter.back()
+    /**
+     * The wallet keeps trying the private connection in the background; closing the sheet is all there is to
+     * do. Closing it, by "Keep waiting" or by leaving it, acknowledges the outage: only a later user action that
+     * fails for the same reason shows it again.
+     */
+    private fun onBack() {
+        automaticServerRepository.acknowledgeOhttpUnavailable()
+        navigationRouter.back()
+    }
 
     private fun onTorToggle(enabled: Boolean) = viewModelScope.launch { setTorEnabled(enabled) }
 

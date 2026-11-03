@@ -1,6 +1,9 @@
 package co.electriccoin.zcash.ui.screen.advancedsettings.debug
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
@@ -51,13 +54,27 @@ class DebugVM(
 ) : ViewModel() {
     private val confirmationDialog = MutableStateFlow<ZashiConfirmationState?>(null)
     private val isGateBypassEnabled = MutableStateFlow(false)
+    private val blackholePrefs = context.getSharedPreferences(BLACKHOLE_PREFS, Context.MODE_PRIVATE)
+    private val isBlackholeOn = MutableStateFlow(blackholePrefs.getBoolean(BLACKHOLE_KEY_ON, false))
+    private val blackholeListener =
+        SharedPreferences.OnSharedPreferenceChangeListener { prefs, _ ->
+            isBlackholeOn.value = prefs.getBoolean(BLACKHOLE_KEY_ON, false)
+        }
+
+    /** Debug-internal builds only: the class lives in the app's internal-debug source set, so look it up by name. */
+    private val blackholeTrigger =
+        Intent().apply {
+            component = ComponentName(context.packageName, BLACKHOLE_TRIGGER_ACTIVITY)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
 
     init {
+        blackholePrefs.registerOnSharedPreferenceChangeListener(blackholeListener)
         viewModelScope.launch { isGateBypassEnabled.value = migrationGate.isNetworkUpgradeGateBypassEnabled() }
     }
 
-    private fun items(isBypassEnabled: Boolean) =
-        listOf(
+    private fun items(isBypassEnabled: Boolean, isBlackholeOn: Boolean) =
+        listOfNotNull(
             ListItemState(
                 // bigIcon = imageRes(R.drawable.ic_zec_round_full),
                 // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
@@ -116,21 +133,37 @@ class DebugVM(
             ListItemState(
                 title = stringRes("Simulate SeedNotRelevant"),
                 onClick = ::onSimulateSeedNotRelevantClick
-            )
+            ),
+            ListItemState(
+                title = stringRes("OHTTP relay blackhole (VPN): ${if (isBlackholeOn) "ON" else "OFF"}"),
+                onClick = ::onBlackholeToggleClick
+            ).takeIf { isBlackholeAvailable() }
         )
 
     val state: StateFlow<DebugState> =
-        combine(confirmationDialog, isGateBypassEnabled) { dialog, isBypassEnabled ->
+        combine(confirmationDialog, isGateBypassEnabled, isBlackholeOn) { dialog, isBypassEnabled, blackhole ->
             DebugState(
                 onBack = ::onBack,
-                items = items(isBypassEnabled),
+                items = items(isBypassEnabled, blackhole),
                 confirmationDialog = dialog,
             )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
-            initialValue = DebugState(onBack = ::onBack, items = items(false), confirmationDialog = null),
+            initialValue = DebugState(onBack = ::onBack, items = items(false, false), confirmationDialog = null),
         )
+
+    private fun isBlackholeAvailable() = context.packageManager.resolveActivity(blackholeTrigger, 0) != null
+
+    private fun onBlackholeToggleClick() {
+        val turnOn = !isBlackholeOn.value
+        context.startActivity(Intent(blackholeTrigger).apply { if (!turnOn) putExtra("op", "stop") })
+    }
+
+    override fun onCleared() {
+        blackholePrefs.unregisterOnSharedPreferenceChangeListener(blackholeListener)
+        super.onCleared()
+    }
 
     private fun onBack() = navigationRouter.back()
 
@@ -283,3 +316,7 @@ class DebugVM(
             )
     }
 }
+
+private const val BLACKHOLE_TRIGGER_ACTIVITY = "co.electriccoin.zcash.spike.BlackholeTriggerActivity"
+private const val BLACKHOLE_PREFS = "ohttp_blackhole"
+private const val BLACKHOLE_KEY_ON = "on"

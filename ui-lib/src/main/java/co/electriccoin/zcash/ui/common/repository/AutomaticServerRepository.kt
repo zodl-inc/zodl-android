@@ -11,10 +11,15 @@ import co.electriccoin.zcash.ui.common.datasource.resolveIsEndpointCustom
 import co.electriccoin.zcash.ui.common.datasource.resolveIsServerSelectionAutomatic
 import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.ServerFallbackPolicy
+import co.electriccoin.zcash.ui.common.privateconnection.NoPrivateConnectionHealth
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealthOwner
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionTarget
+import co.electriccoin.zcash.ui.common.privateconnection.RequestHealthDetection
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
+import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.NetworkConnectivityProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -46,6 +51,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.cancellation.CancellationException
@@ -68,6 +74,9 @@ interface AutomaticServerRepository {
 
     suspend fun isServerCustom(): Boolean
 
+    /** The user chose "Keep waiting" on, or dismissed, the private-connection-unavailable prompt. */
+    fun acknowledgeOhttpUnavailable()
+
     fun init()
 }
 
@@ -88,6 +97,9 @@ class AutomaticServerRepositoryImpl(
     private val networkConnectivityProvider: NetworkConnectivityProvider,
     private val serverSelectionMutex: ServerSelectionMutex,
     private val evaluationInterval: EvaluationInterval,
+    private val privateConnectionHealth: PrivateConnectionHealthOwner = NoPrivateConnectionHealth,
+    private val requestHealthDetection: RequestHealthDetection = RequestHealthDetection { false },
+    private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider? = null,
 ) : AutomaticServerRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -160,8 +172,14 @@ class AutomaticServerRepositoryImpl(
      * the source, so an evaluation still in flight when the user leaves automatic mode cannot re-raise it.
      */
     override val ohttpUnavailable: Flow<Boolean> =
-        combine(_ohttpUnavailable, isServerAutomatic) { unavailable, automatic -> unavailable && automatic }
+        combine(
+            _ohttpUnavailable,
+            privateConnectionHealth.outage.map { it != null }.onStart { emit(false) },
+            isServerAutomatic,
+        ) { legacy, confirmed, automatic -> (legacy || confirmed) && automatic }
             .distinctUntilChanged()
+
+    override fun acknowledgeOhttpUnavailable() = privateConnectionHealth.acknowledge()
 
     override suspend fun isServerAutomatic(): Boolean {
         val preference = isServerSelectionAutomaticProvider.get()
@@ -194,7 +212,67 @@ class AutomaticServerRepositoryImpl(
         ).launchIn(scope)
 
         clearUnavailableOnManualMode().launchIn(scope)
+
+        if (requestHealthDetection.isEnabled()) {
+            watchPrivateConnection().launchIn(scope)
+            genericErrors().onEach { privateConnectionHealth.onGenericError() }.launchIn(scope)
+        }
     }
+
+    /** What the request-health detection should do about the Private route. */
+    private sealed interface PrivateWatch {
+        data class Own(
+            val target: PrivateConnectionTarget,
+        ) : PrivateWatch
+
+        /** The route still qualifies but the app is in the background: stop for now, remember what is known. */
+        data object Pause : PrivateWatch
+
+        /** The route does not qualify (Public, a manual server, no gateway): stop for good. */
+        data object Stop : PrivateWatch
+    }
+
+    /**
+     * The Private route the request-health detection watches: the gateway the wallet is on, while Automatic is on
+     * in Private mode. In the foreground it is watched; in the background the detection pauses and keeps its
+     * state; anything else (Public, a manual server, no gateway) stops it and clears a shown outage.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Suppress("MagicNumber")
+    internal fun watchPrivateConnection(): Flow<Unit> =
+        combine(
+            isServerAutomatic,
+            isPublicConnectionProvider.observe(),
+            applicationStateProvider.isInForeground,
+            persistableWalletProvider.persistableWallet.map { it?.endpoint },
+            (isTorEnabledStorageProvider?.observe() ?: flowOf(null)).map { it == true },
+            synchronizerProvider.synchronizer,
+        ) { values ->
+            val automatic = values[0] as Boolean
+            val isPublic = values[1] as Boolean
+            val foreground = values[2] as Boolean
+            val endpoint = values[3] as LightWalletEndpoint?
+            val viaTor = values[4] as Boolean
+            val hasSynchronizer = values[5] != null
+            when {
+                !automatic || isPublic || !hasSynchronizer || endpoint == null ||
+                    !lightWalletEndpointProvider.isOhttpGateway(endpoint) -> PrivateWatch.Stop
+
+                !foreground -> PrivateWatch.Pause
+
+                else -> PrivateWatch.Own(PrivateConnectionTarget(endpoint, viaTor))
+            }
+        }.distinctUntilChanged()
+            .mapLatest { watch ->
+                when (watch) {
+                    is PrivateWatch.Own -> privateConnectionHealth.own(watch.target)
+                    PrivateWatch.Pause -> privateConnectionHealth.pause()
+                    PrivateWatch.Stop -> privateConnectionHealth.stop()
+                }
+            }.catch { Twig.error(it) { "Automatic server: the private connection watch failed" } }
+
+    /** A synchronizer error, or a DISCONNECTED status that lasts [DISCONNECTED_GRACE]: no request identity. */
+    private fun genericErrors(): Flow<Unit> = connectivityEdges().map { }
 
     /**
      * Drops a recorded gateway outage as soon as automatic mode is left. [ohttpUnavailable] already hides
@@ -287,7 +365,8 @@ class AutomaticServerRepositoryImpl(
                         .flatMapLatest { (fallbackActive, isPublic) ->
                             if (fallbackActive) {
                                 ticks(FALLBACK_RECOVERY_INTERVAL, SwitchTrigger.RECOVERY)
-                            } else if (isPublic) {
+                            } else if (isPublic || requestHealthDetection.isEnabled()) {
+                                // The request-health detection runs its own fallback probe in Private mode.
                                 emptyFlow()
                             } else {
                                 applicationStateProvider
@@ -394,7 +473,7 @@ class AutomaticServerRepositoryImpl(
 
             // Every trigger, a synchronizer error included, needs CONFIRMATIONS_TO_REPORT consecutive failed
             // checks before the outage is reported (ZIP #10), so one transient failure never raises it.
-            val needsConfirmation = onGateway && healthyGateways.isEmpty()
+            val needsConfirmation = onGateway && healthyGateways.isEmpty() && !requestHealthDetection.isEnabled()
             if (needsConfirmation) {
                 // Offline failures should not count as gateway outages (matches iOS behavior).
                 if (!networkConnectivityProvider.isOnline()) {
@@ -444,7 +523,8 @@ class AutomaticServerRepositoryImpl(
                 }
 
                 is ServerFallbackPolicy.DecisionResult.StayAndReportGatewayUnavailable -> {
-                    reportGatewayUnavailable(clearsAtStart)
+                    // With the request-health detection on, the outage is confirmed there, not here.
+                    if (!requestHealthDetection.isEnabled()) reportGatewayUnavailable(clearsAtStart)
                     Twig.info {
                         "Automatic server: OHTTP-first current=${current.host} " +
                             "gatewayReachable=false -> stay (gateway unavailable, awaiting manual server selection)"

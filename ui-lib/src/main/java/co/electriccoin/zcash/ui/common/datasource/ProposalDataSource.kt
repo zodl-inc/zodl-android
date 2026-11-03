@@ -16,6 +16,8 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
 import cash.z.ecc.android.sdk.model.proposeSend
 import cash.z.ecc.android.sdk.type.AddressType
+import co.electriccoin.lightwallet.client.health.OhttpHealthCenter
+import co.electriccoin.lightwallet.client.health.runOhttpOperation
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.model.NetworkDimension
@@ -256,8 +258,21 @@ class ProposalDataSourceImpl(
                 .redactPcztForSigner(pczt)
         }
 
-    @Suppress("CyclomaticComplexMethod", "TooGenericExceptionCaught")
+    /**
+     * One explicit user send: its OHTTP requests are attributed to it, and when it ends the health center is told
+     * whether it failed and which call decided that, so the private-connection outage detection can tell a send that
+     * failed because the private route is down from one that failed for any other reason.
+     */
     private suspend fun submitTransactionInternal(
+        logTag: String,
+        block: suspend (Synchronizer) -> List<CreatedTransaction>
+    ): SubmitResult =
+        OhttpHealthCenter.shared.runOhttpOperation(isFailure = { it.isOperationFailure() }) {
+            submitTransactionAttributed(logTag, block)
+        }
+
+    @Suppress("CyclomaticComplexMethod", "TooGenericExceptionCaught")
+    private suspend fun submitTransactionAttributed(
         logTag: String,
         block: suspend (Synchronizer) -> List<CreatedTransaction>
     ): SubmitResult =
@@ -522,3 +537,10 @@ private const val MULTI_SUBMIT_EMPTY_TRANSACTION_CODE = -1
 private const val MULTI_SUBMIT_EMPTY_TRANSACTION_DESCRIPTION = "No transactions created"
 private const val MULTI_SUBMIT_GRPC_FAILURE_STATUS = "grpcFailure"
 private const val MULTI_SUBMIT_REJECTED_STATUS_PREFIX = "rejected code: "
+
+/**
+ * Whether a send's result is a failed operation for the outage detection: anything but a full success. A relay that
+ * is down surfaces as a gRPC failure, or as a partial result across several transactions, not as a rejection; the
+ * policy still requires the deciding call's evidence to be a transport failure, so a rejection stays harmless.
+ */
+internal fun SubmitResult.isOperationFailure(): Boolean = this !is SubmitResult.Success

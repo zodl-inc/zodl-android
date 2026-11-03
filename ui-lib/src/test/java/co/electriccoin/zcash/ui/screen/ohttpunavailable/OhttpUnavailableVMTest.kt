@@ -36,6 +36,11 @@ class OhttpUnavailableVMTest {
     private val persist = mockk<PersistServerSelectionUseCase>(relaxed = true)
     private val navigationRouter = mockk<NavigationRouter>(relaxed = true)
     private val transactionInProgress = MutableStateFlow(false)
+    private val automaticServerRepository =
+        mockk<AutomaticServerRepository> {
+            every { isTransactionInProgress } returns transactionInProgress
+            every { acknowledgeOhttpUnavailable() } returns Unit
+        }
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(dispatcher)
@@ -49,10 +54,7 @@ class OhttpUnavailableVMTest {
             setTorEnabled = setTorEnabled,
             persistServerSelection = persist,
             navigationRouter = navigationRouter,
-            automaticServerRepository =
-                mockk<AutomaticServerRepository> {
-                    every { isTransactionInProgress } returns transactionInProgress
-                },
+            automaticServerRepository = automaticServerRepository,
         )
 
     private fun kotlinx.coroutines.test.TestScope.stateOf(vm: OhttpUnavailableVM): OhttpUnavailableState {
@@ -90,6 +92,14 @@ class OhttpUnavailableVMTest {
         }
 
     @Test
+    fun keepWaitingAcknowledgesTheOutage() =
+        runTest(dispatcher) {
+            stateOf(createVm()).onKeepWaiting()
+            advanceUntilIdle()
+            verify(exactly = 1) { automaticServerRepository.acknowledgeOhttpUnavailable() }
+        }
+
+    @Test
     fun switchToPublicIsMarkedAsOutageInducedAndCloses() =
         runTest(dispatcher) {
             coEvery { persist.persistPublic(any(), any(), any()) } returns true
@@ -108,6 +118,17 @@ class OhttpUnavailableVMTest {
             stateOf(createVm()).onSwitchToPublic()
             advanceUntilIdle()
             verify(exactly = 0) { navigationRouter.back() }
+        }
+
+    @Test
+    fun aTransactionStartingWhileTheSheetIsOpenAcknowledgesTheOutage() =
+        runTest {
+            stateOf(createVm())
+            verify(exactly = 0) { automaticServerRepository.acknowledgeOhttpUnavailable() }
+            transactionInProgress.value = true
+            advanceUntilIdle()
+            // Closing it for a send is a dismissal: a failed send must be able to bring it back.
+            verify(exactly = 1) { automaticServerRepository.acknowledgeOhttpUnavailable() }
         }
 
     @Test

@@ -1,5 +1,11 @@
 package co.electriccoin.zcash.di
 
+import co.electriccoin.zcash.ui.BuildConfig
+import co.electriccoin.zcash.ui.common.privateconnection.NoPrivateConnectionHealth
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealthOwner
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealthOwnerImpl
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionProbe
+import co.electriccoin.zcash.ui.common.privateconnection.RequestHealthDetection
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepository
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
@@ -60,6 +66,23 @@ val repositoryModule =
         singleOf(::WalletSnapshotRepositoryImpl) bind WalletSnapshotRepository::class
         singleOf(::ApplicationStateRepositoryImpl) bind ApplicationStateRepository::class
         single { EvaluationInterval(minimumInterval = MINIMUM_EVALUATION_INTERVAL) }
+        // The request-health outage detection (MOB-2300): on in debug builds only until it has been validated
+        // on devices; the previous detection stays in charge elsewhere.
+        single { RequestHealthDetection { BuildConfig.DEBUG } }
+        single { PrivateConnectionProbe(application = get()) }
+        single<PrivateConnectionHealthOwner> {
+            if (BuildConfig.DEBUG) {
+                PrivateConnectionHealthOwnerImpl(
+                    synchronizerProvider = get(),
+                    probe = get(),
+                    applicationStateProvider = get(),
+                    appAccessLockProvider = get(),
+                    networkConnectivityProvider = get(),
+                )
+            } else {
+                NoPrivateConnectionHealth
+            }
+        }
         singleOf(::AutomaticServerRepositoryImpl) bind AutomaticServerRepository::class
         singleOf(::SwapRepositoryImpl) bind SwapRepository::class
         singleOf(::EphemeralAddressRepositoryImpl) bind EphemeralAddressRepository::class
