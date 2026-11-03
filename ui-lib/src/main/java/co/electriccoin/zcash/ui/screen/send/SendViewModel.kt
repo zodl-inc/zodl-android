@@ -55,6 +55,7 @@ import kotlin.time.Duration.Companion.seconds
 
 @Suppress("TooManyFunctions")
 class SendViewModel(
+    args: Send,
     exchangeRateRepository: ExchangeRateRepository,
     private val observeContactByAddress: ObserveContactByAddressUseCase,
     private val observeContactPicked: ObserveABContactPickedUseCase,
@@ -66,7 +67,10 @@ class SendViewModel(
     private val navigationRouter: NavigationRouter,
     private val signerCapabilitiesProvider: SignerCapabilitiesProvider,
 ) : ViewModel() {
-    val recipientAddressState = MutableStateFlow(RecipientAddressState.new("", null))
+    val recipientAddressState =
+        MutableStateFlow(
+            RecipientAddressState.new(args.recipientAddress.orEmpty(), args.recipientAddressType?.toSdkAddressType())
+        )
 
     private var onCreateZecSendClickJob: Job? = null
 

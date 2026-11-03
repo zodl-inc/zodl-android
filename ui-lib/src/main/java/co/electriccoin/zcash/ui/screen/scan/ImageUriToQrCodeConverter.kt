@@ -48,12 +48,18 @@ class ImageUriToQrCodeConverter {
             }.getOrDefault(ImageToQrCodeResult.NoCode)
         }
 
-    private fun Uri.toBitmap(context: Context): Bitmap =
-        context.contentResolver
-            .openInputStream(this)
-            .use {
-                BitmapFactory.decodeStream(it)
-            }
+    /**
+     * Decodes the image scaled down to at most [MAX_DECODED_PIXELS], so that an image of any size, which any installed
+     * app can share into the wallet, cannot exhaust memory. A QR code stays readable at that size.
+     */
+    private fun Uri.toBitmap(context: Context): Bitmap {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        context.contentResolver.openInputStream(this).use { BitmapFactory.decodeStream(it, null, bounds) }
+        val options = BitmapFactory.Options().apply { inSampleSize = sampleSizeFor(bounds.outWidth, bounds.outHeight) }
+        return requireNotNull(
+            context.contentResolver.openInputStream(this).use { BitmapFactory.decodeStream(it, null, options) }
+        ) { "Image could not be decoded" }
+    }
 
     private fun Bitmap.toBinaryBitmap(): BinaryBitmap {
         val width = this.width
@@ -63,5 +69,22 @@ class ImageUriToQrCodeConverter {
         this.recycle()
         val source = RGBLuminanceSource(width, height, pixels)
         return BinaryBitmap(HybridBinarizer(source))
+    }
+
+    internal companion object {
+        /** 2048 x 2048: 16 MB for the bitmap and as much again for its pixels. A phone screenshot fits unscaled. */
+        const val MAX_DECODED_PIXELS = 2048L * 2048L
+
+        /** The smallest power of two that brings a [width] x [height] image down to [MAX_DECODED_PIXELS]. */
+        fun sampleSizeFor(
+            width: Int,
+            height: Int
+        ): Int {
+            var sampleSize = 1
+            while (width.toLong() / sampleSize * (height.toLong() / sampleSize) > MAX_DECODED_PIXELS) {
+                sampleSize *= 2
+            }
+            return sampleSize
+        }
     }
 }
