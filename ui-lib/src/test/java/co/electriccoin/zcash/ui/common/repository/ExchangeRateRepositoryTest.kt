@@ -140,6 +140,23 @@ class ExchangeRateRepositoryTest {
     }
 
     @Test
+    fun theBackgroundLoopKeepsAskingOnlyWhileThereIsNoRateAndTheFailureMayPass() {
+        assertTrue(shouldKeepAskingForExchangeRate(hasExchangeRate = false, isLastFailureTransient = true))
+        assertFalse(shouldKeepAskingForExchangeRate(hasExchangeRate = true, isLastFailureTransient = true))
+        // A missing quote or a rejected key repeats identically, so the gateway is not asked again.
+        assertFalse(shouldKeepAskingForExchangeRate(hasExchangeRate = false, isLastFailureTransient = false))
+    }
+
+    @Test
+    fun theBackgroundWaitDoublesUpToTheCap() {
+        val waits = generateSequence(30.seconds) { nextExchangeRateRetryWait(it) }.take(7).toList()
+        assertEquals(
+            listOf(30.seconds, 60.seconds, 120.seconds, 240.seconds, 300.seconds, 300.seconds, 300.seconds),
+            waits
+        )
+    }
+
+    @Test
     fun retryReturnsTheResultOfTheAttemptThatSucceeds() =
         runTest {
             var attempts = 0

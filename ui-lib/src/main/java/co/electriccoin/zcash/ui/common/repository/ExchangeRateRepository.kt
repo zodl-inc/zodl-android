@@ -90,16 +90,24 @@ class ExchangeRateRepositoryImpl(
                         var cache = ExchangeRateResult(ObserveFiatCurrencyResult(isLoading = true))
                         val hasExchangeRate = MutableStateFlow(false)
                         val isFetching = MutableStateFlow(true)
+                        val isLastFailureTransient = MutableStateFlow(true)
                         launch {
                             // The short retries cover a blip. An outage that outlasts them would leave "unavailable" on
-                            // screen until the app restarts, so while there is no rate at all keep asking, slowly.
-                            hasExchangeRate.collectLatest { hasRate ->
-                                while (!hasRate) {
-                                    delay(EXCHANGE_RATE_RETRY_WHILE_MISSING)
-                                    // A lookup that is still running is not cut short by the next tick.
-                                    if (!isFetching.value) refreshPipeline.emit(Unit)
+                            // screen until the app restarts, so while there is no rate at all keep asking, slowly: the
+                            // wait doubles up to a cap, and it stops for a failure that would repeat identically
+                            // (a currency CMC has no quote for, a rejected key).
+                            combine(hasExchangeRate, isLastFailureTransient) { hasRate, isTransient ->
+                                shouldKeepAskingForExchangeRate(hasRate, isTransient)
+                            }.distinctUntilChanged()
+                                .collectLatest { keepAsking ->
+                                    var wait = EXCHANGE_RATE_RETRY_WHILE_MISSING
+                                    while (keepAsking) {
+                                        delay(wait)
+                                        // A lookup that is still running is not cut short by the next tick.
+                                        if (!isFetching.value) refreshPipeline.emit(Unit)
+                                        wait = nextExchangeRateRetryWait(wait)
+                                    }
                                 }
-                            }
                         }
                         launch {
                             refreshPipeline
@@ -120,6 +128,7 @@ class ExchangeRateRepositoryImpl(
                                             )
                                         )
                                     }.catch { error ->
+                                        isLastFailureTransient.value = isTransientExchangeRateFailure(error)
                                         if (shouldFallBackToSynchronizerRoute(VersionInfo.IS_CMC_AVAILABLE)) {
                                             synchronizerProvider.getSynchronizer().refreshExchangeRateUsd()
                                             emitAll(
@@ -140,6 +149,7 @@ class ExchangeRateRepositoryImpl(
                                     cache = it
                                     hasExchangeRate.value = it.observed.currencyConversion != null
                                     isFetching.value = it.observed.isLoading
+                                    if (hasExchangeRate.value) isLastFailureTransient.value = true
                                     send(cache)
                                 }
                         }
@@ -318,6 +328,16 @@ internal suspend fun <T> retryTransientExchangeRateFailure(
     }
 }
 
+/** Whether the background loop keeps asking: only while there is no rate and the last failure may pass. */
+internal fun shouldKeepAskingForExchangeRate(
+    hasExchangeRate: Boolean,
+    isLastFailureTransient: Boolean
+): Boolean = !hasExchangeRate && isLastFailureTransient
+
+/** The wait before the next background lookup: double the last one, up to [EXCHANGE_RATE_RETRY_WHILE_MISSING_MAX]. */
+internal fun nextExchangeRateRetryWait(current: Duration): Duration =
+    (current * 2).coerceAtMost(EXCHANGE_RATE_RETRY_WHILE_MISSING_MAX)
+
 /**
  * App-side wrapper pairing the SDK's [ObserveFiatCurrencyResult] with an app-level
  * [ExchangeRateError], since the SDK type cannot carry our error classification.
@@ -329,6 +349,7 @@ private data class ExchangeRateResult(
 
 private val EXCHANGE_RATE_RETRY_DELAYS = listOf(2.seconds, 6.seconds)
 private val EXCHANGE_RATE_RETRY_WHILE_MISSING = 30.seconds
+private val EXCHANGE_RATE_RETRY_WHILE_MISSING_MAX = 5.minutes
 
 private val USD_EXCHANGE_REFRESH_LOCK_THRESHOLD = 2.minutes
 private val USD_EXCHANGE_STALE_LOCK_THRESHOLD = 15.minutes
