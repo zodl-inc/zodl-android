@@ -1,11 +1,13 @@
 package co.electriccoin.zcash.ui.screen.chooseserver
 
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.component.EndpointTextFieldState
 import co.electriccoin.zcash.ui.design.component.AlertDialogState
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.RadioButtonState
 import co.electriccoin.zcash.ui.design.util.Itemizable
 import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.stringRes
 
 data class ChooseServerState(
     val connectionMode: ServerConnectionModeState,
@@ -24,6 +26,7 @@ data class ServerConnectionModeState(
     val publicBadge: ModeBadgeState? = null,
     val manualBadge: ModeBadgeState? = null,
     val onPrivateInfoClick: () -> Unit = {},
+    val privateInfoLabel: StringResource = stringRes(R.string.serverSetup_privateInfo),
 ) {
     val isManualSelected = manual.isChecked
 }
