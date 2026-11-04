@@ -8,6 +8,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -23,17 +24,23 @@ import com.flexa.core.Flexa
 
 /**
  * Shows [content] (a web view that loads a Flexa page directly) only when direct connections to Flexa are
- * allowed ([Flexa.allowsDirectConnections]) or the user agreed on this screen. Otherwise it shows a
+ * allowed ([directConnectionsAllowed]) or the user agreed on this screen. Otherwise it shows a
  * disclosure that Flexa will see the user's IP address, with a button to load the page anyway: the page is
- * never loaded silently while the app is on a private connection or Tor.
+ * never loaded silently while the app is on a private connection or Tor. If the privacy mode changes to
+ * Tor or Private while the page is open, the page is removed and the consent screen shows again.
  */
 @Composable
 fun DirectConnectionConsent(
+    directConnectionsAllowed: State<Boolean> = LocalDirectConnectionsAllowed.current,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     var agreed by rememberSaveable { mutableStateOf(false) }
-    if (agreed || LocalInspectionMode.current || Flexa.allowsDirectConnections()) {
+    // Reset agreed state when privacy mode changes to restrictive (the user must re-consent).
+    if (!directConnectionsAllowed.value) {
+        agreed = false
+    }
+    if (agreed || LocalInspectionMode.current || directConnectionsAllowed.value) {
         content()
         return
     }

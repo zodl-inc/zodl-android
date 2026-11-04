@@ -21,6 +21,9 @@ import com.flexa.identity.buildIdentity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
@@ -31,6 +34,9 @@ interface FlexaRepository {
     fun init()
 
     suspend fun disconnect()
+
+    /** Observes whether direct connections to Flexa are allowed (not on Tor or private mode). */
+    fun observeDirectConnectionsAllowed(): StateFlow<Boolean>
 }
 
 class FlexaRepositoryImpl(
@@ -52,6 +58,11 @@ class FlexaRepositoryImpl(
     @Volatile
     internal var directConnectionsAllowed: Boolean = false
         private set
+
+    private val _directConnectionsAllowedFlow = MutableStateFlow(false)
+    private val directConnectionsAllowedFlow: StateFlow<Boolean> = _directConnectionsAllowedFlow.asStateFlow()
+
+    override fun observeDirectConnectionsAllowed(): StateFlow<Boolean> = directConnectionsAllowedFlow
 
     override fun init() {
         scope.launch {
@@ -84,7 +95,10 @@ class FlexaRepositoryImpl(
     internal suspend fun trackDirectConnections() {
         combine(isTorEnabledStorageProvider.observe(), observeServerConnectionMode()) { tor, mode ->
             tor != true && mode != ServerConnectionMode.PRIVATE
-        }.collect { directConnectionsAllowed = it }
+        }.collect {
+            directConnectionsAllowed = it
+            _directConnectionsAllowedFlow.value = it
+        }
     }
 
     override suspend fun disconnect() {
