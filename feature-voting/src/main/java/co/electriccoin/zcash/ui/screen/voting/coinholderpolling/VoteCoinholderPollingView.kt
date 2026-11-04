@@ -258,11 +258,13 @@ private fun PollCard(state: VotePollCardState) {
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (state.trustIndicator != null) {
-                    VoteTrustIndicatorView(state.trustIndicator)
+                    // The indicator takes only the width the action button leaves free; without the weight a long
+                    // "Unverified Poll / Custom server" label measures first and squeezes the button to a few pixels.
+                    VoteTrustIndicatorView(state.trustIndicator, modifier = Modifier.weight(1f))
                 } else {
                     Spacer(modifier = Modifier.weight(1f))
                 }

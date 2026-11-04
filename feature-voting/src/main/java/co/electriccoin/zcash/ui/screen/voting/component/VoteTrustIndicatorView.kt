@@ -70,7 +70,8 @@ fun VoteTrustIndicatorView(
             Text(
                 text = stringResource(R.string.coinVote_pollsList_customServerNotPrivate),
                 style = ZashiTypography.textSm,
-                color = params.textColor
+                color = params.textColor,
+                modifier = Modifier.weight(1f, fill = false)
             )
         }
     }

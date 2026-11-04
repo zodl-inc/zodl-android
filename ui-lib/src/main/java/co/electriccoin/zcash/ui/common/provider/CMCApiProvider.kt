@@ -58,11 +58,22 @@ class CMCApiProviderImpl(
                 )
             Twig.debug { "OHTTP GET $url -> HTTP ${response.status} (${response.body.size} bytes)" }
             if (response.status !in OHTTP_HTTP_SUCCESS) {
-                error("CMC via OHTTP returned HTTP ${response.status} for $url")
+                throw CmcHttpStatusException(status = response.status, url = url)
             }
             CMC_JSON.decodeFromString<T>(response.body.decodeToString())
         }
 }
+
+/**
+ * CMC answered through the OHTTP gateway with a non-2xx [status] (the gateway injects the API key, so a 401/403 means
+ * the key it holds was rejected). It stays an [IllegalStateException], as it was before it carried the status, and
+ * the status is what lets the exchange rate repository tell a failure that passes (5xx, 429, 408) from one that
+ * repeats identically (the other 4xx).
+ */
+class CmcHttpStatusException(
+    val status: Int,
+    url: String
+) : IllegalStateException("CMC via OHTTP returned HTTP $status for $url")
 
 // MOB-1378: single source of truth for the exchange-rate provider host. Used both to build the request
 // URL above and by [HttpClientProvider] to refuse the same host on the direct (clearnet) client.
