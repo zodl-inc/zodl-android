@@ -19,7 +19,7 @@ jobs:
   # actions/upload-artifact. The previous matrix design rebuilt the
   # APK in each phase job, paying ~7 min twice.
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     # 60 rather than the usual 20: when SDK_COMMIT_PIN is set (see setup-sdk-companion),
     # this compiles the companion SDK's Rust dependency graph with a cold cargo/target
     # cache on the first run — observed at 20-25 min alone in pull-request.yml's build job.
@@ -85,7 +85,7 @@ jobs:
   # just persists that same directory across runs so a cache hit skips the
   # native build entirely instead of only skipping within a single job.
   build-keystone-simulator:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     # Generous headroom for a cold cache: this is a real CMake+Rust build,
     # not just an APK assemble. Should only actually run this long when the
     # pinned firmware SHAs or patch change (rare and deliberate -- see
