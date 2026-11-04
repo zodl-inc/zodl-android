@@ -41,6 +41,7 @@ internal class TokenProvider(
     private val client
         get() = OkHttpClient().newBuilder()
             .addInterceptor(HttpLoggingInterceptor().apply {
+                redactHeader("Authorization")
                 level = when (BuildConfig.DEBUG) {
                     true -> HttpLoggingInterceptor.Level.BODY
                     else -> HttpLoggingInterceptor.Level.NONE
