@@ -157,9 +157,9 @@ jobs:
         run: |
           mv app/build/outputs/apk/zcashmainnetFoss/release/app-zcashmainnet-foss-release.apk artifacts/app-zcashmainnet-foss-release-full-externallibs.apk
 
-      # Second FOSS build with the Flexa key intentionally NOT injected:
-      # this is the build that f-droid.org's reproducible build farm needs to
-      # match (their builders cannot see those secrets). Keep it in sync with
+      # Second FOSS build, the one f-droid.org's reproducible build farm needs
+      # to match: it gets no secret beyond the signing key (no build carries a
+      # Flexa key any more; the OHTTP gateway injects it). Keep it in sync with
       # the externallibs build above so fdroidserver metadata generation has
       # the artifact it expects under the un-suffixed filename.
       - name: Build FOSS (F-Droid) APK

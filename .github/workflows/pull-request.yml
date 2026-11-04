@@ -558,8 +558,8 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: android
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: androiddebugkey
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: android
-          # TODO [#1789] Re-enable Flexa integrations for FOSS variant
-          # ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
+          # No Flexa key: every build carries only the gateway's placeholder key (the OHTTP gateway injects
+          # the real one), and Flexa is offered on FOSS too.
         run: |
           ./gradlew clean :app:assembleZcashmainnetFossRelease
 
