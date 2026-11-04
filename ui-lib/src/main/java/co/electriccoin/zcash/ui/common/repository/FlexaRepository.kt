@@ -59,8 +59,8 @@ class FlexaRepositoryImpl(
     internal var directConnectionsAllowed: Boolean = false
         private set
 
-    private val _directConnectionsAllowedFlow = MutableStateFlow(false)
-    private val directConnectionsAllowedFlow: StateFlow<Boolean> = _directConnectionsAllowedFlow.asStateFlow()
+    private val directConnectionsAllowedState = MutableStateFlow(false)
+    private val directConnectionsAllowedFlow: StateFlow<Boolean> = directConnectionsAllowedState.asStateFlow()
 
     override fun observeDirectConnectionsAllowed(): StateFlow<Boolean> = directConnectionsAllowedFlow
 
@@ -97,7 +97,7 @@ class FlexaRepositoryImpl(
             tor != true && mode != ServerConnectionMode.PRIVATE
         }.collect {
             directConnectionsAllowed = it
-            _directConnectionsAllowedFlow.value = it
+            directConnectionsAllowedState.value = it
         }
     }
 
