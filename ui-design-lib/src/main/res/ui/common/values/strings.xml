@@ -229,6 +229,7 @@
     <string name="serverSetup_privateSubtitle">ZODL servers</string>
     <string name="serverSetup_public">Public</string>
     <string name="serverSetup_unavailable">Unavailable</string>
+    <string name="serverSetup_notPrivate">Not private</string>
     <string name="serverSetup_privateInfo">Learn more about the private connection</string>
     <string name="ohttpInfo_title">Private Connection</string>
     <string name="ohttpInfo_body">Zodl sends its requests through a private relay using Oblivious HTTP (OHTTP), instead of connecting to servers directly.</string>

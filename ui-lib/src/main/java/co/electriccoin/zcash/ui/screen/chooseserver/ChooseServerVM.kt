@@ -149,14 +149,22 @@ class ChooseServerVM(
                     hapticFeedbackType =
                         if (local.mode == ServerConnectionMode.MANUAL) null else HapticFeedbackType.SegmentTick
                 ),
-            privateBadge = createPrivateBadge(persisted, isOhttpUnavailable),
+            privateBadge = createPrivateBadge(persisted, isOhttpUnavailable, gatewayRelayIndependence),
             publicBadge = createPublicBadge(local, persisted, testingBadge, isTesting),
             manualBadge = if (local.mode == ServerConnectionMode.MANUAL && isTesting) testingBadge else null,
             onPrivateInfoClick = ::onPrivateInfoClicked,
         )
     }
 
-    private fun createPrivateBadge(persisted: InnerState.Persisted, isOhttpUnavailable: Boolean): ModeBadgeState? =
+    /**
+     * The Private mode's badge. A gateway reached through a relay its own operator runs (the relay simulator)
+     * is not private, so it never reads "Active", only "Not private", as its subtitle says ([privateSubtitle]).
+     */
+    private fun createPrivateBadge(
+        persisted: InnerState.Persisted,
+        isOhttpUnavailable: Boolean,
+        gatewayRelayIndependence: Map<String, Boolean>,
+    ): ModeBadgeState? =
         when {
             persisted.mode != ServerConnectionMode.PRIVATE -> {
                 null
@@ -164,6 +172,10 @@ class ChooseServerVM(
 
             isOhttpUnavailable -> {
                 ModeBadgeState(stringRes(R.string.serverSetup_unavailable), ModeBadgeStyle.ERROR)
+            }
+
+            !isRelayIndependent(gatewayRelayIndependence) -> {
+                ModeBadgeState(stringRes(R.string.serverSetup_notPrivate), ModeBadgeStyle.WARNING)
             }
 
             else -> {
@@ -417,13 +429,16 @@ class ChooseServerVM(
      * "ZODL servers", unless this build reaches the gateway through a relay the gateway operator also runs (the
      * relay simulator), which gives no unlinkability, so it must not read as private.
      */
-    private fun privateSubtitle(gatewayRelayIndependence: Map<String, Boolean>): StringResource {
-        val gatewayHost = lightWalletEndpointProvider.getDefaultEndpoint().host
-        return when (gatewayRelayIndependence[gatewayHost]) {
-            false -> stringRes(R.string.serverSetup_ohttpTestRelayNotPrivate)
-            else -> stringRes(R.string.serverSetup_privateSubtitle)
+    private fun privateSubtitle(gatewayRelayIndependence: Map<String, Boolean>): StringResource =
+        if (isRelayIndependent(gatewayRelayIndependence)) {
+            stringRes(R.string.serverSetup_privateSubtitle)
+        } else {
+            stringRes(R.string.serverSetup_ohttpTestRelayNotPrivate)
         }
-    }
+
+    /** False only when this build's relay for the default gateway is known to be run by the gateway operator. */
+    private fun isRelayIndependent(gatewayRelayIndependence: Map<String, Boolean>): Boolean =
+        gatewayRelayIndependence[lightWalletEndpointProvider.getDefaultEndpoint().host] != false
 
     /** The public server a finished speed test ranked first, if any. */
     private fun fastestPublicServer(state: FastestServersState): LightWalletEndpoint? =
