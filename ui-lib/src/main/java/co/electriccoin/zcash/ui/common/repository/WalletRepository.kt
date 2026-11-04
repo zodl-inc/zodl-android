@@ -329,7 +329,8 @@ class WalletRepositoryImpl(
         }
         val isDecommissioned = endpoint.host in lightWalletEndpointProvider.getDecommissionedHosts()
         val isAutomaticOffGateway =
-            !lightWalletEndpointProvider.isOhttpGateway(endpoint) &&
+            lightWalletEndpointProvider.hasOhttpGateway() &&
+                !lightWalletEndpointProvider.isOhttpGateway(endpoint) &&
                 !isPublicConnectionProvider.get() &&
                 resolveIsServerSelectionAutomatic(
                     isAutomaticPreference = isServerSelectionAutomaticProvider.get(),

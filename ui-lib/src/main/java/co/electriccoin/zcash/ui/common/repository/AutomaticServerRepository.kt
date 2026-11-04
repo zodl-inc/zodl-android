@@ -480,7 +480,8 @@ class AutomaticServerRepositoryImpl(
             _ohttpUnavailable.value = false
             return null
         }
-        if (isPublicConnectionProvider.get()) {
+        // A build without an OHTTP gateway has no Private connection: it uses the clearnet selection.
+        if (isPublicConnectionProvider.get() || !lightWalletEndpointProvider.hasOhttpGateway()) {
             _ohttpUnavailable.value = false
             return evaluatePublicServerSwitch(trigger)
         }
@@ -713,7 +714,7 @@ class AutomaticServerRepositoryImpl(
         if (!isServerAutomatic() || isAppInTransactionState) return
         if (candidate !in lightWalletEndpointProvider.getEndpoints()) return
         val returningToPrivate = lightWalletEndpointProvider.isOhttpGateway(candidate)
-        val isPublic = isPublicConnectionProvider.get()
+        val isPublic = isPublicConnectionProvider.get() || !lightWalletEndpointProvider.hasOhttpGateway()
         if (!returningToPrivate && !isPublic) {
             Twig.warn { "Automatic server: dropped a clearnet candidate, the wallet is no longer Public" }
             return
@@ -726,7 +727,8 @@ class AutomaticServerRepositoryImpl(
         Twig.info { "Automatic server: switching to ${candidate.host}:${candidate.port}" }
         walletRepository.updateWalletEndpoint(candidate)
         if (returningToPrivate) isPublicConnectionProvider.store(false)
-        if (returningToPrivate || !isPublicConnectionProvider.get()) syncFallbackFlag(candidate)
+        val isOnPrivate = !isPublicConnectionProvider.get() && lightWalletEndpointProvider.hasOhttpGateway()
+        if (returningToPrivate || isOnPrivate) syncFallbackFlag(candidate)
         synchronizer?.confirmServerSwitch(candidate)
     }
 }
