@@ -5,6 +5,7 @@ import cash.z.ecc.android.sdk.model.ObserveFiatCurrencyResult
 import co.electriccoin.zcash.ui.common.datasource.ExchangeRateDataSource
 import co.electriccoin.zcash.ui.common.datasource.ExchangeRateUnavailable
 import co.electriccoin.zcash.ui.common.model.VersionInfo
+import co.electriccoin.zcash.ui.common.provider.CmcHttpStatusException
 import co.electriccoin.zcash.ui.common.provider.IsExchangeRateEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.PreferredFiatProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -40,6 +41,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.serialization.SerializationException
 import java.net.UnknownHostException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -95,7 +97,8 @@ class ExchangeRateRepositoryImpl(
                             // The short retries cover a blip. An outage that outlasts them would leave "unavailable" on
                             // screen until the app restarts, so while there is no rate at all keep asking, slowly: the
                             // wait doubles up to a cap, and it stops for a failure that would repeat identically
-                            // (a currency CMC has no quote for, a rejected key).
+                            // (a currency CMC has no quote for, a 4xx answer such as a rejected key, an unreadable
+                            // answer).
                             combine(hasExchangeRate, isLastFailureTransient) { hasRate, isTransient ->
                                 shouldKeepAskingForExchangeRate(hasRate, isTransient)
                             }.distinctUntilChanged()
@@ -296,9 +299,10 @@ internal fun isRefreshAllowed(
 ): Boolean = isRefreshEnabled || !hasExchangeRate
 
 /**
- * Whether a failed CMC lookup is worth repeating right away. A missing quote ([ExchangeRateUnavailable]) and an
- * unreadable answer repeat identically, everything else (the OHTTP gateway answering with a 5xx or 429, a dropped
- * relay connection, a timeout) is the kind of failure a second attempt often survives.
+ * Whether a failed CMC lookup is worth repeating. A missing quote ([ExchangeRateUnavailable]), an unreadable answer
+ * and an HTTP answer that says the request itself is wrong ([CmcHttpStatusException] with a 4xx other than 408 and
+ * 429, such as a rejected key) repeat identically. Everything else (the OHTTP gateway answering with a 5xx, 429 or
+ * 408, a dropped relay connection, a timeout) is the kind of failure a second attempt often survives.
  */
 internal fun isTransientExchangeRateFailure(error: Throwable): Boolean =
     when (error) {
@@ -306,8 +310,13 @@ internal fun isTransientExchangeRateFailure(error: Throwable): Boolean =
         is ExchangeRateUnavailable -> false
         is ContentConvertException -> false
         is NoTransformationFoundException -> false
+        is SerializationException -> false
+        is CmcHttpStatusException -> isTransientHttpStatus(error.status)
         else -> true
     }
+
+private fun isTransientHttpStatus(status: Int): Boolean =
+    status >= HTTP_SERVER_ERROR_MIN || status == HTTP_REQUEST_TIMEOUT || status == HTTP_TOO_MANY_REQUESTS
 
 /**
  * Runs [block] and repeats it after each of [retryDelays] when it fails with a transient failure
@@ -348,6 +357,9 @@ private data class ExchangeRateResult(
 )
 
 private val EXCHANGE_RATE_RETRY_DELAYS = listOf(2.seconds, 6.seconds)
+private const val HTTP_SERVER_ERROR_MIN = 500
+private const val HTTP_REQUEST_TIMEOUT = 408
+private const val HTTP_TOO_MANY_REQUESTS = 429
 private val EXCHANGE_RATE_RETRY_WHILE_MISSING = 30.seconds
 private val EXCHANGE_RATE_RETRY_WHILE_MISSING_MAX = 5.minutes
 
