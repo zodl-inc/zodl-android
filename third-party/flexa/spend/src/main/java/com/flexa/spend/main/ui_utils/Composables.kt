@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.flexa.core.view.FlexaImageLoader
 import coil.decode.BitmapFactoryDecoder
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
@@ -59,6 +60,7 @@ internal fun SpendAsyncImage(
 ) {
     AsyncImage(
         modifier = modifier,
+        imageLoader = FlexaImageLoader.get(LocalContext.current),
         model = ImageRequest.Builder(LocalContext.current)
             .decoderFactory(BitmapFactoryDecoder.Factory())
             .decoderFactory(SvgDecoder.Factory())

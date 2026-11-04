@@ -1,6 +1,7 @@
 package com.flexa.spend.main.web_view
 
 import android.annotation.SuppressLint
+import com.flexa.core.view.DirectConnectionConsent
 import android.util.Xml.Encoding
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
@@ -58,40 +59,42 @@ fun WebView(
             )
         }
     ) { padding ->
-        AndroidView(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize(),
-            factory = { context ->
-                WebView(context).apply {
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
-                    webChromeClient = object : WebChromeClient() {
-                        override fun onReceivedTitle(view: WebView?, t: String?) {
-                            super.onReceivedTitle(view, t)
-                            title.value = t ?: ""
+        DirectConnectionConsent(modifier = Modifier.padding(padding)) {
+            AndroidView(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize(),
+                factory = { context ->
+                    WebView(context).apply {
+                        layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+                        webChromeClient = object : WebChromeClient() {
+                            override fun onReceivedTitle(view: WebView?, t: String?) {
+                                super.onReceivedTitle(view, t)
+                                title.value = t ?: ""
+                            }
                         }
-                    }
-                    webViewClient = object : WebViewClientCompat() {
-                        override fun onPageFinished(view: WebView?, url: String?) {
-                            title.value = view?.title ?: ""
-                            super.onPageFinished(view, url)
+                        webViewClient = object : WebViewClientCompat() {
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                title.value = view?.title ?: ""
+                                super.onPageFinished(view, url)
+                            }
                         }
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.loadWithOverviewMode = true
+                        settings.useWideViewPort = true
+                        settings.builtInZoomControls = true
+                        settings.displayZoomControls = false
+                        settings.setSupportZoom(true)
+                        settings.defaultTextEncodingName = Encoding.UTF_8.name
                     }
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.loadWithOverviewMode = true
-                    settings.useWideViewPort = true
-                    settings.builtInZoomControls = true
-                    settings.displayZoomControls = false
-                    settings.setSupportZoom(true)
-                    settings.defaultTextEncodingName = Encoding.UTF_8.name
-                }
-            },
-            update = { it.loadUrl(url) }
-        )
+                },
+                update = { it.loadUrl(url) }
+            )
+        }
     }
 }
 
