@@ -64,6 +64,7 @@ class ChooseServerVMTest {
             mockk<LightWalletEndpointProvider> {
                 every { getEndpoints() } returns listOf(gateway, clearnet, otherClearnet)
                 every { getDefaultEndpoint() } returns gateway
+                every { getOhttpEndpoint() } returns gateway
                 every { getFallbackEndpoints() } returns listOf(clearnet, otherClearnet)
                 every { isOhttpGateway(any()) } answers { firstArg<LightWalletEndpoint>() == gateway }
                 coEvery { usesIndependentRelay(any()) } returns true

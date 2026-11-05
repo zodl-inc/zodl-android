@@ -283,7 +283,7 @@ class ChooseServerVM(
     init {
         viewModelScope.launch {
             val relayIndependence =
-                LightWalletEndpointProvider.GATEWAY_HOSTS.associateWith {
+                LightWalletEndpointProvider.gatewayHosts.associateWith {
                     lightWalletEndpointProvider.usesIndependentRelay(it)
                 }
             innerState.update { it.copy(gatewayRelayIndependence = relayIndependence) }
@@ -418,8 +418,8 @@ class ChooseServerVM(
      * relay simulator), which gives no unlinkability, so it must not read as private.
      */
     private fun privateSubtitle(gatewayRelayIndependence: Map<String, Boolean>): StringResource {
-        val gatewayHost = lightWalletEndpointProvider.getDefaultEndpoint().host
-        return when (gatewayRelayIndependence[gatewayHost]) {
+        val gatewayHost = lightWalletEndpointProvider.getOhttpEndpoint()?.host
+        return when (gatewayHost?.let { gatewayRelayIndependence[it] }) {
             false -> stringRes(R.string.serverSetup_ohttpTestRelayNotPrivate)
             else -> stringRes(R.string.serverSetup_privateSubtitle)
         }
@@ -578,7 +578,7 @@ class ChooseServerVM(
 private fun endpointLabel(endpoint: LightWalletEndpoint) =
     when {
         LightWalletEndpointProvider.isOhttpGatewayHost(endpoint.host) -> {
-            if (endpoint.host.lowercase().contains("testnet")) {
+            if (LightWalletEndpointProvider.isTestnetGatewayHost(endpoint.host)) {
                 stringRes(R.string.choose_server_ohttp_gateway_testnet)
             } else {
                 stringRes(R.string.choose_server_ohttp_gateway_mainnet)
