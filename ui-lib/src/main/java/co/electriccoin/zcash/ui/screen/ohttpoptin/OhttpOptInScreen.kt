@@ -54,7 +54,7 @@ fun OhttpOptInView(state: OhttpOptInState) {
             state.items.forEachIndexed { index, item ->
                 Spacer(if (index == 0) 24.dp else 20.dp)
                 ZashiInfoRow(
-                    icon = item.icon,
+                    icon = item.icon.resource,
                     title = item.title.getValue(),
                     subtitle = item.subtitle.getValue(),
                 )

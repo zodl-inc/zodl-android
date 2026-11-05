@@ -26,6 +26,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.flexa.core.view.FlexaImageLoader
 import coil.request.ImageRequest
 import com.flexa.core.theme.FlexaTheme
 import com.flexa.core.view.FlexaLogo
@@ -73,6 +74,7 @@ internal fun MerchantsIconsList(
                     if (j > 4) j = 0
                     AsyncImage(
                         modifier = modifierProvider.getModifier(j),
+                        imageLoader = FlexaImageLoader.get(LocalContext.current),
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(bundle.items[i])
                             .crossfade(true)

@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.common.model
 
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
-import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -10,12 +9,13 @@ import kotlin.test.assertEquals
  * is reported to the UI; clearnet servers require manual selection.
  */
 class ServerFallbackPolicyTest {
-    private val gateway = endpoint("ohttp-gateway.example")
+    private val gateway = endpoint("gateway.example")
     private val zecRocks = endpoint("zec.rocks")
     private val naZecRocks = endpoint("na.zec.rocks")
     private val stardust = endpoint("us.zec.stardust.rest")
-    private val isGateway: (LightWalletEndpoint) -> Boolean =
-        { LightWalletEndpointProvider.isOhttpGatewayHost(it.host) }
+
+    // The policy is pure: the gateway is whatever the caller recognizes, independent of the SDK build's hosts.
+    private val isGateway: (LightWalletEndpoint) -> Boolean = { it == gateway }
 
     @Test
     fun `scenario 1 - OHTTP available - stays on the gateway`() {
@@ -29,7 +29,7 @@ class ServerFallbackPolicyTest {
     fun `an unreachable gateway gives way to a reachable one of the same network`() {
         // The policy takes the gateway list as given and has no network check of its own: the list
         // it is handed (the bundled gateways of the wallet's network) is what keeps it to one network.
-        val other = endpoint("ohttp-gateway-2.example")
+        val other = endpoint("gateway-2.example")
         val isMainnetGateway: (LightWalletEndpoint) -> Boolean = { it == gateway || it == other }
         assertEquals(
             ServerFallbackPolicy.DecisionResult.ReturnToGateway(other),

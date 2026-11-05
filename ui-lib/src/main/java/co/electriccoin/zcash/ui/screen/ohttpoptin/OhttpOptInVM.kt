@@ -6,6 +6,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.usecase.OptOutOfOhttpUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
+import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,17 +25,17 @@ class OhttpOptInVM(
                 items =
                     listOf(
                         OhttpOptInItemState(
-                            icon = R.drawable.ic_ohttp_lock,
+                            icon = ImageResource.ByDrawable(R.drawable.ic_ohttp_lock),
                             title = stringRes(R.string.ohttpInfo_item1Title),
                             subtitle = stringRes(R.string.ohttpInfo_item1Body),
                         ),
                         OhttpOptInItemState(
-                            icon = R.drawable.ic_ohttp_shield,
+                            icon = ImageResource.ByDrawable(R.drawable.ic_ohttp_shield),
                             title = stringRes(R.string.ohttpInfo_item2Title),
                             subtitle = stringRes(R.string.ohttpInfo_item2Body),
                         ),
                         OhttpOptInItemState(
-                            icon = R.drawable.ic_ohttp_check_circle,
+                            icon = ImageResource.ByDrawable(R.drawable.ic_ohttp_check_circle),
                             title = stringRes(R.string.ohttpInfo_item3Title),
                             subtitle = stringRes(R.string.ohttpInfo_item3Body),
                         ),

@@ -1,7 +1,7 @@
 package co.electriccoin.zcash.ui.screen.ohttpoptin
 
-import androidx.annotation.DrawableRes
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 
@@ -23,7 +23,7 @@ data class OhttpOptInState(
                 items =
                     listOf(
                         OhttpOptInItemState(
-                            icon = R.drawable.ic_ohttp_lock,
+                            icon = ImageResource.ByDrawable(R.drawable.ic_ohttp_lock),
                             title = stringRes(R.string.ohttpInfo_item1Title),
                             subtitle = stringRes(R.string.ohttpInfo_item1Body),
                         ),
@@ -38,7 +38,7 @@ data class OhttpOptInState(
 }
 
 data class OhttpOptInItemState(
-    @param:DrawableRes val icon: Int,
+    val icon: ImageResource.ByDrawable,
     val title: StringResource,
     val subtitle: StringResource,
 )

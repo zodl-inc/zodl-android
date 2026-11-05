@@ -19,8 +19,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import coil.ImageLoader
 import coil.ImageLoaderFactory
-import coil.disk.DiskCache
-import coil.memory.MemoryCache
+import com.flexa.core.view.FlexaImageLoader
 import com.flexa.core.Flexa
 import com.flexa.core.shared.AssetAccount
 import com.flexa.core.shared.FlexaConstants
@@ -63,21 +62,8 @@ class SpendActivity : ComponentActivity(), ImageLoaderFactory {
         super.onDestroy()
     }
 
-    override fun newImageLoader(): ImageLoader {
-        return ImageLoader.Builder(this)
-            .memoryCache {
-                MemoryCache.Builder(this)
-                    .maxSizePercent(0.25)
-                    .build()
-            }
-            .diskCache {
-                DiskCache.Builder()
-                    .directory(this.cacheDir.resolve("image_cache"))
-                    .maxSizePercent(0.02)
-                    .build()
-            }
-            .build()
-    }
+    /** The SDK's image loader, which downloads nothing while direct connections are off. */
+    override fun newImageLoader(): ImageLoader = FlexaImageLoader.get(this)
 
     private fun restoreAssetsAccounts() {
         if (Flexa.appAccounts.value.isEmpty()) {

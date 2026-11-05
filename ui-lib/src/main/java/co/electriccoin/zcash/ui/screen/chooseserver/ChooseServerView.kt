@@ -169,7 +169,8 @@ private fun ConnectionModeSection(state: ServerConnectionModeState) {
         ConnectionModeRow(
             radio = state.private,
             badge = state.privateBadge,
-            onInfoClick = state.onPrivateInfoClick
+            onInfoClick = state.onPrivateInfoClick,
+            infoLabel = state.privateInfoLabel,
         )
         Spacer(modifier = Modifier.height(4.dp))
         ConnectionModeRow(radio = state.public, badge = state.publicBadge)
@@ -184,6 +185,7 @@ private fun ConnectionModeRow(
     radio: RadioButtonState,
     badge: ModeBadgeState?,
     onInfoClick: (() -> Unit)? = null,
+    infoLabel: StringResource? = null,
 ) {
     val isTesting = badge?.showsProgress == true && radio.isChecked
     ZashiRadioButton(
@@ -193,7 +195,7 @@ private fun ConnectionModeRow(
                 {
                     Image(
                         painter = painterResource(R.drawable.ic_info),
-                        contentDescription = stringResource(R.string.serverSetup_privateInfo),
+                        contentDescription = infoLabel?.getValue(),
                         modifier =
                             Modifier
                                 .padding(top = 6.dp)

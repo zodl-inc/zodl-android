@@ -20,6 +20,7 @@ internal class OkHttpProvider(
             return OkHttpClient().newBuilder()
                 .addInterceptor(LoginInterceptor(tokenProvider))
                 .addInterceptor(HttpLoggingInterceptor().apply {
+                    redactHeader("Authorization")
                     level = when (BuildConfig.DEBUG) {
                         true -> HttpLoggingInterceptor.Level.BODY
                         else -> HttpLoggingInterceptor.Level.NONE
@@ -39,6 +40,7 @@ internal class OkHttpProvider(
             )
             .addInterceptor(HeadersInterceptor(tokenProvider))
             .addInterceptor(HttpLoggingInterceptor().apply {
+                redactHeader("Authorization")
                 level = when (BuildConfig.DEBUG) {
                     true -> HttpLoggingInterceptor.Level.BODY
                     else -> HttpLoggingInterceptor.Level.NONE
@@ -52,6 +54,7 @@ internal class OkHttpProvider(
         OkHttpClient().newBuilder()
             .addInterceptor(HeadersInterceptor(tokenProvider, true))
             .addInterceptor(HttpLoggingInterceptor().apply {
+                redactHeader("Authorization")
                 level = when (BuildConfig.DEBUG) {
                     true -> HttpLoggingInterceptor.Level.HEADERS
                     else -> HttpLoggingInterceptor.Level.NONE

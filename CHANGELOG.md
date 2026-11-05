@@ -9,20 +9,6 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Changed:
 
-- Migration time estimates, the plan's total duration and the Syncing banner follow NU7's 25-second target block
-  spacing. An estimate that reaches past the NU7 activation height counts each side at its own spacing, and the
-  Syncing banner still opens at three days behind.
-- The scheduled (private) Ironwood migration is not offered until the chain reaches the NU7 activation height, and
-  the Setup screen shows it as available after the upgrade with the estimated date. The one-transaction migration
-  stays available at every height, and a migration that is already running keeps sending its valid transfers until
-  the activation. After NU7 a run that still holds a transfer signed for the old consensus branch is cancelled and a
-  one-time Home notice offers to migrate what is left. Confirmed transfers are unaffected, and unconfirmed ones can
-  stay unavailable until they expire and the wallet syncs.
-- Restarting a migration that has a transfer needing attention, before NU7, ends the run and opens the Setup screen
-  (the scheduled migration is shown as available after the upgrade, the one-transaction one now) instead of failing.
-- The Keystone signing and scanning screens explain that a scheduled migration cannot start before NU7 instead of a
-  generic error. Spanish copy was added for the new migration messages. A wallet that has not synced yet is told to
-  finish syncing instead.
 - The app now connects to Zcash servers through OHTTP relays by default for private network
   connections. Exchange rate updates also route through OHTTP without requiring a build-time API key.
 - Choose a Server now offers three connection modes: Private (Zodl servers over OHTTP, the default for
@@ -37,11 +23,36 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   explains it and a "Not now" option that hides the message for good.
 - Flexa's API calls go through OHTTP to the gateway, which holds the publishable key, so Flexa no
   longer sees the user's IP address for them and the app no longer needs a build-time Flexa key. The
-  Flexa SDK is built from source (`third-party/flexa`). Its web pages and images still load directly.
+  Flexa SDK is built from source (`third-party/flexa`). Its web pages and images load from Flexa
+  directly, so on the private connection or with Tor on its images are not downloaded (a placeholder
+  shows) and its pages (places to pay, locations, legal pages) open only after you agree to a notice that
+  Flexa can see your IP address.
 - The F-Droid build now behaves like the Google Play build: it offers Flexa (its API calls go through
   OHTTP, so no publishable key is needed), and its release checks that the FOSS runtime classpath has
   no non-free dependency. It still ships without Firebase Crashlytics and ML Kit (QR scanning uses
   zxing-cpp).
+- The private connection's info and opt-in sheets say what it covers: the wallet servers' requests, not
+  Flexa's pages and images, custom servers or opened links.
+- Choose a Server marks Private as "Not private" when this build reaches the gateway through a test relay.
+
+## [3.19.0 (3234)] - 2026-10-29
+
+### Changed:
+
+- Migration time estimates, the plan's total duration and the Syncing banner follow NU7's 25-second target block
+  spacing. An estimate that reaches past the NU7 activation height counts each side at its own spacing, and the
+  Syncing banner still opens at three days behind.
+- The scheduled (private) Ironwood migration is not offered until the chain reaches the NU7 activation height, and
+  the Setup screen shows it as available after the upgrade with the estimated date. The one-transaction migration
+  stays available at every height, and a migration that is already running keeps sending its valid transfers until
+  the activation. After NU7 a run that still holds a transfer signed for the old consensus branch is cancelled and a
+  one-time Home notice offers to migrate what is left. Confirmed transfers are unaffected, and unconfirmed ones can
+  stay unavailable until they expire and the wallet syncs.
+- Restarting a migration that has a transfer needing attention, before NU7, ends the run and opens the Setup screen
+  (the scheduled migration is shown as available after the upgrade, the one-transaction one now) instead of failing.
+- The Keystone signing and scanning screens explain that a scheduled migration cannot start before NU7 instead of a
+  generic error. Spanish copy was added for the new migration messages. A wallet that has not synced yet is told to
+  finish syncing instead.
 
 ## [3.18.0 (3206)] - 2026-10-23
 

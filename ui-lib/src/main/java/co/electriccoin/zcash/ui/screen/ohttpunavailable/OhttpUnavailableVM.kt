@@ -15,6 +15,7 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveFastestServersUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.SetTorEnabledUseCase
 import co.electriccoin.zcash.ui.design.util.stringRes
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -87,7 +88,21 @@ class OhttpUnavailableVM(
         navigationRouter.back()
     }
 
-    private fun onTorToggle(enabled: Boolean) = viewModelScope.launch { setTorEnabled(enabled) }
+    /** The last Tor toggle; [onSwitchToPublic] waits for it, and toggles run one after the other. */
+    private var torToggle: Job? = null
+
+    /**
+     * Stores the Tor choice. A "Switch to public servers" tapped right after waits until it is stored, so the
+     * public synchronizer it builds is made with the Tor setting the user just chose, not the previous one.
+     */
+    private fun onTorToggle(enabled: Boolean) {
+        val previous = torToggle
+        torToggle =
+            viewModelScope.launch {
+                previous?.join()
+                setTorEnabled(enabled)
+            }
+    }
 
     /**
      * Marked as outage-induced, so the wallet returns to Private by itself once the relay answers.
@@ -100,6 +115,7 @@ class OhttpUnavailableVM(
      */
     private fun onSwitchToPublic() =
         viewModelScope.launch {
+            torToggle?.join()
             val inTransaction: suspend () -> Boolean = { automaticServerRepository.isTransactionInProgress.first() }
             if (inTransaction()) return@launch
             val fastest = fastestPublicServer(observeFastestServers().value)

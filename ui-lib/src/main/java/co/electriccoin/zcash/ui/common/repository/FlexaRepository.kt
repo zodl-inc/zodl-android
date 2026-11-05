@@ -4,10 +4,13 @@ import android.app.Application
 import cash.z.ecc.android.sdk.ext.convertZatoshiToZec
 import cash.z.ecc.android.sdk.internal.Twig
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.model.ServerConnectionMode
 import co.electriccoin.zcash.ui.common.provider.FLEXA_OHTTP_PUBLISHABLE_KEY
 import co.electriccoin.zcash.ui.common.provider.FlexaOhttpInterceptor
 import co.electriccoin.zcash.ui.common.provider.FlexaOhttpTransportImpl
 import co.electriccoin.zcash.ui.common.provider.HttpClientProvider
+import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
+import co.electriccoin.zcash.ui.common.usecase.ObserveServerConnectionModeUseCase
 import com.flexa.core.Flexa
 import com.flexa.core.shared.AssetAccount
 import com.flexa.core.shared.AvailableAsset
@@ -18,6 +21,10 @@ import com.flexa.identity.buildIdentity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import java.security.MessageDigest
@@ -27,6 +34,9 @@ interface FlexaRepository {
     fun init()
 
     suspend fun disconnect()
+
+    /** Observes whether direct connections to Flexa are allowed (not on Tor or private mode). */
+    fun observeDirectConnectionsAllowed(): StateFlow<Boolean>
 }
 
 class FlexaRepositoryImpl(
@@ -34,14 +44,30 @@ class FlexaRepositoryImpl(
     private val configurationRepository: ConfigurationRepository,
     private val accountDataSource: AccountDataSource,
     httpClientProvider: HttpClientProvider,
+    private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider,
+    private val observeServerConnectionMode: ObserveServerConnectionModeUseCase,
 ) : FlexaRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val ohttpInterceptor = FlexaOhttpInterceptor(FlexaOhttpTransportImpl(httpClientProvider))
 
+    /**
+     * Whether Flexa's images and web views may connect to Flexa directly: only on a public connection with Tor
+     * off. False until both settings are known, so nothing goes direct before then.
+     */
+    @Volatile
+    internal var directConnectionsAllowed: Boolean = false
+        private set
+
+    private val directConnectionsAllowedState = MutableStateFlow(false)
+    private val directConnectionsAllowedFlow: StateFlow<Boolean> = directConnectionsAllowedState.asStateFlow()
+
+    override fun observeDirectConnectionsAllowed(): StateFlow<Boolean> = directConnectionsAllowedFlow
+
     override fun init() {
         scope.launch {
             if (!configurationRepository.isFlexaAvailable()) return@launch
+            launch { trackDirectConnections() }
             Flexa.init(getFlexaClientConfiguration())
             Twig.info { "Flexa initialized" }
 
@@ -66,6 +92,15 @@ class FlexaRepositoryImpl(
         }
     }
 
+    internal suspend fun trackDirectConnections() {
+        combine(isTorEnabledStorageProvider.observe(), observeServerConnectionMode()) { tor, mode ->
+            tor != true && mode != ServerConnectionMode.PRIVATE
+        }.collect {
+            directConnectionsAllowed = it
+            directConnectionsAllowedState.value = it
+        }
+    }
+
     override suspend fun disconnect() {
         if (configurationRepository.isFlexaAvailable()) {
             Flexa.buildIdentity().build().disconnect()
@@ -75,7 +110,10 @@ class FlexaRepositoryImpl(
     /**
      * The SDK gets the gateway's placeholder key and sends its API calls through OHTTP: the gateway swaps
      * the placeholder for the real key, so no build carries it. Its web views (merchant directory, how to
-     * pay, legal pages) and images are not loaded with these OkHttp clients and still go to Flexa directly.
+     * pay, legal pages) and images are not loaded with these OkHttp clients and would go to Flexa directly:
+     * on a private connection or with Tor on ([directConnectionsAllowed] false) images are not downloaded
+     * and a web view loads only after the user agrees to a disclosure (`directConnectionsAllowed` of the
+     * configuration).
      */
     internal fun getFlexaClientConfiguration() =
         FlexaClientConfiguration(
@@ -108,6 +146,7 @@ class FlexaRepositoryImpl(
                     "    }\n" +
                     "}",
             okHttpClientCustomizer = { it.addInterceptor(ohttpInterceptor) },
+            directConnectionsAllowed = { directConnectionsAllowed },
         )
 
     private fun createFlexaAccount(

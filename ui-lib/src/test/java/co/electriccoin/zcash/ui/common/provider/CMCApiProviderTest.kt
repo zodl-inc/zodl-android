@@ -8,6 +8,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -45,6 +46,16 @@ class CMCApiProviderTest {
             )
             assertTrue(httpClientProvider.requestedUrls.all { it.contains(CMC_API_HOST) })
             httpClientProvider.capturedRequests.forEach(::assertNoCmcApiKeyHeader)
+        }
+
+    @Test
+    fun aNon2xxAnswerCarriesItsStatusCode() =
+        runTest {
+            val provider = CMCApiProviderImpl(RecordingHttpClientProvider(status = 403))
+
+            val failure = assertFailsWith<CmcHttpStatusException> { provider.getExchangeRateQuote(fiat = "USD") }
+
+            assertEquals(403, failure.status)
         }
 
     @Test
@@ -90,7 +101,9 @@ private const val FIAT_MAP_JSON =
 
 private const val FIAT_MAP_PATH = "/v1/fiat/map"
 
-private class RecordingHttpClientProvider : HttpClientProvider {
+private class RecordingHttpClientProvider(
+    private val status: Int = 200
+) : HttpClientProvider {
     override suspend fun isTorEnabled(): Boolean = false
 
     var createCalls = 0
@@ -130,7 +143,7 @@ private class RecordingHttpClientProvider : HttpClientProvider {
                         """{"data":{"ZEC":{"quote":{"USD":{"price":$RATE}}}}}"""
                     }
                 OhttpHttpClient.Response(
-                    status = 200,
+                    status = status,
                     body = body.toByteArray()
                 )
             }

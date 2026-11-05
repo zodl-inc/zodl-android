@@ -10,12 +10,18 @@ update PRs automatically.
 - Upstream: https://github.com/flexa/flexa-android, tag `1.1.3`, commit
   `e83f3923923a20ff877fe9858f1b14defe093363` (`FLEXA_VERSION` in `gradle.properties`).
 - License: MIT (`LICENSE.md`, `NOTICE.txt`), unchanged.
-- `core/src/main` and `spend/src/main` are upstream's, with `patches/0001-okhttp-client-customizer.patch`
-  applied; `core/src/test` holds that patch's test. Nothing else from upstream is taken (the example app,
+- `core/src/main` and `spend/src/main` are upstream's, with the patches in `patches/` applied in order;
+  `core/src/test` holds their tests. Nothing else from upstream is taken (the example app,
   the `scan` module, upstream's build scripts).
 - The patch adds `FlexaClientConfiguration.okHttpClientCustomizer`, applied to every OkHttp client the SDK
   builds for the Flexa API, after the SDK's own interceptors. The app uses it to send the Flexa API
   calls through the OHTTP gateway (`FlexaOhttpInterceptor` in ui-lib).
+- `0002-direct-connection-gate.patch` adds `FlexaClientConfiguration.directConnectionsAllowed`, asked before
+  the SDK connects to Flexa outside the API clients: images (one Coil `FlexaImageLoader` whose OkHttp client
+  refuses downloads while it is false, so the placeholder shows) and web views (`DirectConnectionConsent`
+  shows a disclosure and loads the page only after the user agrees). The app returns false on a private
+  connection or with Tor on (`FlexaRepositoryImpl`).
+- `0003-redact-authorization-in-debug-logs.patch` redacts `Authorization` in the SDK's debug HTTP logs.
 - `build.gradle.kts` replaces upstream's Groovy build files: the dependencies and versions are those of
   the published 1.1.3 runtime variants; `RELEASE_DATE` is the upstream release date instead of the build
   date, and `DEBUG_API_HOST` is always null, as in upstream's release build.
@@ -32,14 +38,15 @@ Flexa releases are rare, so keeping it here costs little; an upstream PR would a
 wallet proxies Flexa traffic. If keeping the copy current becomes a burden, propose the hook upstream as a
 generic "customize the OkHttp clients" option.
 
-The patch file is `patches/0001-okhttp-client-customizer.patch` (generated with `git format-patch`).
+The patch files are `patches/0001-okhttp-client-customizer.patch`, `0002-direct-connection-gate.patch` and
+`0003-redact-authorization-in-debug-logs.patch` (git format-patch format, paths relative to the upstream root).
 
 ## Update procedure for a new Flexa release
 
 1. Check out the new upstream tag: `git clone https://github.com/flexa/flexa-android && cd flexa-android && git checkout <tag>`.
-2. Apply the patch: `git am < /path/to/this/repo/third-party/flexa/patches/0001-okhttp-client-customizer.patch`.
-   If it doesn't apply cleanly, resolve conflicts, `git add`, `git am --continue`, and regenerate the patch
-   with `git format-patch HEAD~1`.
+2. Apply the patches in order: `for p in /path/to/this/repo/third-party/flexa/patches/*.patch; do git am < "$p" || break; done`.
+   If one doesn't apply cleanly, resolve conflicts, `git add`, `git am --continue`, apply the rest, and
+   regenerate the patches with `git format-patch <upstream tag>`.
 3. Copy `core/src/main` and `spend/src/main` here, overwriting the old code.
 4. Align the dependency lists in `build.gradle.kts` with the new published `.module` files
    (check Maven Central or the upstream tag's `core/build.gradle` / `spend/build.gradle`).

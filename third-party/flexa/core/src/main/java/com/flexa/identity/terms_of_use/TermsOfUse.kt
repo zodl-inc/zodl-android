@@ -1,6 +1,7 @@
 package com.flexa.identity.terms_of_use
 
 import android.webkit.WebView
+import com.flexa.core.view.DirectConnectionConsent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -50,17 +51,19 @@ fun TermsOfUse(
             )
         }
     ) { padding ->
-        AndroidView(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            factory = {
-                WebView(context).apply {
-                    webViewClient = WebViewClientCompat()
-                }
-            },
-            update = { it.loadUrl(url) }
-        )
+        DirectConnectionConsent(modifier = Modifier.padding(padding)) {
+            AndroidView(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                factory = {
+                    WebView(context).apply {
+                        webViewClient = WebViewClientCompat()
+                    }
+                },
+                update = { it.loadUrl(url) }
+            )
+        }
     }
 }
 

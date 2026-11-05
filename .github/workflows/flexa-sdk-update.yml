@@ -8,7 +8,7 @@ name: Flexa SDK Update Check
 #   2. Compare with FLEXA_VERSION in gradle.properties
 #   3. If newer and no open update PR exists:
 #      - Clone the new tag
-#      - Apply the patch (third-party/flexa/patches/0001-okhttp-client-customizer.patch)
+#      - Apply the patches (third-party/flexa/patches/*.patch, in order)
 #      - Replace third-party/flexa/{core,spend}/src/main
 #      - Update FLEXA_VERSION, RELEASE_DATE, and README commit SHA
 #      - Open a PR with changelog link and checklist
@@ -141,8 +141,11 @@ jobs:
         run: |
           set +e
           cd /tmp/flexa-android
-          git am < "$GITHUB_WORKSPACE/third-party/flexa/patches/0001-okhttp-client-customizer.patch"
-          PATCH_STATUS=$?
+          # Every patch of third-party/flexa/patches, in order (0001, 0002, ...).
+          PATCH_STATUS=0
+          for PATCH in "$GITHUB_WORKSPACE"/third-party/flexa/patches/*.patch; do
+            git am < "$PATCH" || { PATCH_STATUS=$?; echo "Failed: $(basename "$PATCH")"; break; }
+          done
 
           if [ $PATCH_STATUS -ne 0 ]; then
             echo "Patch failed to apply cleanly"
@@ -291,34 +294,34 @@ jobs:
 
             # Use heredoc to avoid shell interpretation issues
             cat > /tmp/pr-body.md <<'EOF_OUTER'
-# ⚠️ DRAFT: Patch Conflict
+          # ⚠️ DRAFT: Patch Conflict
 
-Flexa Android SDK **UPDATE_VERSION** is available, but the OkHttp customizer patch failed to apply.
+          Flexa Android SDK **UPDATE_VERSION** is available, but the OkHttp customizer patch failed to apply.
 
-## Conflict Output
+          ## Conflict Output
 
-```
-PATCH_CONFLICT_PLACEHOLDER
-```
+          ```
+          PATCH_CONFLICT_PLACEHOLDER
+          ```
 
-## Manual Steps
+          ## Manual Steps
 
-1. Check out this branch: `git fetch origin UPDATE_BRANCH && git checkout UPDATE_BRANCH`
-2. Clone flexa-android at the new tag: `git clone --branch vUPDATE_VERSION https://github.com/flexa/flexa-android.git /tmp/flexa-android`
-3. Attempt the patch: `cd /tmp/flexa-android && git am < path/to/patches/0001-okhttp-client-customizer.patch`
-4. Resolve conflicts, `git add`, `git am --continue`
-5. Regenerate the patch: `git format-patch HEAD~1 -o path/to/patches/`
-6. Copy sources: `cp -r /tmp/flexa-android/{core,spend}/src/main third-party/flexa/{core,spend}/src/`
-7. Align dependencies in `third-party/flexa/{core,spend}/build.gradle.kts` with upstream
-8. Update this PR, mark ready for review
+          1. Check out this branch: `git fetch origin UPDATE_BRANCH && git checkout UPDATE_BRANCH`
+          2. Clone flexa-android at the new tag: `git clone --branch vUPDATE_VERSION https://github.com/flexa/flexa-android.git /tmp/flexa-android`
+          3. Apply the patches in order: `cd /tmp/flexa-android && for p in path/to/patches/*.patch; do git am < "$p" || break; done`
+          4. Resolve conflicts, `git add`, `git am --continue` (then apply the remaining patches)
+          5. Regenerate the patches: `git format-patch <upstream tag> -o path/to/patches/`
+          6. Copy sources: `cp -r /tmp/flexa-android/{core,spend}/src/main third-party/flexa/{core,spend}/src/`
+          7. Align dependencies in `third-party/flexa/{core,spend}/build.gradle.kts` with upstream
+          8. Update this PR, mark ready for review
 
-## Upstream Release
+          ## Upstream Release
 
-- [Release vUPDATE_VERSION](CHANGELOG_URL_PLACEHOLDER)
-- [Dependency comparison](https://github.com/flexa/flexa-android/compare/vCURRENT_VERSION...vUPDATE_VERSION)
+          - [Release vUPDATE_VERSION](CHANGELOG_URL_PLACEHOLDER)
+          - [Dependency comparison](https://github.com/flexa/flexa-android/compare/vCURRENT_VERSION...vUPDATE_VERSION)
 
-/cc @y4ssi
-EOF_OUTER
+          /cc @y4ssi
+          EOF_OUTER
 
             # Substitute values without shell interpretation
             sed -i "s/UPDATE_VERSION/${LATEST_VERSION}/g" /tmp/pr-body.md
@@ -340,37 +343,37 @@ EOF_OUTER
             RELEASE_NOTES=$(cat /tmp/release-notes.txt)
 
             cat > /tmp/pr-body.md <<'EOF_OUTER'
-# Flexa SDK UPDATE_VERSION
+          # Flexa SDK UPDATE_VERSION
 
-Automated update of the vendored Flexa Android SDK from **CURRENT_VERSION** to **UPDATE_VERSION**.
+          Automated update of the vendored Flexa Android SDK from **CURRENT_VERSION** to **UPDATE_VERSION**.
 
-## Changes
+          ## Changes
 
-- Patch applied successfully ✓
-- `third-party/flexa/{core,spend}/src/main` updated from upstream
-- `FLEXA_VERSION` and commit SHA bumped in `gradle.properties` and `README.md`
+          - Patch applied successfully ✓
+          - `third-party/flexa/{core,spend}/src/main` updated from upstream
+          - `FLEXA_VERSION` and commit SHA bumped in `gradle.properties` and `README.md`
 
-## Upstream Release
+          ## Upstream Release
 
-- [Release vUPDATE_VERSION](CHANGELOG_URL_PLACEHOLDER)
-- [Dependency comparison](https://github.com/flexa/flexa-android/compare/vCURRENT_VERSION...vUPDATE_VERSION)
+          - [Release vUPDATE_VERSION](CHANGELOG_URL_PLACEHOLDER)
+          - [Dependency comparison](https://github.com/flexa/flexa-android/compare/vCURRENT_VERSION...vUPDATE_VERSION)
 
-<details>
-<summary>Upstream Release Notes</summary>
+          <details>
+          <summary>Upstream Release Notes</summary>
 
-RELEASE_NOTES_PLACEHOLDER
-</details>
+          RELEASE_NOTES_PLACEHOLDER
+          </details>
 
-## Review Checklist
+          ## Review Checklist
 
-- [ ] Dependency versions in `third-party/flexa/{core,spend}/build.gradle.kts` match upstream's published artifacts
-- [ ] CI builds pass (particularly the F-Droid build and FOSS dependency check)
-- [ ] `third-party/flexa` contains no binaries (F-Droid scanner check)
-- [ ] The patch test in `third-party/flexa/core/src/test` still passes
-- [ ] Manual smoke test: Flexa spend flow works in a debug build
+          - [ ] Dependency versions in `third-party/flexa/{core,spend}/build.gradle.kts` match upstream's published artifacts
+          - [ ] CI builds pass (particularly the F-Droid build and FOSS dependency check)
+          - [ ] `third-party/flexa` contains no binaries (F-Droid scanner check)
+          - [ ] The patch test in `third-party/flexa/core/src/test` still passes
+          - [ ] Manual smoke test: Flexa spend flow works in a debug build
 
-/cc @y4ssi
-EOF_OUTER
+          /cc @y4ssi
+          EOF_OUTER
 
             sed -i "s/UPDATE_VERSION/${LATEST_VERSION}/g" /tmp/pr-body.md
             sed -i "s/CURRENT_VERSION/${CURRENT_VERSION}/g" /tmp/pr-body.md
@@ -405,10 +408,9 @@ EOF_OUTER
             STATUS="✓"
           fi
 
-          MESSAGE="*Flexa Android SDK ${LATEST_VERSION}* available (current: ${CURRENT_VERSION})
-Status: ${STATUS}
-PR: ${PR_URL}
-Assignee: @y4ssi"
+          # One line per field, built with printf: a multi-line string here would leave the YAML block.
+          MESSAGE=$(printf '*Flexa Android SDK %s* available (current: %s)\nStatus: %s\nPR: %s\nAssignee: @y4ssi' \
+            "$LATEST_VERSION" "$CURRENT_VERSION" "$STATUS" "$PR_URL")
 
           curl --fail -X POST "$SLACK_WEBHOOK" \
             -H 'Content-Type: application/json' \

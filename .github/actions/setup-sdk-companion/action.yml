@@ -96,11 +96,16 @@ runs:
         free -h
         df -h /
         swapon --show
+        # Self-hosted runner pods (memory-sized for the build) may not allow swapon: carry on
+        # without the extra swap there instead of failing the job.
         if ! swapon --show=NAME --noheadings | grep -qx "${SWAP}"; then
-          sudo fallocate -l 8G "${SWAP}" || sudo dd if=/dev/zero of="${SWAP}" bs=1M count=8192 status=none
-          sudo chmod 600 "${SWAP}"
-          sudo mkswap "${SWAP}"
-          sudo swapon "${SWAP}"
+          if { sudo fallocate -l 8G "${SWAP}" || sudo dd if=/dev/zero of="${SWAP}" bs=1M count=8192 status=none; } \
+            && sudo chmod 600 "${SWAP}" && sudo mkswap "${SWAP}" && sudo swapon "${SWAP}"; then
+            echo "Extra swap enabled"
+          else
+            echo "::notice::Extra swap not available on this runner; continuing without it"
+            sudo rm -f "${SWAP}" || true
+          fi
         fi
         swapon --show
         free -h
@@ -157,7 +162,7 @@ runs:
         app-id: ${{ inputs.cargo-app-id }}
         private-key: ${{ inputs.cargo-app-private-key }}
         owner: zodl-inc
-        repositories: slipstream,slipstream-internal,ohttp
+        repositories: slipstream,slipstream-internal,zodl-ohttp
     - name: Point cargo git fetches at the App token (companion SDK)
       if: steps.pin.outputs.commit != '' && steps.slipstream-token.outputs.token != ''
       shell: bash

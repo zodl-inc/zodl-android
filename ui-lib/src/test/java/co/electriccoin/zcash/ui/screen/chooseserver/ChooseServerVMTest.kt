@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.screen.chooseserver
 import android.app.Application
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.model.ServerConnectionMode
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
@@ -13,6 +14,7 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveFastestServersUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveServerConnectionModeUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshFastestServersUseCase
+import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.chooseserver.ohttpinfo.OhttpInfoArgs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -49,6 +51,7 @@ class ChooseServerVMTest {
     private val fastest = MutableStateFlow(FastestServersState(servers = null, isLoading = false))
     private val ohttpUnavailable = MutableStateFlow(false)
     private val fallbackActive = MutableStateFlow(false)
+    private var relayIndependent = true
 
     private val persist = mockk<PersistServerSelectionUseCase>(relaxed = true)
     private val navigationRouter = mockk<NavigationRouter>(relaxed = true)
@@ -64,9 +67,10 @@ class ChooseServerVMTest {
             mockk<LightWalletEndpointProvider> {
                 every { getEndpoints() } returns listOf(gateway, clearnet, otherClearnet)
                 every { getDefaultEndpoint() } returns gateway
+                every { getOhttpEndpoint() } returns gateway
                 every { getFallbackEndpoints() } returns listOf(clearnet, otherClearnet)
                 every { isOhttpGateway(any()) } answers { firstArg<LightWalletEndpoint>() == gateway }
-                coEvery { usesIndependentRelay(any()) } returns true
+                coEvery { usesIndependentRelay(any()) } answers { relayIndependent }
             }
         return ChooseServerVM(
             application = mockk<Application>(relaxed = true),
@@ -113,6 +117,21 @@ class ChooseServerVMTest {
                     .connectionMode.privateBadge
                     ?.style
             )
+            job.cancel()
+        }
+
+    @Test
+    fun privateIsNotPrivateNotActiveThroughARelayTheGatewayOperatorRuns() =
+        runTest(dispatcher) {
+            relayIndependent = false
+            val vm = createVm()
+            val job = launchCollector(vm)
+            advanceUntilIdle()
+            val badge =
+                vm.state.value!!
+                    .connectionMode.privateBadge
+            assertEquals(ModeBadgeStyle.WARNING, badge?.style)
+            assertEquals(stringRes(R.string.serverSetup_notPrivate), badge?.text)
             job.cancel()
         }
 

@@ -89,6 +89,31 @@ class OhttpUnavailableVMTest {
         }
 
     @Test
+    fun switchToPublicRightAfterATorToggleWaitsUntilTheToggleIsStored() =
+        runTest(dispatcher) {
+            val stored = kotlinx.coroutines.CompletableDeferred<Unit>()
+            val order = mutableListOf<String>()
+            coEvery { setTorEnabled(true) } coAnswers {
+                stored.await()
+                order += "tor"
+            }
+            coEvery { persist.persistPublic(any(), any(), any()) } coAnswers {
+                order += "public"
+                true
+            }
+            val state = stateOf(createVm())
+
+            state.onTorToggle(true)
+            state.onSwitchToPublic()
+            advanceUntilIdle()
+            assertEquals(emptyList<String>(), order)
+
+            stored.complete(Unit)
+            advanceUntilIdle()
+            assertEquals(listOf("tor", "public"), order)
+        }
+
+    @Test
     fun keepWaitingOnlyClosesTheSheet() =
         runTest(dispatcher) {
             stateOf(createVm()).onKeepWaiting()
