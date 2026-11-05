@@ -7,6 +7,7 @@ import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.component.destructive
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
@@ -18,6 +19,7 @@ import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
 import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.provider.DebugForceBackgroundExecutionUnavailable
+import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.repository.EphemeralAddressRepository
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
@@ -51,6 +53,7 @@ class DebugVM(
     private val context: Context,
     private val navigationRouter: NavigationRouter,
     private val simulateSeedNotRelevant: SimulateSeedNotRelevantUseCase,
+    private val lightWalletEndpointProvider: LightWalletEndpointProvider,
 ) : ViewModel() {
     private val confirmationDialog = MutableStateFlow<ZashiConfirmationState?>(null)
     private val isGateBypassEnabled = MutableStateFlow(false)
@@ -157,8 +160,27 @@ class DebugVM(
 
     private fun onBlackholeToggleClick() {
         val turnOn = !isBlackholeOn.value
-        context.startActivity(Intent(blackholeTrigger).apply { if (!turnOn) putExtra("op", "stop") })
+        viewModelScope.launch {
+            val relayHost =
+                if (turnOn) {
+                    relayHost() ?: return@launch Twig.info { "OHTTP relay blackhole: no relay is known, not started" }
+                } else {
+                    null
+                }
+            context.startActivity(
+                Intent(blackholeTrigger).apply {
+                    if (relayHost == null) putExtra("op", "stop") else putExtra("hosts", relayHost)
+                }
+            )
+        }
     }
+
+    /** The host of the relay the wallet's OHTTP gateway is reached through, or null when OHTTP is not in use. */
+    private suspend fun relayHost(): String? =
+        lightWalletEndpointProvider
+            .getEndpoints()
+            .firstOrNull(lightWalletEndpointProvider::isOhttpGateway)
+            ?.let { lightWalletEndpointProvider.relayHostFor(it.host) }
 
     override fun onCleared() {
         blackholePrefs.unregisterOnSharedPreferenceChangeListener(blackholeListener)

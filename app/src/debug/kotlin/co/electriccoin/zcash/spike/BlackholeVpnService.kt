@@ -24,17 +24,23 @@ class BlackholeVpnService : VpnService() {
     @Volatile private var running = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == "stop") {
-            stopVpn()
-            stopSelf()
-            return START_NOT_STICKY
+        // The relay host comes from the caller (the Debug menu asks the SDK for it): none is written here.
+        val hosts = intent?.getStringExtra("hosts")?.split(",")?.filter { it.isNotBlank() }
+        when {
+            intent?.action == "stop" -> {
+                stopVpn()
+                stopSelf()
+            }
+
+            hosts.isNullOrEmpty() -> {
+                Log.w(TAG, "no relay host given, nothing to cut")
+                stopSelf()
+            }
+
+            else -> {
+                Thread { startVpn(hosts) }.start()
+            }
         }
-        val hosts =
-            (
-                intent?.getStringExtra("hosts")
-                    ?: "relay-prod.example"
-            ).split(",")
-        Thread { startVpn(hosts) }.start()
         return START_NOT_STICKY
     }
 
