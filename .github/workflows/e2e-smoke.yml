@@ -189,9 +189,18 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Install Maestro
+        if: ${{ matrix.phase == 2 }}
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: Install Speedrun for phase 1
+        if: ${{ matrix.phase == 1 }}
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/hubastard/speedrun/v0.4.5/install.sh \
+            -o "$RUNNER_TEMP/install-speedrun.sh"
+          SPEEDRUN_VERSION=v0.4.5 SPEEDRUN_DIR="$RUNNER_TEMP/speedrun" \
+            bash "$RUNNER_TEMP/install-speedrun.sh"
 
       # Foundry / cast — needed by Layer-2b for the on-chain USDC
       # transfer that funds the swap-receive-usdc-to-zec deposit
@@ -234,6 +243,8 @@ jobs:
           ZODL_TEST_CONTACT_NAME_IOS: ${{ vars.ZODL_TEST_CONTACT_NAME_IOS || 'iOS Shield' }}
           ZODL_TEST_DIRECTION: ${{ vars.ZODL_TEST_DIRECTION || 'AUTO_ALTERNATE' }}
           ZODL_TEST_PHASE: ${{ matrix.phase }}
+          ZODL_SPEEDRUN_PLATFORM: android
+          ZODL_SPEEDRUN_RESULTS_DIR: ${{ runner.temp }}/zodl-speedrun-results
           ZODL_TEST_SEND_AMOUNT: ${{ vars.ZODL_TEST_SEND_AMOUNT || '0.001' }}
           ZODL_TEST_BALANCE_MIN: ${{ vars.ZODL_TEST_BALANCE_MIN || '1.3' }}
           ZODL_TEST_BALANCE_WARN: ${{ vars.ZODL_TEST_BALANCE_WARN || '1.36' }}
@@ -282,6 +293,9 @@ jobs:
           emulator-options: -no-window -gpu swangle_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             adb install apk/*.apk
+            if [ "${{ matrix.phase }}" = "1" ]; then
+              export PATH="$PWD/zodl-qa/scripts/speedrun:$PATH"
+            fi
             chmod +x zodl-qa/scripts/run-smoke-android.sh
             ./zodl-qa/scripts/run-smoke-android.sh
 
@@ -292,6 +306,7 @@ jobs:
           name: maestro-android-results-phase-${{ matrix.phase }}
           path: |
             ~/.maestro/tests/
+            ${{ runner.temp }}/zodl-speedrun-results/
             ${{ runner.temp }}/zodl-enroll-fail/
 
   # Phase K1 of KEYSTONE_E2E_CI_PLAN.md ("Android pairing canary"): drives
