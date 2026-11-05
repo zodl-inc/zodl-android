@@ -52,6 +52,15 @@ object Flexa {
     internal var themeConfig = FlexaTheme()
     @Volatile
     internal var okHttpClientCustomizer: ((OkHttpClient.Builder) -> Unit)? = null
+    @Volatile
+    internal var directConnectionsAllowed: (() -> Boolean)? = null
+
+    /**
+     * Whether the SDK may connect to Flexa directly (images, web views) right now: see
+     * [FlexaClientConfiguration.directConnectionsAllowed]. Asked on every image download and before a web
+     * view loads, so a change (e.g. the user turns Tor on) applies at once.
+     */
+    fun allowsDirectConnections(): Boolean = directConnectionsAllowed?.invoke() ?: true
     private val _appAccounts = MutableStateFlow<List<AssetAccount>>(emptyList())
     val appAccounts: StateFlow<List<AssetAccount>> = _appAccounts
     private val serializerProvider = SerializerProvider()
@@ -80,6 +89,7 @@ object Flexa {
     fun init(config: FlexaClientConfiguration) {
         context = config.context.applicationContext
         okHttpClientCustomizer = config.okHttpClientCustomizer
+        directConnectionsAllowed = config.directConnectionsAllowed
         themeConfig = config.theme
         setAssetAccounts(config.assetAccounts)
         setUniqueIdentifier()

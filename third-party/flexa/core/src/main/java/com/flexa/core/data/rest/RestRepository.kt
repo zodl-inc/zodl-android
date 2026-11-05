@@ -254,6 +254,7 @@ internal class RestRepository(
             val client = OkHttpClient().newBuilder()
                 .addInterceptor(HeadersInterceptor(okHttpProvider.tokenProvider))
                 .addInterceptor(HttpLoggingInterceptor().apply {
+                    redactHeader("Authorization")
                     level = when (BuildConfig.DEBUG) {
                         true -> HttpLoggingInterceptor.Level.HEADERS
                         else -> HttpLoggingInterceptor.Level.NONE
@@ -513,6 +514,7 @@ internal class RestRepository(
             val client = OkHttpClient().newBuilder()
                 .addInterceptor(HeadersInterceptor(okHttpProvider.tokenProvider))
                 .addInterceptor(HttpLoggingInterceptor().apply {
+                    redactHeader("Authorization")
                     level = when (BuildConfig.DEBUG) {
                         true -> HttpLoggingInterceptor.Level.HEADERS
                         else -> HttpLoggingInterceptor.Level.NONE

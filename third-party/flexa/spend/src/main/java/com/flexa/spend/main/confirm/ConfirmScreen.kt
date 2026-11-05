@@ -93,6 +93,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.flexa.core.view.FlexaImageLoader
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.flexa.core.Flexa
@@ -364,6 +365,7 @@ internal fun ConfirmCard(
                                 modifier = Modifier
                                     .size(38.dp)
                                     .clip(CircleShape),
+                                imageLoader = FlexaImageLoader.get(LocalContext.current),
                                 model = ImageRequest.Builder(LocalContext.current)
                                     .data(selectedAsset?.asset?.logo())
                                     .decoderFactory(SvgDecoder.Factory())

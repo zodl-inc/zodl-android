@@ -9,6 +9,10 @@
     <string name="flexa_report_email">help@flexa.network</string>
     <string name="report_an_issue">Report an issue</string>
 
+    <string name="direct_connection_title">This page comes from Flexa</string>
+    <string name="direct_connection_description">Flexa loads it directly, not through your private connection or Tor, so Flexa can see your IP address. Zodl can\'t.</string>
+    <string name="direct_connection_load">Load page</string>
+
     <string name="flexa">Flexa</string>
     <string name="just_now">Just now</string>
     <string name="to">To</string>

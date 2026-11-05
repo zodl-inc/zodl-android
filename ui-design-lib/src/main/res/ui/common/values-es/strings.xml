@@ -218,11 +218,12 @@
     <string name="serverSetup_privateSubtitle">Servidores de ZODL</string>
     <string name="serverSetup_public">Público</string>
     <string name="serverSetup_unavailable">No disponible</string>
+    <string name="serverSetup_notPrivate">No privado</string>
     <string name="serverSetup_privateInfo">Más información sobre la conexión privada</string>
     <string name="ohttpInfo_title">Conexión privada</string>
-    <string name="ohttpInfo_body">Zodl envía sus solicitudes a través de un relé privado mediante Oblivious HTTP (OHTTP), en lugar de conectarse directamente a los servidores.</string>
+    <string name="ohttpInfo_body">Zodl envía sus solicitudes a los servidores de la billetera a través de un relé privado mediante Oblivious HTTP (OHTTP), en lugar de conectarse directamente a ellos.</string>
     <string name="ohttpInfo_item1Title">Tu IP sigue siendo tuya</string>
-    <string name="ohttpInfo_item1Body">Los servidores que responden a las solicitudes de Zodl no pueden ver de dónde provienen.</string>
+    <string name="ohttpInfo_item1Body">Los servidores de la billetera que responden a las solicitudes de Zodl no pueden ver de dónde provienen. Esto no incluye las páginas e imágenes de Flexa, los servidores personalizados ni los enlaces que abras.</string>
     <string name="ohttpInfo_item2Title">Tus solicitudes permanecen selladas</string>
     <string name="ohttpInfo_item2Body">El relé intermedio las transmite sin leerlas.</string>
     <string name="ohttpInfo_item3Title">Siempre se te pregunta primero</string>
