@@ -194,6 +194,10 @@ jobs:
             -o "$RUNNER_TEMP/install-speedrun.sh"
           SPEEDRUN_VERSION=v0.4.5 SPEEDRUN_DIR="$RUNNER_TEMP/speedrun" \
             bash "$RUNNER_TEMP/install-speedrun.sh"
+          # android-emulator-runner executes each script line in a separate
+          # shell, so exports inside its script do not persist.
+          echo "$RUNNER_TEMP/speedrun" >> "$GITHUB_PATH"
+          echo "$GITHUB_WORKSPACE/zodl-qa/scripts/speedrun" >> "$GITHUB_PATH"
 
       # Foundry / cast — needed by Layer-2b for the on-chain USDC
       # transfer that funds the swap-receive-usdc-to-zec deposit
@@ -286,7 +290,6 @@ jobs:
           emulator-options: -no-window -gpu swangle_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             adb install apk/*.apk
-            export PATH="$PWD/zodl-qa/scripts/speedrun:$PATH"
             chmod +x zodl-qa/scripts/run-smoke-android.sh
             ./zodl-qa/scripts/run-smoke-android.sh
 
