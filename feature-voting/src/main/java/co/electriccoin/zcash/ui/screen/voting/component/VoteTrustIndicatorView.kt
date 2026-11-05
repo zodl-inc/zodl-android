@@ -74,7 +74,8 @@ fun VoteTrustIndicatorView(
             Text(
                 text = note.getValue(),
                 style = ZashiTypography.textSm,
-                color = params.textColor
+                color = params.textColor,
+                modifier = Modifier.weight(1f, fill = false)
             )
         }
     }

@@ -52,6 +52,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TestTimeSource
@@ -87,6 +88,8 @@ class AutomaticServerRepositoryTest {
         mockk<LightWalletEndpointProvider>(relaxed = true) {
             every { getEndpoints() } returns known
             every { getDefaultEndpoint() } returns gateway
+            every { getOhttpEndpoint() } returns gateway
+            every { hasOhttpGateway() } returns true
             every { getFallbackEndpoints() } returns fallbacks
             every { isOhttpGateway(any()) } answers { firstArg<LightWalletEndpoint>().host.startsWith("ohttp-gateway") }
         }
@@ -297,6 +300,52 @@ class AutomaticServerRepositoryTest {
             }
             coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
             coVerify(exactly = 0) { synchronizer.validateServerEndpoint(any(), any()) }
+        }
+
+    /**
+     * An SDK built without OHTTP has no gateway: a wallet in Private mode then gets the clearnet server
+     * selection of Public mode, never the gateway-unavailable report.
+     */
+    @Test
+    fun withoutAnOhttpGatewayPrivateModeUsesTheClearnetSelection() =
+        runTest {
+            stubNoGateway(current = fallbacks[0])
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns fallbacks[1]
+            val banner = collectBanner()
+
+            assertEquals(fallbacks[1], repository.evaluateServerSwitch(SwitchTrigger.FOREGROUND))
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            runCurrent()
+
+            coVerify(exactly = 1) {
+                synchronizer.evaluateServerSwitch(
+                    current = fallbacks[0],
+                    candidates = fallbacks,
+                    fetchThreshold = 5.seconds,
+                    blocksToFetch = 1
+                )
+            }
+            coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
+            coVerify(exactly = 0) { synchronizer.validateServerEndpoint(any(), any()) }
+            assertTrue(banner.none { it })
+        }
+
+    @Test
+    fun withoutAnOhttpGatewayAClearnetSwitchIsApplied() =
+        runTest {
+            stubNoGateway(current = fallbacks[0])
+            localBalances.value = emptyMap()
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns fallbacks[1]
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.FOREGROUND).launchIn(backgroundScope)
+            runCurrent()
+            edges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(fallbacks[1]) }
+            coVerify(exactly = 1) { synchronizer.confirmServerSwitch(fallbacks[1]) }
+            assertEquals(false, fallbackActive)
         }
 
     @Test
@@ -1353,6 +1402,19 @@ class AutomaticServerRepositoryTest {
         coEvery { isAutomaticProvider.get() } returns true
         coEvery { isPublicProvider.get() } returns true
         isPublicFlow.value = true
+        coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet
+        persistedWallet.value = wallet
+    }
+
+    /** Private mode on [current] with an SDK built without OHTTP: no gateway, only the clearnet servers. */
+    private fun stubNoGateway(current: LightWalletEndpoint) {
+        val wallet = wallet(current)
+        every { lightWalletEndpointProvider.getEndpoints() } returns fallbacks
+        every { lightWalletEndpointProvider.getDefaultEndpoint() } returns fallbacks[0]
+        every { lightWalletEndpointProvider.getOhttpEndpoint() } returns null
+        every { lightWalletEndpointProvider.hasOhttpGateway() } returns false
+        every { lightWalletEndpointProvider.isOhttpGateway(any()) } returns false
+        coEvery { isAutomaticProvider.get() } returns true
         coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet
         persistedWallet.value = wallet
     }

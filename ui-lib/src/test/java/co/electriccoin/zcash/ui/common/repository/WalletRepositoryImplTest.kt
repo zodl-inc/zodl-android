@@ -181,6 +181,25 @@ class WalletRepositoryImplTest {
         }
 
     @Test
+    fun initKeepsAnAutomaticWalletOnClearnetWhenTheSdkHasNoOhttpGateway() =
+        runTest {
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(ZEC_ROCKS),
+                    isAutomaticPreference = true,
+                    hasOhttpGateway = false,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(ZEC_ROCKS, harness.walletProvider.getPersistableWallet()?.endpoint)
+            assertEquals(emptyList(), harness.events)
+        }
+
+    @Test
     fun initMovesAnUpgradedWalletWithoutAModePreferenceOnABundledClearnetServerToTheGateway() =
         runTest {
             val (repository, harness) =
@@ -505,6 +524,7 @@ class WalletRepositoryImplTest {
         decommissionedHosts: Set<String> = emptySet(),
         synchronizer: Synchronizer? = null,
         isPublicProviderOverride: IsPublicConnectionProvider? = null,
+        hasOhttpGateway: Boolean = true,
     ): Pair<WalletRepositoryImpl, TestHarness> {
         val events = mutableListOf<String>()
 
@@ -522,9 +542,15 @@ class WalletRepositoryImplTest {
 
         val lightWalletEndpointProvider =
             mockk<LightWalletEndpointProvider> {
-                every { getDefaultEndpoint() } returns GATEWAY
-                every { getEndpoints() } returns listOf(GATEWAY, ZEC_ROCKS)
-                every { isOhttpGateway(any()) } answers { firstArg<LightWalletEndpoint>() == GATEWAY }
+                // An SDK built without OHTTP has no gateway: the default is then the first clearnet server.
+                val gateway = GATEWAY.takeIf { hasOhttpGateway }
+                every { getDefaultEndpoint() } returns (gateway ?: ZEC_ROCKS)
+                every { getOhttpEndpoint() } returns gateway
+                every { hasOhttpGateway() } returns hasOhttpGateway
+                every { getEndpoints() } returns listOfNotNull(gateway, ZEC_ROCKS)
+                every { isOhttpGateway(any()) } answers {
+                    gateway != null && firstArg<LightWalletEndpoint>() == gateway
+                }
                 every { getFallbackEndpoints() } returns listOf(ZEC_ROCKS)
                 every { getDecommissionedHosts() } returns decommissionedHosts
             }

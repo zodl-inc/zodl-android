@@ -295,7 +295,7 @@ class ChooseServerVM(
     init {
         viewModelScope.launch {
             val relayIndependence =
-                LightWalletEndpointProvider.GATEWAY_HOSTS.associateWith {
+                LightWalletEndpointProvider.gatewayHosts.associateWith {
                     lightWalletEndpointProvider.usesIndependentRelay(it)
                 }
             innerState.update { it.copy(gatewayRelayIndependence = relayIndependence) }
@@ -437,8 +437,11 @@ class ChooseServerVM(
         }
 
     /** False only when this build's relay for the default gateway is known to be run by the gateway operator. */
-    private fun isRelayIndependent(gatewayRelayIndependence: Map<String, Boolean>): Boolean =
-        gatewayRelayIndependence[lightWalletEndpointProvider.getDefaultEndpoint().host] != false
+    private fun isRelayIndependent(gatewayRelayIndependence: Map<String, Boolean>): Boolean {
+        // The gateway host comes from the compiled SDK; a build without a gateway has no relay to judge.
+        val gatewayHost = lightWalletEndpointProvider.getOhttpEndpoint()?.host
+        return gatewayHost?.let { gatewayRelayIndependence[it] } != false
+    }
 
     /** The public server a finished speed test ranked first, if any. */
     private fun fastestPublicServer(state: FastestServersState): LightWalletEndpoint? =
@@ -593,7 +596,7 @@ class ChooseServerVM(
 private fun endpointLabel(endpoint: LightWalletEndpoint) =
     when {
         LightWalletEndpointProvider.isOhttpGatewayHost(endpoint.host) -> {
-            if (endpoint.host.lowercase().contains("testnet")) {
+            if (LightWalletEndpointProvider.isTestnetGatewayHost(endpoint.host)) {
                 stringRes(R.string.choose_server_ohttp_gateway_testnet)
             } else {
                 stringRes(R.string.choose_server_ohttp_gateway_mainnet)

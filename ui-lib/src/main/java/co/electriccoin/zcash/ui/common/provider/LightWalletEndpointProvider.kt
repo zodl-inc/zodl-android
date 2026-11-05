@@ -20,25 +20,33 @@ class LightWalletEndpointProvider(
 
     /**
      * Every built-in endpoint, default first: the OHTTP gateway (tier 0, the default and the
-     * preferred transport) followed by the clearnet lightwalletd tier. This is what the server
-     * picker lists and what the fastest-servers benchmark measures. Automatic mode never chooses
-     * among these by speed — see [co.electriccoin.zcash.ui.common.model.ServerFallbackPolicy]:
-     * it stays on OHTTP and, when the gateway is unreachable, reports that to the user instead of
-     * switching to clearnet on its own.
+     * preferred transport), when the SDK was built with one, followed by the clearnet lightwalletd
+     * tier. This is what the server picker lists and what the fastest-servers benchmark measures.
+     * Automatic mode never chooses among these by speed — see
+     * [co.electriccoin.zcash.ui.common.model.ServerFallbackPolicy]: it stays on OHTTP and, when the
+     * gateway is unreachable, reports that to the user instead of switching to clearnet on its own.
      */
-    fun getEndpoints(): List<LightWalletEndpoint> = listOf(getDefaultEndpoint()) + getFallbackEndpoints()
+    fun getEndpoints(): List<LightWalletEndpoint> = listOfNotNull(getOhttpEndpoint()) + getFallbackEndpoints()
 
     /**
-     * The OHTTP (RFC 9458) gateway. The SDK routes gRPC HPKE-encrypted through a relay to it:
-     * the relay sees the device IP but not the content, the gateway/lightwalletd see the content
-     * but not the IP.
+     * The OHTTP (RFC 9458) gateway of this network, or null when the SDK was built without OHTTP for it. The
+     * SDK routes gRPC HPKE-encrypted through a relay to it: the relay sees the device IP but not the content,
+     * the gateway/lightwalletd see the content but not the IP. Its host is the one compiled into the SDK
+     * ([LightWalletClient.ohttpGatewayHost]); the app has none of its own.
      */
-    fun getDefaultEndpoint(): LightWalletEndpoint =
-        if (isMainnet) {
-            LightWalletEndpoint(host = GATEWAY_HOST_MAINNET, port = 443, isSecure = true)
-        } else {
-            LightWalletEndpoint(host = GATEWAY_HOST_TESTNET, port = 443, isSecure = true)
+    fun getOhttpEndpoint(): LightWalletEndpoint? =
+        LightWalletClient.ohttpGatewayHost(isTestnet = !isMainnet)?.let {
+            LightWalletEndpoint(host = it, port = GATEWAY_PORT, isSecure = true)
         }
+
+    /** Whether the SDK was built with an OHTTP gateway for this network. */
+    fun hasOhttpGateway(): Boolean = getOhttpEndpoint() != null
+
+    /**
+     * The OHTTP gateway ([getOhttpEndpoint]). Without one, the first clearnet server: the wallet then uses the
+     * normal clearnet server selection instead of an endpoint the SDK cannot route.
+     */
+    fun getDefaultEndpoint(): LightWalletEndpoint = getOhttpEndpoint() ?: getFallbackEndpoints().first()
 
     /**
      * Clearnet lightwalletd servers (the pre-OHTTP built-in list). Used ONLY when the user picks
@@ -90,15 +98,18 @@ class LightWalletEndpointProvider(
     companion object {
         /**
          * Exactly the SDK's own decision (exact host match, no prefix or suffix matching), so a custom
-         * `ohttp-gateway-x.example` that the SDK would dial as plain gRPC is never labelled private.
+         * host that the SDK would dial as plain gRPC is never labelled private.
          */
         fun isOhttpGatewayHost(host: String): Boolean =
             LightWalletClient.isOhttpGateway(LightWalletEndpoint(host = host, port = GATEWAY_PORT, isSecure = true))
 
+        /** Whether [host] is the testnet gateway compiled into the SDK. */
+        fun isTestnetGatewayHost(host: String): Boolean = host == LightWalletClient.ohttpGatewayHost(isTestnet = true)
+
         private const val GATEWAY_PORT = 443
 
-        const val GATEWAY_HOST_MAINNET = "ohttp-gateway.example"
-        const val GATEWAY_HOST_TESTNET = "ohttp-gateway-testnet.example"
-        val GATEWAY_HOSTS = listOf(GATEWAY_HOST_MAINNET, GATEWAY_HOST_TESTNET)
+        /** The gateway hosts compiled into the SDK, mainnet then testnet; empty when it was built without OHTTP. */
+        val gatewayHosts: List<String>
+            get() = listOfNotNull(LightWalletClient.ohttpGatewayHost(false), LightWalletClient.ohttpGatewayHost(true))
     }
 }
