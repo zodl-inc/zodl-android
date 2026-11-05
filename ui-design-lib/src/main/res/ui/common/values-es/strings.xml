@@ -251,7 +251,7 @@
     <string name="choose_server_ohttp_gateway_testnet">Servidor privado de Zodl (OHTTP, Testnet)</string>
     <string name="choose_server_multi_server_info">Podemos usar varios servidores para optimizar el rendimiento. Para reducir la exposición de metadatos, selecciona el modo de conexión Manual para elegir un único servidor de tu preferencia y asegúrate de que Tor esté habilitado en Configuración Avanzada.</string>
     <string name="ohttpUnavailableSheet_title">Conexión privada no disponible</string>
-    <string name="ohttpUnavailableSheet_body">Zodl no puede conectar con su relé privado en este momento. Puedes seguir esperando o cambiar a servidores públicos, que pueden ver tu dirección IP a menos que actives Tor abajo o uses una VPN. Zodl te devolverá automáticamente a la conexión privada cuando el relé vuelva a estar disponible.</string>
+    <string name="ohttpUnavailableSheet_body">Zodl no puede conectar con su relé privado en este momento. Puedes seguir esperando o cambiar a servidores públicos, que pueden ver tu dirección IP a menos que actives Tor abajo o uses una VPN. Zodl te devolverá automáticamente a la conexión privada cuando el relé vuelva a estar disponible. Los swaps y los precios de las divisas se quedan en pausa hasta que vuelva la conexión privada.</string>
     <string name="ohttpUnavailableSheet_torTitle">Activar la protección Tor</string>
     <string name="ohttpUnavailableSheet_torBody">Oculta tu dirección IP enviando el tráfico a través de la red Tor.</string>
     <string name="ohttpUnavailableSheet_keepWaiting">Seguir esperando</string>

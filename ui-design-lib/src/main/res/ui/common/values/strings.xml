@@ -256,7 +256,7 @@
     <string name="serverSetup_testing">Testing</string>
     <string name="choose_server_multi_server_info">We may use multiple servers to optimize performance. To reduce metadata exposure, choose Manual connection mode to select your single server of choice, and ensure Tor is enabled in Advanced Settings.</string>
     <string name="ohttpUnavailableSheet_title">Private connection unavailable</string>
-    <string name="ohttpUnavailableSheet_body">Zodl can\'t reach its private relay right now. You can keep waiting or switch to public servers, which can see your IP address unless you turn on Tor below or use a VPN. Zodl will switch you back automatically once the relay is available.</string>
+    <string name="ohttpUnavailableSheet_body">Zodl can\'t reach its private relay right now. You can keep waiting or switch to public servers, which can see your IP address unless you turn on Tor below or use a VPN. Zodl will switch you back automatically once the relay is available. Swaps and currency prices stay paused until the private connection is back.</string>
     <string name="ohttpUnavailableSheet_torTitle">Enable Tor Protection</string>
     <string name="ohttpUnavailableSheet_torBody">Hide your IP address by routing traffic through the Tor network.</string>
     <string name="ohttpUnavailableSheet_keepWaiting">Keep waiting</string>
