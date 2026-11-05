@@ -85,6 +85,63 @@ jobs:
           path: app/build/outputs/apk/zcashmainnetInternal/debug/*.apk
           retention-days: 1
 
+  # Speedrun v0.4.5's text insertion checks only UiAutomation.findFocus(),
+  # which intermittently misses Zodl's focused Compose address field. Its
+  # existing inputFocus() fallback finds that field. Build the one-line fix
+  # once and share the binary with both E2E phases.
+  build-speedrun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout focus patch
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Restore patched Speedrun cache
+        id: speedrun-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/zodl-speedrun/speedrun
+          key: ${{ runner.os }}-speedrun-v0.4.5-odin-2026-11a-${{ hashFiles('.github/patches/speedrun-android-input-focus.patch') }}
+
+      - name: Build patched Speedrun
+        if: steps.speedrun-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL \
+            https://github.com/odin-lang/Odin/releases/download/dev-2026-11a/odin-linux-amd64-dev-2026-11a.tar.gz \
+            -o "$RUNNER_TEMP/odin.tar.gz"
+          echo "65c9f6e97d6f8a30930e151f270ce5aeaa98fe8b2ba49fe067394e2af04f7618  $RUNNER_TEMP/odin.tar.gz" \
+            | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/odin"
+          tar -xzf "$RUNNER_TEMP/odin.tar.gz" --strip-components=1 -C "$RUNNER_TEMP/odin"
+          export PATH="$RUNNER_TEMP/odin:$PATH"
+
+          git clone --depth 1 --branch v0.4.5 \
+            https://github.com/hubastard/speedrun.git "$RUNNER_TEMP/speedrun-src"
+          test "$(git -C "$RUNNER_TEMP/speedrun-src" rev-parse HEAD)" = \
+            dd494b6c1b490cfb7b6aca0c189b6e4f58cb7325
+          git -C "$RUNNER_TEMP/speedrun-src" apply \
+            "$GITHUB_WORKSPACE/.github/patches/speedrun-android-input-focus.patch"
+          SPEEDRUN_NO_IOS=1 SPEEDRUN_VERSION=v0.4.5-zodl-focus1 \
+            "$RUNNER_TEMP/speedrun-src/build.sh"
+          install -Dm755 "$RUNNER_TEMP/speedrun-src/speedrun" \
+            "$HOME/.cache/zodl-speedrun/speedrun"
+          "$HOME/.cache/zodl-speedrun/speedrun" --version
+
+      - name: Upload patched Speedrun
+        uses: actions/upload-artifact@v4
+        with:
+          name: zodl-speedrun-android
+          path: ~/.cache/zodl-speedrun/speedrun
+          retention-days: 1
+
   # Separate from `build` on purpose: this is a native CMake+Rust cross of
   # KeystoneHQ/keystone3-firmware (the Cypherpunk simulator), unrelated to
   # the Gradle/APK build above. The Android debug APK already contains
@@ -150,7 +207,7 @@ jobs:
           retention-days: 1
 
   e2e-android:
-    needs: build
+    needs: [build, build-speedrun]
     # The standard private-repo runner (2 vCPU / 7 GB) starves the API 35 emulator.
     runs-on: ubuntu-24.04-8cores
     # Cold-cache phase 2 runs (no cached SDK DB yet for the seed)
@@ -188,12 +245,15 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Install Speedrun
+      - name: Download patched Speedrun
+        uses: actions/download-artifact@v4
+        with:
+          name: zodl-speedrun-android
+          path: ${{ runner.temp }}/speedrun
+
+      - name: Install patched Speedrun
         run: |
-          curl -fsSL https://raw.githubusercontent.com/hubastard/speedrun/v0.4.5/install.sh \
-            -o "$RUNNER_TEMP/install-speedrun.sh"
-          SPEEDRUN_VERSION=v0.4.5 SPEEDRUN_DIR="$RUNNER_TEMP/speedrun" \
-            bash "$RUNNER_TEMP/install-speedrun.sh"
+          chmod +x "$RUNNER_TEMP/speedrun/speedrun"
           # android-emulator-runner executes each script line in a separate
           # shell, so exports inside its script do not persist.
           echo "$RUNNER_TEMP/speedrun" >> "$GITHUB_PATH"

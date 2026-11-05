@@ -1,0 +1,13 @@
+diff --git a/agent/android/app/src/main/java/com/speedrun/agent/Agent.kt b/agent/android/app/src/main/java/com/speedrun/agent/Agent.kt
+--- a/agent/android/app/src/main/java/com/speedrun/agent/Agent.kt
++++ b/agent/android/app/src/main/java/com/speedrun/agent/Agent.kt
+@@ -1009,6 +1009,8 @@
+      * no editable field has the input focus.
+      */
+     private fun insertText(text: String): Boolean {
+-        val node = ua.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
++        // Compose can expose a focused editable node in the active window even when
++        // UiAutomation.findFocus(FOCUS_INPUT) returns null. Match type()'s lookup.
++        val node = inputFocus() ?: return false
+         if (!node.isEditable) return false
+         val current = if (node.isShowingHintText) "" else node.text?.toString() ?: ""
