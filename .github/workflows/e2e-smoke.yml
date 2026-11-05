@@ -188,14 +188,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Install Maestro
-        if: ${{ matrix.phase == 2 }}
-        run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
-          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
-
-      - name: Install Speedrun for phase 1
-        if: ${{ matrix.phase == 1 }}
+      - name: Install Speedrun
         run: |
           curl -fsSL https://raw.githubusercontent.com/hubastard/speedrun/v0.4.5/install.sh \
             -o "$RUNNER_TEMP/install-speedrun.sh"
@@ -231,8 +224,8 @@ jobs:
           # from GitHub Secrets / repo variables instead. The wrapper
           # resolves ZODL_TEST_DIRECTION (AUTO_ALTERNATE flips a state
           # file each run so sender/receiver rotate), pre-splits the
-          # chosen seed into ZODL_WORD_1..24, and passes everything to
-          # Maestro via --env=KEY=VAL.
+          # chosen seed into ZODL_WORD_1..24, and passes the needed
+          # values to Speedrun via --env=KEY=VAL.
           ZODL_TEST_SEED_ANDROID: ${{ secrets.ZODL_TEST_SEED_ANDROID }}
           ZODL_TEST_BIRTHDAY_ANDROID: ${{ secrets.ZODL_TEST_BIRTHDAY_ANDROID }}
           ZODL_TEST_ADDRESS_ANDROID: ${{ secrets.ZODL_TEST_ADDRESS_ANDROID }}
@@ -293,9 +286,7 @@ jobs:
           emulator-options: -no-window -gpu swangle_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             adb install apk/*.apk
-            if [ "${{ matrix.phase }}" = "1" ]; then
-              export PATH="$PWD/zodl-qa/scripts/speedrun:$PATH"
-            fi
+            export PATH="$PWD/zodl-qa/scripts/speedrun:$PATH"
             chmod +x zodl-qa/scripts/run-smoke-android.sh
             ./zodl-qa/scripts/run-smoke-android.sh
 
@@ -303,7 +294,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: maestro-android-results-phase-${{ matrix.phase }}
+          name: speedrun-android-results-phase-${{ matrix.phase }}
           path: |
             ~/.maestro/tests/
             ${{ runner.temp }}/zodl-speedrun-results/
