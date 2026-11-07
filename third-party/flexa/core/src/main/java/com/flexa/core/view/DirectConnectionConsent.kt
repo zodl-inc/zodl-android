@@ -8,9 +8,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -21,26 +22,34 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.flexa.R
 import com.flexa.core.Flexa
+import kotlinx.coroutines.delay
 
 /**
  * Shows [content] (a web view that loads a Flexa page directly) only when direct connections to Flexa are
- * allowed ([directConnectionsAllowed]) or the user agreed on this screen. Otherwise it shows a
+ * allowed ([Flexa.allowsDirectConnections]) or the user agreed on this screen. Otherwise it shows a
  * disclosure that Flexa will see the user's IP address, with a button to load the page anyway: the page is
  * never loaded silently while the app is on a private connection or Tor. If the privacy mode changes to
  * Tor or Private while the page is open, the page is removed and the consent screen shows again.
  */
 @Composable
 fun DirectConnectionConsent(
-    directConnectionsAllowed: State<Boolean> = LocalDirectConnectionsAllowed.current,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     var agreed by rememberSaveable { mutableStateOf(false) }
-    // Reset agreed state when privacy mode changes to restrictive (the user must re-consent).
-    if (!directConnectionsAllowed.value) {
-        agreed = false
+    val allowed by produceState(initialValue = Flexa.allowsDirectConnections()) {
+        while (true) {
+            value = Flexa.allowsDirectConnections()
+            delay(ALLOWED_POLL_MS)
+        }
     }
-    if (agreed || LocalInspectionMode.current || directConnectionsAllowed.value) {
+    var wasAllowed by remember { mutableStateOf(allowed) }
+    if (allowed != wasAllowed) {
+        // Only the change to Tor or Private takes the consent back: agreeing while it is off must stay.
+        if (consentEndsWith(wasAllowed, allowed)) agreed = false
+        wasAllowed = allowed
+    }
+    if (agreed || LocalInspectionMode.current || allowed) {
         content()
         return
     }
@@ -66,3 +75,8 @@ fun DirectConnectionConsent(
         }
     }
 }
+
+private const val ALLOWED_POLL_MS = 500L
+
+/** True when direct connections went from allowed to not allowed, so an agreement given earlier ends. */
+internal fun consentEndsWith(wasAllowed: Boolean, allowed: Boolean): Boolean = wasAllowed && !allowed
