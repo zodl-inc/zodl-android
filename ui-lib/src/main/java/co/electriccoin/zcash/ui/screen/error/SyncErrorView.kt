@@ -118,7 +118,7 @@ fun SyncErrorContent(
                     modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp)
                 ) {
                     Image(
-                        painter = painterResource(R.drawable.ic_swap_quote_error),
+                        painter = painterResource(R.drawable.ic_error_circle),
                         contentDescription = null,
                     )
                     Spacer(12.dp)

@@ -142,7 +142,7 @@ private fun Content(
                 ) {
                     Image(
                         modifier = Modifier.align(Alignment.CenterHorizontally),
-                        painter = painterResource(R.drawable.ic_swap_quote_error),
+                        painter = painterResource(R.drawable.ic_error_circle),
                         contentDescription = null
                     )
                     Spacer(12.dp)
