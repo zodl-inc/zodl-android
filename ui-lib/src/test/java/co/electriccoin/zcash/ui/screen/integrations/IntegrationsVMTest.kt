@@ -34,7 +34,8 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 /**
- * Flexa is unavailable on a hardware wallet, and the explanation names the one the user has.
+ * Flexa is unavailable on a hardware wallet, and the explanation names the one the user has. Without
+ * Flexa (testnet, or switched off remotely) there is no Flexa notice at all.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class IntegrationsVMTest {
@@ -95,7 +96,32 @@ class IntegrationsVMTest {
             assertEquals(R.string.integrations_redeemGift, items[1].title.resourceId())
         }
 
-    private fun vm(selectedAccount: WalletAccount) =
+    @Test
+    fun withoutFlexaAHardwareWalletGetsNoFlexaNotice() =
+        runTest {
+            listOf(keystone(), ledger()).forEach { account ->
+                val vm = vm(account, Status.UNAVAILABLE)
+                collect(vm)
+
+                assertNull(vm.state.value?.disabledInfo)
+            }
+        }
+
+    @Test
+    fun withoutFlexaTheSheetStillListsGiftCardAndMore() =
+        runTest {
+            val vm = vm(keystone(), Status.UNAVAILABLE)
+            collect(vm)
+
+            val items = assertNotNull(vm.state.value).items
+            assertEquals(2, items.size)
+            assertEquals(R.string.integrations_redeemGift, items[0].title.resourceId())
+        }
+
+    private fun vm(
+        selectedAccount: WalletAccount,
+        flexaStatus: Status = Status.DISABLED,
+    ) =
         IntegrationsVM(
             getWalletRestoringState =
                 mockk<GetWalletRestoringStateUseCase> {
@@ -107,7 +133,7 @@ class IntegrationsVMTest {
                 },
             getFlexaStatus =
                 mockk<GetFlexaStatusUseCase> {
-                    every { observe() } returns MutableStateFlow(Status.DISABLED)
+                    every { observe() } returns MutableStateFlow(flexaStatus)
                 },
             navigationRouter = mockk<NavigationRouter>(relaxed = true),
             viewOnlyContent = mockk(relaxed = true),

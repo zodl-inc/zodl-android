@@ -10,12 +10,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 import co.electriccoin.zcash.ui.design.R as DesignR
 
@@ -28,7 +30,8 @@ fun VoteTrustIndicatorView(
         when (indicator) {
             VoteTrustIndicator.ZODL -> {
                 TrustIndicatorParams(
-                    labelRes = R.string.coinVote_pollsList_approvedByZodl,
+                    label = stringRes(R.string.coinVote_pollsList_approvedByZodl),
+                    note = null,
                     iconRes = DesignR.drawable.ic_item_zashi,
                     iconTint = Color.Unspecified,
                     iconSize = 24,
@@ -38,7 +41,10 @@ fun VoteTrustIndicatorView(
 
             VoteTrustIndicator.UNVERIFIED -> {
                 TrustIndicatorParams(
-                    labelRes = R.string.coinVote_pollsList_unverifiedSheetTitle,
+                    label = stringRes(R.string.coinVote_pollsList_unverifiedSheetTitle),
+                    // A user-selected custom voting config: its servers are reached without the OHTTP
+                    // gateway (ZIP #10).
+                    note = stringRes(R.string.coinVote_pollsList_customServerNotPrivate),
                     iconRes = DesignR.drawable.ic_info,
                     iconTint = ZashiColors.Text.textTertiary,
                     iconSize = 20,
@@ -59,16 +65,25 @@ fun VoteTrustIndicatorView(
             modifier = Modifier.size(params.iconSize.dp)
         )
         Text(
-            text = stringResource(params.labelRes),
+            text = params.label.getValue(),
             style = ZashiTypography.textSm,
             fontWeight = FontWeight.Medium,
             color = params.textColor
         )
+        params.note?.let { note ->
+            Text(
+                text = note.getValue(),
+                style = ZashiTypography.textSm,
+                color = params.textColor,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+        }
     }
 }
 
 private data class TrustIndicatorParams(
-    val labelRes: Int,
+    val label: StringResource,
+    val note: StringResource?,
     val iconRes: Int,
     val iconTint: Color,
     val iconSize: Int,

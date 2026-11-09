@@ -5,6 +5,7 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfig
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
+import co.electriccoin.zcash.ui.common.provider.VotingRouteProvider
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
@@ -181,14 +182,16 @@ class VoteChainConfigVMTest {
 
     private fun vm(
         repository: VotingChainConfigRepository,
-        votingApiProvider: VotingApiProvider = mockk { coEvery { validateConfigSource(any()) } just Runs },
+        votingApiProvider: VotingApiProvider = mockk { coEvery { validateConfigSource(any(), any()) } just Runs },
         navigationRouter: NavigationRouter = mockk(relaxed = true),
         copyToClipboard: CopyToClipboardUseCase = mockk(relaxed = true),
+        votingRouteProvider: VotingRouteProvider = mockk(relaxed = true)
     ) = VoteChainConfigVM(
         votingChainConfigRepository = repository,
         votingApiProvider = votingApiProvider,
         navigationRouter = navigationRouter,
         copyToClipboard = copyToClipboard,
+        votingRouteProvider = votingRouteProvider
     )
 
     private fun rePinnedBundledMirrorUrl(): String =

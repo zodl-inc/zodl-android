@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.common.datasource
 
 import cash.z.ecc.android.sdk.model.FiatCurrency
-import co.electriccoin.zcash.ui.BuildConfig
 import co.electriccoin.zcash.ui.common.provider.CMCApiProvider
 import io.ktor.client.plugins.ResponseException
 import java.util.Currency
@@ -10,24 +9,20 @@ interface FiatCurrencyDataSource {
     /**
      * Returns every fiat currency offered for currency conversion, in the provider's own order.
      *
-     * @throws ExchangeRateUnavailable when no currency is available or the CMC token is missing
+     * @throws ExchangeRateUnavailable when no currency is available
      */
     @Throws(ExchangeRateUnavailable::class, ResponseException::class)
     suspend fun getSupportedFiatCurrencies(): List<FiatCurrency>
 }
 
 class FiatCurrencyDataSourceImpl(
-    private val cmcApiProvider: CMCApiProvider,
-    private val cmcApiKey: String = BuildConfig.ZCASH_CMC_KEY,
+    private val cmcApiProvider: CMCApiProvider
 ) : FiatCurrencyDataSource {
     override suspend fun getSupportedFiatCurrencies(): List<FiatCurrency> {
-        val apiKey =
-            cmcApiKey.takeIf { it.isNotBlank() }
-                ?: throw ExchangeRateUnavailable(message = "CMC token not present")
-
+        // The OHTTP gateway injects the CMC key; the app holds none.
         val currencies =
             cmcApiProvider
-                .getFiatMap(apiKey)
+                .getFiatMap()
                 .data
                 .map { it.symbol.uppercase() }
                 .toSupportedFiatCurrencies()

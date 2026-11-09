@@ -1,0 +1,6 @@
+Added:
+- We added a Private connection that uses OHTTP to keep your IP address hidden from Zcash servers.
+
+Changed:
+- New wallets and wallets previously using Automatic server selection now use Private by default. Your chosen custom server stays unchanged.
+- Choose a Server now offers Private, Public and Manual modes.

@@ -16,6 +16,8 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
 import cash.z.ecc.android.sdk.model.proposeSend
 import cash.z.ecc.android.sdk.type.AddressType
+import co.electriccoin.lightwallet.client.health.OhttpHealthCenter
+import co.electriccoin.lightwallet.client.health.runOhttpOperation
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.model.NetworkDimension
@@ -99,8 +101,6 @@ class TexUnsupportedOnKSException : Exception("TEX addresses are unsupported on 
 @Suppress("TooManyFunctions")
 class ProposalDataSourceImpl(
     private val synchronizerProvider: SynchronizerProvider,
-    private val lightWalletEndpointProvider: LightWalletEndpointProvider,
-    private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
     private val persistableWalletProvider: PersistableWalletProvider,
 ) : ProposalDataSource {
     override suspend fun createProposal(account: WalletAccount, send: ZecSend): RegularTransactionProposal =
@@ -258,8 +258,21 @@ class ProposalDataSourceImpl(
                 .redactPcztForSigner(pczt)
         }
 
-    @Suppress("CyclomaticComplexMethod", "TooGenericExceptionCaught")
+    /**
+     * One explicit user send: its OHTTP requests are attributed to it, and when it ends the health center is told
+     * whether it failed and which call decided that, so the private-connection outage detection can tell a send that
+     * failed because the private route is down from one that failed for any other reason.
+     */
     private suspend fun submitTransactionInternal(
+        logTag: String,
+        block: suspend (Synchronizer) -> List<CreatedTransaction>
+    ): SubmitResult =
+        OhttpHealthCenter.shared.runOhttpOperation(isFailure = { it.isOperationFailure() }) {
+            submitTransactionAttributed(logTag, block)
+        }
+
+    @Suppress("CyclomaticComplexMethod", "TooGenericExceptionCaught")
+    private suspend fun submitTransactionAttributed(
         logTag: String,
         block: suspend (Synchronizer) -> List<CreatedTransaction>
     ): SubmitResult =
@@ -318,22 +331,19 @@ class ProposalDataSourceImpl(
         )
 
     /**
-     * Resolves which endpoints a created transaction is broadcast to. In automatic server-selection
-     * mode this returns every bundled endpoint: broadcasting to all of them trades a small amount of
-     * privacy (the transaction is sent to each bundled server, not just one) for higher reliability
-     * and faster confirmation. Manual mode honors the user's explicit choice and submits only through
-     * the selected endpoint.
+     * Resolves which endpoint a created transaction is broadcast to. Returns only the current
+     * endpoint - the one the wallet is actively using for sync and queries. In automatic mode this
+     * is the OHTTP gateway when available (chosen by ServerFallbackPolicy), or a manually-selected
+     * fallback when OHTTP is down.
+     *
+     * In automatic mode, submit ONLY to the current endpoint (OHTTP gateway when
+     * available). Never broadcast to multiple servers - that would expose the tx to all operators
+     * and defeat OHTTP's IP hiding. The current endpoint already provides the right privacy/Tor
+     * routing, as determined by ServerFallbackPolicy.
      */
-    private suspend fun getSubmissionEndpoints(): List<LightWalletEndpoint> {
-        val knownEndpoints = lightWalletEndpointProvider.getEndpoints()
+    internal suspend fun getSubmissionEndpoints(): List<LightWalletEndpoint> {
         val currentEndpoint = persistableWalletProvider.requirePersistableWallet().endpoint
-        val isAutomatic =
-            resolveIsServerSelectionAutomatic(
-                isAutomaticPreference = isServerSelectionAutomaticProvider.get(),
-                currentEndpoint = currentEndpoint,
-                knownEndpoints = knownEndpoints
-            )
-        return if (isAutomatic) knownEndpoints else listOf(currentEndpoint)
+        return listOf(currentEndpoint)
     }
 
     @Suppress("TooGenericExceptionCaught")
@@ -527,3 +537,10 @@ private const val MULTI_SUBMIT_EMPTY_TRANSACTION_CODE = -1
 private const val MULTI_SUBMIT_EMPTY_TRANSACTION_DESCRIPTION = "No transactions created"
 private const val MULTI_SUBMIT_GRPC_FAILURE_STATUS = "grpcFailure"
 private const val MULTI_SUBMIT_REJECTED_STATUS_PREFIX = "rejected code: "
+
+/**
+ * Whether a send's result is a failed operation for the outage detection: anything but a full success. A relay that
+ * is down surfaces as a gRPC failure, or as a partial result across several transactions, not as a rejection; the
+ * policy still requires the deciding call's evidence to be a transport failure, so a rejection stays harmless.
+ */
+internal fun SubmitResult.isOperationFailure(): Boolean = this !is SubmitResult.Success

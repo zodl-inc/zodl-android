@@ -1,20 +1,15 @@
 package co.electriccoin.zcash.ui.common.usecase
 
-import co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature
 import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLatest
 import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafPage
 import co.electriccoin.zcash.ui.common.model.voting.DelegatedShareInfo
-import co.electriccoin.zcash.ui.common.model.voting.DelegationRegistration
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
-import co.electriccoin.zcash.ui.common.model.voting.ShareConfirmationResult
 import co.electriccoin.zcash.ui.common.model.voting.SharePayload
 import co.electriccoin.zcash.ui.common.model.voting.TallyResults
-import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
-import co.electriccoin.zcash.ui.common.model.voting.TxResult
-import co.electriccoin.zcash.ui.common.model.voting.VoteCommitmentBundle
 import co.electriccoin.zcash.ui.common.model.voting.VoteOption
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.provider.RoundsListResult
@@ -22,7 +17,7 @@ import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingConfigSnapshot
-import io.ktor.client.HttpClient
+import io.mockk.mockk
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,7 +45,8 @@ class RefreshActiveVotingSessionUseCaseTest {
                                 )
                         ),
                     votingConfigRepository = configRepository,
-                    votingApiRepository = apiRepository
+                    votingApiRepository = apiRepository,
+                    votingRouteProvider = mockk(relaxed = true)
                 )
 
             useCase()
@@ -63,75 +59,39 @@ class RefreshActiveVotingSessionUseCaseTest {
     private class FakeVotingApiProvider(
         private val roundsResult: RoundsListResult
     ) : VotingApiProvider {
-        override suspend fun validateConfigSource(source: PinnedConfigSource) = Unit
+        override suspend fun validateConfigSource(source: PinnedConfigSource, decision: VotingRouteDecision) = Unit
 
         override suspend fun invalidateConfigCache() = Unit
 
-        override suspend fun fetchServiceConfig(): VotingServiceConfig = VotingServiceConfig.EMPTY
+        override suspend fun fetchServiceConfig(decision: VotingRouteDecision): VotingServiceConfig =
+            VotingServiceConfig.EMPTY
 
-        override suspend fun fetchActiveVotingSession(): VotingSession? = error("unused")
+        override suspend fun fetchActiveVotingSession(decision: VotingRouteDecision): VotingSession? = error("unused")
 
-        override suspend fun fetchAllRounds(): RoundsListResult = roundsResult
+        override suspend fun fetchAllRounds(decision: VotingRouteDecision): RoundsListResult = roundsResult
 
-        override suspend fun fetchZodlEndorsedRoundIds(): Set<String> = emptySet()
+        override suspend fun fetchZodlEndorsedRoundIds(decision: VotingRouteDecision): Set<String> = emptySet()
 
-        override suspend fun submitDelegation(registration: DelegationRegistration): TxResult =
-            error("unused")
-
-        override suspend fun submitDelegation(
-            registration: DelegationRegistration,
-            client: HttpClient
-        ): TxResult = error("unused")
-
-        override suspend fun submitVoteCommitment(
-            bundle: VoteCommitmentBundle,
-            signature: CastVoteSignature
-        ): TxResult = error("unused")
-
-        override suspend fun submitVoteCommitment(
-            bundle: VoteCommitmentBundle,
-            signature: CastVoteSignature,
-            client: HttpClient
-        ): TxResult = error("unused")
-
-        override suspend fun fetchTallyResults(roundIdHex: String): TallyResults =
-            error("unused")
-
-        override suspend fun delegateShares(shares: List<SharePayload>): List<DelegatedShareInfo> =
-            error("unused")
-
-        override suspend fun fetchShareStatus(
-            helperBaseUrl: String,
+        override suspend fun fetchTallyResults(
             roundIdHex: String,
-            nullifierHex: String
-        ): ShareConfirmationResult = error("unused")
+            decision: VotingRouteDecision
+        ): TallyResults = error("unused")
 
-        override suspend fun resubmitShare(
-            payload: SharePayload,
-            candidateUrls: List<String>,
-            excludeUrls: List<String>
-        ): List<String> = error("unused")
+        override suspend fun delegateShares(
+            shares: List<SharePayload>,
+            decision: VotingRouteDecision
+        ): List<DelegatedShareInfo> = error("unused")
 
-        override suspend fun fetchTxConfirmation(
-            txHash: String,
-            preferredServerUrl: String?,
-            consultOthers: Boolean
-        ): TxConfirmation? = error("unused")
-
-        override suspend fun fetchTxConfirmation(
-            txHash: String,
-            client: HttpClient,
-            preferredServerUrl: String?,
-            consultOthers: Boolean
-        ): TxConfirmation? = error("unused")
-
-        override suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest =
-            error("unused")
+        override suspend fun fetchCommitmentTreeLatest(
+            roundIdHex: String,
+            decision: VotingRouteDecision
+        ): CommitmentTreeLatest = error("unused")
 
         override suspend fun fetchCommitmentTreeLeafPage(
             roundIdHex: String,
             fromHeight: Long,
-            toHeight: Long
+            toHeight: Long,
+            decision: VotingRouteDecision
         ): CommitmentTreeLeafPage = error("unused")
     }
 

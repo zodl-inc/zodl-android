@@ -1,5 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import co.electriccoin.lightwallet.client.OhttpHttpClient
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.model.GetCMCFiatMapResponse
 import co.electriccoin.zcash.ui.common.model.GetCMCQuoteResponse
 import io.ktor.client.HttpClient
@@ -10,51 +12,76 @@ import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import io.ktor.serialization.kotlinx.json.DefaultJson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 
 interface CMCApiProvider {
     @Throws(ResponseException::class)
-    suspend fun getExchangeRateQuote(apiKey: String, fiat: String): GetCMCQuoteResponse
+    suspend fun getExchangeRateQuote(fiat: String): GetCMCQuoteResponse
 
     /**
      * Returns every fiat currency the exchange-rate provider supports, in the provider's own order.
      */
     @Throws(ResponseException::class)
-    suspend fun getFiatMap(apiKey: String): GetCMCFiatMapResponse
+    suspend fun getFiatMap(): GetCMCFiatMapResponse
 }
 
 class CMCApiProviderImpl(
     private val httpClientProvider: HttpClientProvider
 ) : CMCApiProvider {
-    override suspend fun getExchangeRateQuote(apiKey: String, fiat: String): GetCMCQuoteResponse =
-        execute {
-            get("https://$CMC_API_HOST/v1/cryptocurrency/quotes/latest") {
-                parameter("symbol", "ZEC")
-                parameter("convert", fiat)
-                contentType(ContentType.Application.Json)
-                header("X-CMC_PRO_API_KEY", apiKey)
-            }.body()
-        }
+    // Privacy: the user's IP must never reach CMC, so always via OHTTP (over Tor when Tor is on).
+    // The gateway injects X-CMC_PRO_API_KEY; the app holds no key. Never the clearnet client.
 
-    override suspend fun getFiatMap(apiKey: String): GetCMCFiatMapResponse =
-        execute {
-            get("https://$CMC_API_HOST/v1/fiat/map") {
-                contentType(ContentType.Application.Json)
-                header("X-CMC_PRO_API_KEY", apiKey)
-            }.body()
-        }
+    override suspend fun getExchangeRateQuote(fiat: String): GetCMCQuoteResponse =
+        execute("https://$CMC_API_HOST/v1/cryptocurrency/quotes/latest?symbol=ZEC&convert=$fiat")
 
-    @Suppress("TooGenericExceptionCaught")
+    override suspend fun getFiatMap(): GetCMCFiatMapResponse =
+        execute("https://$CMC_API_HOST/v1/fiat/map")
+
+    /**
+     * Executes a CMC API request through OHTTP. The gateway injects X-CMC_PRO_API_KEY server-side;
+     * the app sends no key. With Tor ON, the relay leg goes over
+     * Tor; with Tor OFF, the relay sees the app's clearnet IP (but CMC never does).
+     */
     @Throws(ResponseException::class)
-    private suspend inline fun <T> execute(
-        crossinline block: suspend HttpClient.() -> T
-    ): T =
-        // MOB-1378: exchange rates must only ever be fetched over Tor to protect the user's IP, so use
-        // the Tor-only client rather than create(), which would fall back to clearnet when Tor is off.
-        withContext(Dispatchers.IO) { httpClientProvider.createTor().use { block(it) } }
+    private suspend inline fun <reified T> execute(url: String): T =
+        withContext(Dispatchers.IO) {
+            val ohttpClient = httpClientProvider.createOhttp()
+            if (!ohttpClient.canHandle(url)) {
+                error("No OHTTP proxy mapping for $url")
+            }
+            val response =
+                ohttpClient.execute(
+                    OhttpHttpClient.Request(url = url, headers = listOf("Accept" to "application/json"))
+                )
+            Twig.debug { "OHTTP GET $url -> HTTP ${response.status} (${response.body.size} bytes)" }
+            if (response.status !in OHTTP_HTTP_SUCCESS) {
+                throw CmcHttpStatusException(status = response.status, url = url)
+            }
+            CMC_JSON.decodeFromString<T>(response.body.decodeToString())
+        }
 }
+
+/**
+ * CMC answered through the OHTTP gateway with a non-2xx [status] (the gateway injects the API key, so a 401/403 means
+ * the key it holds was rejected). It stays an [IllegalStateException], as it was before it carried the status, and
+ * the status is what lets the exchange rate repository tell a failure that passes (5xx, 429, 408) from one that
+ * repeats identically (the other 4xx).
+ */
+class CmcHttpStatusException(
+    val status: Int,
+    url: String
+) : IllegalStateException("CMC via OHTTP returned HTTP $status for $url")
 
 // MOB-1378: single source of truth for the exchange-rate provider host. Used both to build the request
 // URL above and by [HttpClientProvider] to refuse the same host on the direct (clearnet) client.
 internal const val CMC_API_HOST = "pro-api.coinmarketcap.com"
+
+private const val OHTTP_HTTP_SUCCESS_MIN = 200
+private const val OHTTP_HTTP_SUCCESS_MAX = 299
+private val OHTTP_HTTP_SUCCESS = OHTTP_HTTP_SUCCESS_MIN..OHTTP_HTTP_SUCCESS_MAX
+
+/** Same lenient defaults as Ktor's `ContentNegotiation { json() }` on the Tor path (BigDecimal prices). */
+private val CMC_JSON = Json(from = DefaultJson) { ignoreUnknownKeys = true }

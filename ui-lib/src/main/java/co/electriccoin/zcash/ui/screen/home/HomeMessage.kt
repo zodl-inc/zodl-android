@@ -47,6 +47,8 @@ import co.electriccoin.zcash.ui.screen.home.error.WalletErrorMessage
 import co.electriccoin.zcash.ui.screen.home.error.WalletErrorMessageState
 import co.electriccoin.zcash.ui.screen.home.migration.MigrationMessage
 import co.electriccoin.zcash.ui.screen.home.migration.MigrationMessageState
+import co.electriccoin.zcash.ui.screen.home.ohttpoptin.OhttpOptInMessage
+import co.electriccoin.zcash.ui.screen.home.ohttpoptin.OhttpOptInMessageState
 import co.electriccoin.zcash.ui.screen.home.orswap.ORSwapMessage
 import co.electriccoin.zcash.ui.screen.home.orswap.ORSwapMessageState
 import co.electriccoin.zcash.ui.screen.home.reporting.CrashReportMessage
@@ -236,6 +238,14 @@ fun HomeMessage(
                         contentPadding = contentPadding,
                         state = normalizedState as MigrationMessageState,
                         innerModifier = innerModifier
+                    )
+                }
+
+                is OhttpOptInMessageState -> {
+                    OhttpOptInMessage(
+                        innerModifier = innerModifier,
+                        state = normalizedState as OhttpOptInMessageState,
+                        contentPadding = contentPadding
                     )
                 }
 

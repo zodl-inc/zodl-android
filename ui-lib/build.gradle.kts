@@ -153,19 +153,11 @@ androidComponents {
             )
         )
         variant.buildConfigFields?.put(
-            "ZCASH_FLEXA_KEY",
+            "OHTTP_CLIENT_TRACE_PREFIX",
             BuildConfigField(
                 type = "String",
-                value = "\"${project.property("ZCASH_FLEXA_KEY")?.toString().orEmpty()}\"",
-                comment = "Publishable key of the Flexa integration"
-            )
-        )
-        variant.buildConfigFields?.put(
-            "ZCASH_CMC_KEY",
-            BuildConfigField(
-                type = "String",
-                value = "\"${project.property("ZCASH_CMC_KEY")?.toString().orEmpty()}\"",
-                comment = "Publishable key of the CMC integration"
+                value = "\"${project.property("ZCASH_OHTTP_TRACE_PREFIX")?.toString().orEmpty()}\"",
+                comment = "OHTTP client trace ID prefix for debug request tracking (DEBUG builds only)"
             )
         )
         // To configure screen orientation in runtime
@@ -211,8 +203,8 @@ dependencies {
     implementation(libs.tink)
     implementation(libs.zxing)
 
-    api(libs.flexa.core)
-    api(libs.flexa.spend)
+    api(projects.flexaCore)
+    api(projects.flexaSpend)
 
     implementation(projects.buildInfoLib)
     implementation(projects.configurationApiLib)
@@ -238,6 +230,8 @@ dependencies {
     testImplementation(libs.androidx.compose.test.junit)
     testImplementation(libs.androidx.compose.test.manifest)
     testImplementation("io.ktor:ktor-client-mock")
+    // The Flexa SDK's event stream reader (okhttp-sse, a non-transitive dependency of flexaCore).
+    testImplementation("com.squareup.okhttp3:okhttp-sse:5.1.0")
 
     androidTestImplementation(projects.testLib)
     androidTestImplementation(libs.bundles.androidx.test)

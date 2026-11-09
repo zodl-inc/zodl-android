@@ -4,9 +4,13 @@ description: >-
   the SDK repository named by sdk-repo, installs its Rust/NDK toolchain, and points
   Gradle's composite build at it via ORG_GRADLE_PROJECT_SDK_INCLUDED_BUILD_PATH — so a
   co-developed app PR can build/lint/test against unreleased SDK changes without waiting on
-  a Maven publish. Supported on main, maint/* branches, and branches targeting either.
+  a Maven publish. Not allowed on release/*, review/* or candidate/* branches (or PRs targeting them).
   No-ops (does nothing) whenever the pin is blank, which is the default, normal case for
   every branch that isn't actively co-developing against an SDK PR.
+outputs:
+  active:
+    description: "'true' if the companion SDK build was activated this run, else empty."
+    value: ${{ steps.pin.outputs.commit != '' && 'true' || '' }}
 inputs:
   sdk-repo:
     description: >-
@@ -24,10 +28,15 @@ inputs:
       within the same org.
     required: false
     default: ''
-outputs:
-  active:
-    description: "'true' if the companion SDK build was activated this run, else empty."
-    value: ${{ steps.pin.outputs.commit != '' && 'true' || '' }}
+  cargo-app-id:
+    description: GitHub App ID for private slipstream-internal git dependency (companion SDK Rust build)
+    required: false
+    default: ''
+  cargo-app-private-key:
+    description: GitHub App private key for private slipstream-internal git dependency (companion SDK Rust build)
+    required: false
+    default: ''
+
 runs:
   using: "composite"
   steps:
@@ -36,12 +45,21 @@ runs:
       shell: bash
       env:
         SDK_REPO: ${{ inputs.sdk-repo }}
+        SDK_TOKEN: ${{ inputs.sdk-token }}
       run: |
         PIN="$(grep -m1 '^SDK_COMMIT_PIN=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')"
         [ -z "${PIN}" ] || [[ "${PIN}" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::SDK_COMMIT_PIN must be a full 40-char commit sha'; exit 1; }
-        TARGET="${{ github.base_ref || github.ref_name }}"
-        if [ -n "${PIN}" ] && [ "${TARGET}" != "main" ] && [[ "${TARGET}" != maint/* ]]; then
-          echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but this workflow's target branch is '${TARGET}'. SDK_COMMIT_PIN is only supported on main, maint/* branches, and branches targeting them — clear it before merging into release/review branches, which must always build against a real published SDK version." >&2
+        # Fail loudly here rather than letting the checkout step below fail on an empty token, and
+        # never silently widen to a broader repo-scoped secret if SDK_COMPANION_TOKEN isn't set --
+        # that would grant this job whatever else that broader secret can reach, not just
+        # contents:read on the one companion repo it actually needs.
+        if [ -n "${PIN}" ] && [ -z "${SDK_TOKEN}" ]; then
+          echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but no sdk-token input was provided. Configure the SDK_COMPANION_TOKEN secret (contents:read on the companion SDK repository) rather than substituting a broader-scoped secret." >&2
+          exit 1
+        fi
+        TARGET="${{ github.event.pull_request.base.ref || github.base_ref || github.ref_name }}"
+        if [ -n "${PIN}" ] && [[ "${TARGET}" == release/* || "${TARGET}" == review/* || "${TARGET}" == candidate/* ]]; then
+          echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but this workflow's target branch is '${TARGET}'. SDK_COMMIT_PIN is not allowed on release/*, review/* or candidate/* branches, which must always build against a real published SDK version — clear it before merging into them." >&2
           exit 1
         fi
         if [ -z "${SDK_REPO}" ]; then
@@ -78,11 +96,16 @@ runs:
         free -h
         df -h /
         swapon --show
+        # Self-hosted runner pods (memory-sized for the build) may not allow swapon: carry on
+        # without the extra swap there instead of failing the job.
         if ! swapon --show=NAME --noheadings | grep -qx "${SWAP}"; then
-          sudo fallocate -l 8G "${SWAP}" || sudo dd if=/dev/zero of="${SWAP}" bs=1M count=8192 status=none
-          sudo chmod 600 "${SWAP}"
-          sudo mkswap "${SWAP}"
-          sudo swapon "${SWAP}"
+          if { sudo fallocate -l 8G "${SWAP}" || sudo dd if=/dev/zero of="${SWAP}" bs=1M count=8192 status=none; } \
+            && sudo chmod 600 "${SWAP}" && sudo mkswap "${SWAP}" && sudo swapon "${SWAP}"; then
+            echo "Extra swap enabled"
+          else
+            echo "::notice::Extra swap not available on this runner; continuing without it"
+            sudo rm -f "${SWAP}" || true
+          fi
         fi
         swapon --show
         free -h
@@ -131,19 +154,48 @@ runs:
         # carry only x86_64 native code -- fine, since the branch gate above keeps
         # SDK_COMMIT_PIN off release branches.
         echo "rust.targets=x86_64" >> .sdk-companion/local.properties
+    - name: Authorize cargo against the private slipstream repositories (companion SDK)
+      if: steps.pin.outputs.commit != '' && inputs.cargo-app-id != '' && inputs.cargo-app-private-key != ''
+      id: slipstream-token
+      uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+      with:
+        app-id: ${{ inputs.cargo-app-id }}
+        private-key: ${{ inputs.cargo-app-private-key }}
+        owner: zodl-inc
+        repositories: slipstream,slipstream-internal,zodl-ohttp
+    - name: Point cargo git fetches at the App token (companion SDK)
+      if: steps.pin.outputs.commit != '' && steps.slipstream-token.outputs.token != ''
+      shell: bash
+      env:
+        SLIPSTREAM_TOKEN: ${{ steps.slipstream-token.outputs.token }}
+      run: |
+        git config --global url."https://x-access-token:${SLIPSTREAM_TOKEN}@github.com/zodl-inc/".insteadOf "https://github.com/zodl-inc/"
+        echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> "$GITHUB_ENV"
+    - name: Free the runner tool cache before companion SDK Rust build
+      if: steps.pin.outputs.commit != ''
+      shell: bash
+      run: |
+        # The toolchains the earlier "Free runner disk space" step already removed are not
+        # removed again here; this drops the rest of the runner tool cache to leave room for
+        # Rust cross-compilation. The NDK (27.0.12077973) lives in the Android SDK, not in it.
+        echo "Disk space before cleanup:"
+        df -h /
+        sudo rm -rf "${AGENT_TOOLSDIRECTORY}" || true
+        echo "Disk space after cleanup:"
+        df -h /
     - name: Rust cache for the companion SDK build
       if: steps.pin.outputs.commit != ''
-      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae
+      uses: Swatinem/rust-cache@82a92a6e8fbeee089604da2575dc567ae9ddeaab # v2.7.5
       with:
-        path: |
-          .sdk-companion/backend-lib/target
-          ~/.cargo/bin
-          ~/.cargo/registry/index
-          ~/.cargo/registry/cache
-          ~/.cargo/registry/src
-        key: ${{ runner.os }}-sdk-companion-rust-${{ steps.pin.outputs.commit }}
-        restore-keys: |
-          ${{ runner.os }}-sdk-companion-rust-
+        # Cache for the companion SDK's backend-lib workspace (checked out to .sdk-companion/).
+        # Auto-detects Cargo.lock and includes vendored dependencies in cache key.
+        workspaces: .sdk-companion/backend-lib
+        cache-targets: "true"
+        cache-all-crates: "true"
+        # Shared key with SDK repo's own Rust cache for potential cross-workflow warmup.
+        # The commit pin ensures cache invalidation when SDK_COMMIT_PIN changes.
+        shared-key: "android-rust-${{ steps.pin.outputs.commit }}"
+        save-if: "true"
     - name: Export SDK composite build override
       if: steps.pin.outputs.commit != ''
       shell: bash
@@ -172,3 +224,24 @@ runs:
         echo "CARGO_BUILD_JOBS=2" >> "$GITHUB_ENV"
         echo "CARGO_PROFILE_RELEASE_CODEGEN_UNITS=4" >> "$GITHUB_ENV"
         echo "::notice::Building against ${SDK_REPO}@${{ steps.pin.outputs.commit }} (SDK_COMMIT_PIN), not the published Maven artifact."
+    - name: Cap memory and parallelism for the companion SDK build
+      if: steps.pin.outputs.commit != ''
+      shell: bash
+      run: |
+        # The app's Gradle daemon (-Xmx4g), its Kotlin daemon and the companion SDK's
+        # parallel rustc jobs share a 16 GB standard runner. Jobs on pinned builds hung for
+        # 10-25 min and then died with "The runner has received a shutdown signal" (exit 143),
+        # the pattern of a runner out of memory. GRADLE_USER_HOME properties take precedence
+        # over the project's gradle.properties, so this caps the pinned CI builds only.
+        mkdir -p "${HOME}/.gradle"
+        {
+          echo "org.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError"
+          echo "org.gradle.workers.max=2"
+          echo "kotlin.daemon.jvmargs=-Xmx2g"
+        } >> "${HOME}/.gradle/gradle.properties"
+        echo "CARGO_BUILD_JOBS=2" >> "$GITHUB_ENV"
+        # Extra swap on the scratch disk, so a peak slows the build down instead of
+        # freezing the runner agent.
+        sudo fallocate -l 8G /mnt/companion.swap && sudo chmod 600 /mnt/companion.swap \
+          && sudo mkswap /mnt/companion.swap > /dev/null && sudo swapon /mnt/companion.swap || true
+        free -m

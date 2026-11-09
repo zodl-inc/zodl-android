@@ -14,6 +14,17 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.20.0 (3807)] - 2026-11-09
+
+### Added:
+
+- We added a Private connection that uses OHTTP to keep your IP address hidden from Zcash servers.
+
+### Changed:
+
+- New wallets and wallets previously using Automatic server selection now use Private by default. Your chosen custom server stays unchanged.
+- Choose a Server now offers Private, Public and Manual modes.
+
 ## [3.19.0 (3234)] - 2026-10-29
 
 ### Added:

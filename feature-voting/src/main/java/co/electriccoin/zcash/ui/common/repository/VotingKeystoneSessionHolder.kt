@@ -9,7 +9,6 @@ import cash.z.ecc.android.sdk.model.voting.VotingRoundDriveProgressListener
 import cash.z.ecc.android.sdk.model.voting.VotingTorLease
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
-import co.electriccoin.zcash.ui.common.provider.acquireVotingTorLeaseOrNull
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -57,6 +56,8 @@ class VotingKeystoneSessionHolder(
     // one that issued it.
     private var torLease: VotingTorLease? = null
 
+    private var openedDecision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision? = null
+
     /**
      * Ensures a delegation-enabled [VotingRoundSession.run] pass has completed for [roundId] on
      * a session this holder retains, caching the resulting delegation pipeline so
@@ -82,14 +83,16 @@ class VotingKeystoneSessionHolder(
         chainEndpoints: List<String>,
         ceremonyStartSeconds: Long,
         voteEndTimeSeconds: Long,
-        delegationInputs: VotingDelegationInputs
+        delegationInputs: VotingDelegationInputs,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
     ) = mutex.withLock {
-        val lease = synchronizerProvider.getSynchronizer().acquireVotingTorLeaseOrNull()
+        val lease = if (decision.isTor) synchronizerProvider.getSynchronizer().acquireVotingTorLease() else null
         val reusable =
             openRoundId == roundId &&
                 openAccountUuidString == accountUuidString &&
                 roundSession != null &&
-                (torLease == null) == (lease == null)
+                (torLease == null) == (lease == null) &&
+                openedDecision == decision
         if (reusable) {
             lease?.release()
             return@withLock
@@ -120,7 +123,11 @@ class VotingKeystoneSessionHolder(
             session =
                 votingCryptoClient.openRoundSession(
                     dbHandle = handle,
-                    torLease = lease,
+                    // The holder keeps owning the lease (released in closeLocked/closeResources);
+                    // openRoundSession only reads it.
+                    route =
+                        co.electriccoin.zcash.ui.common.model.voting
+                            .VotingRoute(decision, lease),
                     roundId = roundId,
                     proposals = proposals,
                     hotkeySecret = hotkeySecret,
@@ -151,6 +158,7 @@ class VotingKeystoneSessionHolder(
         openRoundId = roundId
         openAccountUuidString = accountUuidString
         torLease = lease
+        openedDecision = decision
     }
 
     suspend fun getKeystoneSigningRequests(
@@ -217,6 +225,7 @@ class VotingKeystoneSessionHolder(
         openRoundId = null
         openAccountUuidString = null
         torLease = null
+        openedDecision = null
         closeResources(session, handle, lease)
     }
 

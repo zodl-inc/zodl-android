@@ -51,15 +51,23 @@ class PrepareVotingRoundUseCase(
     private val votingHotkeySeedProvider: VotingHotkeySeedProvider,
     private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository,
     private val synchronizerProvider: SynchronizerProvider,
-    private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase
+    private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
+    private val votingRouteProvider: co.electriccoin.zcash.ui.common.provider.VotingRouteProvider
 ) {
     private val secureRandom = SecureRandom()
 
+    /** Screen-entry preparation: only config and round fetches, so a decision without a Tor lease. */
     suspend operator fun invoke(roundId: String): VotingRoundPreparationResult =
+        invoke(roundId, votingRouteProvider.decision())
+
+    suspend operator fun invoke(
+        roundId: String,
+        decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
+    ): VotingRoundPreparationResult =
         withContext(Dispatchers.IO) {
             getSelectedWalletAccount().requireSpendable()
             votingProofPrecomputeRepository.warmProvingCaches()
-            val sessionContext = resolveVotingRoundSession(roundId)
+            val sessionContext = resolveVotingRoundSession(roundId, decision)
             val session = sessionContext.session
             val sessionRoundId = session.voteRoundId.toHex()
 

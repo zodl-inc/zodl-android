@@ -131,7 +131,8 @@ class PrepareVotingRoundUseCaseEligibilityTest {
                 votingHotkeySeedProvider = votingHotkeySeedProvider,
                 votingProofPrecomputeRepository = votingProofPrecomputeRepository,
                 synchronizerProvider = synchronizerProvider,
-                getSelectedWalletAccount = getSelectedWalletAccount
+                getSelectedWalletAccount = getSelectedWalletAccount,
+                votingRouteProvider = mockk(relaxed = true)
             )
 
         init {
@@ -145,7 +146,7 @@ class PrepareVotingRoundUseCaseEligibilityTest {
             every { synchronizer.fullyScannedHeight } returns MutableStateFlow(BlockHeight.new(200L))
             every { synchronizer.network } returns ZcashNetwork.Testnet
 
-            coEvery { resolveVotingRoundSession(roundId) } returns
+            coEvery { resolveVotingRoundSession(roundId, any()) } returns
                 VotingRoundSessionContext(session = session, serviceConfig = VotingServiceConfig.EMPTY)
             coEvery { getSelectedWalletAccount() } returns selectedAccount
             coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer

@@ -1,11 +1,13 @@
 package co.electriccoin.zcash.ui.common.repository
 
-import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.voting.VotingTorLease
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
+import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
-import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import co.electriccoin.zcash.ui.common.provider.VotingRouteProvider
+import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -37,10 +39,10 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
-                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = pirSnapshotResolver,
-                    scope = scope
+                    votingRouteProvider = fakeVotingRouteProvider(),
+                    scope = scope,
                 )
             val request = pirWarmupRequest()
 
@@ -52,10 +54,10 @@ class VotingProofPrecomputeRepositoryTest {
                 listOf(
                     ResolveCall(
                         endpoints = listOf("https://pir-a", "https://pir-b"),
-                        expectedSnapshotHeight = 123L
-                    )
+                        expectedSnapshotHeight = 123L,
+                    ),
                 ),
-                pirSnapshotResolver.calls
+                pirSnapshotResolver.calls,
             )
             assertEquals(
                 listOf(
@@ -63,14 +65,14 @@ class VotingProofPrecomputeRepositoryTest {
                     CryptoCall.SetWalletId(dbHandle = DB_HANDLE, walletId = "wallet-id", networkId = 0),
                     CryptoCall.PrecomputePirProofs(
                         dbHandle = DB_HANDLE,
-                        torLease = TOR_LEASE,
+                        route = TOR_LEASE,
                         pirServerUrl = "https://pir.example",
                         pirLayout = VotingPirLayout(),
-                        notesJson = "[notes]"
+                        notesJson = "[notes]",
                     ),
-                    CryptoCall.CloseVotingDb(DB_HANDLE)
+                    CryptoCall.CloseVotingDb(DB_HANDLE),
                 ),
-                cryptoClient.calls
+                cryptoClient.calls,
             )
 
             scope.cancel()
@@ -83,10 +85,10 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
-                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
-                    scope = scope
+                    votingRouteProvider = fakeVotingRouteProvider(),
+                    scope = scope,
                 )
             val request = pirWarmupRequest()
 
@@ -128,10 +130,10 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
-                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = gatedCryptoClient,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
-                    scope = scope
+                    votingRouteProvider = fakeVotingRouteProvider(),
+                    scope = scope,
                 )
             val request = pirWarmupRequest()
 
@@ -162,7 +164,7 @@ class VotingProofPrecomputeRepositoryTest {
                 1,
                 cryptoClient.calls.count { it is CryptoCall.PrecomputePirProofs },
                 "a second startPirWarmup call for the same key must stay deduped while the " +
-                    "first job's post-cancellation cleanup is still running"
+                    "first job's post-cancellation cleanup is still running",
             )
 
             // Let the first job's cleanup finish -- the dedup key is now genuinely free.
@@ -185,13 +187,13 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
-                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                     // No retry backoff to wait out -- this test is about the swallow/cleanup
                     // behavior, not the new retry mechanism (see its own dedicated tests below).
-                    pirFetchRetryDelaysMs = LongArray(0)
+                    pirFetchRetryDelaysMs = LongArray(0),
                 )
 
             // Must not throw / must not cancel the caller -- fire-and-forget precompute is never
@@ -218,14 +220,14 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
-                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                     // This test counts PrecomputePirProofs calls per startPirWarmup invocation --
                     // disable the new in-call retry (its own dedicated tests below) so that count
                     // stays 1 per call, same as before that mechanism existed.
-                    pirFetchRetryDelaysMs = LongArray(0)
+                    pirFetchRetryDelaysMs = LongArray(0),
                 )
             val request = pirWarmupRequest()
 
@@ -262,11 +264,11 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
-                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
-                    pirFetchRetryDelaysMs = longArrayOf(1L, 1L)
+                    pirFetchRetryDelaysMs = longArrayOf(1L, 1L),
                 )
 
             repository.startPirWarmup(pirWarmupRequest())
@@ -296,10 +298,10 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
-                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = pirSnapshotResolver,
-                    scope = scope
+                    votingRouteProvider = fakeVotingRouteProvider(),
+                    scope = scope,
                 )
             val request = snapshotBundlePrecomputeRequest()
 
@@ -313,15 +315,15 @@ class VotingProofPrecomputeRepositoryTest {
                     CryptoCall.SetWalletId(dbHandle = DB_HANDLE, walletId = "wallet-id", networkId = 0),
                     CryptoCall.PrecomputeSnapshotBundles(
                         dbHandle = DB_HANDLE,
-                        torLease = TOR_LEASE,
+                        route = TOR_LEASE,
                         roundId = "round-id",
                         pirServerUrl = "https://pir.example",
                         pirLayout = VotingPirLayout(),
-                        notesJson = "[notes]"
+                        notesJson = "[notes]",
                     ),
-                    CryptoCall.CloseVotingDb(DB_HANDLE)
+                    CryptoCall.CloseVotingDb(DB_HANDLE),
                 ),
-                cryptoClient.calls
+                cryptoClient.calls,
             )
 
             scope.cancel()
@@ -334,10 +336,10 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
-                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
-                    scope = scope
+                    votingRouteProvider = fakeVotingRouteProvider(),
+                    scope = scope,
                 )
             val request = snapshotBundlePrecomputeRequest()
 
@@ -363,12 +365,12 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
-                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                     // See pirWarmupFailureIsSwallowedAndStillClosesVotingDb's identical comment.
-                    pirFetchRetryDelaysMs = LongArray(0)
+                    pirFetchRetryDelaysMs = LongArray(0),
                 )
 
             repository.startSnapshotBundlePrecompute(snapshotBundlePrecomputeRequest())
@@ -389,12 +391,12 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
-                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
                     // See pirWarmupRetriesAfterAPreviousFailure's identical comment.
-                    pirFetchRetryDelaysMs = LongArray(0)
+                    pirFetchRetryDelaysMs = LongArray(0),
                 )
             val request = snapshotBundlePrecomputeRequest()
 
@@ -425,11 +427,11 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
-                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    votingRouteProvider = fakeVotingRouteProvider(),
                     scope = scope,
-                    pirFetchRetryDelaysMs = longArrayOf(1L, 1L)
+                    pirFetchRetryDelaysMs = longArrayOf(1L, 1L),
                 )
 
             repository.startSnapshotBundlePrecompute(snapshotBundlePrecomputeRequest())
@@ -461,10 +463,10 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
-                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example", gate = gate),
-                    scope = scope
+                    votingRouteProvider = fakeVotingRouteProvider(),
+                    scope = scope,
                 )
             val request = snapshotBundlePrecomputeRequest(accountUuid = "account-under-test")
 
@@ -502,10 +504,10 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
-                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example", gate = gate),
-                    scope = scope
+                    votingRouteProvider = fakeVotingRouteProvider(),
+                    scope = scope,
                 )
             // Two distinct snapshot heights (distinct dedup keys) for the SAME account -- PIR
             // warmup is round-independent, so cancelAndAwaitPrecompute must sweep every one of
@@ -548,10 +550,10 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
-                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
-                    scope = scope
+                    votingRouteProvider = fakeVotingRouteProvider(),
+                    scope = scope,
                 )
 
             repository.warmProvingCaches()
@@ -573,7 +575,7 @@ class VotingProofPrecomputeRepositoryTest {
             pirEndpoints = listOf("https://pir-a", "https://pir-b"),
             pirLayout = VotingPirLayout(),
             networkId = 0,
-            notesJson = "[notes]"
+            notesJson = "[notes]",
         )
 
     private fun snapshotBundlePrecomputeRequest(accountUuid: String = "account") =
@@ -586,36 +588,26 @@ class VotingProofPrecomputeRepositoryTest {
             pirLayout = VotingPirLayout(),
             expectedSnapshotHeight = 123L,
             networkId = 0,
-            notesJson = "[notes]"
+            notesJson = "[notes]",
         )
 }
 
-private fun fakeSynchronizerProvider(): SynchronizerProvider =
-    Proxy.newProxyInstance(
-        SynchronizerProvider::class.java.classLoader,
-        arrayOf(SynchronizerProvider::class.java)
-    ) { proxy, method, args ->
-        when (method.name) {
-            "getSynchronizer" -> fakeSynchronizer()
-            else -> method.handleObjectMethod(proxy, args)
-        }
-    } as SynchronizerProvider
-
-private fun fakeSynchronizer(): Synchronizer =
-    Proxy.newProxyInstance(
-        Synchronizer::class.java.classLoader,
-        arrayOf(Synchronizer::class.java)
-    ) { proxy, method, args ->
-        when (method.name) {
-            "acquireVotingTorLease" -> TOR_LEASE
-            else -> method.handleObjectMethod(proxy, args)
-        }
-    } as Synchronizer
-
 private const val DB_HANDLE = 42L
 
-// One shared relaxed instance, so recorded calls compare equal by identity; release() is a no-op.
-private val TOR_LEASE: VotingTorLease = mockk(relaxed = true)
+// One shared relaxed lease, so recorded calls compare equal by identity; release() is a no-op.
+private val TOR_LEASE_HANDLE: VotingTorLease = mockk(relaxed = true)
+
+// One shared Tor route wrapping a real lease mock, returned by every acquire(), so recorded calls
+// compare equal by identity and route.torLease is the lease above, not a relaxed placeholder.
+private val TOR_LEASE: VotingRoute =
+    VotingRoute(VotingRouteDecision(isTor = true, isCustomServer = false), TOR_LEASE_HANDLE)
+
+private fun fakeVotingRouteProvider(): VotingRouteProvider =
+    mockk {
+        coEvery { acquire() } returns TOR_LEASE
+        coEvery { decision(any()) } returns TOR_LEASE.decision
+    }
+
 private const val TIMEOUT_MS = 5_000L
 
 private class FakePirSnapshotResolver(
@@ -623,18 +615,19 @@ private class FakePirSnapshotResolver(
     // When set, resolve() suspends here until the deferred completes -- lets a test hold a
     // background precompute job mid-flight so it can exercise cancelAndAwaitPrecompute against a
     // genuinely in-flight job, rather than a synchronously-finished one.
-    private val gate: CompletableDeferred<Unit>? = null
+    private val gate: CompletableDeferred<Unit>? = null,
 ) : PirSnapshotResolver {
     val calls = mutableListOf<ResolveCall>()
 
     override suspend fun resolve(
+        decision: VotingRouteDecision,
         endpoints: List<String>,
-        expectedSnapshotHeight: Long
+        expectedSnapshotHeight: Long,
     ): String {
         calls +=
             ResolveCall(
                 endpoints = endpoints,
-                expectedSnapshotHeight = expectedSnapshotHeight
+                expectedSnapshotHeight = expectedSnapshotHeight,
             )
         gate?.await()
         return resolvedUrl
@@ -645,7 +638,7 @@ private class FakeVotingCryptoClient(
     // Mutable (not constructor-fixed) so a single fake can simulate a failure on one call and a
     // success on the next -- needed for Important #4's retry-after-failure regression test.
     var pirWarmupFailure: Exception? = null,
-    var snapshotBundlePrecomputeFailure: Exception? = null
+    var snapshotBundlePrecomputeFailure: Exception? = null,
 ) {
     val calls = mutableListOf<CryptoCall>()
     var warmupCount = 0
@@ -653,7 +646,7 @@ private class FakeVotingCryptoClient(
     val client: VotingCryptoClient =
         Proxy.newProxyInstance(
             VotingCryptoClient::class.java.classLoader,
-            arrayOf(VotingCryptoClient::class.java)
+            arrayOf(VotingCryptoClient::class.java),
         ) { _, method, args ->
             when (method.name) {
                 "openVotingDb" -> {
@@ -666,7 +659,7 @@ private class FakeVotingCryptoClient(
                         CryptoCall.SetWalletId(
                             dbHandle = args.valueAt(0),
                             walletId = args.valueAt(1),
-                            networkId = args.valueAt(2)
+                            networkId = args.valueAt(2),
                         )
                     Unit
                 }
@@ -675,10 +668,10 @@ private class FakeVotingCryptoClient(
                     calls +=
                         CryptoCall.PrecomputePirProofs(
                             dbHandle = args.valueAt(0),
-                            torLease = args.valueAt(1),
+                            route = args.valueAt(1),
                             pirServerUrl = args.valueAt(2),
                             pirLayout = args.valueAt(3),
-                            notesJson = args.valueAt(4)
+                            notesJson = args.valueAt(4),
                         )
                     pirWarmupFailure?.let { throw it }
                     fakePirWarmupResult()
@@ -688,11 +681,11 @@ private class FakeVotingCryptoClient(
                     calls +=
                         CryptoCall.PrecomputeSnapshotBundles(
                             dbHandle = args.valueAt(0),
-                            torLease = args.valueAt(1),
+                            route = args.valueAt(1),
                             roundId = args.valueAt(2),
                             pirServerUrl = args.valueAt(3),
                             pirLayout = args.valueAt(4),
-                            notesJson = args.valueAt(5)
+                            notesJson = args.valueAt(5),
                         )
                     snapshotBundlePrecomputeFailure?.let { throw it }
                     fakeSnapshotBundlePrecomputeResult()
@@ -706,6 +699,10 @@ private class FakeVotingCryptoClient(
                 "warmProvingCaches" -> {
                     warmupCount += 1
                     Unit
+                }
+
+                "isCustomServer" -> {
+                    false
                 }
 
                 else -> {
@@ -723,7 +720,7 @@ private class FakeVotingCryptoClient(
  */
 private class GatedCloseVotingDbClient(
     private val delegate: VotingCryptoClient,
-    private val closeGate: CompletableDeferred<Unit>
+    private val closeGate: CompletableDeferred<Unit>,
 ) : VotingCryptoClient by delegate {
     override suspend fun closeVotingDb(dbHandle: Long) {
         closeGate.await()
@@ -735,51 +732,51 @@ private fun fakePirWarmupResult() =
     co.electriccoin.zcash.ui.common.model.voting.VotingPirWarmupResult(
         cachedCount = 2,
         fetchedCount = 3,
-        servedRoot = ByteArray(32)
+        servedRoot = ByteArray(32),
     )
 
 private fun fakeSnapshotBundlePrecomputeResult() =
     co.electriccoin.zcash.ui.common.model.voting.VotingSnapshotBundlePrecomputeResult(
         bundleCount = 1,
         eligibleWeight = 100L,
-        bundleReports = emptyList()
+        bundleReports = emptyList(),
     )
 
 private data class ResolveCall(
     val endpoints: List<String>,
-    val expectedSnapshotHeight: Long
+    val expectedSnapshotHeight: Long,
 )
 
 private sealed interface CryptoCall {
     data class OpenVotingDb(
-        val votingDbPath: String
+        val votingDbPath: String,
     ) : CryptoCall
 
     data class SetWalletId(
         val dbHandle: Long,
         val walletId: String,
-        val networkId: Int
+        val networkId: Int,
     ) : CryptoCall
 
     data class PrecomputePirProofs(
         val dbHandle: Long,
-        val torLease: VotingTorLease?,
+        val route: VotingRoute?,
         val pirServerUrl: String,
         val pirLayout: VotingPirLayout,
-        val notesJson: String
+        val notesJson: String,
     ) : CryptoCall
 
     data class PrecomputeSnapshotBundles(
         val dbHandle: Long,
-        val torLease: VotingTorLease?,
+        val route: VotingRoute?,
         val roundId: String,
         val pirServerUrl: String,
         val pirLayout: VotingPirLayout,
-        val notesJson: String
+        val notesJson: String,
     ) : CryptoCall
 
     data class CloseVotingDb(
-        val dbHandle: Long
+        val dbHandle: Long,
     ) : CryptoCall
 }
 
@@ -788,7 +785,7 @@ private fun <T> Array<Any?>?.valueAt(index: Int): T = this?.get(index) as T
 
 private fun Method.handleObjectMethod(
     target: Any,
-    args: Array<Any?>?
+    args: Array<Any?>?,
 ): Any? =
     when (name) {
         "equals" -> target === args?.firstOrNull()
