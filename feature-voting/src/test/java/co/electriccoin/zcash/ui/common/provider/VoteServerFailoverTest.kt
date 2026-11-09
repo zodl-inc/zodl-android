@@ -29,7 +29,10 @@ class VoteServerFailoverTest {
             val result =
                 withVoteServerFailover(
                     path = "/shielded-vote/v1/rounds",
-                    serverUrls = listOf("https://first.example.com", "https://second.example.com")
+                    serverUrls = listOf("https://first.example.com", "https://second.example.com"),
+                    // The default predicate never fails over on timeout (a POST may have been delivered);
+                    // idempotent reads opt back in, which is where the per-attempt Tor timeout matters.
+                    shouldTryNext = ::shouldTryNextVoteServerForRead
                 ) { serverUrl ->
                     triedServers += serverUrl
                     if (serverUrl == "https://first.example.com") {

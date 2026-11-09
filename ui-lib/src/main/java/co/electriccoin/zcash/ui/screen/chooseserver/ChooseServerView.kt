@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
@@ -24,6 +26,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -37,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -162,79 +166,82 @@ private fun ConnectionModeSection(state: ServerConnectionModeState) {
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        ZashiRadioButton(
-            state = state.automatic,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp)
-                    .then(
-                        if (state.automatic.isChecked) {
-                            Modifier.background(ZashiColors.Surfaces.bgSecondary, RoundedCornerShape(12.dp))
-                        } else {
-                            Modifier
-                        }
-                    ),
-            checkedContent = {
-                if (state.automaticBadge != null) {
-                    LottieProgress(size = 20.dp)
-                } else {
-                    RadioButtonCheckedContent(state.automatic)
-                }
-            },
-            uncheckedContent = {
-                if (!(state.automaticBadge != null && state.automatic.isChecked)) {
-                    RadioButtonUncheckedContent(state.automatic)
-                }
-            },
-            trailingContent = {
-                if (state.automaticBadge != null && state.automatic.isChecked) {
-                    ZashiBadge(
-                        text = state.automaticBadge,
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                        colors = ZashiBadgeDefaults.warningColors()
-                    )
-                }
-            }
+        ConnectionModeRow(
+            radio = state.private,
+            badge = state.privateBadge,
+            onInfoClick = state.onPrivateInfoClick,
+            infoLabel = state.privateInfoLabel,
         )
         Spacer(modifier = Modifier.height(4.dp))
-        ZashiRadioButton(
-            state = state.manual,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp)
-                    .then(
-                        if (state.manual.isChecked) {
-                            Modifier.background(ZashiColors.Surfaces.bgSecondary, RoundedCornerShape(12.dp))
-                        } else {
-                            Modifier
-                        }
-                    ),
-            checkedContent = {
-                if (state.automaticBadge != null) {
-                    LottieProgress(size = 20.dp)
-                } else {
-                    RadioButtonCheckedContent(state.manual)
-                }
-            },
-            uncheckedContent = {
-                if (!(state.automaticBadge != null && state.isManualSelected)) {
-                    RadioButtonUncheckedContent(state.manual)
-                }
-            },
-            trailingContent = {
-                if (state.automaticBadge != null && state.isManualSelected) {
-                    ZashiBadge(
-                        text = state.automaticBadge,
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                        colors = ZashiBadgeDefaults.warningColors()
-                    )
-                }
-            }
-        )
+        ConnectionModeRow(radio = state.public, badge = state.publicBadge)
+        Spacer(modifier = Modifier.height(4.dp))
+        ConnectionModeRow(radio = state.manual, badge = state.manualBadge)
         Spacer(modifier = Modifier.height(32.dp))
     }
+}
+
+@Composable
+private fun ConnectionModeRow(
+    radio: RadioButtonState,
+    badge: ModeBadgeState?,
+    onInfoClick: (() -> Unit)? = null,
+    infoLabel: StringResource? = null,
+) {
+    val isTesting = badge?.showsProgress == true && radio.isChecked
+    ZashiRadioButton(
+        state = radio,
+        titleTrailingContent =
+            onInfoClick?.let {
+                {
+                    Image(
+                        painter = painterResource(R.drawable.ic_info),
+                        contentDescription = infoLabel?.getValue(),
+                        modifier =
+                            Modifier
+                                .padding(top = 6.dp)
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .clickable(onClick = it)
+                                .padding(8.dp)
+                    )
+                }
+            },
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp)
+                .then(
+                    if (radio.isChecked) {
+                        Modifier.background(ZashiColors.Surfaces.bgSecondary, RoundedCornerShape(12.dp))
+                    } else {
+                        Modifier
+                    }
+                ),
+        checkedContent = {
+            if (isTesting) {
+                LottieProgress(size = 20.dp)
+            } else {
+                RadioButtonCheckedContent(radio)
+            }
+        },
+        uncheckedContent = {
+            RadioButtonUncheckedContent(radio)
+        },
+        trailingContent = {
+            if (badge != null && (radio.isChecked || !badge.showsProgress)) {
+                ZashiBadge(
+                    text = badge.text,
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                    colors =
+                        when (badge.style) {
+                            ModeBadgeStyle.SUCCESS -> ZashiBadgeDefaults.successColors()
+                            ModeBadgeStyle.WARNING -> ZashiBadgeDefaults.warningColors()
+                            ModeBadgeStyle.ERROR -> ZashiBadgeDefaults.errorColors()
+                        }
+                )
+            }
+        }
+    )
 }
 
 @Composable
@@ -619,12 +626,20 @@ private fun ChooseServerPreview(
             ChooseServerState(
                 connectionMode =
                     ServerConnectionModeState(
-                        automatic =
+                        private =
                             RadioButtonState(
-                                text = stringRes("Automatic"),
+                                text = stringRes("Private"),
+                                subtitle = stringRes("ZODL servers"),
                                 isChecked = true,
                                 onClick = {}
                             ),
+                        public =
+                            RadioButtonState(
+                                text = stringRes("Public"),
+                                isChecked = false,
+                                onClick = {}
+                            ),
+                        privateBadge = ModeBadgeState(stringRes("Active"), ModeBadgeStyle.SUCCESS),
                         manual =
                             RadioButtonState(
                                 text = stringRes("Manual"),
@@ -701,7 +716,6 @@ private fun ChooseServerPreviewValidationDialog() =
     }
 
 @Suppress("UnusedPrivateMember")
-@PreviewScreens
 @Composable
 private fun ChooseServerPreviewLoading() =
     ZcashTheme {

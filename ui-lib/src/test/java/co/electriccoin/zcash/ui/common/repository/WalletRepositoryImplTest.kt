@@ -2,7 +2,10 @@ package co.electriccoin.zcash.ui.common.repository
 
 import android.app.Application
 import cash.z.ecc.android.sdk.Synchronizer
+import cash.z.ecc.android.sdk.WalletInitMode
+import cash.z.ecc.android.sdk.model.FastestServersResult
 import cash.z.ecc.android.sdk.model.PersistableWallet
+import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.configuration.model.map.Configuration
 import co.electriccoin.zcash.crash.android.GlobalCrashReporter
@@ -13,9 +16,12 @@ import co.electriccoin.zcash.ui.common.datasource.RestoreTimestampDataSource
 import co.electriccoin.zcash.ui.common.model.OnboardingState
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.provider.IsIronwoodAnnouncementShownStorageProvider
+import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
+import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProvider
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.WalletBackupFlagStorageProvider
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProvider
@@ -41,6 +47,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -156,6 +163,150 @@ class WalletRepositoryImplTest {
         }
 
     @Test
+    fun initMovesAnAutomaticWalletOnClearnetToTheGateway() =
+        runTest {
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(ZEC_ROCKS),
+                    isAutomaticPreference = true,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(GATEWAY, harness.walletProvider.getPersistableWallet()?.endpoint)
+            assertEquals(listOf("wallet"), harness.events)
+        }
+
+    @Test
+    fun initKeepsAnAutomaticWalletOnClearnetWhenTheSdkHasNoOhttpGateway() =
+        runTest {
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(ZEC_ROCKS),
+                    isAutomaticPreference = true,
+                    hasOhttpGateway = false,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(ZEC_ROCKS, harness.walletProvider.getPersistableWallet()?.endpoint)
+            assertEquals(emptyList(), harness.events)
+        }
+
+    @Test
+    fun initMovesAnUpgradedWalletWithoutAModePreferenceOnABundledClearnetServerToTheGateway() =
+        runTest {
+            val (repository, harness) =
+                newRepository(onboardingState = OnboardingState.READY, initialWallet = walletOn(ZEC_ROCKS))
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(GATEWAY, harness.walletProvider.getPersistableWallet()?.endpoint)
+        }
+
+    @Test
+    fun initTurnsAManualGatewaySelectionIntoPrivate() =
+        runTest {
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(GATEWAY),
+                    isAutomaticPreference = false,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { harness.isAutomaticProvider.store(true) }
+            coVerify(exactly = 1) { harness.isPublicProvider.store(false) }
+            assertEquals(GATEWAY, harness.walletProvider.getPersistableWallet()?.endpoint)
+        }
+
+    @Test
+    fun initMovesAPublicWalletOffADecommissionedHostToAnotherPublicServer() =
+        runTest {
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(DECOMMISSIONED),
+                    isAutomaticPreference = true,
+                    isPublic = true,
+                    decommissionedHosts = setOf(DECOMMISSIONED.host),
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(ZEC_ROCKS, harness.walletProvider.getPersistableWallet()?.endpoint)
+        }
+
+    /**
+     * When moving a non-Public wallet off a decommissioned host, switch to the gateway
+     * in Automatic/Private mode, not Manual.
+     */
+    @Test
+    fun initMovesANonPublicWalletOffADecommissionedHostToTheGateway() =
+        runTest {
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(DECOMMISSIONED),
+                    isAutomaticPreference = false,
+                    decommissionedHosts = setOf(DECOMMISSIONED.host),
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(GATEWAY, harness.walletProvider.getPersistableWallet()?.endpoint)
+            coVerify(exactly = 1) { harness.isAutomaticProvider.store(true) }
+            coVerify(exactly = 1) { harness.isPublicProvider.store(false) }
+        }
+
+    @Test
+    fun initKeepsAManualClearnetSelection() =
+        runTest {
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(ZEC_ROCKS),
+                    isAutomaticPreference = false,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(ZEC_ROCKS, harness.walletProvider.getPersistableWallet()?.endpoint)
+            assertEquals(emptyList(), harness.events)
+        }
+
+    @Test
+    fun initKeepsACustomServerWithoutAModePreference() =
+        runTest {
+            val custom = LightWalletEndpoint("lwd.example.org", 443, true)
+            val (repository, harness) =
+                newRepository(onboardingState = OnboardingState.READY, initialWallet = walletOn(custom))
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(custom, harness.walletProvider.getPersistableWallet()?.endpoint)
+        }
+
+    @Test
     fun initSkipsRepairAndEraseWhenFlagIsNotReady() =
         runTest {
             val (repository, harness) = newRepository(onboardingState = OnboardingState.NONE, initialWallet = null)
@@ -243,6 +394,120 @@ class WalletRepositoryImplTest {
         }
 
     /**
+     * ZIP #10 rule 3: in Private mode (the default), the fastest-server benchmark measures only
+     * OHTTP gateways. Clearnet servers are not contacted before the user chooses Public mode.
+     */
+    @Test
+    fun fastestEndpointsBenchmarksOnlyGatewaysInPrivateMode() =
+        runTest {
+            val testedEndpoints = mutableListOf<List<LightWalletEndpoint>>()
+            val synchronizer =
+                mockk<Synchronizer> {
+                    coEvery { getFastestServers(any()) } answers {
+                        testedEndpoints += firstArg<List<LightWalletEndpoint>>()
+                        flowOf(FastestServersResult.Done(listOf(GATEWAY)))
+                    }
+                }
+
+            val (repository, _) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(GATEWAY),
+                    isPublic = false,
+                    synchronizer = synchronizer,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.fastestEndpoints.first { !it.isLoading }
+            advanceUntilIdle()
+
+            assertEquals(1, testedEndpoints.size)
+            assertEquals(listOf(GATEWAY), testedEndpoints[0])
+        }
+
+    /**
+     * ZIP #10 rule 3: in Public mode, the fastest-server benchmark measures only clearnet servers.
+     * OHTTP gateways are not offered in Manual server lists when Public is active.
+     */
+    @Test
+    fun fastestEndpointsBenchmarksOnlyPublicServersInPublicMode() =
+        runTest {
+            val testedEndpoints = mutableListOf<List<LightWalletEndpoint>>()
+            val synchronizer =
+                mockk<Synchronizer> {
+                    coEvery { getFastestServers(any()) } answers {
+                        testedEndpoints += firstArg<List<LightWalletEndpoint>>()
+                        flowOf(FastestServersResult.Done(listOf(ZEC_ROCKS)))
+                    }
+                }
+
+            val (repository, _) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(ZEC_ROCKS),
+                    isPublic = true,
+                    synchronizer = synchronizer,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.fastestEndpoints.first { !it.isLoading }
+            advanceUntilIdle()
+
+            assertEquals(1, testedEndpoints.size)
+            assertEquals(listOf(ZEC_ROCKS), testedEndpoints[0])
+        }
+
+    /**
+     * ZIP #10 rule 3: when the user saves Public mode, the mode flag changes and the
+     * fastest-server benchmark re-triggers with the new endpoint set (now public servers only).
+     */
+    @Test
+    fun fastestEndpointsReTriggersWhenModeChanges() =
+        runTest {
+            // The benchmark runs on the repository's own sharing scope (Dispatchers.IO), so the
+            // test waits on the flow itself rather than on the test scheduler.
+            val testedEndpoints = CopyOnWriteArrayList<List<LightWalletEndpoint>>()
+            val synchronizer =
+                mockk<Synchronizer> {
+                    coEvery { getFastestServers(any()) } answers {
+                        val endpoints = firstArg<List<LightWalletEndpoint>>()
+                        testedEndpoints += endpoints
+                        flowOf(FastestServersResult.Done(endpoints))
+                    }
+                }
+
+            val isPublicProvider =
+                mockk<IsPublicConnectionProvider>(relaxed = true) {
+                    val flow = MutableStateFlow(false)
+                    every { observe() } returns flow
+                    coEvery { get() } answers { flow.value }
+                    coEvery { store(any()) } coAnswers {
+                        flow.value = firstArg()
+                    }
+                }
+
+            val (repository, _) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(GATEWAY),
+                    isPublic = false,
+                    synchronizer = synchronizer,
+                    isPublicProviderOverride = isPublicProvider,
+                )
+            repository.useTestScope(testScheduler)
+
+            // Private mode: only the gateway is measured.
+            repository.fastestEndpoints.first { !it.isLoading }
+            assertEquals(listOf(listOf(GATEWAY)), testedEndpoints.toList())
+
+            // Saving Public re-runs the benchmark over the public servers only.
+            isPublicProvider.store(true)
+            repository.fastestEndpoints.first { !it.isLoading && testedEndpoints.size >= 2 }
+            assertEquals(2, testedEndpoints.size)
+            assertEquals(listOf(ZEC_ROCKS), testedEndpoints[1])
+        }
+
+    /**
      * Replaces the repository's production scope with one driven by the test's scheduler, and
      * registers both for cancellation in [tearDown] so no test leaves a live scope behind.
      */
@@ -254,6 +519,12 @@ class WalletRepositoryImplTest {
         onboardingState: OnboardingState,
         initialWallet: PersistableWallet?,
         persistableWalletProviderOverride: PersistableWalletProvider? = null,
+        isAutomaticPreference: Boolean? = null,
+        isPublic: Boolean = false,
+        decommissionedHosts: Set<String> = emptySet(),
+        synchronizer: Synchronizer? = null,
+        isPublicProviderOverride: IsPublicConnectionProvider? = null,
+        hasOhttpGateway: Boolean = true,
     ): Pair<WalletRepositoryImpl, TestHarness> {
         val events = mutableListOf<String>()
 
@@ -271,16 +542,38 @@ class WalletRepositoryImplTest {
 
         val lightWalletEndpointProvider =
             mockk<LightWalletEndpointProvider> {
-                every { getDefaultEndpoint() } returns LightWalletEndpoint("zec.rocks", 443, true)
-                every { getDecommissionedHosts() } returns emptySet()
+                // An SDK built without OHTTP has no gateway: the default is then the first clearnet server.
+                val gateway = GATEWAY.takeIf { hasOhttpGateway }
+                every { getDefaultEndpoint() } returns (gateway ?: ZEC_ROCKS)
+                every { getOhttpEndpoint() } returns gateway
+                every { hasOhttpGateway() } returns hasOhttpGateway
+                every { getEndpoints() } returns listOfNotNull(gateway, ZEC_ROCKS)
+                every { isOhttpGateway(any()) } answers {
+                    gateway != null && firstArg<LightWalletEndpoint>() == gateway
+                }
+                every { getFallbackEndpoints() } returns listOf(ZEC_ROCKS)
+                every { getDecommissionedHosts() } returns decommissionedHosts
+            }
+
+        val isServerSelectionAutomaticProvider =
+            mockk<IsServerSelectionAutomaticProvider>(relaxed = true) {
+                coEvery { get() } returns isAutomaticPreference
+            }
+
+        val isPublicConnectionProvider =
+            isPublicProviderOverride ?: mockk<IsPublicConnectionProvider>(relaxed = true).also {
+                val flow = MutableStateFlow(isPublic)
+                every { it.observe() } returns flow
+                coEvery { it.get() } returns isPublic
             }
 
         val persistableWalletProvider =
             persistableWalletProviderOverride ?: FakePersistableWalletProvider(initialWallet, events)
 
+        val fakeSynchronizer = synchronizer
         val synchronizerProvider =
             mockk<SynchronizerProvider>(relaxed = true) {
-                every { synchronizer } returns MutableStateFlow<Synchronizer?>(null)
+                every { this@mockk.synchronizer } returns MutableStateFlow(fakeSynchronizer)
             }
 
         val fakePrefs = RecordingPreferenceProvider(events)
@@ -315,6 +608,9 @@ class WalletRepositoryImplTest {
                 walletBackupFlagStorageProvider = walletBackupFlagStorageProvider,
                 isIronwoodAnnouncementShownStorageProvider = isIronwoodAnnouncementShownStorageProvider,
                 sdkEncryptedPreferenceRecoveryProvider = sdkEncryptedPreferenceRecoveryProvider,
+                isServerSelectionAutomaticProvider = isServerSelectionAutomaticProvider,
+                isPublicConnectionProvider = isPublicConnectionProvider,
+                serverSelectionMutex = ServerSelectionMutex(),
             )
 
         fakePrefs.seed(StandardPreferenceKeys.ONBOARDING_STATE.key, onboardingState.toNumber().toString())
@@ -322,14 +618,37 @@ class WalletRepositoryImplTest {
         scopes += repository.scope
         scopes += repository.sharingScope
 
-        return repository to TestHarness(events, fakePrefs)
+        return repository to
+            TestHarness(
+                events,
+                fakePrefs,
+                persistableWalletProvider,
+                isServerSelectionAutomaticProvider,
+                isPublicConnectionProvider,
+            )
     }
+
+    private fun walletOn(endpoint: LightWalletEndpoint) =
+        PersistableWallet(
+            network = ZcashNetwork.Mainnet,
+            endpoint = endpoint,
+            birthday = null,
+            seedPhrase = mockk(relaxed = true),
+            walletInitMode = WalletInitMode.ExistingWallet,
+        )
 
     private data class TestHarness(
         val events: List<String>,
         val fakePrefs: RecordingPreferenceProvider,
+        val walletProvider: PersistableWalletProvider,
+        val isAutomaticProvider: IsServerSelectionAutomaticProvider,
+        val isPublicProvider: IsPublicConnectionProvider,
     )
 }
+
+private val GATEWAY = LightWalletEndpoint("ohttp-gateway.example", 443, true)
+private val ZEC_ROCKS = LightWalletEndpoint("zec.rocks", 443, true)
+private val DECOMMISSIONED = LightWalletEndpoint("decommissioned.example.com", 443, true)
 
 /**
  * Records `"sdkRepair"` into the shared events list, so tests can assert where the SDK secret

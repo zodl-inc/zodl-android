@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.screen.balances.breakdown.BalanceBreakdownVM
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceVM
 import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletVM
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerVM
+import co.electriccoin.zcash.ui.screen.chooseserver.ohttpinfo.OhttpInfoVM
 import co.electriccoin.zcash.ui.screen.colorpicker.ColorPickerVM
 import co.electriccoin.zcash.ui.screen.connecthw.date.HWDateVM
 import co.electriccoin.zcash.ui.screen.connecthw.estimation.HWEstimationVM
@@ -55,6 +56,8 @@ import co.electriccoin.zcash.ui.screen.integrations.IntegrationsVM
 import co.electriccoin.zcash.ui.screen.ironwood.IronwoodAnnouncementVM
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenVM
 import co.electriccoin.zcash.ui.screen.more.MoreVM
+import co.electriccoin.zcash.ui.screen.ohttpoptin.OhttpOptInVM
+import co.electriccoin.zcash.ui.screen.ohttpunavailable.OhttpUnavailableVM
 import co.electriccoin.zcash.ui.screen.pay.PayVM
 import co.electriccoin.zcash.ui.screen.qrcode.QrCodeVM
 import co.electriccoin.zcash.ui.screen.receive.ReceiveVM
@@ -127,6 +130,9 @@ val viewModelModule =
         viewModelOf(::SupportViewModel)
         viewModelOf(::WhatsNewViewModel)
         viewModelOf(::ChooseServerVM)
+        viewModelOf(::OhttpInfoVM)
+        viewModelOf(::OhttpUnavailableVM)
+        viewModelOf(::OhttpOptInVM)
         viewModelOf(::ReceiveVM)
         viewModelOf(::QrCodeVM)
         viewModelOf(::RequestVM)

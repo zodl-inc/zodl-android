@@ -2,6 +2,8 @@ package co.electriccoin.zcash.ui.common.repository
 
 import co.electriccoin.zcash.preference.EncryptedPreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.PreferenceKey
+import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
+import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -31,9 +33,23 @@ data class VotingChainConfigState(
                 }
             }
 
+    /**
+     * Whether the voting config in use is the bundled one: the default selection, or a custom chain whose
+     * typed source is a bundled source itself (URL and checksum equal to one of
+     * [StaticVotingConfig.BUNDLED_PINNED_CONFIG_SOURCES]). Such a chain trusts exactly the bytes the default
+     * does, so it counts as predefined: routed through OHTTP with Tor off and walked over the full mirror
+     * list like the default (ZIP rule 7), and shown as the default is.
+     */
     val isOnDefaultConfig: Boolean
-        get() = selectedPinnedSource == null
+        get() = selectedPinnedSource?.let(::isBundledPinnedSource) ?: true
 }
+
+/** Whether [source] parses to one of [StaticVotingConfig.BUNDLED_PINNED_CONFIG_SOURCES] (URL and checksum). */
+internal fun isBundledPinnedSource(source: String): Boolean =
+    runCatching { PinnedConfigSource.parse(source) }
+        .getOrNull()
+        ?.let { it in StaticVotingConfig.BUNDLED_PINNED_CONFIG_SOURCES }
+        ?: false
 
 sealed interface VotingChainConfigSelection {
     data object Default : VotingChainConfigSelection

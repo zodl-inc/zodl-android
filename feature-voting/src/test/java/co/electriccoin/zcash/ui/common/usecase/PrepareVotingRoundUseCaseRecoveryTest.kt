@@ -250,7 +250,8 @@ class PrepareVotingRoundUseCaseRecoveryTest {
                 votingHotkeySeedProvider = votingHotkeySeedProvider,
                 votingProofPrecomputeRepository = votingProofPrecomputeRepository,
                 synchronizerProvider = synchronizerProvider,
-                getSelectedWalletAccount = getSelectedWalletAccount
+                getSelectedWalletAccount = getSelectedWalletAccount,
+                votingRouteProvider = mockk(relaxed = true)
             )
 
         suspend fun stubHappyPathUpToDbOpen() {
@@ -263,7 +264,7 @@ class PrepareVotingRoundUseCaseRecoveryTest {
             every { synchronizer.network } returns ZcashNetwork.Testnet
             coEvery { synchronizer.getTreeState(any()) } returns ByteArray(32)
 
-            coEvery { resolveVotingRoundSession(ROUND_ID) } returns
+            coEvery { resolveVotingRoundSession(ROUND_ID, any()) } returns
                 VotingRoundSessionContext(session = session, serviceConfig = VotingServiceConfig.EMPTY)
             coEvery { getSelectedWalletAccount() } returns selectedAccount
             coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer

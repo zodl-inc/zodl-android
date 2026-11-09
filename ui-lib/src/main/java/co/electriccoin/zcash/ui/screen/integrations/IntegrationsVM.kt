@@ -54,18 +54,22 @@ class IntegrationsVM(
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
-            initialValue = null
+            initialValue = null,
         )
 
     private fun createState(
         isRestoring: Boolean,
         selectedAccount: WalletAccount?,
-        flexaStatus: Status
+        flexaStatus: Status,
     ) = IntegrationsState(
         disabledInfo =
             when {
                 isRestoring -> {
                     stringRes(R.string.integrations_disabled_info)
+                }
+
+                flexaStatus == UNAVAILABLE -> {
+                    null
                 }
 
                 selectedAccount is KeystoneAccount -> {
@@ -97,24 +101,29 @@ class IntegrationsVM(
                                 ENABLED -> R.drawable.ic_integrations_flexa
                                 DISABLED -> R.drawable.ic_integrations_flexa_disabled
                                 UNAVAILABLE -> R.drawable.ic_integrations_flexa_disabled
-                            }
+                            },
                         ),
                     title = stringRes(R.string.settings_flexa),
-                    subtitle = stringRes(R.string.settings_flexaDesc),
-                    onClick = ::onFlexaClicked
+                    subtitle =
+                        stringRes(R.string.settings_flexaDesc) +
+                            stringRes("\n") +
+                            stringRes(
+                                co.electriccoin.zcash.ui.design.R.string.settings_flexaIpDesc,
+                            ),
+                    onClick = ::onFlexaClicked,
                 ).takeIf { flexaStatus != UNAVAILABLE },
                 ListItemState(
                     title = stringRes(R.string.integrations_redeemGift),
                     subtitle = stringRes(R.string.integrations_redeemGift_subtitle),
                     bigIcon = imageRes(R.drawable.ic_integrations_gift),
-                    onClick = ::onRedeemGiftClick
+                    onClick = ::onRedeemGiftClick,
                 ),
                 ListItemState(
                     title =
                         stringRes(co.electriccoin.zcash.ui.design.R.string.general_more) +
                             stringRes("..."),
                     bigIcon = imageRes(R.drawable.ic_integrations_more),
-                    onClick = ::onMoreClick
+                    onClick = ::onMoreClick,
                 ),
             ),
     )

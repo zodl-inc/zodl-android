@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="MaskedDateText">
+        <attr name="mask" format="string" />
+        <attr name="allowed_chars" format="string" />
+        <attr name="enable_ime_action" format="boolean" />
+        <attr name="denied_chars" format="string" />
+        <attr name="char_representation" format="string" />
+        <attr name="keep_hint" format="boolean" />
+        <attr name="hint_if_unfocused" format="boolean" />
+    </declare-styleable>
+</resources>

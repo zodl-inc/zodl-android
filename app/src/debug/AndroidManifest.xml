@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Debug builds only: OHTTP relay blackhole, toggled from Debug menu or via adb. -->
+    <application>
+
+        <service
+            android:name="co.electriccoin.zcash.spike.BlackholeVpnService"
+            android:exported="false"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+
+        <!--
+            Started from adb (`am start`) or from the app's own Debug menu. Exported so the shell can start it, but
+            guarded by DUMP, which the shell and the system hold and other apps do not (the app's own UID always passes).
+        -->
+        <activity
+            android:name="co.electriccoin.zcash.spike.BlackholeTriggerActivity"
+            android:exported="true"
+            android:permission="android.permission.DUMP"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+    </application>
+
+</manifest>

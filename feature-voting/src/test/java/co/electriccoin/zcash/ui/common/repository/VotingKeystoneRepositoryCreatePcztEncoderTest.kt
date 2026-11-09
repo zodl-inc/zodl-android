@@ -121,7 +121,8 @@ class VotingKeystoneRepositoryCreatePcztEncoderTest {
                     chainEndpoints = any(),
                     ceremonyStartSeconds = any(),
                     voteEndTimeSeconds = any(),
-                    delegationInputs = any()
+                    delegationInputs = any(),
+                    decision = any()
                 )
             }
         }
@@ -140,6 +141,7 @@ class VotingKeystoneRepositoryCreatePcztEncoderTest {
             // delegation pipeline instead of surfacing here.
             coVerify(exactly = 0) {
                 env.votingKeystoneSessionHolder.ensureDelegationPipeline(
+                    any(),
                     any(),
                     any(),
                     any(),
@@ -185,7 +187,8 @@ class VotingKeystoneRepositoryCreatePcztEncoderTest {
                 votingHotkeySeedProvider = votingHotkeySeedProvider,
                 synchronizerProvider = synchronizerProvider,
                 keystoneSDKProvider = keystoneSDKProvider,
-                votingProofPrecomputeRepository = votingProofPrecomputeRepository
+                votingProofPrecomputeRepository = votingProofPrecomputeRepository,
+                votingRouteProvider = mockk(relaxed = true)
             )
 
         init {
@@ -206,7 +209,7 @@ class VotingKeystoneRepositoryCreatePcztEncoderTest {
             coEvery { synchronizer.getTreeState(any()) } returns ByteArray(32)
 
             coEvery { accountDataSource.getSelectedAccount() } returns selectedAccount
-            coEvery { resolveVotingRoundSession(roundId) } returns
+            coEvery { resolveVotingRoundSession(roundId, any()) } returns
                 VotingRoundSessionContext(session = session, serviceConfig = serviceConfig)
             coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
             coEvery { synchronizerProvider.getVotingWalletDbPath() } returns "/tmp/voting-wallet.db"

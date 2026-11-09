@@ -134,8 +134,6 @@ class ProposalDataSourceTest {
     private fun dataSource(synchronizer: Synchronizer): ProposalDataSource =
         ProposalDataSourceImpl(
             synchronizerProvider = mockk { coEvery { getSynchronizer() } returns synchronizer },
-            lightWalletEndpointProvider = mockk(),
-            isServerSelectionAutomaticProvider = mockk(),
             persistableWalletProvider = mockk()
         )
 

@@ -24,7 +24,7 @@ fdroidrepos://foss.zodl.com/fdroid/repo?fingerprint=7e751ab710159dff44f55631f910
 `7e751ab710159dff44f55631f910ba4033f0ebd2f867691af633cece4ddb62e4`).
 
 Unlike the `f-droid.org` build, our repo ships the same build-time
-integrations as the Google Play release (Flexa, CMC, Crashlytics) and is
+integrations as the Google Play release (Flexa, Crashlytics) and is
 signed with the same upload key — no reinstall needed when switching.
 
 Or download the latest APK from the [Releases Section](https://github.com/zodl-inc/zodl-android/releases/latest).
