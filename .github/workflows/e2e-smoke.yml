@@ -30,10 +30,21 @@ env:
   ZODL_OHTTP_SIGNING_PUBKEY_TESTNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_TESTNET }}
 
 jobs:
+  validate_artifact_privacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check private artifact handling
+        run: python3 .github/tests/test_e2e_private_artifacts.py
+
   # Build the APK once and share it with both phase matrix jobs via
   # actions/upload-artifact. The previous matrix design rebuilt the
   # APK in each phase job, paying ~7 min twice.
   build:
+    needs: validate_artifact_privacy
     runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     # 60 rather than the usual 20: when SDK_COMMIT_PIN is set (see setup-sdk-companion),
     # this compiles the companion SDK's Rust dependency graph with a cold cargo/target
@@ -465,9 +476,35 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb netcat-openbsd libsdl2-2.0-0 libxcb1
 
+      - name: Prepare private Keystone runner
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/run-keystone-private.sh" <<'BASH'
+          set -euo pipefail
+          umask 077
+          private_dir=$(mktemp -d "$RUNNER_TEMP/keystone-private.XXXXXX")
+          trap 'rm -rf -- "$private_dir"' EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          export TMPDIR="$private_dir"
+          export KEYSTONE_RUNTIME_DIR="$private_dir/simulator"
+          mkdir -p "$KEYSTONE_RUNTIME_DIR"
+          started=$SECONDS
+          status=0
+          xvfb-run -a ./zodl-qa/scripts/run-keystone-android.sh > "$private_dir/run.log" 2>&1 || status=$?
+          mkdir -p "$ZODL_TEST_RESULTS_DIR"
+          printf 'Platform: Android\nSuite: Keystone\nExit code: %s\nSuite duration (s): %s\nRaw simulator state and diagnostics withheld.\n' \
+            "$status" "$((SECONDS - started))" > "$ZODL_TEST_RESULTS_DIR/summary.txt"
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Keystone canary failed; see the safe status/timing summary."
+          fi
+          exit "$status"
+          BASH
+
       - name: Run smoke tests
         uses: reactivecircus/android-emulator-runner@v2
         env:
+          ZODL_TEST_RESULTS_DIR: ${{ runner.temp }}/keystone-safe-results
           ZODL_KEYSTONE_TEST_ENTROPY_HEX_ANDROID: ${{ secrets.ZODL_KEYSTONE_TEST_ENTROPY_HEX_ANDROID }}
           ZODL_KEYSTONE_TEST_PIN_ANDROID: ${{ secrets.ZODL_KEYSTONE_TEST_PIN_ANDROID }}
           ZODL_KEYSTONE_TEST_BIRTHDAY_ANDROID: ${{ secrets.ZODL_KEYSTONE_TEST_BIRTHDAY_ANDROID }}
@@ -483,13 +520,12 @@ jobs:
             adb install apk/*.apk
             chmod +x keystone-simulator/simulator
             chmod +x zodl-qa/scripts/run-keystone-android.sh
-            xvfb-run -a zodl-qa/scripts/run-keystone-android.sh
+            bash "$RUNNER_TEMP/run-keystone-private.sh"
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: maestro-keystone-results
-          path: |
-            ~/.maestro/tests/
-            /tmp/zodl-keystone-sim.*/
+          name: keystone-safe-results
+          path: ${{ runner.temp }}/keystone-safe-results/summary.txt
+          retention-days: 1
