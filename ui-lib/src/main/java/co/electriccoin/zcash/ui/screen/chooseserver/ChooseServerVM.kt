@@ -294,10 +294,13 @@ class ChooseServerVM(
 
     init {
         viewModelScope.launch {
+            // The gateway of the current network is one of the compiled hosts; naming it keeps the answer for it
+            // independent of how the SDK was built.
+            val currentGatewayHost = lightWalletEndpointProvider.getOhttpEndpoint()?.host
             val relayIndependence =
-                LightWalletEndpointProvider.gatewayHosts.associateWith {
-                    lightWalletEndpointProvider.usesIndependentRelay(it)
-                }
+                (LightWalletEndpointProvider.gatewayHosts + listOfNotNull(currentGatewayHost))
+                    .distinct()
+                    .associateWith { lightWalletEndpointProvider.usesIndependentRelay(it) }
             innerState.update { it.copy(gatewayRelayIndependence = relayIndependence) }
         }
 
