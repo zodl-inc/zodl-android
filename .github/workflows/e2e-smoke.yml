@@ -19,7 +19,7 @@ concurrency:
 # the log masks them; no step prints them. Only builds with SDK_COMMIT_PIN compile the SDK, so a
 # release (published SDK) never reads them.
 env:
-  QA_REVISION: 33911e1fccfbefdc76043b6a5cdfc36abd30d450
+  QA_REVISION: 5ff543598fdd7f10c0e289553efd6a77fc85651d
   ZODL_OHTTP_GATEWAY_HOST_MAINNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_MAINNET }}
   ZODL_OHTTP_GATEWAY_HOST_TESTNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_TESTNET }}
   ZODL_OHTTP_RELAY_URL_MAINNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_MAINNET }}
