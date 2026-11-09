@@ -1,0 +1,430 @@
+name: Flexa SDK Update Check
+
+# Checks daily for new flexa-android releases and opens a PR when found.
+# Maintainer of the vendored Flexa SDK copy: y4ssi
+#
+# Workflow:
+#   1. Fetch the latest flexa/flexa-android release tag
+#   2. Compare with FLEXA_VERSION in gradle.properties
+#   3. If newer and no open update PR exists:
+#      - Clone the new tag
+#      - Apply the patches (third-party/flexa/patches/*.patch, in order)
+#      - Replace third-party/flexa/{core,spend}/src/main
+#      - Update FLEXA_VERSION, RELEASE_DATE, and README commit SHA
+#      - Open a PR with changelog link and checklist
+#      - If patch fails: open as draft with conflict output
+#   4. Post to Slack #infra-alerts
+
+on:
+  schedule:
+    # Daily at 10:00 UTC
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+    inputs:
+      force_version:
+        description: 'Force check against this version (for testing; e.g. 1.1.2)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  check-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Get current Flexa version
+        id: current
+        run: |
+          set -euo pipefail
+          CURRENT_VERSION=$(grep '^FLEXA_VERSION=' gradle.properties | cut -d= -f2)
+          echo "version=${CURRENT_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Current Flexa SDK version: ${CURRENT_VERSION}"
+
+      - name: Fetch latest Flexa release
+        id: latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          LATEST_TAG=$(gh release view --repo flexa/flexa-android --json tagName --jq .tagName)
+          LATEST_VERSION=${LATEST_TAG#v}
+          echo "tag=${LATEST_TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${LATEST_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Latest Flexa SDK release: ${LATEST_TAG} (${LATEST_VERSION})"
+
+      - name: Check if update needed
+        id: check
+        env:
+          CURRENT_VERSION: ${{ inputs.force_version || steps.current.outputs.version }}
+          LATEST_VERSION: ${{ steps.latest.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          # Validate version format (must be x.y.z)
+          if [[ ! "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid current version format: $CURRENT_VERSION (expected x.y.z)" >&2
+            exit 1
+          fi
+          if [[ ! "$LATEST_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: Invalid latest version format: $LATEST_VERSION (expected x.y.z)" >&2
+            exit 1
+          fi
+
+          # Simple version comparison: split on dots, compare each part
+          IFS='.' read -ra CURRENT <<< "$CURRENT_VERSION"
+          IFS='.' read -ra LATEST <<< "$LATEST_VERSION"
+
+          NEEDS_UPDATE=0
+          for i in 0 1 2; do
+            if [ "${LATEST[$i]:-0}" -gt "${CURRENT[$i]:-0}" ]; then
+              NEEDS_UPDATE=1
+              break
+            elif [ "${LATEST[$i]:-0}" -lt "${CURRENT[$i]:-0}" ]; then
+              break
+            fi
+          done
+
+          if [ "$NEEDS_UPDATE" -eq 0 ]; then
+            echo "No update needed (current: ${CURRENT_VERSION}, latest: ${LATEST_VERSION})"
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Check for existing open PR
+          UPDATE_BRANCH="flexa-sdk-update-${LATEST_VERSION}"
+          EXISTING_PR=$(gh pr list --repo "${{ github.repository }}" --state open --head "${UPDATE_BRANCH}" --json number --jq '.[].number' || true)
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "Update PR already exists: #${EXISTING_PR}"
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Update needed: ${CURRENT_VERSION} → ${LATEST_VERSION}"
+          echo "needs_update=true" >> "$GITHUB_OUTPUT"
+          echo "branch=${UPDATE_BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Git user
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Clone Flexa SDK at new tag
+        if: steps.check.outputs.needs_update == 'true'
+        env:
+          LATEST_TAG: ${{ steps.latest.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "$LATEST_TAG" https://github.com/flexa/flexa-android.git /tmp/flexa-android
+
+          # Verify clone succeeded
+          if [ ! -d /tmp/flexa-android/.git ]; then
+            echo "ERROR: Failed to clone flexa-android at tag $LATEST_TAG" >&2
+            exit 1
+          fi
+
+          cd /tmp/flexa-android
+          echo "Cloned commit: $(git rev-parse HEAD)"
+          echo "$(git rev-parse HEAD)" > /tmp/flexa-commit-sha
+
+      - name: Apply patch
+        if: steps.check.outputs.needs_update == 'true'
+        id: patch
+        run: |
+          set +e
+          cd /tmp/flexa-android
+          # Every patch of third-party/flexa/patches, in order (0001, 0002, ...).
+          PATCH_STATUS=0
+          for PATCH in "$GITHUB_WORKSPACE"/third-party/flexa/patches/*.patch; do
+            git am < "$PATCH" || { PATCH_STATUS=$?; echo "Failed: $(basename "$PATCH")"; break; }
+          done
+
+          if [ $PATCH_STATUS -ne 0 ]; then
+            echo "Patch failed to apply cleanly"
+            git am --show-current-patch=diff > /tmp/patch-conflict.txt 2>&1 || true
+            git am --abort || true
+            echo "patch_failed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Patch applied successfully"
+            echo "patch_failed=false" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+
+      - name: Copy updated sources
+        if: steps.check.outputs.needs_update == 'true' && steps.patch.outputs.patch_failed == 'false'
+        env:
+          LATEST_TAG: ${{ steps.latest.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          # Copy core and spend src/main
+          rm -rf third-party/flexa/core/src/main
+          rm -rf third-party/flexa/spend/src/main
+          cp -r /tmp/flexa-android/core/src/main third-party/flexa/core/src/
+          cp -r /tmp/flexa-android/spend/src/main third-party/flexa/spend/src/
+
+          echo "Sources copied from ${LATEST_TAG}"
+
+      - name: Update version metadata
+        if: steps.check.outputs.needs_update == 'true' && steps.patch.outputs.patch_failed == 'false'
+        env:
+          LATEST_VERSION: ${{ steps.latest.outputs.version }}
+          LATEST_TAG: ${{ steps.latest.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          # Update FLEXA_VERSION in gradle.properties
+          sed -i "s/^FLEXA_VERSION=.*/FLEXA_VERSION=${LATEST_VERSION}/" gradle.properties
+
+          # Get release date
+          RELEASE_DATE=$(gh release view "$LATEST_TAG" --repo flexa/flexa-android --json publishedAt --jq '.publishedAt' | cut -d'T' -f1)
+
+          # Update README
+          COMMIT_SHA=$(cat /tmp/flexa-commit-sha)
+          sed -i "s|tag \`[^`]*\`, commit|tag \`${LATEST_TAG}\`, commit|" third-party/flexa/README.md
+          sed -i "s|\`[0-9a-f]\{40\}\` (\`FLEXA_VERSION|\`${COMMIT_SHA}\` (\`FLEXA_VERSION|" third-party/flexa/README.md
+
+          echo "Updated metadata: version=${LATEST_VERSION}, date=${RELEASE_DATE}, commit=${COMMIT_SHA}"
+
+      - name: Fetch upstream changelog
+        if: steps.check.outputs.needs_update == 'true'
+        id: changelog
+        env:
+          LATEST_TAG: ${{ steps.latest.outputs.tag }}
+          LATEST_VERSION: ${{ steps.latest.outputs.version }}
+          CURRENT_VERSION: ${{ steps.current.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          # Get release notes from GitHub
+          RELEASE_URL="https://github.com/flexa/flexa-android/releases/tag/${LATEST_TAG}"
+          echo "url=${RELEASE_URL}" >> "$GITHUB_OUTPUT"
+
+          # Try to fetch release notes, but don't fail if they're not available
+          NOTES=$(gh release view "$LATEST_TAG" --repo flexa/flexa-android --json body --jq .body || echo "No release notes available")
+
+          # Escape for use in JSON/YAML - write to temp file to avoid shell interpretation
+          printf '%s' "$NOTES" > /tmp/release-notes.txt
+
+          echo "Fetched changelog from ${RELEASE_URL}"
+
+      - name: Diff upstream dependencies (for manual review)
+        if: steps.check.outputs.needs_update == 'true' && steps.patch.outputs.patch_failed == 'false'
+        env:
+          CURRENT_VERSION: ${{ steps.current.outputs.version }}
+          LATEST_TAG: ${{ steps.latest.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          # Show dependency changes between versions for manual verification
+          # (The PR checklist will ask the reviewer to align our build.gradle.kts)
+          echo "Dependency changes to review:"
+          echo "Compare: https://github.com/flexa/flexa-android/compare/v${CURRENT_VERSION}...${LATEST_TAG}"
+          echo "Focus: core/build.gradle and spend/build.gradle"
+
+      - name: Create update branch and commit
+        if: steps.check.outputs.needs_update == 'true'
+        env:
+          UPDATE_BRANCH: ${{ steps.check.outputs.branch }}
+          LATEST_VERSION: ${{ steps.latest.outputs.version }}
+          PATCH_FAILED: ${{ steps.patch.outputs.patch_failed }}
+        run: |
+          set -euo pipefail
+
+          git checkout -b "$UPDATE_BRANCH"
+
+          if [ "$PATCH_FAILED" = "true" ]; then
+            # When patch fails, do not commit version changes
+            # Create a marker file to indicate the draft PR state
+            echo "Patch conflict detected for Flexa SDK ${LATEST_VERSION}" > .flexa-update-conflict
+            git add .flexa-update-conflict
+
+            git commit -m "[DRAFT] Flexa SDK ${LATEST_VERSION} available (patch conflict)" \
+              -m "Automated update check found a new Flexa SDK release, but the OkHttp customizer patch failed to apply cleanly." \
+              -m "Manual resolution required. See PR body for conflict details and resolution steps." \
+              -m "No version changes committed to avoid stale source/version mismatch."
+          else
+            # Patch succeeded - commit the updated sources and metadata
+            git add third-party/flexa/ gradle.properties
+
+            git commit -m "Update Flexa SDK to ${LATEST_VERSION}" \
+              -m "Automated update from flexa-android release." \
+              -m "- Patch applied successfully" \
+              -m "- Sources updated" \
+              -m "- Version metadata bumped" \
+              -m "Review checklist in PR body."
+          fi
+
+      - name: Generate PR token
+        if: steps.check.outputs.needs_update == 'true'
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ vars.RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_APP_KEY }}
+          repositories: ${{ github.event.repository.name }}
+
+      - name: Push branch and create PR
+        if: steps.check.outputs.needs_update == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          UPDATE_BRANCH: ${{ steps.check.outputs.branch }}
+          LATEST_VERSION: ${{ steps.latest.outputs.version }}
+          CURRENT_VERSION: ${{ steps.current.outputs.version }}
+          CHANGELOG_URL: ${{ steps.changelog.outputs.url }}
+          PATCH_FAILED: ${{ steps.patch.outputs.patch_failed }}
+        run: |
+          set -euo pipefail
+
+          git push origin "$UPDATE_BRANCH"
+
+          # Build PR body
+          if [ "$PATCH_FAILED" = "true" ]; then
+            PATCH_CONFLICT=$(cat /tmp/patch-conflict.txt)
+
+            # Use heredoc to avoid shell interpretation issues
+            cat > /tmp/pr-body.md <<'EOF_OUTER'
+          # ⚠️ DRAFT: Patch Conflict
+
+          Flexa Android SDK **UPDATE_VERSION** is available, but the OkHttp customizer patch failed to apply.
+
+          ## Conflict Output
+
+          ```
+          PATCH_CONFLICT_PLACEHOLDER
+          ```
+
+          ## Manual Steps
+
+          1. Check out this branch: `git fetch origin UPDATE_BRANCH && git checkout UPDATE_BRANCH`
+          2. Clone flexa-android at the new tag: `git clone --branch vUPDATE_VERSION https://github.com/flexa/flexa-android.git /tmp/flexa-android`
+          3. Apply the patches in order: `cd /tmp/flexa-android && for p in path/to/patches/*.patch; do git am < "$p" || break; done`
+          4. Resolve conflicts, `git add`, `git am --continue` (then apply the remaining patches)
+          5. Regenerate the patches: `git format-patch <upstream tag> -o path/to/patches/`
+          6. Copy sources: `cp -r /tmp/flexa-android/{core,spend}/src/main third-party/flexa/{core,spend}/src/`
+          7. Align dependencies in `third-party/flexa/{core,spend}/build.gradle.kts` with upstream
+          8. Update this PR, mark ready for review
+
+          ## Upstream Release
+
+          - [Release vUPDATE_VERSION](CHANGELOG_URL_PLACEHOLDER)
+          - [Dependency comparison](https://github.com/flexa/flexa-android/compare/vCURRENT_VERSION...vUPDATE_VERSION)
+
+          /cc @y4ssi
+          EOF_OUTER
+
+            # Substitute values without shell interpretation
+            sed -i "s/UPDATE_VERSION/${LATEST_VERSION}/g" /tmp/pr-body.md
+            sed -i "s/CURRENT_VERSION/${CURRENT_VERSION}/g" /tmp/pr-body.md
+            sed -i "s|CHANGELOG_URL_PLACEHOLDER|${CHANGELOG_URL}|g" /tmp/pr-body.md
+            sed -i "s/UPDATE_BRANCH/${UPDATE_BRANCH}/g" /tmp/pr-body.md
+            # For the conflict output, we need to preserve it exactly
+            # Use a temporary marker and awk to replace it
+            awk -v conflict="$PATCH_CONFLICT" '{gsub(/PATCH_CONFLICT_PLACEHOLDER/, conflict); print}' /tmp/pr-body.md > /tmp/pr-body-final.md
+
+            gh pr create \
+              --title "[DRAFT] Update Flexa SDK to ${LATEST_VERSION} (patch conflict)" \
+              --body-file /tmp/pr-body-final.md \
+              --draft \
+              --assignee y4ssi \
+              --head "$UPDATE_BRANCH"
+          else
+            # Success case - read release notes from temp file
+            RELEASE_NOTES=$(cat /tmp/release-notes.txt)
+
+            cat > /tmp/pr-body.md <<'EOF_OUTER'
+          # Flexa SDK UPDATE_VERSION
+
+          Automated update of the vendored Flexa Android SDK from **CURRENT_VERSION** to **UPDATE_VERSION**.
+
+          ## Changes
+
+          - Patch applied successfully ✓
+          - `third-party/flexa/{core,spend}/src/main` updated from upstream
+          - `FLEXA_VERSION` and commit SHA bumped in `gradle.properties` and `README.md`
+
+          ## Upstream Release
+
+          - [Release vUPDATE_VERSION](CHANGELOG_URL_PLACEHOLDER)
+          - [Dependency comparison](https://github.com/flexa/flexa-android/compare/vCURRENT_VERSION...vUPDATE_VERSION)
+
+          <details>
+          <summary>Upstream Release Notes</summary>
+
+          RELEASE_NOTES_PLACEHOLDER
+          </details>
+
+          ## Review Checklist
+
+          - [ ] Dependency versions in `third-party/flexa/{core,spend}/build.gradle.kts` match upstream's published artifacts
+          - [ ] CI builds pass (particularly the F-Droid build and FOSS dependency check)
+          - [ ] `third-party/flexa` contains no binaries (F-Droid scanner check)
+          - [ ] The patch test in `third-party/flexa/core/src/test` still passes
+          - [ ] Manual smoke test: Flexa spend flow works in a debug build
+
+          /cc @y4ssi
+          EOF_OUTER
+
+            sed -i "s/UPDATE_VERSION/${LATEST_VERSION}/g" /tmp/pr-body.md
+            sed -i "s/CURRENT_VERSION/${CURRENT_VERSION}/g" /tmp/pr-body.md
+            sed -i "s|CHANGELOG_URL_PLACEHOLDER|${CHANGELOG_URL}|g" /tmp/pr-body.md
+            awk -v notes="$RELEASE_NOTES" '{gsub(/RELEASE_NOTES_PLACEHOLDER/, notes); print}' /tmp/pr-body.md > /tmp/pr-body-final.md
+
+            gh pr create \
+              --title "Update Flexa SDK to ${LATEST_VERSION}" \
+              --body-file /tmp/pr-body-final.md \
+              --assignee y4ssi \
+              --head "$UPDATE_BRANCH"
+          fi
+
+          echo "PR created for Flexa SDK ${LATEST_VERSION} update"
+
+      - name: Post to Slack
+        if: steps.check.outputs.needs_update == 'true'
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_INFRA_ALERTS }}
+          LATEST_VERSION: ${{ steps.latest.outputs.version }}
+          CURRENT_VERSION: ${{ steps.current.outputs.version }}
+          PATCH_FAILED: ${{ steps.patch.outputs.patch_failed }}
+          UPDATE_BRANCH: ${{ steps.check.outputs.branch }}
+        run: |
+          set -euo pipefail
+
+          PR_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/pulls?q=is%3Aopen+head%3A${UPDATE_BRANCH}"
+
+          if [ "$PATCH_FAILED" = "true" ]; then
+            STATUS="⚠️ DRAFT (patch conflict)"
+          else
+            STATUS="✓"
+          fi
+
+          # One line per field, built with printf: a multi-line string here would leave the YAML block.
+          MESSAGE=$(printf '*Flexa Android SDK %s* available (current: %s)\nStatus: %s\nPR: %s\nAssignee: @y4ssi' \
+            "$LATEST_VERSION" "$CURRENT_VERSION" "$STATUS" "$PR_URL")
+
+          curl --fail -X POST "$SLACK_WEBHOOK" \
+            -H 'Content-Type: application/json' \
+            -d "{\"text\":$(jq -Rs . <<< "$MESSAGE")}"
+
+      - name: Summary
+        if: always()
+        env:
+          NEEDS_UPDATE: ${{ steps.check.outputs.needs_update }}
+          CURRENT_VERSION: ${{ steps.current.outputs.version }}
+          LATEST_VERSION: ${{ steps.latest.outputs.version }}
+        run: |
+          if [ "$NEEDS_UPDATE" = "true" ]; then
+            echo "✓ Update PR created: ${CURRENT_VERSION} → ${LATEST_VERSION}"
+          else
+            echo "No update needed (current: ${CURRENT_VERSION}, latest: ${LATEST_VERSION})"
+          fi

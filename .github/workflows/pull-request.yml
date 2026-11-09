@@ -22,6 +22,20 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# The OHTTP endpoint configuration the companion SDK's native library is compiled with
+# (zodl-ohttp-client reads it at build time; unset = OHTTP off in that build). Repository secrets, so
+# the log masks them; no step prints them. Only builds with SDK_COMMIT_PIN compile the SDK, so a
+# release (published SDK) never reads them.
+env:
+  ZODL_OHTTP_GATEWAY_HOST_MAINNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_MAINNET }}
+  ZODL_OHTTP_GATEWAY_HOST_TESTNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_TESTNET }}
+  ZODL_OHTTP_RELAY_URL_MAINNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_MAINNET }}
+  ZODL_OHTTP_RELAY_URL_TESTNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_TESTNET }}
+  ZODL_OHTTP_KEYS_DNS_NAME_MAINNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_MAINNET }}
+  ZODL_OHTTP_KEYS_DNS_NAME_TESTNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_TESTNET }}
+  ZODL_OHTTP_SIGNING_PUBKEY_MAINNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_MAINNET }}
+  ZODL_OHTTP_SIGNING_PUBKEY_TESTNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_TESTNET }}
+
 jobs:
   validate_gradle_wrapper:
     runs-on: ubuntu-latest
@@ -155,6 +169,9 @@ jobs:
     runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
+    env:
+      # PR builds only need x86_64 for smoke testing, saving ~4x disk and build time.
+      RUST_ANDROID_ABIS: x86_64
     steps:
       - name: Checkout
         timeout-minutes: 1
@@ -166,7 +183,9 @@ jobs:
         uses: ./.github/actions/setup-sdk-companion
         with:
           sdk-repo: ${{ vars.SDK_COMPANION_REPO }}
-          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN || secrets.ZODL_QA }}
+          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN }}
+          cargo-app-id: ${{ secrets.CARGO_PRIVATE_APP_ID }}
+          cargo-app-private-key: ${{ secrets.CARGO_PRIVATE_APP_KEY }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -174,11 +193,12 @@ jobs:
         uses: ./.github/actions/setup-gradle
         timeout-minutes: 5
       - name: Android Lint
-        # 45 rather than the usual 15: when SDK_COMMIT_PIN is set (see
+        # 120 minutes for cold-cache first run: when SDK_COMMIT_PIN is set (see
         # setup-sdk-companion), this compiles the full companion SDK's Rust dependency
-        # graph (Tor, orchard, etc.) for the first time with a cold cargo/target cache —
-        # observed at ~20-25 min alone before this step even reaches lint analysis.
-        timeout-minutes: 45
+        # graph (vendored zodl-slipstream + arti/hpke, orchard, etc.) for x86_64 — observed
+        # at ~45+ min alone before lint analysis. Warm-cache runs (after Swatinem/rust-cache
+        # in setup-sdk-companion seeds artifacts) complete in <30 min.
+        timeout-minutes: 120
         env:
           # Disable minify, since it makes lint run faster
           ORG_GRADLE_PROJECT_IS_MINIFY_ENABLED: false
@@ -207,6 +227,9 @@ jobs:
     runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
+    env:
+      # PR builds only need x86_64 for smoke testing, saving ~4x disk and build time.
+      RUST_ANDROID_ABIS: x86_64
     steps:
       - name: Checkout
         timeout-minutes: 1
@@ -218,7 +241,9 @@ jobs:
         uses: ./.github/actions/setup-sdk-companion
         with:
           sdk-repo: ${{ vars.SDK_COMPANION_REPO }}
-          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN || secrets.ZODL_QA }}
+          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN }}
+          cargo-app-id: ${{ secrets.CARGO_PRIVATE_APP_ID }}
+          cargo-app-private-key: ${{ secrets.CARGO_PRIVATE_APP_KEY }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -226,10 +251,11 @@ jobs:
         uses: ./.github/actions/setup-gradle
         timeout-minutes: 5
       - name: Test
-        # 45 rather than the usual 15: when SDK_COMMIT_PIN is set (see
+        # 120 minutes for cold-cache first run: when SDK_COMMIT_PIN is set (see
         # setup-sdk-companion), compiling :ui-lib pulls in the full companion SDK's Rust
-        # dependency graph, which can take ~20-25 min alone on a cold cargo/target cache.
-        timeout-minutes: 45
+        # dependency graph (vendored zodl-slipstream + arti/hpke, etc.) for x86_64 — takes
+        # ~45+ min on cold cargo/target cache. Warm-cache runs complete in <30 min.
+        timeout-minutes: 120
         run: |
           ./gradlew :configuration-api-lib:check :crash-lib:check :preference-api-lib:check :spackle-lib:check :ui-design-lib:check
           ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest :feature-ledger:testZcashmainnetStoreDebugUnitTest :feature-migration:testZcashmainnetStoreDebugUnitTest :feature-voting:testZcashmainnetStoreDebugUnitTest :feature-viewing-key:testZcashmainnetStoreDebugUnitTest
@@ -261,13 +287,16 @@ jobs:
     name: test_android_modules_emulator (${{ matrix.shard }})
     needs: [validate_gradle_wrapper]
     runs-on: ubuntu-latest
-    # 90 rather than the usual 45: the `app` shard needs the SDK compiled, and when
-    # SDK_COMMIT_PIN is set (see setup-sdk-companion) a cold cargo/target cache eats
-    # 20-25 min before the emulator/test steps even start — the emulator was previously
-    # observed dying mid-run ("device not found") once the job ran past 45 min total.
-    timeout-minutes: 90
+    # 120 minutes for cold-cache first run: the `app` shard needs the SDK compiled, and when
+    # SDK_COMMIT_PIN is set (see setup-sdk-companion) a cold cargo/target cache (vendored
+    # zodl-slipstream + arti/hpke, x86_64 only) takes ~45+ min before emulator/test steps start.
+    # Warm-cache runs complete in <60 min. Previous 90 min caused emulator death mid-run.
+    timeout-minutes: 120
     permissions:
       contents: read
+    env:
+      # PR builds only need x86_64 for the emulator, saving ~4x disk and build time.
+      RUST_ANDROID_ABIS: x86_64
     strategy:
       fail-fast: false
       matrix:
@@ -297,7 +326,9 @@ jobs:
         uses: ./.github/actions/setup-sdk-companion
         with:
           sdk-repo: ${{ vars.SDK_COMPANION_REPO }}
-          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN || secrets.ZODL_QA }}
+          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN }}
+          cargo-app-id: ${{ secrets.CARGO_PRIVATE_APP_ID }}
+          cargo-app-private-key: ${{ secrets.CARGO_PRIVATE_APP_KEY }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -315,8 +346,10 @@ jobs:
         # `connectedAndroidTest` step only installs and runs against
         # already-built artifacts. The libs shard doesn't depend on feature-voting
         # (confirmed: it passes unaffected), so it skips this entirely.
+        # 120 minutes for cold-cache first run (cross-compiles vendored zodl-slipstream +
+        # arti/hpke for x86_64). Warm-cache runs complete in <45 min.
         if: matrix.shard == 'app'
-        timeout-minutes: 60
+        timeout-minutes: 120
         run: |
           ./gradlew :app:assembleZcashmainnetStoreDebugAndroidTest :ui-screenshot-test:assembleAndroidTest
       - name: Enable KVM
@@ -350,8 +383,6 @@ jobs:
           # Force blank suffix for screenshot tests
           ORG_GRADLE_PROJECT_ZCASH_DEBUG_APP_NAME_SUFFIX: ""
           ORG_GRADLE_PROJECT_IS_ANDROID_INSTRUMENTATION_TEST_COVERAGE_ENABLED: ${{ matrix.coverage }}
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         with:
           api-level: 35
           arch: x86_64
@@ -416,8 +447,6 @@ jobs:
         timeout-minutes: 20
         env:
           ORG_GRADLE_PROJECT_IS_CRASH_ON_STRICT_MODE_VIOLATION: true
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew :app:assembleZcashmainnetStoreDebug :app:assembleZcashtestnetStoreDebug
       - name: Authenticate to Google Cloud for Firebase Test Lab
@@ -443,6 +472,9 @@ jobs:
     runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
+    env:
+      # PR builds only need x86_64 for smoke testing; deploy workflow refuses live SDK_COMMIT_PIN anyway.
+      RUST_ANDROID_ABIS: x86_64
     steps:
       - name: Checkout
         timeout-minutes: 1
@@ -454,7 +486,9 @@ jobs:
         uses: ./.github/actions/setup-sdk-companion
         with:
           sdk-repo: ${{ vars.SDK_COMPANION_REPO }}
-          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN || secrets.ZODL_QA }}
+          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN }}
+          cargo-app-id: ${{ secrets.CARGO_PRIVATE_APP_ID }}
+          cargo-app-private-key: ${{ secrets.CARGO_PRIVATE_APP_KEY }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -484,18 +518,16 @@ jobs:
         run: |
           keytool -genkey -v -keystore $SIGNING_KEY_PATH -keypass android -storepass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 100000 -dname "CN=, OU=, O=Test, L=, S=, C=" -noprompt
       - name: Build Store APK
-        # 60 rather than the usual 25: when SDK_COMMIT_PIN is set (see
+        # 120 minutes for cold-cache first run: when SDK_COMMIT_PIN is set (see
         # setup-sdk-companion), this compiles the full companion SDK's Rust dependency
-        # graph for release, across both mainnet/testnet variants, with a cold
-        # cargo/target cache on the first run.
-        timeout-minutes: 60
+        # graph (vendored zodl-slipstream + arti/hpke, etc.) for release profile, x86_64 only,
+        # across both mainnet/testnet variants. Warm-cache runs complete in <45 min.
+        timeout-minutes: 120
         env:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PATH: ${{ format('{0}/release.jks', env.home) }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: android
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: androiddebugkey
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: android
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         shell: bash
         run: |
           # This step's worker processes (bundletool's standalone-APK packaging,
@@ -540,10 +572,25 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: android
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: androiddebugkey
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: android
-          # TODO [#1789] Re-enable Flexa integrations for FOSS variant
-          # ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
+          # No Flexa key: every build carries only the gateway's placeholder key (the OHTTP gateway injects
+          # the real one), and Flexa is offered on FOSS too.
         run: |
           ./gradlew clean :app:assembleZcashmainnetFossRelease
+
+      # The FOSS runtime classpath must resolve nothing F-Droid's inclusion policy forbids (the vendored
+      # Flexa SDK is offered on every distribution since the perf/status round of 2026-10-22, so the
+      # check runs here, on the branch the F-Droid build is made from, not only on feature/fdroid-parity).
+      - name: Check FOSS dependencies
+        timeout-minutes: 10
+        run: |
+          ./scripts/check-foss-dependencies.sh --self-test
+          ./scripts/check-foss-dependencies.sh zcashmainnetFossReleaseRuntimeClasspath
+
+      - name: F-Droid scanner
+        timeout-minutes: 10
+        run: |
+          pipx run --spec fdroidserver fdroid scanner --exit-code --verbose \
+            app/build/outputs/apk/zcashmainnetFoss/release/app-zcashmainnet-foss-release.apk
 
       - name: Check APK size
         timeout-minutes: 1
@@ -616,8 +663,6 @@ jobs:
           # This first environment variable is used by Flank, since the temporary token is missing the project name
           GOOGLE_CLOUD_PROJECT: ${{ vars.FIREBASE_TEST_LAB_PROJECT }}
           ORG_GRADLE_PROJECT_ZCASH_FIREBASE_TEST_LAB_API_KEY_PATH: ${{ steps.auth_test_lab.outputs.credentials_file_path }}
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           unzip ${BINARIES_ZIP_PATH}
           ./gradlew :app:runFlankSanityConfigRelease

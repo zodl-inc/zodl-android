@@ -86,6 +86,15 @@ jobs:
             echo '::error::SDK_COMMIT_PIN is set — releases must build against a published SDK.'
             exit 1
           fi
+
+      - name: Refuse to deploy with OHTTP relay URL override
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          if [ -n "$ZODL_OHTTP_RELAY_URL_MAINNET" ] || [ -n "$ZODL_OHTTP_RELAY_URL_TESTNET" ]; then
+            echo '::error::OHTTP relay URL override is set — releases must use production relay URLs from zodl-ohttp-client.'
+            exit 1
+          fi
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -143,8 +152,6 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew :app:bundleZcashmainnetStoreRelease :app:packageZcashmainnetStoreReleaseUniversalApk
       - name: Collect Artifacts
@@ -240,7 +247,5 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew :app:publishToGooglePlay

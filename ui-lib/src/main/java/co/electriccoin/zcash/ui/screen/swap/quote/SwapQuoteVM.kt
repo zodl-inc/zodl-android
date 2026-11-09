@@ -16,6 +16,7 @@ import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
+import co.electriccoin.zcash.ui.common.provider.OhttpNearErrorException
 import co.electriccoin.zcash.ui.common.provider.ResponseWithNearErrorException
 import co.electriccoin.zcash.ui.common.repository.SwapQuoteData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
@@ -118,6 +119,11 @@ internal class SwapQuoteVM(
                 }
 
                 is ResponseWithNearErrorException if !quote.exception.error.message
+                    .contains("failed to get quote", ignoreCase = true) -> {
+                    stringRes(quote.exception.error.message)
+                }
+
+                is OhttpNearErrorException if !quote.exception.error.message
                     .contains("failed to get quote", ignoreCase = true) -> {
                     stringRes(quote.exception.error.message)
                 }

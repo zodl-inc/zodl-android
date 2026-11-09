@@ -1,5 +1,9 @@
 package co.electriccoin.zcash.di
 
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealthOwner
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealthOwnerImpl
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionProbe
+import co.electriccoin.zcash.ui.common.privateconnection.RequestHealthDetection
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepository
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
@@ -60,6 +64,19 @@ val repositoryModule =
         singleOf(::WalletSnapshotRepositoryImpl) bind WalletSnapshotRepository::class
         singleOf(::ApplicationStateRepositoryImpl) bind ApplicationStateRepository::class
         single { EvaluationInterval(minimumInterval = MINIMUM_EVALUATION_INTERVAL) }
+        // The request-health outage detection (MOB-2300), on in every build type: the outage is confirmed from the
+        // evidence of the OHTTP requests, and the previous probe with two confirmations no longer reports it.
+        single { RequestHealthDetection { true } }
+        single { PrivateConnectionProbe(application = get()) }
+        single<PrivateConnectionHealthOwner> {
+            PrivateConnectionHealthOwnerImpl(
+                synchronizerProvider = get(),
+                probe = get(),
+                applicationStateProvider = get(),
+                appAccessLockProvider = get(),
+                networkConnectivityProvider = get(),
+            )
+        }
         singleOf(::AutomaticServerRepositoryImpl) bind AutomaticServerRepository::class
         singleOf(::SwapRepositoryImpl) bind SwapRepository::class
         singleOf(::EphemeralAddressRepositoryImpl) bind EphemeralAddressRepository::class

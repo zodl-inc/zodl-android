@@ -7,10 +7,12 @@ import kotlinx.coroutines.withContext
 
 class GetAllVotingRoundsUseCase(
     private val votingApiProvider: VotingApiProvider,
+    private val votingRouteProvider: co.electriccoin.zcash.ui.common.provider.VotingRouteProvider,
 ) {
     suspend operator fun invoke(): List<VotingRound> =
         withContext(Dispatchers.IO) {
-            votingApiProvider.fetchServiceConfig()
-            votingApiProvider.fetchAllRounds().rounds
+            val decision = votingRouteProvider.decision()
+            votingApiProvider.fetchServiceConfig(decision)
+            votingApiProvider.fetchAllRounds(decision).rounds
         }
 }

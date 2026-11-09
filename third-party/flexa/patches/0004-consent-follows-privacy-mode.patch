@@ -1,0 +1,111 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: noop-sk <noop-sk@users.noreply.github.com>
+Date: Mon, 9 Nov 2026 07:23:26 +0100
+Subject: [PATCH] Let the web view consent follow the app's privacy mode
+
+DirectConnectionConsent asks Flexa.allowsDirectConnections() while it is on screen, so a web view loads
+by itself when the host app allows direct connections, and the consent screen shows only when it does not.
+An agreement the user gives while direct connections are off is not saved: it ends when they turn off while
+the page is shown, or when the screen is left. Until Flexa.init ran nothing is allowed (Flexa.configured),
+so a process restored without it does not connect to Flexa directly.
+---
+ core/src/main/java/com/flexa/core/Flexa.kt    |  7 ++++-
+ .../core/view/DirectConnectionConsent.kt      | 30 ++++++++++++++++---
+ 2 files changed, 32 insertions(+), 5 deletions(-)
+
+diff --git a/core/src/main/java/com/flexa/core/Flexa.kt b/core/src/main/java/com/flexa/core/Flexa.kt
+index 1828754..e09351f 100644
+--- a/core/src/main/java/com/flexa/core/Flexa.kt
++++ b/core/src/main/java/com/flexa/core/Flexa.kt
+@@ -55,12 +55,16 @@ object Flexa {
+     @Volatile
+     internal var directConnectionsAllowed: (() -> Boolean)? = null
+ 
++    /** False until [init] ran: a process restored without it must not connect to Flexa directly. */
++    @Volatile
++    internal var configured: Boolean = false
++
+     /**
+      * Whether the SDK may connect to Flexa directly (images, web views) right now: see
+      * [FlexaClientConfiguration.directConnectionsAllowed]. Asked on every image download and before a web
+      * view loads, so a change (e.g. the user turns Tor on) applies at once.
+      */
+-    fun allowsDirectConnections(): Boolean = directConnectionsAllowed?.invoke() ?: true
++    fun allowsDirectConnections(): Boolean = configured && (directConnectionsAllowed?.invoke() ?: true)
+     private val _appAccounts = MutableStateFlow<List<AssetAccount>>(emptyList())
+     val appAccounts: StateFlow<List<AssetAccount>> = _appAccounts
+     private val serializerProvider = SerializerProvider()
+@@ -90,6 +94,7 @@ object Flexa {
+         context = config.context.applicationContext
+         okHttpClientCustomizer = config.okHttpClientCustomizer
+         directConnectionsAllowed = config.directConnectionsAllowed
++        configured = true
+         themeConfig = config.theme
+         setAssetAccounts(config.assetAccounts)
+         setUniqueIdentifier()
+diff --git a/core/src/main/java/com/flexa/core/view/DirectConnectionConsent.kt b/core/src/main/java/com/flexa/core/view/DirectConnectionConsent.kt
+index 53ed48c..c9893e9 100644
+--- a/core/src/main/java/com/flexa/core/view/DirectConnectionConsent.kt
++++ b/core/src/main/java/com/flexa/core/view/DirectConnectionConsent.kt
+@@ -10,7 +10,9 @@ import androidx.compose.material3.Text
+ import androidx.compose.runtime.Composable
+ import androidx.compose.runtime.getValue
+ import androidx.compose.runtime.mutableStateOf
+-import androidx.compose.runtime.saveable.rememberSaveable
++import androidx.compose.runtime.LaunchedEffect
++import androidx.compose.runtime.produceState
++import androidx.compose.runtime.remember
+ import androidx.compose.runtime.setValue
+ import androidx.compose.ui.Alignment
+ import androidx.compose.ui.Modifier
+@@ -20,20 +22,32 @@ import androidx.compose.ui.text.style.TextAlign
+ import androidx.compose.ui.unit.dp
+ import com.flexa.R
+ import com.flexa.core.Flexa
++import kotlinx.coroutines.delay
+ 
+ /**
+  * Shows [content] (a web view that loads a Flexa page directly) only when direct connections to Flexa are
+  * allowed ([Flexa.allowsDirectConnections]) or the user agreed on this screen. Otherwise it shows a
+  * disclosure that Flexa will see the user's IP address, with a button to load the page anyway: the page is
+- * never loaded silently while the app is on a private connection or Tor.
++ * never loaded silently while the app is on a private connection or Tor. The agreement is not saved: if the
++ * privacy mode changes to Tor or Private while the page is open, or the screen is left, the page is removed and the
++ * consent screen shows again.
+  */
+ @Composable
+ fun DirectConnectionConsent(
+     modifier: Modifier = Modifier,
+     content: @Composable () -> Unit,
+ ) {
+-    var agreed by rememberSaveable { mutableStateOf(false) }
+-    if (agreed || LocalInspectionMode.current || Flexa.allowsDirectConnections()) {
++    // Not saved: an agreement belongs to this screen as it is now. Leaving it (or the process dying) ends it, so
++    // coming back after the app went to Tor or Private asks again.
++    var agreed by remember { mutableStateOf(false) }
++    val allowed by produceState(initialValue = Flexa.allowsDirectConnections()) {
++        while (true) {
++            value = Flexa.allowsDirectConnections()
++            delay(ALLOWED_POLL_MS)
++        }
++    }
++    LaunchedEffect(allowed) { agreed = agreementAfterModeChange(agreed, allowed) }
++    if (agreed || LocalInspectionMode.current || allowed) {
+         content()
+         return
+     }
+@@ -59,3 +73,11 @@ fun DirectConnectionConsent(
+         }
+     }
+ }
++
++private const val ALLOWED_POLL_MS = 500L
++
++/**
++ * The agreement after [allowed] changed: it ends when direct connections are off, so the page that was loaded
++ * on it goes away. It runs when [allowed] changes, not while the user agrees to a page that is off.
++ */
++internal fun agreementAfterModeChange(agreed: Boolean, allowed: Boolean): Boolean = agreed && allowed
+-- 
+2.50.1 (Apple Git-155)
+

@@ -1,11 +1,13 @@
 package co.electriccoin.zcash.ui.screen.chooseserver
 
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.component.EndpointTextFieldState
 import co.electriccoin.zcash.ui.design.component.AlertDialogState
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.RadioButtonState
 import co.electriccoin.zcash.ui.design.util.Itemizable
 import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.stringRes
 
 data class ChooseServerState(
     val connectionMode: ServerConnectionModeState,
@@ -17,12 +19,26 @@ data class ChooseServerState(
 )
 
 data class ServerConnectionModeState(
-    val automatic: RadioButtonState,
+    val private: RadioButtonState,
+    val public: RadioButtonState,
     val manual: RadioButtonState,
-    val automaticBadge: StringResource? = null
+    val privateBadge: ModeBadgeState? = null,
+    val publicBadge: ModeBadgeState? = null,
+    val manualBadge: ModeBadgeState? = null,
+    val onPrivateInfoClick: () -> Unit = {},
+    val privateInfoLabel: StringResource = stringRes(R.string.serverSetup_privateInfo),
 ) {
     val isManualSelected = manual.isChecked
 }
+
+enum class ModeBadgeStyle { SUCCESS, WARNING, ERROR }
+
+/** [showsProgress]: the row is being tested, so its radio is replaced by a progress indicator. */
+data class ModeBadgeState(
+    val text: StringResource,
+    val style: ModeBadgeStyle,
+    val showsProgress: Boolean = false,
+)
 
 sealed interface ServerListState {
     val title: StringResource

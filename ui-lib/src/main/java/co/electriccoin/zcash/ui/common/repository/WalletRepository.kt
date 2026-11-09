@@ -17,13 +17,17 @@ import co.electriccoin.zcash.crash.android.GlobalCrashReporter
 import co.electriccoin.zcash.preference.StandardPreferenceProvider
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.datasource.RestoreTimestampDataSource
+import co.electriccoin.zcash.ui.common.datasource.resolveIsServerSelectionAutomatic
 import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.model.OnboardingState
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.provider.IsIronwoodAnnouncementShownStorageProvider
+import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
+import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProvider
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.WalletBackupFlagStorageProvider
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProvider
@@ -92,6 +96,9 @@ class WalletRepositoryImpl(
     private val walletBackupFlagStorageProvider: WalletBackupFlagStorageProvider,
     private val isIronwoodAnnouncementShownStorageProvider: IsIronwoodAnnouncementShownStorageProvider,
     private val sdkEncryptedPreferenceRecoveryProvider: SdkEncryptedPreferenceRecoveryProvider,
+    private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
+    private val isPublicConnectionProvider: IsPublicConnectionProvider,
+    private val serverSelectionMutex: ServerSelectionMutex,
 ) : WalletRepository {
     /**
      * Scope the repository's `stateIn`-shared flows run on. Captured by those flows at
@@ -179,12 +186,29 @@ class WalletRepositoryImpl(
 
     private var previousFastestEndpoints: FastestServersState? = null
 
+    /**
+     * The fastest-server benchmark, filtered by the user's connection mode choice.
+     *
+     * ZIP #10 ("OHTTP Relay for Zcash") Section 5 ("Client Behavior"), rule 3: the app must not contact
+     * clearnet servers before the user chooses Public mode. Opening the Server screen benchmarks only the
+     * servers the user may use without changing modes: in Private mode, only OHTTP gateways are measured
+     * (clearnet servers are listed without latency); in Public mode, only public servers are measured
+     * (gateways are not offered in Manual lists). When the user saves Public mode, the mode flag changes
+     * and this flow re-triggers, now benchmarking public servers.
+     *
+     * Decision: benchmarking happens when the user SAVES their mode choice (Public or Private), not when they
+     * select it. Saving is the confirmation; the benchmark then runs in the background. This means the wallet
+     * moves to a default public server when switching from Private to Public, and any subsequent automatic
+     * re-ranking happens through the usual fallback coordinator.
+     */
     @Suppress("ComplexCondition", "ReturnCount")
     @OptIn(ExperimentalCoroutinesApi::class)
     override val fastestEndpoints =
-        refreshFastestServersRequest
-            .onStart { emit(Unit) }
-            .flatMapLatest {
+        combine(
+            refreshFastestServersRequest.onStart { emit(Unit) },
+            isPublicConnectionProvider.observe()
+        ) { _, isPublic -> isPublic }
+            .flatMapLatest { isPublic ->
                 var synchronizerEmitted = false
 
                 synchronizerProvider
@@ -207,32 +231,43 @@ class WalletRepositoryImpl(
                             synchronizerEmitted = true
                         }
 
-                        result
+                        result to isPublic
                     }
-            }.flatMapLatest { synchronizer ->
-                synchronizer
-                    ?.getFastestServers(lightWalletEndpointProvider.getEndpoints())
-                    ?.map {
-                        when (it) {
-                            FastestServersResult.Measuring -> {
-                                previousFastestEndpoints?.copy(isLoading = true)
-                                    ?: FastestServersState(servers = null, isLoading = true)
-                            }
+            }.flatMapLatest { (synchronizer, isPublic) ->
+                if (synchronizer == null) {
+                    flowOf(
+                        previousFastestEndpoints ?: FastestServersState(
+                            servers = emptyList(),
+                            isLoading = false
+                        )
+                    )
+                } else {
+                    val allEndpoints = lightWalletEndpointProvider.getEndpoints()
+                    val endpointsToTest =
+                        if (isPublic) {
+                            allEndpoints.filterNot { lightWalletEndpointProvider.isOhttpGateway(it) }
+                        } else {
+                            allEndpoints.filter { lightWalletEndpointProvider.isOhttpGateway(it) }
+                        }
+                    synchronizer
+                        .getFastestServers(endpointsToTest)
+                        .map {
+                            when (it) {
+                                FastestServersResult.Measuring -> {
+                                    previousFastestEndpoints?.copy(isLoading = true)
+                                        ?: FastestServersState(servers = null, isLoading = true)
+                                }
 
-                            is FastestServersResult.Validating -> {
-                                FastestServersState(servers = it.servers, isLoading = true)
-                            }
+                                is FastestServersResult.Validating -> {
+                                    FastestServersState(servers = it.servers, isLoading = true)
+                                }
 
-                            is FastestServersResult.Done -> {
-                                FastestServersState(servers = it.servers, isLoading = false)
+                                is FastestServersResult.Done -> {
+                                    FastestServersState(servers = it.servers, isLoading = false)
+                                }
                             }
                         }
-                    } ?: flowOf(
-                    previousFastestEndpoints ?: FastestServersState(
-                        servers = emptyList(),
-                        isLoading = false
-                    )
-                )
+                }
             }.onEach {
                 previousFastestEndpoints = it
             }.stateIn(
@@ -257,7 +292,7 @@ class WalletRepositoryImpl(
                 walletMutation.withLock {
                     val wallet = persistableWalletProvider.getPersistableWallet()
                     val onboarding = onboardingState.first()
-                    migrateDecommissionedEndpointIfNeeded(wallet)
+                    serverSelectionMutex.withLock { migrateEndpointIfNeeded(wallet) }
                     resetOnboardingIfWalletMissing(wallet = wallet, onboardingState = onboarding)
                 }
             } catch (e: Exception) {
@@ -266,10 +301,54 @@ class WalletRepositoryImpl(
         }
     }
 
-    private suspend fun migrateDecommissionedEndpointIfNeeded(wallet: PersistableWallet?) {
+    /**
+     * Moves the wallet to the appropriate endpoint when needed for mode consistency.
+     *
+     * Moves the wallet to the OHTTP gateway when its server was decommissioned, or when it is in
+     * Automatic mode but still on a clearnet server (a wallet upgraded from before OHTTP): Automatic
+     * mode selects only the gateway tier, so it must not start on a clearnet server (ZIP #10).
+     *
+     * Manual selection of the OHTTP gateway is converted to Private mode, since they're functionally
+     * identical (same endpoint, no fastest-server lookup) and Private receives the gateway health check
+     * and unavailable prompt.
+     *
+     * Public mode runs on clearnet by choice and is not considered "automatic but off the gateway".
+     * When migrating, Public wallets move to another public server rather than the gateway to preserve
+     * their deliberate Public mode selection.
+     *
+     * [init] runs it under [ServerSelectionMutex] as well as [walletMutation], so a save made while the
+     * app starts cannot interleave with these reads and writes; nothing that holds the server-selection
+     * lock takes [walletMutation].
+     */
+    private suspend fun migrateEndpointIfNeeded(wallet: PersistableWallet?) {
         if (wallet == null) return
-        if (wallet.endpoint.host in lightWalletEndpointProvider.getDecommissionedHosts()) {
-            persistWalletInternal(wallet.copy(endpoint = lightWalletEndpointProvider.getDefaultEndpoint()))
+        val endpoint = wallet.endpoint
+        if (lightWalletEndpointProvider.isOhttpGateway(endpoint) && isServerSelectionAutomaticProvider.get() == false) {
+            isServerSelectionAutomaticProvider.store(true)
+            isPublicConnectionProvider.store(false)
+        }
+        val isDecommissioned = endpoint.host in lightWalletEndpointProvider.getDecommissionedHosts()
+        val isAutomaticOffGateway =
+            lightWalletEndpointProvider.hasOhttpGateway() &&
+                !lightWalletEndpointProvider.isOhttpGateway(endpoint) &&
+                !isPublicConnectionProvider.get() &&
+                resolveIsServerSelectionAutomatic(
+                    isAutomaticPreference = isServerSelectionAutomaticProvider.get(),
+                    currentEndpoint = endpoint,
+                    knownEndpoints = lightWalletEndpointProvider.getEndpoints(),
+                )
+        if (isDecommissioned || isAutomaticOffGateway) {
+            val replacement =
+                lightWalletEndpointProvider
+                    .takeIf { isPublicConnectionProvider.get() }
+                    ?.getFallbackEndpoints()
+                    ?.firstOrNull()
+                    ?: lightWalletEndpointProvider.getDefaultEndpoint()
+            persistWalletInternal(wallet.copy(endpoint = replacement))
+            if (lightWalletEndpointProvider.isOhttpGateway(replacement)) {
+                isServerSelectionAutomaticProvider.store(true)
+                isPublicConnectionProvider.store(false)
+            }
         }
     }
 

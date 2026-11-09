@@ -4,7 +4,6 @@ import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.FiatCurrency
 import cash.z.ecc.android.sdk.model.FiatCurrencyConversion
 import cash.z.ecc.android.sdk.model.ObserveFiatCurrencyResult
-import co.electriccoin.zcash.ui.BuildConfig
 import co.electriccoin.zcash.ui.common.provider.CMCApiProvider
 import co.electriccoin.zcash.ui.common.provider.PreferredFiatProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -22,7 +21,7 @@ import kotlin.time.Clock
 
 interface ExchangeRateDataSource {
     /**
-     * Returns the exchange rate for [fiatCurrency] from CMC if [BuildConfig.ZCASH_CMC_KEY] is available.
+     * Returns the exchange rate for [fiatCurrency] from CMC through the OHTTP gateway (which injects the API key).
      *
      * @throws ExchangeRateUnavailable when exchange rate is not found or server was down
      */
@@ -42,30 +41,19 @@ class ExchangeRateDataSourceImpl(
     private val synchronizerProvider: SynchronizerProvider,
 ) : ExchangeRateDataSource {
     override suspend fun getExchangeRate(fiatCurrency: FiatCurrency): FiatCurrencyConversion {
-        @Suppress("ThrowsCount")
-        suspend fun getCMCExchangeRate(apiKey: String): FiatCurrencyConversion {
-            val exchangeRate =
-                cmcApiProvider
-                    .getExchangeRateQuote(apiKey = apiKey, fiat = fiatCurrency.code)
-                    .data["ZEC"]
-                    ?.quote
-                    ?.get(fiatCurrency.code)
-                    ?.price
-            val price = exchangeRate ?: throw ExchangeRateUnavailable(message = "Exchange rate not found in response")
-            return FiatCurrencyConversion(
-                timestamp = Clock.System.now(),
-                priceOfZec = price.toDouble(),
-                fiatCurrency = fiatCurrency
-            )
-        }
-
-        val cmcKey = BuildConfig.ZCASH_CMC_KEY.takeIf { it.isNotBlank() }
-
-        return if (cmcKey != null) {
-            getCMCExchangeRate(cmcKey)
-        } else {
-            throw ExchangeRateUnavailable(message = "CMC token not present")
-        }
+        val exchangeRate =
+            cmcApiProvider
+                .getExchangeRateQuote(fiat = fiatCurrency.code)
+                .data["ZEC"]
+                ?.quote
+                ?.get(fiatCurrency.code)
+                ?.price
+        val price = exchangeRate ?: throw ExchangeRateUnavailable(message = "Exchange rate not found in response")
+        return FiatCurrencyConversion(
+            timestamp = Clock.System.now(),
+            priceOfZec = price.toDouble(),
+            fiatCurrency = fiatCurrency
+        )
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

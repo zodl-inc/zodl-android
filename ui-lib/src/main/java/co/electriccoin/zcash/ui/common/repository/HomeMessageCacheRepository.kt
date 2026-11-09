@@ -79,20 +79,29 @@ sealed interface HomeMessageData {
         val zatoshi: Zatoshi
     ) : RuntimeMessage()
 
-    data object EnableTor : Prioritized {
-        override val priority: Int = 3
-    }
-
-    data object Backup : Prioritized {
-        override val priority: Int = 5
-    }
-
-    data object EnableCurrencyConversion : Prioritized {
-        override val priority: Int = 2
+    /**
+     * Offers the private connection to users on Public or Manual. It has no close button and stays until the user
+     * opts out or turns Private on, so it ranks below every opt-in message the user can dismiss: those get their
+     * turn first, instead of being hidden behind this one for good.
+     */
+    data object OhttpOptIn : Prioritized {
+        override val priority: Int = 1
     }
 
     data object CrashReport : Prioritized {
-        override val priority: Int = 1
+        override val priority: Int = 2
+    }
+
+    data object EnableCurrencyConversion : Prioritized {
+        override val priority: Int = 3
+    }
+
+    data object EnableTor : Prioritized {
+        override val priority: Int = 4
+    }
+
+    data object Backup : Prioritized {
+        override val priority: Int = 6
     }
 
     /**
@@ -105,7 +114,7 @@ sealed interface HomeMessageData {
      * it disappears on its own once the account has voted, the round ends, or voting is disabled.
      */
     data object CoinholderPolling : Prioritized {
-        override val priority: Int = 4
+        override val priority: Int = 5
     }
 }
 

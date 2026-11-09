@@ -1,48 +1,53 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import co.electriccoin.lightwallet.client.OhttpHttpClient
 import co.electriccoin.zcash.ui.common.model.near.AppFee
 import co.electriccoin.zcash.ui.common.model.near.QuoteRequest
 import co.electriccoin.zcash.ui.common.model.near.SubmitDepositTransactionRequest
 import co.electriccoin.zcash.ui.common.model.near.SwapType
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.client.plugins.ResponseException
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.request.HttpRequestData
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.headersOf
-import io.ktor.serialization.kotlinx.json.json
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
 import java.math.BigDecimal
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 /**
- * [KtorNearApiProvider] drives the 1Click HTTP API. The contract these tests pin down: the three
- * privileged endpoints (quote, deposit submit, status) must carry the `Authorization: Bearer …`
- * credential, the public token list must NOT, and a NEAR error body must be lifted into a typed
- * [ResponseWithNearErrorException] (falling back to the raw [ResponseException] otherwise).
+ * [KtorNearApiProvider] drives the 1Click HTTP API through OHTTP. The contract these tests
+ * pin down: all requests route through OHTTP (never create() or createTor()); the app NEVER sends
+ * the `Authorization: Bearer` token (the gateway injects it server-side); depositAddress query params
+ * are sent; NEAR error bodies are lifted into [OhttpNearErrorException]; unparsable error bodies fall
+ * back to generic exceptions.
  */
 class KtorNearApiProviderTest {
-    private val requests = mutableListOf<HttpRequestData>()
+    private val capturedRequests = mutableListOf<OhttpHttpClient.Request>()
 
-    private var responseStatus = HttpStatusCode.OK
+    private var responseStatus = 200
     private var responseBody = "[]"
-    private var responseContentType = "application/json"
 
     private var createCalls = 0
     private var createTorCalls = 0
+    private var createOhttpCalls = 0
+    private var isolatedOhttpCalls = 0
 
     private val provider = KtorNearApiProvider(RecordingHttpClientProvider())
+
+    @Test
+    fun everyNearCallRunsOnAnIsolatedOhttpClient() =
+        runBlocking {
+            responseBody = "[]"
+
+            provider.getSupportedTokens()
+            provider.getSupportedTokens()
+
+            assertEquals(2, isolatedOhttpCalls)
+        }
 
     @Test
     fun getSupportedTokensDoesNotSendAuthorizationHeader() =
@@ -51,94 +56,171 @@ class KtorNearApiProviderTest {
 
             provider.getSupportedTokens()
 
-            val request = requests.single()
-            assertEquals(HttpMethod.Get, request.method)
-            assertEquals("/v0/tokens", request.url.encodedPath)
-            // The token list is public — no credential must leak onto it.
-            assertNull(request.headers[HttpHeaders.Authorization])
-            assertRespectsTorPreference()
+            val request = capturedRequests.single()
+            assertEquals("https://near.zodl.com/v0/tokens", request.url)
+            assertEquals("GET", request.method)
+            // The token list is public: the app never sends Authorization and the gateway injects none.
+            assertNoAuthorizationHeader(request)
+            assertUsesOhttpOnly()
         }
 
     @Test
-    fun requestQuoteSendsBearerAuthorizationHeader() =
+    fun requestQuoteDoesNotSendAuthorizationHeader() =
         runBlocking {
-            // The QuoteResponseDto body intentionally fails to deserialize; we only assert the request.
-            responseBody = "{}"
-            runCatching { provider.requestQuote(quoteRequest()) }
+            responseBody =
+                """
+                {
+                  "timestamp": "2024-01-01T00:00:00Z",
+                  "quoteRequest": {
+                    "dry": false,
+                    "swapType": "EXACT_INPUT",
+                    "slippageTolerance": 100,
+                    "originAsset": "origin",
+                    "destinationAsset": "destination",
+                    "amount": "1.0",
+                    "refundTo": "refund",
+                    "recipient": "recipient",
+                    "deadline": "1970-01-01T00:00:00Z",
+                    "appFees": [{"recipient": "affiliate", "fee": 75}]
+                  },
+                  "quote": {
+                    "depositAddress": "d",
+                    "amountIn": "1.0",
+                    "amountInFormatted": "1.0",
+                    "amountInUsd": "1.0",
+                    "minAmountIn": "1.0",
+                    "amountOut": "1.0",
+                    "amountOutFormatted": "1.0",
+                    "amountOutUsd": "1.0",
+                    "minAmountOut": "1.0",
+                    "deadline": "2024-01-01T00:00:00Z"
+                  }
+                }
+                """.trimIndent()
 
-            val request = requests.single()
-            assertEquals(HttpMethod.Post, request.method)
-            assertEquals("/v0/quote", request.url.encodedPath)
-            assertBearerAuthorization(request)
-            assertRespectsTorPreference()
+            provider.requestQuote(quoteRequest())
+
+            val request = capturedRequests.single()
+            assertEquals("https://near.zodl.com/v0/quote", request.url)
+            assertEquals("POST", request.method)
+            assertTrue(request.headers.any { it.first == "Content-Type" && it.second == "application/json" })
+            // The app must never send Authorization; the gateway injects it server-side.
+            assertNoAuthorizationHeader(request)
+            assertUsesOhttpOnly()
         }
 
     @Test
-    fun submitDepositTransactionSendsBearerAuthorizationHeader() =
+    fun submitDepositTransactionDoesNotSendAuthorizationHeader() =
         runBlocking {
+            responseBody = ""
+
             provider.submitDepositTransaction(
                 SubmitDepositTransactionRequest(txHash = "hash", depositAddress = "deposit")
             )
 
-            val request = requests.single()
-            assertEquals(HttpMethod.Post, request.method)
-            assertEquals("/v0/deposit/submit", request.url.encodedPath)
-            assertBearerAuthorization(request)
-            assertRespectsTorPreference()
+            val request = capturedRequests.single()
+            assertEquals("https://near.zodl.com/v0/deposit/submit", request.url)
+            assertEquals("POST", request.method)
+            // The app must never send Authorization; the gateway injects it server-side.
+            assertNoAuthorizationHeader(request)
+            assertUsesOhttpOnly()
         }
 
     @Test
-    fun checkSwapStatusSendsBearerAuthorizationHeaderAndDepositAddressParameter() =
+    fun checkSwapStatusDoesNotSendAuthorizationHeaderAndSendsDepositAddressParameter() =
         runBlocking {
-            responseBody = "{}"
-            runCatching { provider.checkSwapStatus(depositAddress = "deposit-address") }
+            responseBody =
+                """
+                {
+                  "status": "PENDING_DEPOSIT",
+                  "updatedAt": "2024-01-01T00:00:00Z",
+                  "quoteResponse": {
+                    "timestamp": "2024-01-01T00:00:00Z",
+                    "quoteRequest": {
+                      "dry": false,
+                      "swapType": "EXACT_INPUT",
+                      "slippageTolerance": 100,
+                      "originAsset": "origin",
+                      "destinationAsset": "destination",
+                      "amount": "1.0",
+                      "refundTo": "refund",
+                      "recipient": "recipient",
+                      "deadline": "1970-01-01T00:00:00Z",
+                      "appFees": [{"recipient": "affiliate", "fee": 75}]
+                    },
+                    "quote": {
+                      "depositAddress": "d",
+                      "amountIn": "1.0",
+                      "amountInFormatted": "1.0",
+                      "amountInUsd": "1.0",
+                      "minAmountIn": "1.0",
+                      "amountOut": "1.0",
+                      "amountOutFormatted": "1.0",
+                      "amountOutUsd": "1.0",
+                      "minAmountOut": "1.0",
+                      "deadline": "2024-01-01T00:00:00Z"
+                    }
+                  }
+                }
+                """.trimIndent()
 
-            val request = requests.single()
-            assertEquals(HttpMethod.Get, request.method)
-            assertEquals("/v0/status", request.url.encodedPath)
-            assertEquals("deposit-address", request.url.parameters["depositAddress"])
-            assertBearerAuthorization(request)
-            assertRespectsTorPreference()
+            provider.checkSwapStatus(depositAddress = "deposit-address")
+
+            val request = capturedRequests.single()
+            // The depositAddress is a query parameter in the URL, not a secret — still sent by the app.
+            assertTrue(
+                request.url.contains("depositAddress=deposit-address"),
+                "depositAddress parameter must be in URL"
+            )
+            assertTrue(request.url.startsWith("https://near.zodl.com/v0/status"))
+            assertEquals("GET", request.method)
+            // The app must never send Authorization; the gateway injects it server-side.
+            assertNoAuthorizationHeader(request)
+            assertUsesOhttpOnly()
         }
 
     @Test
     fun errorResponseWithNearErrorBodyMapsToTypedException() {
         runBlocking {
-            responseStatus = HttpStatusCode.BadRequest
+            responseStatus = 400
             responseBody = """{"message":"boom","timestamp":"t","path":"/v0/quote"}"""
 
             val exception =
-                assertFailsWith<ResponseWithNearErrorException> {
+                assertFailsWith<OhttpNearErrorException> {
+                    responseBody = """{"message":"boom","timestamp":"t","path":"/v0/quote"}"""
                     provider.requestQuote(quoteRequest())
                 }
 
             assertEquals("boom", exception.error.message)
-            assertRespectsTorPreference()
+            assertEquals(400, exception.status)
+            assertUsesOhttpOnly()
         }
     }
 
     @Test
-    fun errorResponseWithoutNearErrorBodyRethrowsRawResponseException() {
+    fun errorResponseWithoutNearErrorBodyThrowsGenericException() {
         runBlocking {
-            responseStatus = HttpStatusCode.BadRequest
+            responseStatus = 400
             responseBody = "plain text, not a NEAR error"
-            responseContentType = "text/plain"
 
             val exception =
-                assertFailsWith<ResponseException> {
+                assertFailsWith<IllegalStateException> {
                     provider.requestQuote(quoteRequest())
                 }
 
-            // Unparsable body -> the raw transport exception is rethrown, not the typed one.
-            assertFalse(exception is ResponseWithNearErrorException)
-            assertRespectsTorPreference()
+            // Unparsable body -> the generic error() is thrown, not the typed one.
+            assertTrue(exception.message?.contains("HTTP 400") == true)
+            assertTrue(exception.message?.contains("plain text") == true)
+            assertUsesOhttpOnly()
         }
     }
 
-    private fun assertBearerAuthorization(request: HttpRequestData) {
-        val authorization = request.headers[HttpHeaders.Authorization]
-        assertNotNull(authorization, "Authorization header must be present")
-        assertTrue(authorization.startsWith("Bearer "), "Authorization header must be a Bearer token")
+    private fun assertNoAuthorizationHeader(request: OhttpHttpClient.Request) {
+        // The app must never send Authorization; the gateway injects it server-side.
+        assertFalse(
+            request.headers.any { it.first.equals("Authorization", ignoreCase = true) },
+            "Authorization header must not be sent by the app (gateway injects it)"
+        )
     }
 
     private fun quoteRequest() =
@@ -155,34 +237,46 @@ class KtorNearApiProviderTest {
             appFees = listOf(AppFee(recipient = "affiliate", fee = 75))
         )
 
-    private fun assertRespectsTorPreference() {
-        // create() routes over Tor or clearnet per the user's Tor setting; createTor() would force Tor
-        // regardless. The swap API must defer to the preference, so it must use create() and never createTor().
-        assertEquals(1, createCalls, "create() (honors the user's Tor preference) must be called exactly once")
-        assertEquals(0, createTorCalls, "createTor() (forces Tor) must never be called by KtorNearApiProvider")
+    private fun assertUsesOhttpOnly() {
+        // OHTTP is the only path; create() and createTor() must never be called.
+        assertEquals(1, createOhttpCalls, "createOhttp() must be called exactly once")
+        assertEquals(0, createCalls, "create() must never be called (OHTTP only)")
+        assertEquals(0, createTorCalls, "createTor() must never be called (OHTTP handles routing)")
     }
 
     private inner class RecordingHttpClientProvider : HttpClientProvider {
+        override suspend fun isTorEnabled(): Boolean = false
+
+        override suspend fun <T> withIsolatedOhttp(block: suspend (OhttpHttpClient) -> T): T {
+            isolatedOhttpCalls++
+            return block(createOhttp())
+        }
+
         override suspend fun createTor(): HttpClient {
             createTorCalls++
-            error("KtorNearApiProvider must use create() (honors the Tor preference), never createTor()")
+            error("NEAR must never use createTor() (OHTTP handles routing)")
         }
 
         override suspend fun create(): HttpClient {
             createCalls++
-            return HttpClient(
-                MockEngine { request ->
-                    requests += request
-                    respond(
-                        content = responseBody,
+            error("NEAR must never use create() (OHTTP only)")
+        }
+
+        override suspend fun create(tor: Boolean): HttpClient =
+            if (tor) createTor() else create()
+
+        override suspend fun createOhttp(): OhttpHttpClient {
+            createOhttpCalls++
+            return mockk<OhttpHttpClient> {
+                every { canHandle(any()) } returns true
+                coEvery { execute(any()) } answers {
+                    val request = firstArg<OhttpHttpClient.Request>()
+                    capturedRequests += request
+                    OhttpHttpClient.Response(
                         status = responseStatus,
-                        headers = headersOf(HttpHeaders.ContentType, responseContentType)
+                        body = responseBody.toByteArray()
                     )
                 }
-            ) {
-                install(ContentNegotiation) { json() }
-                // Mirrors the production client so non-2xx responses surface as ResponseExceptions.
-                expectSuccess = true
             }
         }
     }

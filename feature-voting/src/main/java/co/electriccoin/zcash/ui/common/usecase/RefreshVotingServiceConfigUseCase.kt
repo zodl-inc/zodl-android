@@ -20,9 +20,10 @@ import co.electriccoin.zcash.ui.common.repository.VotingConfigSource
 class RefreshVotingServiceConfigUseCase(
     private val votingApiProvider: VotingApiProvider,
     private val votingConfigRepository: VotingConfigRepository,
+    private val votingRouteProvider: co.electriccoin.zcash.ui.common.provider.VotingRouteProvider,
 ) {
     suspend operator fun invoke() {
-        val serviceConfig = votingApiProvider.fetchServiceConfig()
+        val serviceConfig = votingApiProvider.fetchServiceConfig(votingRouteProvider.decision())
         votingConfigRepository.store(
             VotingConfigSnapshot(
                 serviceConfig = serviceConfig,

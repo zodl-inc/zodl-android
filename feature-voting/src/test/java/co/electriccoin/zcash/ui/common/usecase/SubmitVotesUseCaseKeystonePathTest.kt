@@ -15,12 +15,15 @@ import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VoteOption
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
+import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
+import co.electriccoin.zcash.ui.common.provider.VotingRouteProvider
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSessionHolder
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
@@ -116,6 +119,44 @@ class SubmitVotesUseCaseKeystonePathTest {
             coVerify(exactly = 1) { env.votingKeystoneSessionHolder.setBallotIntents(env.roundId, any()) }
         }
 
+    @Test
+    fun `a Tor and chain config flip after acquire does not change the Keystone pipeline's route`() =
+        runTest {
+            val env = Env()
+            val initial = VotingRouteDecision(isTor = true, isCustomServer = false)
+            val flipped = VotingRouteDecision(isTor = false, isCustomServer = true)
+            var current = initial
+            coEvery { env.votingRouteProvider.acquire() } answers {
+                VotingRoute(current, mockk(relaxed = true)).also { current = flipped }
+            }
+            coEvery { env.votingRouteProvider.decision(any()) } answers { current }
+            coEvery {
+                env.votingKeystoneSessionHolder.runToCompletion(env.roundId, any(), any())
+            } returns env.runReport(quiescence = VotingRoundQuiescence.NoWorkLeft, completedProposals = 1)
+
+            env.invoke(choices = mapOf(1 to 0))
+
+            coVerify(exactly = 1) { env.votingRouteProvider.acquire() }
+            coVerify(exactly = 0) { env.votingRouteProvider.decision(any()) }
+            coVerify(exactly = 1) { env.resolveVotingRoundSession(env.roundId, initial) }
+            coVerify(exactly = 0) { env.resolveVotingRoundSession(any(), flipped) }
+            coVerify(exactly = 1) {
+                env.votingKeystoneSessionHolder.ensureDelegationPipeline(
+                    roundId = env.roundId,
+                    votingDbPath = any(),
+                    accountUuidString = any(),
+                    networkId = any(),
+                    proposals = any(),
+                    hotkeySecret = any(),
+                    chainEndpoints = any(),
+                    ceremonyStartSeconds = any(),
+                    voteEndTimeSeconds = any(),
+                    delegationInputs = any(),
+                    decision = initial
+                )
+            }
+        }
+
     /** Shared fixture wiring for the Keystone [SubmitVotesUseCase.invoke] path. */
     private class Env {
         val roundIdBytes = ByteArray(32) { 0x0E }
@@ -134,6 +175,11 @@ class SubmitVotesUseCaseKeystonePathTest {
         val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
         val getWalletSeedBytes = mockk<GetWalletSeedBytesUseCase>()
         val synchronizer = mockk<Synchronizer>()
+        val votingRouteProvider =
+            mockk<VotingRouteProvider> {
+                coEvery { acquire() } returns
+                    VotingRoute(VotingRouteDecision(isTor = false, isCustomServer = false), null)
+            }
 
         private val useCase =
             SubmitVotesUseCase(
@@ -147,7 +193,8 @@ class SubmitVotesUseCaseKeystonePathTest {
                 votingShareTrackingScheduler = votingShareTrackingScheduler,
                 votingRecoveryRepository = votingRecoveryRepository,
                 votingKeystoneSessionHolder = votingKeystoneSessionHolder,
-                votingProofPrecomputeRepository = votingProofPrecomputeRepository
+                votingProofPrecomputeRepository = votingProofPrecomputeRepository,
+                votingRouteProvider = votingRouteProvider
             )
 
         init {
@@ -167,7 +214,7 @@ class SubmitVotesUseCaseKeystonePathTest {
             every { synchronizer.network } returns ZcashNetwork.Testnet
             coEvery { synchronizer.getTreeState(any()) } returns ByteArray(32)
 
-            coEvery { resolveVotingRoundSession(roundId) } returns
+            coEvery { resolveVotingRoundSession(roundId, any()) } returns
                 VotingRoundSessionContext(session = session, serviceConfig = serviceConfig)
             coEvery { getSelectedWalletAccount() } returns selectedAccount
             coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer

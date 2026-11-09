@@ -3,7 +3,6 @@ package co.electriccoin.zcash.ui.common.usecase
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.VotingRoundSession
 import cash.z.ecc.android.sdk.exception.TorInitializationErrorException
-import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.fixture.AccountFixture
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
@@ -19,11 +18,14 @@ import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VoteOption
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
+import co.electriccoin.zcash.ui.common.model.voting.VotingRoute
+import co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
+import co.electriccoin.zcash.ui.common.provider.VotingRouteProvider
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSessionHolder
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
@@ -107,7 +109,7 @@ class SubmitVotesUseCaseSuccessPathTest {
                 env.votingProofPrecomputeRepository.cancelAndAwaitPrecompute(env.accountUuidString, env.roundId)
                 env.votingCryptoClient.openRoundSession(
                     dbHandle = any(),
-                    torLease = any(),
+                    route = any(),
                     roundId = any(),
                     proposals = any(),
                     hotkeySecret = any(),
@@ -127,7 +129,8 @@ class SubmitVotesUseCaseSuccessPathTest {
             val env = Env()
             env.stubRun(env.runReport(quiescence = VotingRoundQuiescence.NoWorkLeft, completedProposals = 1))
             val torLease = mockk<VotingTorLease>(relaxed = true)
-            coEvery { env.synchronizer.acquireVotingTorLease() } returns torLease
+            coEvery { env.votingRouteProvider.acquire() } returns
+                VotingRoute(VotingRouteDecision(isTor = true, isCustomServer = false), torLease)
 
             env.invoke(choices = mapOf(1 to 0))
 
@@ -147,7 +150,8 @@ class SubmitVotesUseCaseSuccessPathTest {
             val env = Env()
             env.stubRun(env.runReport(quiescence = VotingRoundQuiescence.NoWorkLeft, completedProposals = 1))
             val torLease = mockk<VotingTorLease>(relaxed = true)
-            coEvery { env.synchronizer.acquireVotingTorLease() } returns torLease
+            coEvery { env.votingRouteProvider.acquire() } returns
+                VotingRoute(VotingRouteDecision(isTor = true, isCustomServer = false), torLease)
             coEvery { env.roundSession.close() } throws IllegalStateException("native close failed")
 
             // Milan's review of PR #6: the votes are already on chain and recorded by this point,
@@ -164,11 +168,12 @@ class SubmitVotesUseCaseSuccessPathTest {
         runTest {
             val env = Env()
             val torLease = mockk<VotingTorLease>(relaxed = true)
-            coEvery { env.synchronizer.acquireVotingTorLease() } returns torLease
+            coEvery { env.votingRouteProvider.acquire() } returns
+                VotingRoute(VotingRouteDecision(isTor = true, isCustomServer = false), torLease)
             coEvery {
                 env.votingCryptoClient.openRoundSession(
                     dbHandle = any(),
-                    torLease = any(),
+                    route = any(),
                     roundId = any(),
                     proposals = any(),
                     hotkeySecret = any(),
@@ -190,15 +195,61 @@ class SubmitVotesUseCaseSuccessPathTest {
         }
 
     @Test
-    fun `a Tor init failure still closes the voting DB`() =
+    fun `a Tor init failure fails closed before the voting DB is opened`() =
         runTest {
             val env = Env()
-            coEvery { env.synchronizer.acquireVotingTorLease() } throws
+            coEvery { env.votingRouteProvider.acquire() } throws
                 TorInitializationErrorException(IllegalStateException("bootstrap failed"))
 
             assertFailsWith<TorInitializationErrorException> { env.invoke(choices = mapOf(1 to 0)) }
 
-            coVerify(exactly = 1) { env.votingCryptoClient.closeVotingDb(any()) }
+            coVerify(exactly = 0) { env.votingCryptoClient.openVotingDb(any()) }
+            coVerify(exactly = 0) { env.votingCryptoClient.closeVotingDb(any()) }
+        }
+
+    @Test
+    fun `a Tor and chain config flip after acquire does not change the route of any later call`() =
+        runTest {
+            val env = Env()
+            env.stubRun(env.runReport(quiescence = VotingRoundQuiescence.NoWorkLeft, completedProposals = 1))
+            val initial = VotingRouteDecision(isTor = true, isCustomServer = false)
+            val flipped = VotingRouteDecision(isTor = false, isCustomServer = true)
+            val torLease = mockk<VotingTorLease>(relaxed = true)
+            var current = initial
+            // The user turns Tor off and selects a custom chain right after the route is taken: any
+            // later read of the preference (acquire() or decision()) would see the flipped value.
+            coEvery { env.votingRouteProvider.acquire() } answers {
+                VotingRoute(current, if (current.isTor) torLease else null).also { current = flipped }
+            }
+            coEvery { env.votingRouteProvider.decision(any()) } answers { current }
+
+            val result = env.invoke(choices = mapOf(1 to 0))
+
+            assertEquals(1, result.submittedProposalCount)
+            coVerify(exactly = 1) { env.votingRouteProvider.acquire() }
+            coVerify(exactly = 0) { env.votingRouteProvider.decision(any()) }
+            // fetchServiceConfig/fetchAllRounds run inside these two use cases with the decision
+            // passed here (ResolveVotingRoundSessionUseCase forwards it unchanged).
+            coVerify(exactly = 1) { env.prepareVotingRound(env.roundId, initial) }
+            coVerify(exactly = 0) { env.prepareVotingRound(any(), flipped) }
+            coVerify(exactly = 1) { env.resolveVotingRoundSession(env.roundId, initial) }
+            coVerify(exactly = 0) { env.resolveVotingRoundSession(any(), flipped) }
+            coVerify(exactly = 1) {
+                env.votingCryptoClient.openRoundSession(
+                    dbHandle = any(),
+                    route = match { it.decision == initial && it.torLease === torLease },
+                    roundId = any(),
+                    proposals = any(),
+                    hotkeySecret = any(),
+                    chainEndpoints = any(),
+                    operationEpoch = any(),
+                    configuredHelperUrls = any(),
+                    voteTreeNodeUrls = any(),
+                    ceremonyStartSeconds = any(),
+                    voteEndTimeSeconds = any()
+                )
+            }
+            coVerify(exactly = 1) { torLease.release() }
         }
 
     /**
@@ -225,6 +276,11 @@ class SubmitVotesUseCaseSuccessPathTest {
         val getWalletSeedBytes = mockk<GetWalletSeedBytesUseCase>()
         val synchronizer = mockk<Synchronizer>()
         val roundSession = mockk<VotingRoundSession>(relaxed = true)
+        val votingRouteProvider =
+            mockk<VotingRouteProvider> {
+                coEvery { acquire() } returns
+                    VotingRoute(VotingRouteDecision(isTor = false, isCustomServer = false), null)
+            }
 
         private val useCase =
             SubmitVotesUseCase(
@@ -238,7 +294,8 @@ class SubmitVotesUseCaseSuccessPathTest {
                 votingShareTrackingScheduler = votingShareTrackingScheduler,
                 votingRecoveryRepository = votingRecoveryRepository,
                 votingKeystoneSessionHolder = votingKeystoneSessionHolder,
-                votingProofPrecomputeRepository = votingProofPrecomputeRepository
+                votingProofPrecomputeRepository = votingProofPrecomputeRepository,
+                votingRouteProvider = votingRouteProvider
             )
 
         init {
@@ -257,15 +314,14 @@ class SubmitVotesUseCaseSuccessPathTest {
                 )
             every { synchronizer.network } returns ZcashNetwork.Testnet
             coEvery { synchronizer.getTreeState(any()) } returns ByteArray(32)
-            coEvery { synchronizer.acquireVotingTorLease() } throws TorUnavailableException()
 
-            coEvery { resolveVotingRoundSession(roundId) } returns
+            coEvery { resolveVotingRoundSession(roundId, any()) } returns
                 VotingRoundSessionContext(session = session, serviceConfig = serviceConfig)
             coEvery { getSelectedWalletAccount() } returns selectedAccount
             coEvery { getWalletSeedBytes() } returns ByteArray(32)
             coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
             coEvery { synchronizerProvider.getVotingWalletDbPath() } returns "/tmp/voting-wallet.db"
-            coEvery { prepareVotingRound(roundId) } returns
+            coEvery { prepareVotingRound(roundId, any()) } returns
                 VotingRoundPreparationResult.Ready(
                     roundId = roundId,
                     bundleCount = 1,
@@ -277,7 +333,7 @@ class SubmitVotesUseCaseSuccessPathTest {
             coEvery {
                 votingCryptoClient.openRoundSession(
                     dbHandle = any(),
-                    torLease = any(),
+                    route = any(),
                     roundId = any(),
                     proposals = any(),
                     hotkeySecret = any(),

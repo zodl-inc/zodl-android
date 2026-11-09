@@ -104,6 +104,7 @@ class VotingKeystoneRepositoryImpl(
     private val synchronizerProvider: SynchronizerProvider,
     private val keystoneSDKProvider: KeystoneSDKProvider,
     private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository,
+    private val votingRouteProvider: co.electriccoin.zcash.ui.common.provider.VotingRouteProvider,
 ) : VotingKeystoneRepository {
     @Suppress("LongMethod")
     override suspend fun createPcztEncoder(
@@ -112,7 +113,9 @@ class VotingKeystoneRepositoryImpl(
     ): VotingKeystoneSigningBundle =
         withContext(Dispatchers.IO) {
             val selectedAccount = requireSelectedKeystoneAccount(accountUuid)
-            val sessionContext = resolveVotingRoundSession(roundId)
+            // One decision for the whole Sign-screen entry (ZIP #10 rule 1); the session holder takes its own lease.
+            val decision = votingRouteProvider.decision()
+            val sessionContext = resolveVotingRoundSession(roundId, decision)
             val session = sessionContext.session
             val sessionRoundId = session.voteRoundId.toHex()
             require(sessionRoundId.equals(roundId, ignoreCase = true)) {
@@ -197,7 +200,8 @@ class VotingKeystoneRepositoryImpl(
                 chainEndpoints = voteServerUrls,
                 ceremonyStartSeconds = session.ceremonyStart.epochSecond,
                 voteEndTimeSeconds = session.voteEndTime.epochSecond,
-                delegationInputs = delegationInputs
+                delegationInputs = delegationInputs,
+                decision = decision
             )
 
             val request =
