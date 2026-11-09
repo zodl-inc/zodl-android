@@ -1,7 +1,5 @@
 package co.electriccoin.zcash.di
 
-import co.electriccoin.zcash.ui.BuildConfig
-import co.electriccoin.zcash.ui.common.privateconnection.NoPrivateConnectionHealth
 import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealthOwner
 import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealthOwnerImpl
 import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionProbe
@@ -66,22 +64,18 @@ val repositoryModule =
         singleOf(::WalletSnapshotRepositoryImpl) bind WalletSnapshotRepository::class
         singleOf(::ApplicationStateRepositoryImpl) bind ApplicationStateRepository::class
         single { EvaluationInterval(minimumInterval = MINIMUM_EVALUATION_INTERVAL) }
-        // The request-health outage detection (MOB-2300): on in debug builds only until it has been validated
-        // on devices; the previous detection stays in charge elsewhere.
-        single { RequestHealthDetection { BuildConfig.DEBUG } }
+        // The request-health outage detection (MOB-2300), on in every build type: the outage is confirmed from the
+        // evidence of the OHTTP requests, and the previous probe with two confirmations no longer reports it.
+        single { RequestHealthDetection { true } }
         single { PrivateConnectionProbe(application = get()) }
         single<PrivateConnectionHealthOwner> {
-            if (BuildConfig.DEBUG) {
-                PrivateConnectionHealthOwnerImpl(
-                    synchronizerProvider = get(),
-                    probe = get(),
-                    applicationStateProvider = get(),
-                    appAccessLockProvider = get(),
-                    networkConnectivityProvider = get(),
-                )
-            } else {
-                NoPrivateConnectionHealth
-            }
+            PrivateConnectionHealthOwnerImpl(
+                synchronizerProvider = get(),
+                probe = get(),
+                applicationStateProvider = get(),
+                appAccessLockProvider = get(),
+                networkConnectivityProvider = get(),
+            )
         }
         singleOf(::AutomaticServerRepositoryImpl) bind AutomaticServerRepository::class
         singleOf(::SwapRepositoryImpl) bind SwapRepository::class
