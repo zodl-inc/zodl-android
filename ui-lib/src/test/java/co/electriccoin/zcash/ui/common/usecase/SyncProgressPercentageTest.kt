@@ -55,8 +55,14 @@ class SyncProgressPercentageTest {
 
     @Test
     fun completedAndStoppedSyncsDoNotShowAnyProgressBanner() {
+        val restoringStates =
+            listOf(
+                WalletRestoringState.SYNCING,
+                WalletRestoringState.RESTORING,
+                WalletRestoringState.RESYNCING
+            )
         for (status in Synchronizer.Status.entries.filter { it != Synchronizer.Status.SYNCING }) {
-            for (restoring in listOf(WalletRestoringState.SYNCING, WalletRestoringState.RESTORING, WalletRestoringState.RESYNCING)) {
+            for (restoring in restoringStates) {
                 val snap = snapshot(1f, restoring).copy(status = status)
                 assertNull(syncingMessageFor(snap, true, true), "$status / $restoring")
             }

@@ -176,7 +176,8 @@ class Zip321ParseUriValidationUseCaseTest {
         runTest {
             val uri = "zcash:$address?amount=1&address.2=$address&amount.2=2"
             val parsed = assertIs<Zip321ParseUriValidation.Valid>(parser()(uri))
-            for (account in listOf<WalletAccount>(mockk<ZodlAccount>(), mockk<KeystoneAccount>(), mockk<LedgerAccount>())) {
+            val wallets = listOf<WalletAccount>(mockk<ZodlAccount>(), mockk<KeystoneAccount>(), mockk<LedgerAccount>())
+            for (account in wallets) {
                 for (flow in listOf(ScanFlow.SEND, ScanFlow.HOMEPAGE)) {
                     val accounts = mockk<AccountDataSource>()
                     val software = mockk<ZashiProposalRepository>(relaxed = true)
