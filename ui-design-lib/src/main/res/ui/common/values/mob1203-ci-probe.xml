@@ -1,4 +1,0 @@
-<resources>
-    <!-- Temporary missing translation: prove the PR check rejects new debt. Removed after CI validation. -->
-    <string name="mob1203_ci_negative_probe">CI negative probe</string>
-</resources>
