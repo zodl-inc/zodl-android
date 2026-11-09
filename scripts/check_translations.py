@@ -92,25 +92,32 @@ def compatible(source, target, android=False):
 def apple_units(node, path=()):
     """A unit is identified by its device/plural selector, independent of locale."""
     if "stringUnit" in node:
-        yield path, node["stringUnit"]
+        unit = dict(node["stringUnit"])
+        for name, substitution in node.get("substitutions", {}).items():
+            unit["value"] = unit["value"].replace(
+                f"%#@{name}@", f"%{substitution['argNum']}${substitution['formatSpecifier']}"
+            )
+        yield path, unit
     for dimension, variants in node.get("variations", {}).items():
         if "other" not in variants:
             raise ValueError(f"{dimension} variation has no 'other' fallback")
         for variant, child in variants.items():
             yield from apple_units(child, path + ((dimension, variant),))
+    for name, substitution in node.get("substitutions", {}).items():
+        yield from apple_units(substitution, path + (("substitution", name),))
 
 
 def apple_reference(units, path):
     if path in units:
         return units[path]
-    fallback = tuple((dimension, "other") for dimension, _ in path)
+    fallback = tuple((dimension, variant if dimension == "substitution" else "other") for dimension, variant in path)
     if fallback in units:
         return units[fallback]
     if () in units:
         return units[()]
     # A scalar translation can cover every source device variant. Compare with the
     # source's default variant; every explicit localized variant is checked separately.
-    return next((unit for p, unit in units.items() if all(v == "other" for _, v in p)), None)
+    return next((unit for p, unit in units.items() if all(d == "substitution" or v == "other" for d, v in p)), None)
 
 
 def apple_issues(root):

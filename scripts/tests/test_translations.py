@@ -100,6 +100,16 @@ class TranslationTests(unittest.TestCase):
         english = {"variations": {"plural": {"one": unit("%lld item"), "other": unit("%lld items")}}}
         self.assertEqual({i.defect for i in self.apple(english, unit("%lld elementos"))}, {"missing-plural"})
 
+    def test_apple_substitution_plural_units_and_argument_types_are_checked(self):
+        def plural(value):
+            return {**unit("%#@count@"), "substitutions": {"count": {
+                "argNum": 1, "formatSpecifier": "lld",
+                "variations": {"plural": {"one": unit("%lld item"), "other": unit(value)}}
+            }}}
+        self.assertEqual(self.apple(plural("%lld items"), plural("%lld elementos")), set())
+        issues = self.apple(plural("%lld items"), plural("%@ elementos"))
+        self.assertEqual({(i.defect, i.variant) for i in issues}, {("format", "substitution:count/plural:other")})
+
     def test_android_missing_empty_excluded_and_styled_values(self):
         self.assertEqual({i.defect for i in self.android('<string name="hello">Hello</string>')}, {"missing"})
         self.assertEqual({i.defect for i in self.android('<string name="hello">Hello</string>', '<string name="hello"> </string>')}, {"empty"})
