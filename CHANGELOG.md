@@ -7,6 +7,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.20.0 (3807)] - 2026-11-09
+
 ### Changed:
 
 - The app now connects to Zcash servers through OHTTP relays by default for private network

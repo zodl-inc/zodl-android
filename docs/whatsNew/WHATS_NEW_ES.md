@@ -14,6 +14,17 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.20.0 (3807)] - 2026-11-09
+
+### Añadido:
+
+- Añadimos una conexión privada que usa OHTTP para ocultar tu dirección IP a los servidores de Zcash.
+
+### Cambiado:
+
+- Las billeteras nuevas y las que usaban el cambio automático de servidor ahora usan Privado de forma predeterminada. Tu servidor personalizado no cambia.
+- Elegir servidor ahora ofrece Privado, Público y Manual.
+
 ## [3.19.0 (3234)] - 2026-10-29
 
 ### Añadido:
