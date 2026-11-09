@@ -55,12 +55,16 @@ object Flexa {
     @Volatile
     internal var directConnectionsAllowed: (() -> Boolean)? = null
 
+    /** False until [init] ran: a process restored without it must not connect to Flexa directly. */
+    @Volatile
+    internal var configured: Boolean = false
+
     /**
      * Whether the SDK may connect to Flexa directly (images, web views) right now: see
      * [FlexaClientConfiguration.directConnectionsAllowed]. Asked on every image download and before a web
      * view loads, so a change (e.g. the user turns Tor on) applies at once.
      */
-    fun allowsDirectConnections(): Boolean = directConnectionsAllowed?.invoke() ?: true
+    fun allowsDirectConnections(): Boolean = configured && (directConnectionsAllowed?.invoke() ?: true)
     private val _appAccounts = MutableStateFlow<List<AssetAccount>>(emptyList())
     val appAccounts: StateFlow<List<AssetAccount>> = _appAccounts
     private val serializerProvider = SerializerProvider()
@@ -90,6 +94,7 @@ object Flexa {
         context = config.context.applicationContext
         okHttpClientCustomizer = config.okHttpClientCustomizer
         directConnectionsAllowed = config.directConnectionsAllowed
+        configured = true
         themeConfig = config.theme
         setAssetAccounts(config.assetAccounts)
         setUniqueIdentifier()

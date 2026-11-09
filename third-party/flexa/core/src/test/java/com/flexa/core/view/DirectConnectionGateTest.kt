@@ -8,6 +8,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
+import org.junit.Before
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -38,9 +39,30 @@ class DirectConnectionGateTest {
     private fun download() =
         client.newCall(Request.Builder().url("https://images.example/logo.png").build()).execute().close()
 
+    @Before
+    fun setUp() {
+        Flexa.configured = true
+    }
+
     @After
     fun tearDown() {
         Flexa.directConnectionsAllowed = null
+        Flexa.configured = false
+    }
+
+    @Test
+    fun `before init nothing is allowed, whatever the gate says`() {
+        Flexa.configured = false
+        Flexa.directConnectionsAllowed = { true }
+
+        assertFalse(Flexa.allowsDirectConnections())
+        try {
+            download()
+            throw AssertionError("the download should have failed")
+        } catch (expected: IOException) {
+            // a restored process shows the placeholder until the app has set the gate
+        }
+        assertEquals(0, sent)
     }
 
     @Test

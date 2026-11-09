@@ -22,6 +22,10 @@ update PRs automatically.
   shows a disclosure and loads the page only after the user agrees). The app returns false on a private
   connection or with Tor on (`FlexaRepositoryImpl`).
 - `0003-redact-authorization-in-debug-logs.patch` redacts `Authorization` in the SDK's debug HTTP logs.
+- `0004-consent-follows-privacy-mode.patch` makes `DirectConnectionConsent` ask `Flexa.allowsDirectConnections()` while
+  it is on screen: a web view loads by itself when the app allows direct connections. An agreement the user gives
+  while they are off is not saved and ends when they turn off while the page is shown or the screen is left. Before
+  `Flexa.init` ran nothing is allowed (`Flexa.configured`), so a restored process does not connect directly.
 - `build.gradle.kts` replaces upstream's Groovy build files: the dependencies and versions are those of
   the published 1.1.3 runtime variants; `RELEASE_DATE` is the upstream release date instead of the build
   date, and `DEBUG_API_HOST` is always null, as in upstream's release build.
