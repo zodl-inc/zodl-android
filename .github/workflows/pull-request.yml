@@ -236,6 +236,10 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0 # to fetch all commits
+      - name: Check translations and checker fixtures
+        run: |
+          python3 -m unittest discover -s scripts/tests -v
+          python3 scripts/check_translations.py
       - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
         timeout-minutes: 30
         uses: ./.github/actions/setup-sdk-companion
@@ -257,8 +261,9 @@ jobs:
         # ~45+ min on cold cargo/target cache. Warm-cache runs complete in <30 min.
         timeout-minutes: 120
         run: |
-          ./gradlew :configuration-api-lib:check :crash-lib:check :preference-api-lib:check :spackle-lib:check :ui-design-lib:check
+          ./gradlew :configuration-api-lib:check :crash-lib:check :preference-api-lib:check :spackle-lib:check :ui-design-lib:check :preference-impl-android-lib:testDebugUnitTest
           ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest :feature-ledger:testZcashmainnetStoreDebugUnitTest :feature-migration:testZcashmainnetStoreDebugUnitTest :feature-voting:testZcashmainnetStoreDebugUnitTest :feature-viewing-key:testZcashmainnetStoreDebugUnitTest
+          python3 scripts/verify-unit-test-results.py
       - name: Collect Artifacts
         if: ${{ always() }}
         timeout-minutes: 1
@@ -268,7 +273,7 @@ jobs:
 
           mkdir ${ARTIFACTS_DIR_PATH}
 
-          zip -r ${RESULTS_ZIP_PATH} . -i \*build/reports/\* \*/build/kover/html/\* \*/build/kover/xml/report.xml
+          zip -r ${RESULTS_ZIP_PATH} . -i \*build/reports/\* \*/build/kover/html/\* \*/build/kover/xml/report.xml \*/build/test-results/\*.xml
       - name: Upload Artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
