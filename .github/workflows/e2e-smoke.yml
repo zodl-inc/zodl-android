@@ -84,7 +84,7 @@ jobs:
         with:
           name: zodl-android-debug-apk
           path: app/build/outputs/apk/zcashmainnetInternal/debug/*.apk
-          retention-days: 30
+          retention-days: 1
 
   # Speedrun v0.4.5's text insertion checks only UiAutomation.findFocus(),
   # which intermittently misses Zodl's focused Compose address field. Its
@@ -398,7 +398,7 @@ jobs:
             ${{ runner.temp }}/speedrun-safe-results/metrics/report.json
             ${{ runner.temp }}/speedrun-safe-results/metrics/report.md
             ${{ runner.temp }}/speedrun-safe-results/metrics/report.html
-          retention-days: 1
+          retention-days: 30
 
   # Phase K1 of KEYSTONE_E2E_CI_PLAN.md ("Android pairing canary"): drives
   # a real Keystone Cypherpunk simulator through pairing with the app via
