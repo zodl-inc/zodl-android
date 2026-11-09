@@ -58,20 +58,5 @@ step. Keep app tests here and device/E2E smoke tests in `zodl-qa`.
 
 See [the follow-up roadmap](unit-test-roadmap.md) for proposed additional suites.
 
-## Require the Android unit-test check on main
-
-The implementation includes `.github/rulesets/require-unit-tests-main.json`, a
-main-only required check for GitHub Actions' `test_kotlin_modules`. It does not
-replace or widen any existing merge/release rules. The connected implementation
-account has Maintain access, and GitHub denied ruleset creation (404), so the live
-requirement still needs a repository administrator to apply this payload once:
-
-```sh
-gh api --method POST repos/zodl-inc/zodl-android-private/rulesets \
-  --input .github/rulesets/require-unit-tests-main.json
-```
-
-Check Settings → Rules → Rulesets first to avoid creating a duplicate. After
-creation, verify the active rule applies to `main` and names
-`test_kotlin_modules` with GitHub Actions as its source. A failing PR check must
-block merging; a successful run must satisfy the requirement.
+Repository merge rules are unchanged. These checks run in CI; this change does
+not add a required-status-check rule.
