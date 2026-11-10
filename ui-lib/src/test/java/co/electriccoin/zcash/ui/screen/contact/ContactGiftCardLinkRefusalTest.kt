@@ -103,7 +103,12 @@ class ContactGiftCardLinkRefusalTest {
                     validateGenericABContactName = validateName,
                     saveABContact = SaveABContactUseCase(addressBookRepository, navigationRouter),
                     navigationRouter = navigationRouter,
-                    navigateToSelectSwapBlockchain = mockk(relaxed = true)
+                    navigateToSelectSwapBlockchain = mockk(relaxed = true),
+                    lookUpZnsRecipient =
+                        mockk {
+                            coEvery { this@mockk(any()) } returns
+                                co.electriccoin.zcash.ui.common.zns.ZnsLookupResult.NotAName
+                        }
                 )
             val state = observe(vm.state)
             state().walletAddress.onValueChange(GiftCardSecretFixture.LINK)

@@ -24,6 +24,7 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitProposalUseCase
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
+import co.electriccoin.zcash.ui.common.zns.ZnsSendRecipientRepository
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ChipButtonState
@@ -59,6 +60,7 @@ class ReviewTransactionVM(
     private val getExchangeRate: GetExchangeRateUseCase,
     private val navigationRouter: NavigationRouter,
     private val submitProposal: SubmitProposalUseCase,
+    private val znsSendRecipientRepository: ZnsSendRecipientRepository,
 ) : ViewModel() {
     private val isReceiverExpanded = MutableStateFlow(false)
 
@@ -171,7 +173,12 @@ class ReviewTransactionVM(
                 ),
                 ReceiverState(
                     title = stringRes(R.string.send_to),
-                    name = addressBookContact?.name?.let { stringRes(it) },
+                    // A saved contact for the address wins over the name the user typed.
+                    name =
+                        addressBookContact?.name?.let { stringRes(it) }
+                            ?: znsSendRecipientRepository
+                                .nameFor(transactionProposal.destination.address)
+                                ?.let { stringRes(it.displayName) },
                     address = stringResByAddress(transactionProposal.destination.address, Ellipsize.NONE)
                 ),
                 SenderState(

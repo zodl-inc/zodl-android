@@ -64,5 +64,10 @@ class SendViewModelLedgerTest {
             observeWalletAccounts = mockk(relaxed = true),
             navigateToSelectRecipient = mockk(relaxed = true),
             navigationRouter = mockk<NavigationRouter>(relaxed = true),
+            validateAddress = mockk(relaxed = true),
+            lookUpZnsRecipient = mockk(relaxed = true),
+            znsSendRecipientRepository =
+                co.electriccoin.zcash.ui.common.zns
+                    .ZnsSendRecipientRepository(),
         )
 }

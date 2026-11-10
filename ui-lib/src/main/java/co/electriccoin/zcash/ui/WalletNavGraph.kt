@@ -244,6 +244,8 @@ import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackup
 import co.electriccoin.zcash.ui.screen.warning.WrapNotEnoughSpace
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
 import co.electriccoin.zcash.ui.screen.whatsnew.WrapWhatsNew
+import co.electriccoin.zcash.ui.screen.zns.settings.ZnsSettingsArgs
+import co.electriccoin.zcash.ui.screen.zns.settings.ZnsSettingsScreen
 
 fun NavGraphBuilder.walletNavGraph(
     storageCheckViewModel: StorageCheckViewModel,
@@ -377,6 +379,7 @@ fun NavGraphBuilder.walletNavGraph(
         composable<AddGenericABContactArgs> { AddGenericABContactScreen(it.toRoute()) }
         composable<UpdateGenericABContactArgs> { UpdateGenericABContactScreen(it.toRoute()) }
         composable<TorSettingsArgs> { TorSettingsScreen() }
+        composable<ZnsSettingsArgs> { ZnsSettingsScreen() }
         composable<ThemeSettingsArgs> { ThemeSettingsScreen() }
         dialogComposable<ThemeDarkLookArgs> { ThemeDarkLookScreen(it.toRoute()) }
         composable<TorOptInArgs> { TorOptInScreen() }

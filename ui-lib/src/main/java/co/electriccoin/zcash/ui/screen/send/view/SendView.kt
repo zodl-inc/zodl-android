@@ -63,6 +63,8 @@ import co.electriccoin.zcash.ui.common.appbar.ZashiMainTopAppBarState
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppbar
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
+import co.electriccoin.zcash.ui.common.zns.ZnsFieldStatus
+import co.electriccoin.zcash.ui.common.zns.ZnsFieldStatusLine
 import co.electriccoin.zcash.ui.design.component.AppAlertDialog
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.BlankSurface
@@ -93,6 +95,7 @@ import co.electriccoin.zcash.ui.screen.send.model.MemoState
 import co.electriccoin.zcash.ui.screen.send.model.RecipientAddressState
 import co.electriccoin.zcash.ui.screen.send.model.SendAddressBookState
 import co.electriccoin.zcash.ui.screen.send.model.SendStage
+import co.electriccoin.zcash.ui.screen.send.model.ZnsRecipientStatus
 import kotlinx.coroutines.launch
 
 // TODO [#1260]: Cover Send screens UI with tests
@@ -451,15 +454,25 @@ fun SendFormAddressTextField(
 
         Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingSmall))
 
-        val recipientAddressValue = recipientAddressState.address
+        val recipientAddressValue = recipientAddressState.fieldText
+        val znsStatus = recipientAddressState.zns
         val recipientAddressError =
-            if (
-                recipientAddressValue.isNotEmpty() &&
-                recipientAddressState.type is AddressType.Invalid
-            ) {
-                stringResource(id = R.string.send_error_invalidAddress)
-            } else {
-                null
+            when {
+                znsStatus is ZnsRecipientStatus.Failed -> {
+                    znsStatus.message.getValue()
+                }
+
+                znsStatus != null -> {
+                    null
+                }
+
+                recipientAddressValue.isNotEmpty() && recipientAddressState.type is AddressType.Invalid -> {
+                    stringResource(id = R.string.send_error_invalidAddress)
+                }
+
+                else -> {
+                    null
+                }
             }
 
         ZashiTextField(
@@ -545,6 +558,20 @@ fun SendFormAddressTextField(
                     }
                 ),
         )
+
+        when (znsStatus) {
+            is ZnsRecipientStatus.LookingUp -> {
+                ZnsFieldStatusLine(ZnsFieldStatus.LookingUp)
+            }
+
+            is ZnsRecipientStatus.Resolved -> {
+                ZnsFieldStatusLine(ZnsFieldStatus.Resolved(recipientAddressState.address))
+            }
+
+            is ZnsRecipientStatus.Failed, null -> {
+                Unit
+            }
+        }
     }
 }
 

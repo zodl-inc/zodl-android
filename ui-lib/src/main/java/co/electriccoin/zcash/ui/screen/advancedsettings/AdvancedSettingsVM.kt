@@ -27,6 +27,7 @@ import co.electriccoin.zcash.ui.screen.advancedsettings.debug.DebugArgs
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs
 import co.electriccoin.zcash.ui.screen.exportvk.ExportVKArgs
 import co.electriccoin.zcash.ui.screen.tor.settings.TorSettingsArgs
+import co.electriccoin.zcash.ui.screen.zns.settings.ZnsSettingsArgs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -135,6 +136,11 @@ class AdvancedSettingsVM(
                         onClick = ::onPrivacyClick
                     ),
                     ListItemState(
+                        title = stringRes(R.string.zns_settings_item),
+                        bigIcon = imageRes(R.drawable.ic_settings_address_book),
+                        onClick = ::onZnsNamesClick
+                    ),
+                    ListItemState(
                         title = stringRes(R.string.advanced_settings_crash_reporting),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_crash_reporting),
                         onClick = ::onCrashReportingClick
@@ -158,6 +164,8 @@ class AdvancedSettingsVM(
     }
 
     private fun onPrivacyClick() = navigationRouter.forward(TorSettingsArgs)
+
+    private fun onZnsNamesClick() = navigationRouter.forward(ZnsSettingsArgs)
 
     fun onBack() = navigationRouter.back()
 

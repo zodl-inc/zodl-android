@@ -165,6 +165,7 @@ import co.electriccoin.zcash.ui.common.usecase.WalletBackupMessageUseCase
 import co.electriccoin.zcash.ui.common.usecase.WalletBackupMessageUseCaseImpl
 import co.electriccoin.zcash.ui.common.usecase.Zip321BuildUriUseCase
 import co.electriccoin.zcash.ui.common.usecase.Zip321ParseUriValidationUseCase
+import co.electriccoin.zcash.ui.common.zns.LookUpZnsRecipientUseCase
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.SimulateSeedNotRelevantUseCase
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.db.ExecuteDebugDBQueryUseCase
 import co.electriccoin.zcash.ui.screen.deletewallet.ResetZashiUseCase
@@ -177,6 +178,7 @@ import org.koin.dsl.module
 val useCaseModule =
     module {
         factoryOf(::ObserveFastestServersUseCase)
+        factoryOf(::LookUpZnsRecipientUseCase)
         factoryOf(::GetSelectedEndpointUseCase)
         factoryOf(::RefreshFastestServersUseCase)
         factoryOf(::PersistServerSelectionUseCase)

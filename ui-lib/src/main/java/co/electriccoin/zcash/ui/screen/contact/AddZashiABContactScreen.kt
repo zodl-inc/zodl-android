@@ -39,5 +39,7 @@ internal fun AddZashiABContactScreen(args: AddZashiABContactArgs) {
 
 @Serializable
 data class AddZashiABContactArgs(
-    val address: String?
+    val address: String?,
+    /** A label to start the contact's name with, such as the ZNS name the address was resolved from. */
+    val name: String? = null,
 )

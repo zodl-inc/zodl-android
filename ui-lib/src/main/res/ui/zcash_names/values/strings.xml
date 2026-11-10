@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="zns_settings_item">Zcash Names</string>
+    <string name="zns_settings_title">Zcash Names</string>
+    <string name="zns_settings_subtitle">Send to names like alice.zcash. When on, Zodl downloads the whole Zcash Name Service directory and looks names up on your device, so the name service never learns which name you look up. With Tor Protection on, the download goes over Tor.</string>
+    <string name="zns_settings_enable">Enable</string>
+    <string name="zns_settings_enableDesc">Send to and save contacts by name</string>
+    <string name="zns_settings_disable">Disable</string>
+    <string name="zns_settings_disableDesc">Make no requests to the name service</string>
+    <string name="zns_settings_save">Save</string>
+    <string name="zns_lookingUp">Looking up name…</string>
+    <string name="zns_resolvesTo">Resolves to %1$s</string>
+    <string name="zns_error_off">Turn on Zcash Names in Advanced Settings</string>
+    <string name="zns_error_notRegistered">This name is not registered</string>
+    <string name="zns_error_invalidAddress">This name points to an invalid address</string>
+    <string name="zns_error_unreachable">Couldn\'t reach the name service</string>
+    <string name="zns_error_changed">%1$s now points to a different address. Nothing was sent. Check the recipient.</string>
+    <string name="zns_error_unconfirmed">Couldn\'t confirm %1$s with the name service. Nothing was sent. Try again.</string>
+</resources>

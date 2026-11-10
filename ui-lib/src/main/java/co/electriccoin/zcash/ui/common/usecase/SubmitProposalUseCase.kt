@@ -5,6 +5,7 @@ import androidx.annotation.VisibleForTesting
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.datasource.SendTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
@@ -22,6 +23,10 @@ import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
+import co.electriccoin.zcash.ui.common.zns.LookUpZnsRecipientUseCase
+import co.electriccoin.zcash.ui.common.zns.ZnsConfirmation
+import co.electriccoin.zcash.ui.common.zns.ZnsSendRecipientRepository
+import co.electriccoin.zcash.ui.common.zns.ZnsSendStopped
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
@@ -45,6 +50,9 @@ class SubmitProposalUseCase(
     private val processSwapTransaction: ProcessSwapTransactionUseCase,
     private val prefillSend: PrefillSendUseCase,
     private val navigateToError: NavigateToErrorUseCase,
+    private val lookUpZnsRecipient: LookUpZnsRecipientUseCase,
+    private val znsSendRecipientRepository: ZnsSendRecipientRepository,
+    private val cancelProposalFlow: CancelProposalFlowUseCase,
 ) {
     @set:RestrictTo(RestrictTo.Scope.TESTS)
     @VisibleForTesting
@@ -56,6 +64,7 @@ class SubmitProposalUseCase(
      * unsupported-operation error instead, before any proposal is read.
      */
     suspend operator fun invoke() {
+        if (!isZnsRecipientConfirmed()) return
         try {
             biometricRepository.requestBiometrics(
                 request =
@@ -114,6 +123,32 @@ class SubmitProposalUseCase(
         } catch (_: BiometricsCancelledException) {
             // do nothing
         }
+    }
+
+    /**
+     * Looks the name of a send to a ZNS name up once more, right before anything is signed or broadcast (against the
+     * downloaded index, see [LookUpZnsRecipientUseCase.confirm]). If the name now points elsewhere, was released, or
+     * cannot be confirmed, the proposal is released, the user goes back to the send form, and nothing is sent: the
+     * address paid is never changed silently.
+     *
+     * @return true when the send may go ahead
+     */
+    @Suppress("ReturnCount")
+    private suspend fun isZnsRecipientConfirmed(): Boolean {
+        val recipient = znsSendRecipientRepository.recipient.value ?: return true
+        val proposal =
+            when (accountDataSource.getSelectedAccount()) {
+                is KeystoneAccount -> keystoneProposalRepository.getTransactionProposal()
+                is LedgerAccount -> ledgerProposalPipeline.getTransactionProposal()
+                is ViewOnlyAccount -> return true
+                is ZodlAccount -> zashiProposalRepository.getTransactionProposal()
+            }
+        if ((proposal as? SendTransactionProposal)?.destination?.address != recipient.address) return true
+        val confirmation = lookUpZnsRecipient.confirm(name = recipient.name, address = recipient.address)
+        if (confirmation == ZnsConfirmation.UNCHANGED) return true
+        cancelProposalFlow(clearSendForm = false)
+        znsSendRecipientRepository.reportStopped(ZnsSendStopped(recipient = recipient, confirmation = confirmation))
+        return false
     }
 
     private fun submitZashiProposal(proposal: TransactionProposal) {

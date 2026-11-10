@@ -114,6 +114,7 @@ import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressVM
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackupViewModel
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
 import co.electriccoin.zcash.ui.screen.whatsnew.viewmodel.WhatsNewViewModel
+import co.electriccoin.zcash.ui.screen.zns.settings.ZnsSettingsVM
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
@@ -183,6 +184,7 @@ val viewModelModule =
         viewModelOf(::WalletRestoringInfoViewModel)
         viewModelOf(::ThirdPartyScanViewModel)
         viewModelOf(::TorSettingsVM)
+        viewModelOf(::ZnsSettingsVM)
         viewModelOf(::ThemeVM)
         viewModelOf(::ThemeSettingsVM)
         viewModelOf(::ThemeDarkLookVM)
