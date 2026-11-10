@@ -2,11 +2,24 @@ package co.electriccoin.zcash.ui.screen.send.model
 
 import androidx.compose.runtime.saveable.mapSaver
 import cash.z.ecc.android.sdk.type.AddressType
+import co.electriccoin.zcash.ui.common.zns.ZnsName
+import co.electriccoin.zcash.ui.design.util.StringResource
 
+/**
+ * The send form's recipient. [address] is what the proposal pays and [type] its validation.
+ *
+ * When the user typed a ZNS name, [zns] holds the name's state and the field shows its [ZnsRecipientStatus.input].
+ * [address] is then the resolved address once the name resolves, and the typed text, marked invalid, until then.
+ */
 data class RecipientAddressState(
     val address: String,
-    val type: AddressType?
+    val type: AddressType?,
+    val zns: ZnsRecipientStatus? = null,
 ) {
+    /** The text the recipient field shows. */
+    val fieldText: String
+        get() = zns?.input ?: address
+
     companion object {
         private const val KEY_ADDRESS = "address" // $NON-NLS
         private const val KEY_TYPE = "type" // $NON-NLS
@@ -101,4 +114,28 @@ data class RecipientAddressState(
             return saverMap
         }
     }
+}
+
+/** The state of a ZNS name typed into the recipient field. */
+sealed interface ZnsRecipientStatus {
+    val name: ZnsName
+
+    /** The text the user typed, such as `Alice.zec`. */
+    val input: String
+
+    data class LookingUp(
+        override val name: ZnsName,
+        override val input: String,
+    ) : ZnsRecipientStatus
+
+    data class Resolved(
+        override val name: ZnsName,
+        override val input: String,
+    ) : ZnsRecipientStatus
+
+    data class Failed(
+        override val name: ZnsName,
+        override val input: String,
+        val message: StringResource,
+    ) : ZnsRecipientStatus
 }

@@ -1,7 +1,10 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import cash.z.ecc.android.sdk.model.WalletAddress
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.datasource.RegularTransactionProposal
+import co.electriccoin.zcash.ui.common.datasource.SendTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
@@ -19,6 +22,12 @@ import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
+import co.electriccoin.zcash.ui.common.zns.LookUpZnsRecipientUseCase
+import co.electriccoin.zcash.ui.common.zns.ZnsConfirmation
+import co.electriccoin.zcash.ui.common.zns.ZnsName
+import co.electriccoin.zcash.ui.common.zns.ZnsSendRecipient
+import co.electriccoin.zcash.ui.common.zns.ZnsSendRecipientRepository
+import co.electriccoin.zcash.ui.common.zns.ZnsSendStopped
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionArgs
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressArgs
 import io.mockk.coEvery
@@ -33,6 +42,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 
 /**
  * [SubmitProposalUseCase] is gated by a biometric prompt and then branches on account type:
@@ -175,6 +185,70 @@ class SubmitProposalUseCaseTest {
             verify(exactly = 1) { fx.navigationRouter.replace(TransactionProgressArgs) }
         }
 
+    @Test
+    fun aSendToANameThatNowPointsElsewhereIsStoppedBeforeAnythingIsSigned() =
+        runTest {
+            ZnsConfirmation.entries.filter { it != ZnsConfirmation.UNCHANGED }.forEach { confirmation ->
+                listOf<Fixtures.(TransactionProposal) -> Unit>(
+                    { givenZashi(it) },
+                    { givenKeystone(it) },
+                    { givenLedger(it) }
+                ).forEach { given ->
+                    val fx = useCase()
+                    fx.given(sendProposalTo(NAME_ADDRESS))
+                    fx.znsSendRecipientRepository.setRecipient(ZnsSendRecipient(ALICE, NAME_ADDRESS))
+                    coEvery { fx.lookUpZnsRecipient.confirm(ALICE, NAME_ADDRESS) } returns confirmation
+
+                    fx.useCase()
+
+                    coVerify(exactly = 1) { fx.cancelProposalFlow(clearSendForm = false) }
+                    assertEquals(
+                        ZnsSendStopped(ZnsSendRecipient(ALICE, NAME_ADDRESS), confirmation),
+                        fx.znsSendRecipientRepository.stopped.value
+                    )
+                    coVerify(exactly = 0) { fx.biometricRepository.requestBiometrics(any()) }
+                    coVerify(exactly = 0) { fx.zashiProposalRepository.submit() }
+                    verify(exactly = 0) { fx.navigationRouter.replace(*anyVararg()) }
+                    verify(exactly = 0) { fx.ledgerNavigator.forwardToSign() }
+                }
+            }
+        }
+
+    @Test
+    fun aSendToANameThatStillPointsToThePaidAddressGoesAhead() =
+        runTest {
+            val fx = useCase()
+            fx.givenZashi(sendProposalTo(NAME_ADDRESS))
+            fx.znsSendRecipientRepository.setRecipient(ZnsSendRecipient(ALICE, NAME_ADDRESS))
+            coEvery { fx.lookUpZnsRecipient.confirm(ALICE, NAME_ADDRESS) } returns ZnsConfirmation.UNCHANGED
+
+            fx.useCase()
+
+            coVerify(exactly = 0) { fx.cancelProposalFlow(any()) }
+            coVerify(exactly = 1) { fx.zashiProposalRepository.submit() }
+            verify(exactly = 1) { fx.navigationRouter.replace(TransactionProgressArgs) }
+        }
+
+    @Test
+    fun aProposalForAnotherAddressIsNotCheckedAgainstTheName() =
+        runTest {
+            val fx = useCase()
+            fx.givenZashi(sendProposalTo("u1other"))
+            fx.znsSendRecipientRepository.setRecipient(ZnsSendRecipient(ALICE, NAME_ADDRESS))
+
+            fx.useCase()
+
+            coVerify(exactly = 0) { fx.lookUpZnsRecipient.confirm(any(), any()) }
+            coVerify(exactly = 1) { fx.zashiProposalRepository.submit() }
+        }
+
+    private fun sendProposalTo(address: String): SendTransactionProposal =
+        mockk<RegularTransactionProposal>(relaxed = true) {
+            val walletAddress = mockk<WalletAddress>()
+            every { walletAddress.address } returns address
+            every { destination } returns walletAddress
+        }
+
     private fun swapProposal(
         tokenTicker: String,
         chainTicker: String
@@ -226,6 +300,9 @@ class SubmitProposalUseCaseTest {
         val metadataRepository = mockk<MetadataRepository>(relaxed = true)
         val processSwapTransaction = mockk<ProcessSwapTransactionUseCase>(relaxed = true)
         val prefillSend = mockk<PrefillSendUseCase>(relaxed = true)
+        val lookUpZnsRecipient = mockk<LookUpZnsRecipientUseCase>()
+        val znsSendRecipientRepository = ZnsSendRecipientRepository()
+        val cancelProposalFlow = mockk<CancelProposalFlowUseCase>(relaxed = true)
         val useCase =
             SubmitProposalUseCase(
                 navigationRouter = navigationRouter,
@@ -240,8 +317,16 @@ class SubmitProposalUseCaseTest {
                 processSwapTransaction = processSwapTransaction,
                 prefillSend = prefillSend,
                 navigateToError = mockk(relaxed = true),
+                lookUpZnsRecipient = lookUpZnsRecipient,
+                znsSendRecipientRepository = znsSendRecipientRepository,
+                cancelProposalFlow = cancelProposalFlow,
             )
     }
 
     private inline fun <reified T : WalletAccount> spendable(): T = mockk<T> { every { isSpendable } returns true }
+
+    private companion object {
+        val ALICE = checkNotNull(ZnsName.fromRegistryName("alice"))
+        const val NAME_ADDRESS = "u1alice"
+    }
 }

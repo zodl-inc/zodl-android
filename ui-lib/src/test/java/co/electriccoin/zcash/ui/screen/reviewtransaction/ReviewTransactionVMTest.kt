@@ -15,9 +15,13 @@ import co.electriccoin.zcash.ui.common.usecase.EditAccountFixtures
 import co.electriccoin.zcash.ui.common.usecase.ObserveContactByAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
+import co.electriccoin.zcash.ui.common.zns.ZnsName
+import co.electriccoin.zcash.ui.common.zns.ZnsSendRecipient
+import co.electriccoin.zcash.ui.common.zns.ZnsSendRecipientRepository
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.imageRes
+import co.electriccoin.zcash.ui.design.util.stringRes
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +41,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 /**
  * The sending account's row shows the account's icon as the rest of the app does: the Zodl mark on
@@ -85,7 +90,35 @@ class ReviewTransactionVMTest {
     private fun sender(vm: ReviewTransactionVM) =
         assertNotNull(assertNotNull(vm.state.value).items.filterIsInstance<SenderState>().singleOrNull())
 
-    private suspend fun vm(metadata: Map<AccountUuid, MetadataV3>): ReviewTransactionVM {
+    @Test
+    fun aSendTypedAsANameShowsTheNameBesideTheAddress() =
+        runTest {
+            val repository = ZnsSendRecipientRepository()
+            repository.setRecipient(ZnsSendRecipient(checkNotNull(ZnsName.fromRegistryName("alice")), RECIPIENT))
+            val vm = vm(metadata = emptyMap(), znsSendRecipientRepository = repository)
+            collect(vm)
+
+            assertEquals(stringRes("alice.zcash"), receiver(vm).name)
+        }
+
+    @Test
+    fun aNameRecordedForAnotherAddressIsNotShown() =
+        runTest {
+            val repository = ZnsSendRecipientRepository()
+            repository.setRecipient(ZnsSendRecipient(checkNotNull(ZnsName.fromRegistryName("alice")), "u1other"))
+            val vm = vm(metadata = emptyMap(), znsSendRecipientRepository = repository)
+            collect(vm)
+
+            assertNull(receiver(vm).name)
+        }
+
+    private fun receiver(vm: ReviewTransactionVM) =
+        assertNotNull(assertNotNull(vm.state.value).items.filterIsInstance<ReceiverState>().singleOrNull())
+
+    private suspend fun vm(
+        metadata: Map<AccountUuid, MetadataV3>,
+        znsSendRecipientRepository: ZnsSendRecipientRepository = ZnsSendRecipientRepository(),
+    ): ReviewTransactionVM {
         val proposal = proposal()
         return ReviewTransactionVM(
             getWalletAccounts = EditAccountFixtures.getWalletAccounts(accounts),
@@ -100,6 +133,7 @@ class ReviewTransactionVMTest {
             getExchangeRate = mockk(relaxed = true),
             navigationRouter = mockk(relaxed = true),
             submitProposal = mockk(relaxed = true),
+            znsSendRecipientRepository = znsSendRecipientRepository,
         )
     }
 

@@ -1,5 +1,8 @@
 package co.electriccoin.zcash.di
 
+import android.app.Application
+import cash.z.ecc.android.sdk.model.ZcashNetwork
+import cash.z.ecc.sdk.type.fromResources
 import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealthOwner
 import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealthOwnerImpl
 import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionProbe
@@ -44,6 +47,11 @@ import co.electriccoin.zcash.ui.common.repository.WalletSnapshotRepository
 import co.electriccoin.zcash.ui.common.repository.WalletSnapshotRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepositoryImpl
+import co.electriccoin.zcash.ui.common.zns.HttpZnsTransport
+import co.electriccoin.zcash.ui.common.zns.ZnsIndexNameResolver
+import co.electriccoin.zcash.ui.common.zns.ZnsNameResolver
+import co.electriccoin.zcash.ui.common.zns.ZnsRegistry
+import co.electriccoin.zcash.ui.common.zns.ZnsSendRecipientRepository
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.module
@@ -60,6 +68,15 @@ val repositoryModule =
         singleOf(::TransactionRepositoryImpl) bind TransactionRepository::class
         singleOf(::TransactionFilterRepositoryImpl) bind TransactionFilterRepository::class
         singleOf(::ZashiProposalRepositoryImpl) bind ZashiProposalRepository::class
+        single<ZnsNameResolver> {
+            val registry = ZnsRegistry.of(ZcashNetwork.fromResources(get<Application>()))
+            ZnsIndexNameResolver(
+                endpoints = registry.endpoints,
+                registryViewingKey = registry.viewingKey,
+                transport = HttpZnsTransport(httpClientProvider = get())
+            )
+        }
+        singleOf(::ZnsSendRecipientRepository)
         singleOf(::HomeMessageCacheRepositoryImpl) bind HomeMessageCacheRepository::class
         singleOf(::WalletSnapshotRepositoryImpl) bind WalletSnapshotRepository::class
         singleOf(::ApplicationStateRepositoryImpl) bind ApplicationStateRepository::class

@@ -9,8 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -45,8 +43,6 @@ import co.electriccoin.zcash.ui.screen.send.model.MemoState
 import co.electriccoin.zcash.ui.screen.send.model.RecipientAddressState
 import co.electriccoin.zcash.ui.screen.send.model.SendStage
 import co.electriccoin.zcash.ui.screen.send.view.Send
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
@@ -112,8 +108,6 @@ internal fun WrapSend(
     sendArguments: Send,
     selectedAccount: WalletAccount?,
 ) {
-    val scope = rememberCoroutineScope()
-
     val viewModel = koinViewModel<SendViewModel>()
 
     val validateAddress = koinInject<ValidateAddressUseCase>()
@@ -281,8 +275,6 @@ internal fun WrapSend(
         }
     }
 
-    val recipientValidationJob = remember { mutableStateOf<Job?>(null) }
-
     if (null == selectedAccount) {
         // TODO [#1146]: Consider moving CircularScreenProgressIndicator from Android layer to View layer
         // TODO [#1146]: Improve this by allowing screen composition and updating it after the data is available
@@ -303,20 +295,9 @@ internal fun WrapSend(
             onQrScannerOpen = goToQrScanner,
             hasCameraFeature = hasCameraFeature,
             recipientAddressState = recipientAddressState,
-            onRecipientAddressChange = { newAddress ->
-                recipientValidationJob.value?.cancel()
-                recipientValidationJob.value =
-                    scope.launch {
-                        viewModel.onRecipientAddressChanged(
-                            RecipientAddressState.new(
-                                address = newAddress,
-                                // TODO [#342]: Verify Addresses without Synchronizer
-                                // TODO [#342]: https://github.com/zcash/zcash-android-wallet-sdk/issues/342
-                                type = validateAddress(newAddress)
-                            )
-                        )
-                    }
-            },
+            // TODO [#342]: Verify Addresses without Synchronizer
+            // TODO [#342]: https://github.com/zcash/zcash-android-wallet-sdk/issues/342
+            onRecipientAddressChange = viewModel::onRecipientInput,
             setAmountState = setAmountState,
             amountState = amountState,
             setMemoState = setMemoState,

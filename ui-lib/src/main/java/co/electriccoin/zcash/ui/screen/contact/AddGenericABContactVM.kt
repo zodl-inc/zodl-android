@@ -15,6 +15,7 @@ import co.electriccoin.zcash.ui.common.usecase.ValidateContactNameResult
 import co.electriccoin.zcash.ui.common.usecase.ValidateGenericABContactNameUseCase
 import co.electriccoin.zcash.ui.common.usecase.ValidateSwapABContactAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.ValidateZashiABContactAddressUseCase
+import co.electriccoin.zcash.ui.common.zns.LookUpZnsRecipientUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.PickerState
 import co.electriccoin.zcash.ui.design.component.TextFieldState
@@ -40,6 +41,7 @@ class AddGenericABContactVM(
     private val saveABContact: SaveABContactUseCase,
     private val navigationRouter: NavigationRouter,
     private val navigateToSelectSwapBlockchain: NavigateToSelectSwapBlockchainUseCase,
+    lookUpZnsRecipient: LookUpZnsRecipientUseCase,
 ) : ViewModel() {
     private val zcashBlockchain = blockchainProvider.getZcashBlockchain()
 
@@ -50,8 +52,24 @@ class AddGenericABContactVM(
 
     private val refusedGiftCardLink = RefusedGiftCardLinkAddress()
 
+    private val znsLookup = ContactZnsLookup(lookUpZnsRecipient, contactAddress, viewModelScope)
+
+    /** The typed address, or the address a typed ZNS name resolved to. */
+    private val effectiveAddress = znsLookup.effectiveAddress(contactAddress)
+
+    init {
+        // A contact saved from a name is labelled with that name, unless the user already typed a label.
+        viewModelScope.launch {
+            znsLookup.state.collect { zns ->
+                if (zns is ContactZnsState.Resolved && contactName.value.isEmpty()) {
+                    contactName.update { zns.name.displayName }
+                }
+            }
+        }
+    }
+
     private val addressZashiValidation =
-        contactAddress
+        effectiveAddress
             .map {
                 if (it.isEmpty()) null else validateZashiABContactAddress(it)
             }.onEach {
@@ -63,7 +81,7 @@ class AddGenericABContactVM(
             }
 
     private val addressSwapValidation =
-        combine(contactAddress, selectedBlockchain) { address, blockchain ->
+        combine(effectiveAddress, selectedBlockchain) { address, blockchain ->
             if (address.isEmpty()) null else validateSwapABContactAddress(address, blockchain)
         }
 
@@ -71,12 +89,16 @@ class AddGenericABContactVM(
         combine(
             addressZashiValidation,
             addressSwapValidation,
-            selectedBlockchain
+            selectedBlockchain,
+            znsLookup.state
         ) {
             zashiValidation,
             swapValidation,
-            blockchain
+            blockchain,
+            zns
             ->
+            if (zns is ContactZnsState.Failed) return@combine zns.message
+            if (zns is ContactZnsState.LookingUp) return@combine null
             val validation =
                 when {
                     swapValidation == ContactAddressValidationResult.GiftCardLink -> swapValidation
@@ -173,11 +195,13 @@ class AddGenericABContactVM(
             addressState,
             nameState,
             isSavingContact,
-        ) { address, name, isSavingContact ->
+            znsLookup.state,
+        ) { address, name, isSavingContact, zns ->
             ButtonState(
                 text = stringRes(R.string.general_save),
                 isEnabled =
                     address.error == null &&
+                        zns !is ContactZnsState.LookingUp &&
                         name.error == null &&
                         contactAddress.value.isNotEmpty() &&
                         contactName.value.isNotEmpty(),
@@ -193,11 +217,13 @@ class AddGenericABContactVM(
             nameState,
             saveButtonState,
             blockChainPickerState,
-        ) { address, name, saveButton, picker ->
+            znsLookup.state,
+        ) { address, name, saveButton, picker, zns ->
             ABContactState(
                 info = null,
                 title = stringRes(R.string.addressBook_addNewContact),
                 walletAddress = address,
+                walletAddressStatus = zns.fieldStatus,
                 contactName = name,
                 chain = picker,
                 negativeButton = null,
@@ -225,12 +251,14 @@ class AddGenericABContactVM(
     private fun onSaveButtonClick() =
         viewModelScope.launch {
             if (isSavingContact.value) return@launch
+            // A contact saved from a name stores the address the name resolved to, and nothing until it resolved.
+            val addressToSave = znsLookup.addressToSave() ?: return@launch
             isSavingContact.update { true }
             val address = contactAddress.value
             val result =
                 saveABContact(
                     name = contactName.value,
-                    address = address,
+                    address = addressToSave,
                     chain = selectedBlockchain.value?.takeIf { it != zcashBlockchain }?.chainTicker
                 )
             refusedGiftCardLink.onSaveResult(address, result)

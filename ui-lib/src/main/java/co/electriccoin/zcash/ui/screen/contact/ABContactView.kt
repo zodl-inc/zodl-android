@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.zns.ZnsFieldStatusLine
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.IconButtonState
@@ -134,6 +135,7 @@ private fun ContactViewInternal(
                     imeAction = ImeAction.Next
                 )
         )
+        state.walletAddressStatus?.let { ZnsFieldStatusLine(it) }
         Spacer(modifier = Modifier.height(20.dp))
         Text(
             text = stringResource(id = R.string.addressBook_newContact_name),

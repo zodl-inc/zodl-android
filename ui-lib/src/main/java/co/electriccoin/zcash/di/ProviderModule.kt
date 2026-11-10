@@ -44,6 +44,8 @@ import co.electriccoin.zcash.ui.common.provider.IsSwapRefundWarningDismissedStor
 import co.electriccoin.zcash.ui.common.provider.IsSwapRefundWarningDismissedStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.IsZnsNamesEnabledStorageProvider
+import co.electriccoin.zcash.ui.common.provider.IsZnsNamesEnabledStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.KeepScreenOnSyncSessionProvider
 import co.electriccoin.zcash.ui.common.provider.KeepScreenOnSyncSessionProviderImpl
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
@@ -139,6 +141,7 @@ val providerModule =
         singleOf(::IsSwapRefundWarningDismissedStorageProviderImpl) bind
             IsSwapRefundWarningDismissedStorageProvider::class
         singleOf(::IsTorEnabledStorageProviderImpl) bind IsTorEnabledStorageProvider::class
+        singleOf(::IsZnsNamesEnabledStorageProviderImpl) bind IsZnsNamesEnabledStorageProvider::class
         singleOf(::AppearanceModeStorageProviderImpl) bind AppearanceModeStorageProvider::class
         singleOf(::IsOledEnabledStorageProviderImpl) bind IsOledEnabledStorageProvider::class
         singleOf(::BlockchainProviderImpl) bind BlockchainProvider::class

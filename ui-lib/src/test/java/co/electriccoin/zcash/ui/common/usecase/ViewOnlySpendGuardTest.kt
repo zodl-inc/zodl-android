@@ -255,6 +255,11 @@ class ViewOnlySpendGuardTest {
                     processSwapTransaction = mockk(relaxed = true),
                     prefillSend = mockk(relaxed = true),
                     navigateToError = navigateToError,
+                    lookUpZnsRecipient = mockk(relaxed = true),
+                    znsSendRecipientRepository =
+                        co.electriccoin.zcash.ui.common.zns
+                            .ZnsSendRecipientRepository(),
+                    cancelProposalFlow = mockk(relaxed = true),
                 )
 
             useCase()

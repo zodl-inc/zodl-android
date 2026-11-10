@@ -7,6 +7,18 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Added:
+
+- Zcash Names: Advanced Settings has a new Zcash Names option, off by default. When it is on, the Send and Add
+  Contact screens accept a Zcash Name Service (ZNS) name such as `alice.zcash` or `alice.zec` and show the address it
+  resolves to. The wallet downloads the whole public ZNS directory and looks the name up on the device, so the name
+  service never learns which name or address the user wants. The download goes over Tor when Tor Protection is on,
+  and directly to the ZNS servers otherwise (they are not reachable through the OHTTP gateway). Before every download
+  the wallet checks the server's registry key and that it is synced. Review shows the name beside the resolved address,
+  and the wallet looks the name up again right before sending: if it now points elsewhere or cannot be confirmed,
+  nothing is sent. A contact saved from a name stores the resolved address with the name as its label, and is never
+  resolved again. QR codes and payment links never resolve a name.
+
 ## [3.20.0 (3807)] - 2026-11-09
 
 ### Changed:

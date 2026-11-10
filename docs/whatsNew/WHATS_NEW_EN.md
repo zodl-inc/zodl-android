@@ -14,6 +14,10 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+### Added:
+
+- You can now send to Zcash names like alice.zcash and save them as contacts. Turn on Zcash Names in Advanced Settings. Zodl looks names up on your device, so the name service never learns which name you look up.
+
 ## [3.20.0 (3807)] - 2026-11-09
 
 ### Added:

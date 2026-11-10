@@ -103,6 +103,7 @@ android {
                     "src/main/res/ui/wallet_address",
                     "src/main/res/ui/warning",
                     "src/main/res/ui/whats_new",
+                    "src/main/res/ui/zcash_names",
                     "src/main/res/ui/exchange_rate",
                     "src/main/res/ui/tor",
                 )
