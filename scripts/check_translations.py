@@ -131,7 +131,15 @@ def apple_reference(units, path):
 
 def apple_issues(root):
     catalogs = sorted((root / "secant" / "Resources").glob("*.xcstrings"))
-    strays = sorted(set((root / "secant").rglob("*.xcstrings")) - set(catalogs))
+    # Walk the whole repository so a catalog added to any first-party target
+    # (zodlmac-shared, bridge packages, ...) cannot ship unchecked. Build
+    # products and vendored checkouts may carry third-party catalogs.
+    ignored = {"LocalPackages", "DerivedData"}
+    strays = sorted(
+        path for path in root.rglob("*.xcstrings")
+        if path not in catalogs
+        and not any(part in ignored or part.startswith(".") for part in path.relative_to(root).parts)
+    )
     if strays:
         raise ValueError(f"string catalog outside secant/Resources is not checked: {strays[0]}")
     if not catalogs:

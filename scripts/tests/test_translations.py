@@ -179,9 +179,16 @@ class TranslationTests(unittest.TestCase):
 
     def test_apple_catalogs_outside_resources_fail_closed(self):
         self.apple(unit("Hello"), unit("Hola"))
-        self.write("secant/Features/Extra.xcstrings", json.dumps({"sourceLanguage": "en", "strings": {}}))
-        with self.assertRaises(ValueError):
-            checker.apple_issues(self.root)
+        third_party = json.dumps({"sourceLanguage": "de", "strings": {}})
+        self.write(".build/checkouts/Dep/Thirdparty.xcstrings", third_party)
+        self.write("LocalPackages/Dep/Vendored.xcstrings", third_party)
+        self.write("DerivedData/Dep/Built.xcstrings", third_party)
+        self.assertEqual(checker.apple_issues(self.root), set())
+        for stray in ("secant/Features/Extra.xcstrings", "zodlmac-shared/Extra.xcstrings"):
+            self.write(stray, json.dumps({"sourceLanguage": "en", "strings": {}}))
+            with self.assertRaises(ValueError):
+                checker.apple_issues(self.root)
+            (self.root / stray).unlink()
 
     def test_apple_english_defects_are_reported(self):
         self.assertIn(("en", "empty"), {(i.locale, i.defect) for i in self.apple(unit(" "), unit("Hola"))})
