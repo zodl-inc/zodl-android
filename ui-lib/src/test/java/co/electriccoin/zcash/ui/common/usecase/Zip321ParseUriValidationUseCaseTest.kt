@@ -194,7 +194,10 @@ class Zip321ParseUriValidationUseCaseTest {
                 assertIs<Zip321ParseUriValidation.Valid>(
                     parse("zcash:$address?amount.2=2&amount=1&address.2=$address")
                 )
-            assertEquals(listOf("100000000", "200000000"), reordered.payment.payments.map { it.nonNegativeAmount?.toString() })
+            assertEquals(
+                listOf("100000000", "200000000"),
+                reordered.payment.payments.map { it.nonNegativeAmount?.toString() }
+            )
         }
 
     @Test
