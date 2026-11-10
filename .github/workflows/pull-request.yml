@@ -222,6 +222,59 @@ jobs:
           name: Android Lint static analysis results
           path: ~/artifacts
 
+  # Translation checks run apart from the Kotlin unit tests on purpose:
+  # translation drift on the merge base must not stop the unit tests from
+  # running and reporting their own signal.
+  check_translations:
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        timeout-minutes: 1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Set up Python
+        # check_translations.py needs Python 3.9+ (str.removesuffix).
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Check translations and checker fixtures
+        run: |
+          python3 -m unittest discover -s scripts/tests -v
+          python3 scripts/check_translations.py
+      - name: Baseline must not grow in a pull request
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags --depth=1 origin "$GITHUB_BASE_REF"
+          python3 - <<'EOF'
+          import json
+          import subprocess
+          import sys
+
+          show = subprocess.run(
+              ["git", "show", "FETCH_HEAD:scripts/translation-baseline.json"],
+              capture_output=True, text=True,
+          )
+          if show.returncode:
+              print("No baseline on the base branch; initial adoption is allowed.")
+              sys.exit(0)
+
+          # Identity ignores the resource path so a moved strings file can be
+          # re-keyed in the baseline without tripping this guard.
+          def debts(data):
+              return {(e["key"], e["locale"], e["defect"], e.get("variant", "")) for e in data["issues"]}
+
+          base = debts(json.loads(show.stdout))
+          head = debts(json.load(open("scripts/translation-baseline.json")))
+          added = sorted(head - base)
+          for entry in added:
+              print("ADDED:", entry)
+          if added:
+              print("::error::translation-baseline.json gained entries; the baseline only shrinks. Fix the resource instead of deferring it.")
+          sys.exit(1 if added else 0)
+          EOF
+
   test_kotlin_modules:
     needs: validate_gradle_wrapper
     runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
@@ -236,10 +289,6 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0 # to fetch all commits
-      - name: Check translations and checker fixtures
-        run: |
-          python3 -m unittest discover -s scripts/tests -v
-          python3 scripts/check_translations.py
       - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
         timeout-minutes: 30
         uses: ./.github/actions/setup-sdk-companion

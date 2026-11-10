@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Check first-party English/Spanish resources without growing existing translation debt."""
+"""Check first-party English/Spanish resources without growing existing translation debt.
+
+One script serves both app repositories. The repository layout selects the live
+branch: the Apple string-catalog branch runs in zodl-ios-private and the Android
+resource branch runs in zodl-android-private. The fixture tests cover both
+branches in both repositories. The canonical copy is
+zodl-android-private:scripts/check_translations.py. Keep
+zodl-ios-private:Scripts/check_translations.py byte-identical, and sync
+test_translations.py the same way, whenever either copy changes.
+"""
 
 import argparse
 from dataclasses import asdict, dataclass
@@ -122,6 +131,9 @@ def apple_reference(units, path):
 
 def apple_issues(root):
     catalogs = sorted((root / "secant" / "Resources").glob("*.xcstrings"))
+    strays = sorted(set((root / "secant").rglob("*.xcstrings")) - set(catalogs))
+    if strays:
+        raise ValueError(f"string catalog outside secant/Resources is not checked: {strays[0]}")
     if not catalogs:
         raise ValueError("no string catalogs found")
     result = set()
@@ -164,6 +176,10 @@ def android_roots(module, source_set):
     gradle = module / "build.gradle.kts"
     if source_set == "main" and gradle.exists():
         text = re.sub(r"//[^\n]*", "", gradle.read_text())
+        # Additive declarations would extend, not replace, the checked roots. Parsing
+        # only the replacing form below would silently skip them, so fail closed.
+        if re.search(r"res\.srcDirs?\b", text):
+            raise ValueError(f"unsupported additive resource declaration in {gradle}")
         override = re.search(r'res\.setSrcDirs\(\s*(?:listOf|setOf)\((.*?)\)\s*\)', text, re.S)
         if override:
             return [module / p for p in re.findall(r'"([^"]+)"', override[1])]
@@ -252,13 +268,14 @@ def write_baseline(path, issues):
     path.write_text('{\n  "version": 1,\n  "issues": [\n' + ",\n".join(f"    {entry}" for entry in entries) + '\n  ]\n}\n')
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument("--baseline", type=Path, default=Path(__file__).with_name("translation-baseline.json"))
     parser.add_argument("--prune-baseline", action="store_true", help="remove resolved debt; never adds entries")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     root = args.root.resolve()
-    baseline_path = Path(__file__).with_name("translation-baseline.json")
+    baseline_path = args.baseline
     try:
         issues = apple_issues(root) if (root / "secant").exists() else android_issues(root)
         data = json.loads(baseline_path.read_text())

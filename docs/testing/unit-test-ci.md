@@ -1,9 +1,12 @@
 # Unit tests and translation checks (MOB-1203)
 
-The `test_kotlin_modules` PR check validates translation resources before
-building. It also runs `:preference-impl-android-lib:testDebugUnitTest`, including
-the encrypted-preference recovery/quarantine and preference-cache suites, and
-publishes Gradle JUnit XML alongside the existing reports.
+Two separate PR checks cover this work. The `check_translations` job validates
+translation resources on a pinned Python. The `test_kotlin_modules` job runs
+`:preference-impl-android-lib:testDebugUnitTest`, including the
+encrypted-preference recovery/quarantine and preference-cache suites, and
+publishes Gradle JUnit XML alongside the existing reports. The jobs are
+separate so translation drift on the merge base never stops the unit tests
+from reporting their own signal.
 
 ## Translation completeness (MOB-1263)
 
@@ -16,11 +19,19 @@ python3 scripts/check_translations.py
 
 The checker reads first-party app modules, respecting the explicit main resource
 directories in `build.gradle.kts` (`setOf` or `listOf`) and standard source-set
-resource overlays. Test-only modules and vendored dependencies are excluded.
-Missing Spanish resources, empty values, mismatched formatting arguments, missing
-plural defaults and inconsistent array lengths are defects. Explicit
-`translatable="false"` entries are excluded. Overlays inherit main resources;
+resource overlays. Additive `res.srcDir`/`res.srcDirs` declarations fail closed;
+convert them to the explicit replacing form. Test-only modules and vendored
+dependencies are excluded. Missing Spanish resources, empty values, mismatched
+formatting arguments, missing plural defaults and inconsistent array lengths are
+defects. Explicit `translatable="false"` entries are excluded. Lint's
+`tools:ignore="MissingTranslation"` marker is not honored: the baseline is the
+only deferral mechanism this check recognizes. Overlays inherit main resources;
 they do not need duplicate copies of translations that Android already inherits.
+
+The same script serves both app repositories. The canonical copy is
+`scripts/check_translations.py` here; `Scripts/check_translations.py` in
+`zodl-ios-private` stays byte-identical, as does `test_translations.py`. Sync
+both repositories when changing either copy.
 
 `scripts/translation-baseline.json` records existing debt by resource, key,
 locale and variant. CI fails for additional defects and stale baseline entries.
@@ -31,8 +42,16 @@ python3 scripts/check_translations.py --prune-baseline
 ```
 
 This command only removes entries and still fails on new defects. Review baseline
-changes with the resource changes; adding debt needs an explicit decision to
-defer that translation work. These checks do not judge linguistic accuracy.
+changes with the resource changes. CI also compares the baseline with the base
+branch and fails when a pull request adds a `(key, locale, defect, variant)`
+entry: the baseline only shrinks. Deferring new debt needs a change to that CI
+rule, not a baseline edit.
+
+Baseline identity includes the resource file path. When a strings file moves,
+the checker reports `NEW` entries at the new path and `RESOLVED` entries at the
+old path. Re-key by hand: update the `resource` field of the affected entries to
+the new path in the same commit. The growth guard ignores the path, so a re-key
+does not count as added debt. These checks do not judge linguistic accuracy.
 
 ## Focused regression suites (MOB-1264 and MOB-1268)
 
@@ -59,4 +78,7 @@ step. Keep app tests here and device/E2E smoke tests in `zodl-qa`.
 See [the follow-up roadmap](unit-test-roadmap.md) for proposed additional suites.
 
 Repository merge rules are unchanged. These checks run in CI; this change does
-not add a required-status-check rule.
+not add a required-status-check rule. Verified on 2026-11-10: the `main` branch
+ruleset has no required status checks, so neither `check_translations` nor
+`test_kotlin_modules` blocks merge on its own. Revisit that ruleset decision
+when promoting these checks to required.

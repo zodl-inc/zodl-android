@@ -28,6 +28,24 @@ class UnitTestResultsTests(unittest.TestCase):
                         (folder / f"TEST-{suite}.xml").write_text(body)
                 self.assertEqual(results.verify(root), 0 if 'name="success"' in body else 1)
 
+    def test_error_only_suites_and_a_single_bad_suite_among_healthy_ones_fail(self):
+        healthy = '<testsuite tests="1"><testcase name="success"/></testsuite>'
+        with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
+            root = Path(directory)
+            files = [root / path / f"TEST-{suite}.xml" for path, suites in results.SUITES.items() for suite in suites]
+            for file in files:
+                file.parent.mkdir(parents=True, exist_ok=True)
+                file.write_text(healthy)
+            self.assertEqual(results.verify(root), 0)
+            # An errors-only suite has zero failures but still must not pass.
+            bad = '<testsuite tests="1" errors="1"><testcase name="broken"><error/></testcase></testsuite>'
+            for body in (bad, '<testsuite tests="1"><testcase><skipped/></testcase></testsuite>', None):
+                for file in files:
+                    file.write_text(body) if body else file.unlink()
+                    self.assertEqual(results.verify(root), 1, f"{file} should fail alone: {body}")
+                    file.write_text(healthy)
+            self.assertEqual(results.verify(root), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

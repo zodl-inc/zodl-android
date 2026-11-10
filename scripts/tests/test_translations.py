@@ -1,6 +1,8 @@
 """Fixture tests for the CI resource checker; no app build or network required."""
 
+import contextlib
 import importlib.util
+import io
 import json
 from pathlib import Path
 import sys
@@ -169,6 +171,76 @@ class TranslationTests(unittest.TestCase):
             checker.apple_issues(self.root)
         with self.assertRaises(ValueError):
             checker.android_issues(self.root)
+
+    def test_apple_unexpected_source_language_fails_closed(self):
+        self.write("secant/Resources/Localizable.xcstrings", json.dumps({"sourceLanguage": "de", "strings": {}}))
+        with self.assertRaises(ValueError):
+            checker.apple_issues(self.root)
+
+    def test_apple_catalogs_outside_resources_fail_closed(self):
+        self.apple(unit("Hello"), unit("Hola"))
+        self.write("secant/Features/Extra.xcstrings", json.dumps({"sourceLanguage": "en", "strings": {}}))
+        with self.assertRaises(ValueError):
+            checker.apple_issues(self.root)
+
+    def test_apple_english_defects_are_reported(self):
+        self.assertIn(("en", "empty"), {(i.locale, i.defect) for i in self.apple(unit(" "), unit("Hola"))})
+        issues = self.apple(unit("Hello", "new"), unit("Hola"))
+        self.assertEqual({(i.locale, i.defect) for i in issues}, {("en", "unreviewed")})
+        issues = self.apple(None, unit("Hola"))
+        self.assertEqual({(i.locale, i.defect) for i in issues}, {("en", "missing")})
+
+    def test_android_type_change_and_duplicate_resources_fail(self):
+        en = '<string name="count">One</string>'
+        es = '<plurals name="count"><item quantity="other">Uno</item></plurals>'
+        self.assertEqual({i.defect for i in self.android(en, es)}, {"type"})
+        self.write("ui-lib/src/main/res/values/extra.xml", '<resources><string name="count">Two</string></resources>')
+        with self.assertRaises(ValueError):
+            checker.android_issues(self.root)
+
+    def test_android_additive_resource_directories_fail_closed(self):
+        for declaration in ('res.srcDir("src/main/res-extra")', 'res.srcDirs("a", "b")'):
+            self.write("ui-lib/build.gradle.kts", declaration)
+            self.write("ui-lib/src/main/res/values/strings.xml", "<resources/>")
+            with self.assertRaises(ValueError):
+                checker.android_issues(self.root)
+
+    def baseline(self, issues, version=1):
+        path = self.root / "baseline.json"
+        path.write_text(json.dumps({"version": version, "issues": [checker.asdict(i) for i in issues]}))
+        return path
+
+    def run_main(self, path, *flags):
+        argv = ["--root", str(self.root), "--baseline", str(path), *flags]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            return checker.main(argv)
+
+    def test_main_reports_new_and_resolved_debt_without_rewriting_the_baseline(self):
+        self.apple(unit("Hello"))
+        stale = checker.Issue("secant/Resources/Localizable.xcstrings", "gone", "es", "missing")
+        path = self.baseline([stale])
+        self.assertEqual(self.run_main(path), 1)
+        self.assertEqual([e["key"] for e in json.loads(path.read_text())["issues"]], ["gone"])
+
+    def test_prune_removes_resolved_debt_and_the_pruned_baseline_reloads(self):
+        self.apple(unit("Hello"))
+        current = checker.Issue("secant/Resources/Localizable.xcstrings", "hello", "es", "missing")
+        stale = checker.Issue("secant/Resources/Localizable.xcstrings", "gone", "es", "missing")
+        path = self.baseline([current, stale])
+        self.assertEqual(self.run_main(path, "--prune-baseline"), 0)
+        self.assertEqual([e["key"] for e in json.loads(path.read_text())["issues"]], ["hello"])
+        self.assertEqual(self.run_main(path), 0)
+
+    def test_prune_still_fails_on_new_debt_and_never_adds_it_to_the_baseline(self):
+        self.apple(unit("Hello"))
+        stale = checker.Issue("secant/Resources/Localizable.xcstrings", "gone", "es", "missing")
+        path = self.baseline([stale])
+        self.assertEqual(self.run_main(path, "--prune-baseline"), 1)
+        self.assertEqual(json.loads(path.read_text())["issues"], [])
+
+    def test_unsupported_baseline_version_fails(self):
+        self.apple(unit("Hello"), unit("Hola"))
+        self.assertEqual(self.run_main(self.baseline([], version=2)), 1)
 
 
 if __name__ == "__main__":
