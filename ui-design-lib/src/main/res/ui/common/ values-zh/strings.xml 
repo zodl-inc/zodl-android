@@ -1,0 +1,1436 @@
+```xml
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2" xmlns:tools="http://schemas.android.com/tools">
+    <string name="amount_with_fiat_currency_symbol" formatted="true"><xliff:g example="$" id="fiat_currency_symbol">%1$s</xliff:g><xliff:g example="123" id="amount">%2$s</xliff:g></string>
+    <string name="general_hideBalancesMost">-----</string>
+    <string name="general_back">返回</string>
+    <string name="triple_dots">…</string>
+    <string name="seed_recovery_reveal">显示恢复短语</string>
+    <string name="general_masked_seed_word">•••••</string>
+    <string name="general_hidden_seed_word">隐藏的恢复短语单词</string>
+
+    <string name="swapAndPay_failure_laterTitle">服务不可用</string>
+    <string name="swapAndPay_failure_retryTitle">意外错误</string>
+    <string name="swapAndPay_failure_laterDesc">请稍后再试。</string>
+    <string name="swapAndPay_failure_retryDesc">请检查你的网络连接后重试。</string>
+    <string name="coinVote_error_title">出错了</string>
+    <string name="swapAndPay_failure_wrongDesc">我们无法加载资产。请检查你的网络连接后重试。</string>
+    <string name="disconnectHWWallet_tryAgain">重试</string>
+    <string name="disconnectHWWallet_contactSupport">联系支持</string>
+    <string name="general_show">显示</string>
+    <string name="general_hide">隐藏</string>
+    <string name="general_more">更多</string>
+    <string name="general_less">收起</string>
+    <string name="general_loading">加载中</string>
+    <string name="send_review">审核</string>
+    <string name="general_ok">确定</string>
+    <string name="general_report">报告</string>
+    <string name="restoreInfo_gotIt">知道了！</string>
+    <string name="send_report">报告</string>
+    <string name="general_zec">%1$s %2$s</string>
+    <string name="balances_dismiss">忽略</string>
+    <string name="general_select">选择…</string>
+    <string name="general_confirm">确认</string>
+    <string name="swapAndPay_address">地址</string>
+    <string name="swapAndPay_status_processing">处理中</string>
+    <string name="general_enter_address">输入地址…</string>
+    <string name="general_enter_address_partial">%s 地址…</string>
+    <string name="receive_copy">复制</string>
+    <string name="swapToZec_shareQR">分享二维码</string>
+    <string name="general_cancel">取消</string>
+    <string name="tokenOnChain">在</string>
+    <string name="general_warning">警告：&#160;</string>
+
+    <string name="common_empty_screen_title">无结果</string>
+    <string name="common_empty_screen_subtitle">我们尽力了，但未找到任何内容。</string>
+
+
+    <!-- ===== 通用 ===== -->
+    <string name="general_close">关闭</string>
+    <string name="tooltip_close_content_description">关闭提示</string>
+    <string name="fiat_currency_conversion_rate_unavailable">不可用</string>
+    <string name="empty_char">-</string>
+    <string name="zcash_logo_content_description">Zcash 标志</string>
+    <string name="scan_openSettings">打开设置</string>
+    <string name="balance_widget_available">可用余额：</string>
+    <string name="hide_balance_placeholder">-----</string>
+    <string name="hide_balances_content_description">隐藏余额</string>
+    <string name="unable_to_open_email">无法启动电子邮件应用。</string>
+    <string name="restoring_wallet_label">[正在恢复你的钱包…]</string>
+    <string name="walletStatus_restoringWallet">正在恢复你的钱包…</string>
+    <string name="disconnected_label">[已断开连接…]</string>
+    <string name="walletStatus_disconnected">已断开连接…</string>
+    <string name="unable_to_open_play_store">无法启动 Google Play 商店应用…</string>
+    <string name="general_copied_to_clipboard">已复制到剪贴板</string>
+    <string name="general_etc">…</string>
+    <string name="recoveryPhraseDisplay_button_remindMeLater">稍后提醒我</string>
+    <string name="general_remind_me_in">在 %s 后提醒我</string>
+    <string name="general_remind_me_in_two_days">两天</string>
+    <string name="general_remind_me_in_two_weeks">两周</string>
+    <string name="general_remind_me_in_two_months">两个月</string>
+    <string name="restoreWallet_birthday_title">区块高度</string>
+    <string name="restoreWallet_birthday_placeholder">输入数字</string>
+    <string name="restoreWallet_birthday_fieldInfo">钱包生日高度是你的钱包创建时的时间点。</string>
+    <string name="general_next">下一步</string>
+    <string name="keystone_addHWWallet_enterManually">输入区块高度</string>
+    <string name="walletBirthdayHeightSubtitle">输入你的钱包生日高度可确保我们能够正确显示你的所有资金和交易历史。</string>
+    <string name="recoveryPhraseDisplay_birthdayTitle">钱包生日高度</string>
+    <string name="restoreWallet_birthday_estimateDate_title">首笔钱包交易</string>
+    <string name="restoreWallet_birthday_estimated_title">预估区块高度</string>
+    <string name="restoreWallet_birthday_estimated_info">Zodl 将扫描并恢复以下区块号之后发生的所有交易。</string>
+
+    <!-- ===== 关于 ===== -->
+    <string name="about_title">关于</string>
+    <string name="about_subtitle">介绍 Zodl</string>
+    <string name="whatsNew_version" formatted="true">Zodl 版本 <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="about_debug_menu_app_name">应用名称：<xliff:g example="Zodl" id="app_name">%1$s</xliff:g></string>
+    <string name="about_debug_menu_build">构建：<xliff:g example="635dac0eb9ddc2bc6da5177f0dd495d8b76af4dc" id="git_commit_hash">%1$s</xliff:g></string>
+    <string name="about_overflow_menu_content_description">更多选项</string>
+    <string name="about_description">Zodl 是一款由 Zcash 驱动的移动钱包，专为不可阻挡的私密支付而打造。
+        它针对屏蔽 $ZEC（真正的隐私加密货币）的存储和实际使用进行了优化。\n\n由设定链上隐私行业标准的团队、Zcash 协议的原始开发者开发。
+    </string>
+    <string name="about_termsOfUse">服务条款</string>
+    <string name="about_unable_to_web_browser">找不到网络浏览器应用。</string>
+    <string name="about_privacyPolicy">隐私政策</string>
+
+    <!-- ===== 账户列表 ===== -->
+    <string name="keystone_drawer_title">钱包与硬件</string>
+    <string name="keystone_drawer_banner_title">Keystone 硬件钱包</string>
+    <string name="keystone_drawer_banner_desc">购买气隙硬件钱包享 5%% 折扣。优惠码“Zodl”。</string>
+    <string name="keystone_connect">连接硬件钱包</string>
+
+    <!-- ===== 添加联系人 ===== -->
+    <string name="addressBook_addNewContact">添加新联系人</string>
+    <string name="general_save">保存</string>
+
+    <!-- ===== 地址簿 ===== -->
+    <string name="addressBook_title">地址簿</string>
+    <string name="addressBook_empty">你的地址簿是空的</string>
+    <string name="address_book_version">版本 <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="addressBook_scanAddress">扫描二维码</string>
+    <string name="addressBook_manualEntry">手动输入</string>
+    <string name="accounts_addressBook_your">你的钱包</string>
+    <string name="accounts_addressBook_contacts">地址簿联系人</string>
+    <string name="addressBook_selectRecipient">选择接收人</string>
+
+    <!-- ===== 高级设置 ===== -->
+    <string name="settings_advanced">高级设置</string>
+    <string name="settings_recoveryPhrase">Zodl 恢复短语</string>
+    <string name="settings_exportPrivateData">导出隐私数据</string>
+    <string name="settings_chooseServer">选择服务器</string>
+    <string name="settings_private">Tor 保护</string>
+    <string name="currencyConversion_title">货币换算</string>
+    <string name="advanced_settings_crash_reporting">崩溃报告</string>
+    <string name="settings_deleteZashiWarning">你将被要求在下一个屏幕上确认</string>
+    <string name="settings_deleteZashi">重置 Zodl</string>
+    <string name="taxExport_taxFile">导出税务文件</string>
+    <string name="resyncWallet_title">重新同步钱包</string>
+    <string name="disconnectHWWallet_cta">断开硬件连接</string>
+    <string name="disconnect_hardware_wallet_biometric_message">确认断开你的硬件钱包</string>
+    <string name="disconnectHWWallet_title">断开连接</string>
+    <string name="deleteKeystoneTitle">断开 Keystone</string>
+    <string name="deleteKeystoneDesc">断开硬件钱包将永久删除一些无法从区块链恢复的本地数据。</string>
+    <string name="disconnectHWWallet_mayInclude">这可能包括：</string>
+    <string name="disconnectHWWallet_bullet1">失败或过期的发送</string>
+    <string name="disconnectHWWallet_bullet2">从未确认的内存池交易</string>
+    <string name="disconnectHWWallet_bullet3">后来在链重组中被撤销的交易</string>
+    <string name="keystoneHW">Keystone 硬件</string>
+    <string name="currentlyConnected">当前已连接</string>
+    <string name="connectedHWInfo">如果你现在断开连接，你的 Keystone 将不再与你的 Zodl 钱包配对。</string>
+    <string name="deleteWallet_sheet_title">确定吗？</string>
+    <string name="disconnectHWWallet_sheetDesc">断开硬件钱包后无法撤销。</string>
+    <string name="disconnectHWWallet_failureTitle">断开失败</string>
+    <string name="disconnect_hardware_wallet_error_message">无法完成硬件钱包断开连接。请重试或报告问题。</string>
+
+    <!-- ===== 身份验证 ===== -->
+    <string name="authentication_system_ui_title">
+        <xliff:g id="app_name" example="Zodl">%1$s</xliff:g> 的身份验证
+    </string>
+    <string name="authentication_system_ui_subtitle">
+        使用生物识别或设备凭据访问 <xliff:g id="use_case" example="恢复短语">%1$s</xliff:g>。
+    </string>
+    <string name="authentication_use_case_delete_wallet">删除钱包功能</string>
+    <string name="authentication_use_case_export_data">导出隐私数据功能</string>
+    <string name="authentication_use_case_seed_recovery">种子恢复功能</string>
+    <string name="authentication_use_case_send_funds">发送资金功能</string>
+    <string name="authentication_use_case_vote_submission">投票提交</string>
+    <string name="authentication_use_case_adress_book">地址簿功能</string>
+    <string name="authentication_use_case_tax_export">税务导出</string>
+    <string name="authentication_toast_canceled">身份验证已取消</string>
+    <string name="authentication_toast_failed">身份验证失败</string>
+    <string name="authentication_error_title">身份验证错误</string>
+    <string name="authentication_error_text">身份验证因以下原因失败。请重试身份验证，或联系支持团队寻求帮助。</string>
+    <string name="authentication_error_details">
+        错误代码：<xliff:g id="code" example="-1">%1$d</xliff:g>\n错误信息：<xliff:g id="message" example="无设备凭据">%2$s</xliff:g>
+    </string>
+    <string name="coinVote_common_retry">重试</string>
+    <string name="errorPage_action_contactSupport">联系支持</string>
+    <string name="authentication_failed_title">身份验证失败</string>
+    <string name="authentication_failed_text">
+        身份验证已显示但未被识别。请重试身份验证，或联系支持团队寻求帮助。
+    </string>
+    <string name="authentication_failed_welcome_icon_cont_desc">点击解锁 <xliff:g id="app_name" example="Zodl">%1$s</xliff:g> 应用</string>
+    <string name="splash_authTitle">你的 Zodl 账户已受保护。</string>
+    <string name="authentication_failed_welcome_subtitle">点击钥匙图标解锁。</string>
+
+    <!-- ===== 余额 ===== -->
+    <string name="smartBanner_content_shield_button">屏蔽</string>
+    <string name="smartBanner_help_shield_transparent">透明</string>
+    <string name="widget_balances_button_spendable">可支出</string>
+    <string name="balance_breakdown_title">各资金池总余额</string>
+    <string name="balance_breakdown_subtitle">你的 ZEC 余额现在按 Zcash 资金池细分，方便你准确了解资金的存放位置。</string>
+    <string name="balance_breakdown_total">总余额</string>
+    <string name="balance_breakdown_pool_orchard">Orchard</string>
+    <string name="balance_breakdown_pool_sapling">Sapling</string>
+    <string name="balance_breakdown_pool_transparent">透明</string>
+    <string name="balance_breakdown_pool_ironwood">Ironwood</string>
+    <string name="balance_breakdown_got_it">知道了</string>
+
+    <!-- ===== 选择服务器 ===== -->
+    <string name="serverSetup_title">服务器</string>
+    <string name="choose_server_default_label">默认：<xliff:g id="server" example="example.com:123">%1$s</xliff:g></string>
+    <string name="serverSetup_custom">自定义</string>
+    <string name="choose_server_custom_delimiter">:</string>
+    <string name="choose_server_full_server_name">
+        <xliff:g id="hostname" example="example.com">%1$s</xliff:g>:
+        <xliff:g id="port" example="508">%2$d</xliff:g>
+    </string>
+    <string name="choose_server_full_server_name_text_field">
+        <xliff:g id="hostname" example="example.com">%1$s</xliff:g>:<xliff:g id="port" example="508">%2$d</xliff:g>
+    </string>
+    <string name="serverSetup_placeholder">&lt;主机名&gt;:&lt;端口&gt;</string>
+    <string name="serverSetup_save">保存选择</string>
+    <string name="choose_server_saving">正在保存选择</string>
+    <string name="choose_server_validation_dialog_error_title">无效的服务器端点</string>
+    <string name="choose_server_validation_dialog_error_text">错误：切换端点的尝试失败。
+        请检查主机名和端口是否正确，格式应为 &lt;主机名&gt;:&lt;端口&gt;。</string>
+    <string name="choose_server_save_success_dialog_title">服务器已保存</string>
+    <string name="choose_server_save_success_dialog_text">所选服务器端点已成功保存。</string>
+    <string name="serverSetup_default">默认</string>
+    <string name="serverSetup_performingTest">正在执行服务器测试…</string>
+    <string name="serverSetup_couldTakeTime">这可能需要一点时间…</string>
+    <string name="serverSetup_connectionMode">连接模式</string>
+    <string name="serverSetup_automatic">自动</string>
+    <string name="serverSetup_manual">手动</string>
+    <string name="serverSetup_fastestServers">最快的服务器</string>
+    <string name="serverSetup_otherServers">其他服务器</string>
+    <string name="serverSetup_allServers">浏览所有服务器</string>
+    <string name="serverSetup_refresh">刷新</string>
+    <string name="serverSetup_active">活跃</string>
+    <string name="serverSetup_testing">测试中</string>
+    <string name="choose_server_multi_server_info">我们可能会使用多个服务器来优化性能。为减少元数据暴露，请选择手动连接模式以选择你偏好的单一服务器，并确保在高级设置中启用了 Tor。</string>
+
+    <!-- ===== 连接 Keystone ===== -->
+    <string name="keystone_addHWWallet_scan">扫描你设备上的二维码进行连接。</string>
+    <string name="keystone_addHWWallet_tutorial">查看 Keystone 教程</string>
+    <string name="keystone_addHWWallet_step1">解锁你的 Keystone</string>
+    <string name="keystone_addHWWallet_step2">点击菜单图标</string>
+    <string name="keystone_addHWWallet_step3">点击“连接软件钱包”</string>
+    <string name="keystone_addHWWallet_step4">选择 Zodl 应用并扫描二维码</string>
+    <string name="keystone_addHWWallet_howTo">操作说明：</string>
+    <string name="keystone_addHWWallet_readyToScan">准备扫描</string>
+    <string name="keystone_addHWWallet_deviceQuestion">新设备还是活跃设备？</string>
+    <string name="keystone_addHWWallet_deviceDesc">连接到之前已连接过 Zodl 的硬件钱包将需要进行同步以发现你的交易历史。我们会引导你完成此过程。</string>
+    <string name="keystone_addHWWallet_connectNew">连接新设备</string>
+    <string name="keystone_addHWWallet_connectActive">连接活跃设备</string>
+    <string name="keystone_addHWWallet_connected">已连接！</string>
+    <string name="keystone_addHWWallet_connectedDesc">你的 Keystone 硬件钱包已成功连接。</string>
+    <string name="keystone_addHWWallet_close">关闭</string>
+    <string name="firstWalletTransactionSubtitleHWWallet">输入创建钱包时的区块高度可确保扫描正确数量的区块。如果不确定，请选择更早的日期。</string>
+    <string name="keystone_first_transaction_note">如果不确定，请选择更早的日期。</string>
+    <string name="keystone_addHWWallet_connect">连接</string>
+    <string name="hardwareWalletExplainer_title">什么是硬件钱包？</string>
+    <string name="hardwareWalletExplainer_description">硬件钱包（HW 钱包）是一种物理设备，可离线存储你的加密货币私钥，保护其免受在线黑客和恶意软件的攻击。</string>
+    <string name="hardwareWalletExplainer_featureTitle1">最高安全性</string>
+    <string name="hardwareWalletExplainer_featureDescription1">你的密钥永远不会离开设备，即使是在签署交易时</string>
+    <string name="hardwareWalletExplainer_featureTitle2">防恶意软件</string>
+    <string name="hardwareWalletExplainer_featureDescription2">免疫计算机病毒和网络钓鱼攻击</string>
+    <string name="hardwareWalletExplainer_featureTitle3">完全掌控</string>
+    <string name="hardwareWalletExplainer_featureDescription3">你拥有你的密钥，你拥有你的加密货币</string>
+    <string name="hardwareWalletExplainer_infoBoxTitle">关于 Keystone</string>
+    <string name="hardwareWalletExplainer_infoBoxDescription">Keystone 是一个流行的硬件钱包品牌，提供带有二维码签名的气隙安全性。它与 Ledger 等其他可信硬件钱包选项一样，是众多值得信赖的选择之一。</string>
+    <string name="hardwareWalletExplainer_cta">知道了</string>
+    <string name="restoreWallet_help_title">想了解更多？</string>
+    <string name="keystone_wbh_info_message_bold">钱包生日高度</string>
+    <string name="keystone_wbh_info_message">是你的钱包在区块链上创建时的区块高度（区块编号）。提供正确的高度非常重要，因为这决定了我们将扫描的区块范围，以显示你的交易历史和钱包余额。如果你从不同的硬件设备恢复了种子，请务必输入原始硬件设备的区块高度。</string>
+
+    <!-- ===== 联系人 ===== -->
+    <string name="addressBook_newContact_name">联系人姓名</string>
+    <string name="addressBook_newContact_namePlaceholder">输入联系人姓名…</string>
+    <string name="addressBook_newContact_address">钱包地址</string>
+    <string name="addressBook_newContact_addressPlaceholder">输入钱包地址…</string>
+    <string name="addressBook_error_nameExists">该联系人姓名已被使用。请选择其他姓名。</string>
+    <string name="addressBook_error_nameLength">该联系人姓名超过 32 个字符限制。请缩短姓名。</string>
+    <string name="contact_address_error_not_unique">该钱包地址已在你的地址簿中。</string>
+    <string name="contact_chain_address_error_not_unique">具有该链的地址已在你的地址簿中。</string>
+    <string name="send_error_invalidAddress">地址无效</string>
+    <string name="swapAndPay_addressBookSelectChain">选择链</string>
+
+    <!-- ===== 崩溃报告选择加入 ===== -->
+    <string name="crash_reporting_opt_in_title">帮助改进 Zodl</string>
+    <string name="crash_reporting_opt_in_subtitle">崩溃报告是开发者提升应用质量和可靠性的重要工具。它们在帮助修复导致崩溃的错误方面非常实用。</string>
+    <string name="crash_reporting_opt_in_info">注意：崩溃报告包含应用版本、崩溃发生时间以及堆栈跟踪等信息，以便明确崩溃发生在应用的哪个位置。收集的数据完全匿名。</string>
+    <string name="torSetup_learn_btnIn">选择加入</string>
+    <string name="crash_reporting_opt_in_positive_desc">与 Zodl 开发者分享崩溃报告。</string>
+    <string name="torSetup_learn_btnOut">选择退出</string>
+    <string name="crash_reporting_opt_in_negative_desc">不与 Zodl 开发者分享崩溃报告。</string>
+
+    <!-- ===== 删除钱包 ===== -->
+    <string name="deleteWallet_title">重置 Zodl</string>
+    <string name="deleteWallet_message2">在继续之前，请确保你已保存好秘密恢复短语和钱包生日高度。</string>
+    <string name="delete_wallet_text_2">重置 Zodl 应用将删除 Zodl 数据库和缓存，并断开所有已连接的硬件钱包。</string>
+    <string name="deleteWallet_message4">重置 Zodl 后，访问你资金的唯一方式是通过钱包恢复流程，该流程需要你的 Zodl 恢复短语和钱包生日高度。</string>
+    <string name="deleteWallet_metadataWarn1">保留加密的元数据备份——包括联系人、备注、书签以及兑换/支付详情。</string>
+    <string name="deleteWallet_metadataWarn2">这些数据在恢复期间无法恢复。</string>
+    <string name="deleteWallet_sheet_msg">重置应用后无法撤销。你将需要使用秘密恢复短语来恢复钱包。</string>
+    <string name="deleteWallet_actionButtonTitle">重置 Zodl</string>
+    <string name="delete_wallet_failed">钱包删除失败。请重试。</string>
+
+    <!-- ===== 错误 ===== -->
+    <string name="error_general_title">发生错误</string>
+    <string name="error_general_message">未知原因。如果问题持续存在，请联系我们的支持团队。\n\n%s</string>
+    <string name="smartBanner_help_syncError_title">同步错误</string>
+    <string name="shieldFunds_error_title">屏蔽错误</string>
+    <string name="shieldFunds_error_failure_message">上次屏蔽交易期间发生错误。你可以稍后重试，或者如果问题持续存在，请报告此问题。\n\n%s</string>
+    <string name="shieldFunds_error_gprc_message">上次屏蔽交易期间发生错误。我们稍后会尝试重新提交交易。如果失败，你可能需要在稍后时间重复屏蔽尝试。</string>
+    <string name="error_keystone_firmware_title">需要更新 Keystone 固件</string>
+    <string name="error_keystone_firmware_message">你的 Keystone 固件（%1$s）低于最低支持版本（%2$s）。请更新设备固件后重试。</string>
+    <string name="error_keystone_firmware_message_legacy">你的 Keystone 固件版本过旧，无法报告其版本，且低于最低支持版本（%1$s）。请更新设备固件后重试。</string>
+    <string name="error_keystone_firmware_close">关闭</string>
+    <string name="error_keystone_account_title">无法添加 Keystone 账户</string>
+    <string name="error_keystone_account_message">扫描的 Keystone 账户无法用于此应用。请确保你的 Keystone 设备设置为此应用相同的网络，然后重新扫描二维码。</string>
+    <string name="torSetup_alert_title">禁用 Tor？</string>
+    <string name="torSetup_alert_msg">检测到 Tor 连接问题。为提升性能，请尝试禁用 Tor。这将停止汇率更新。你可以稍后在高级设置中重新启用。</string>
+    <string name="torSetup_alert_disable">禁用</string>
+    <string name="torSetup_alert_dontDisable">不要禁用</string>
+
+    <!-- ===== 汇率 ===== -->
+    <string name="currencyConversion_ipTitle">IP 地址保护</string>
+    <string name="currencyConversion_ipDesc">Zodl 的货币换算功能不会泄露你的 IP 地址。</string>
+    <string name="exchange_rate_info_subtitle_1_no_cmc">汇率通过 Tor 获取以保护你的 IP 地址。请确保你所在地区允许使用 Tor。</string>
+    <string name="currencyConversion_refresh">汇率刷新</string>
+    <string name="currencyConversion_refreshDesc">汇率会自动刷新，也可以手动刷新。</string>
+    <string name="tooltip_exchangeRate_title">汇率不可用</string>
+    <string name="tooltip_exchangeRate_desc">我们尝试为你刷新汇率但未成功。请检查你的连接，重新启动应用，我们会再试一次。</string>
+    <string name="send_currencyUnavailable_title">%1$s 换算不可用</string>
+    <string name="send_currencyUnavailable_desc">目前无法获取 %1$s 的实时汇率。你可以使用美元作为备用，或者继续仅以 ZEC 输入金额。</string>
+    <string name="send_currencyUnavailable_switchToUSD">切换到美元</string>
+    <string name="send_currencyUnavailable_continueInZEC">继续使用 ZEC</string>
+    <string name="exchange_rate_opt_in_title">新功能</string>
+    <string name="currencyConversion_enable">启用</string>
+    <string name="currencyConversion_saveBtn">保存更改</string>
+    <string name="currencyConversion_skipBtn">暂时跳过</string>
+    <string name="currencyConversion_note">给超级注重隐私的用户提示：由于我们从交易所获取汇率，交易所可能会看到在交易发生前查询了汇率。</string>
+    <string name="torSetup_ccSheet_enable">启用</string>
+    <string name="currencyConversion_learnMoreOptionEnableDesc">显示货币换算。</string>
+    <string name="currencyConversion_learnMoreOptionDisable">禁用</string>
+    <string name="currencyConversion_learnMoreOptionDisableDesc">不显示货币换算。</string>
+    <string name="currencyConversion_learnMoreDesc">以选定货币显示你的余额和支付金额。对于兑换和支付，汇率将继续以美元显示。你可以在高级设置中管理此功能。</string>
+    <string name="currencyConversion_settingsDesc">以选定货币显示你的余额和支付金额。对于兑换和支付，汇率将继续以美元显示。</string>
+    <string name="torSetup_ccSheet_title">货币换算需要 Tor</string>
+    <string name="exchange_rate_tor_opt_in_description">Tor 保护是一项测试功能，可为你的 IP 地址提供额外保护。美元汇率仅在其启用时可用。\n\n如果你所在地区允许使用 Tor，我们建议启用它。你可以在高级设置中管理。</string>
+    <string name="torSetup_ccSheet_later">稍后再说</string>
+    <string name="currencyConversion_torOnInfo">禁用 Tor 保护也将禁用货币换算功能，直到重新启用。</string>
+    <string name="currencyConversion_torOffInfo">如果你想保护你的 IP 地址，请在高级设置中启用 Tor 保护。</string>
+    <string name="currencyConversion_selectCurrencyTitle">选择货币</string>
+
+    <!-- ===== 导出数据 ===== -->
+    <string name="privateDataConsent_screenTitle">数据导出</string>
+    <string name="privateDataConsent_title">导出隐私数据同意书</string>
+    <string name="export_data_text">
+        点击下方的“我同意”，即表示你同意导出所有钱包的隐私数据，例如你的钱包的完整历史记录，包括任何已连接的硬件钱包。所有隐私信息、备注、金额和接收地址，甚至包括你的屏蔽活动，都将被导出。*\n\n这些隐私数据还赋予了查看你未来通过 Zodl 采取的某些操作的能力。\n\n分享这些隐私数据是不可撤销的——一旦你与某人分享了这些隐私数据，就无法撤销其访问权限。\n\n*请注意，这些隐私数据不会赋予他们支出你资金的能力，只会赋予他们查看你如何使用资金的能力。
+    </string>
+    <string name="privateDataConsent_confirmation">我同意 Zodl 的导出隐私数据政策和隐私政策</string>
+    <string name="export_data_export_data_chooser_title">将 Zodl 内部数据分享给：</string>
+    <string name="export_data_unable_to_share">找不到可用于分享的应用。</string>
+
+    <!-- ===== 反馈 ===== -->
+    <string name="support_header">支持</string>
+    <string name="sendFeedback_title">向我们发送反馈</string>
+    <string name="sendFeedback_ratingQuestion">你的 Zodl 体验如何？</string>
+    <string name="sendFeedback_howCanWeHelp">我们如何帮助你？</string>
+    <string name="sendFeedback_hcwhPlaceholder">我想咨询…</string>
+    <string name="tabs_send">发送</string>
+    <string name="support_confirmation_dialog_title">打开电子邮件应用</string>
+    <string name="support_confirmation_explanation">Zodl 即将打开你的电子邮件应用，并附上一封预填好的邮件。\n\n请务必在电子邮件应用中点击发送。</string>
+    <string name="sendFeedback_desc">请告诉我们你遇到的任何问题，或你希望在未来看到的功能。</string>
+    <string name="support_email_part_1">你的 Zodl 体验如何？\n<xliff:g id="emoji_encoding" example="😍">%1$s</xliff:g> <xliff:g id="emoji_order" example="5">%2$s</xliff:g>/5</string>
+    <string name="support_email_part_2">我们如何帮助你？\n%s</string>
+
+    <!-- ===== 首页 ===== -->
+    <string name="tabs_receive">接收</string>
+    <string name="home_button_scan">扫描</string>
+    <string name="receive_request">请求</string>
+    <string name="home_button_buy">购买</string>
+    <string name="smartBanner_content_backup_title">需要备份钱包</string>
+    <string name="smartBanner_content_backup_info">防止潜在的资金损失</string>
+    <string name="smartBanner_content_backup_button">开始</string>
+    <string name="smartBanner_content_disconnected_title">钱包已断开连接</string>
+    <string name="smartBanner_content_disconnected_info">检查你的连接并重新加载 Zodl</string>
+    <string name="home_message_transparent_balance_subtitle">%1$s %2$s</string>
+    <string name="smartBanner_content_shield_title">未屏蔽余额</string>
+    <string name="smartBanner_content_currencyConversion_info">启用以显示法币价值</string>
+    <string name="smartBanner_content_currencyConversion_button">开始</string>
+    <string name="home_message_wallet_updating_title">正在更新余额…</string>
+    <string name="smartBanner_content_updatingBalance_info">等待最后一笔交易处理</string>
+    <string name="smartBanner_content_restore_title">正在恢复钱包 • %1$.1f%% 完成</string>
+    <string name="smartBanner_content_restore_info">保持 Zodl 在活跃的手机屏幕上打开</string>
+    <string name="smartBanner_content_restore_infoSpendable">你的资金现在可以使用了</string>
+    <string name="home_message_syncing_title">正在同步 • %1$.1f%% 完成</string>
+    <string name="smartBannerContentResyncing">正在重新同步</string>
+    <string name="home_message_resyncing_subtitle">保持 Zodl 在活跃的手机屏幕上打开</string>
+    <string name="smartBanner_content_sync_info">你的钱包正在更新</string>
+    <string name="smartBanner_content_syncingError_title">同步时遇到错误</string>
+    <string name="smartBanner_content_syncingError_info">正在尝试解决</string>
+    <string name="torSettingsSheet_title">启用 Tor 保护</string>
+    <string name="smartBanner_content_tor_info">保护你的 IP 地址</string>
+    <string name="smartBanner_help_backup_title">需要备份</string>
+    <string name="smartBanner_help_backup_info1">通过安全备份钱包来防止潜在的资金损失。</string>
+    <string name="smartBanner_help_backup_info2">通过备份以下内容来备份你资金的访问权限：</string>
+    <string name="smartBanner_help_backup_point1">秘密恢复短语（按精确顺序排列的一组独特的 24 个单词）</string>
+    <string name="smartBanner_help_backup_point2">钱包生日高度（创建钱包时的区块高度）</string>
+    <string name="smartBanner_help_backup_info3">如果你无法访问应用或设备，知道秘密恢复短语是恢复资金的唯一方法。我们无法看到它，也无法帮助你恢复。</string>
+    <string name="smartBanner_help_backup_info4">任何能访问你秘密恢复短语的人都将完全控制你的钱包，因此请妥善保管，切勿向任何人展示。</string>
+    <string name="smartBanner_help_backup_acknowledge">我已阅读并理解不备份钱包的风险。</string>
+    <string name="smartBanner_help_shield_notNow">暂不</string>
+    <string name="smartBanner_help_shield_doNotShowAgain">不再显示此消息。</string>
+    <string name="smartBanner_help_shield_title">始终屏蔽透明资金</string>
+    <string name="smartBanner_help_shield_info1">为保护用户隐私，Zodl 不支持支出透明 %s。请点击下方的“屏蔽”按钮，使你的透明资金可支出，并使你的 Zodl 总余额保持私密。</string>
+    <string name="smartBanner_help_shield_info2">这将创建一笔钱包内屏蔽交易，合并你的透明资金和屏蔽资金。（典型费用：&lt; %1$s %2$s）</string>
+    <string name="smartBanner_help_diconnected_info">你似乎处于离线状态。请恢复互联网连接以使用 Zodl 钱包。</string>
+    <string name="smartBanner_help_restore_title">钱包恢复进行中</string>
+    <string name="smartBanner_help_restore_info">Zodl 正在扫描区块链以检索你的交易。较旧的钱包可能需要数小时才能恢复。请按照以下步骤操作以防止中断：</string>
+    <string name="home_info_restoring_bullet_1">保持 Zodl 应用在活跃的手机屏幕上打开。</string>
+    <string name="home_info_restoring_bullet_2">为防止手机屏幕变暗，请关闭省电模式并保持手机充电。</string>
+    <string name="smartBanner_help_restore_warning">钱包恢复完成之前无法支出资金。</string>
+    <string name="smartBanner_help_resync_title">钱包重新同步进行中</string>
+    <string name="home_info_resyncing_message">Zodl 正在扫描区块链以获取你的最新交易，确保余额显示正确。请保持 Zodl 应用在活跃的手机屏幕上打开，以避免中断。</string>
+    <string name="smartBanner_help_sync_title">钱包同步进行中</string>
+    <string name="smartBanner_help_sync_info">Zodl 正在扫描区块链以获取你的最新交易，确保余额显示正确。请保持 Zodl 应用在活跃的手机屏幕上打开，以避免中断。</string>
+    <string name="smartBanner_help_updatingBalance_title">正在更新余额</string>
+    <string name="smartBanner_help_updatingBalance_info">你的最后一笔交易正在被挖矿并确认。</string>
+    <string name="crash_report_detail_title">帮助改进 Zodl</string>
+    <string name="crash_report_detail_subtitle">崩溃报告是开发者用来提高应用质量和可靠性的重要工具。其唯一目的是修复导致崩溃的错误。</string>
+    <string name="crash_report_detail_item_title_2">哪些内容不会被分享？</string>
+    <string name="crash_report_detail_item_subtitle_1">我们使用 Firebase Crashlytics 来收集崩溃报告。报告包含应用版本、崩溃发生时间以及堆栈跟踪等信息，以便明确崩溃发生在应用的哪个位置。</string>
+    <string name="crash_report_detail_item_subtitle_2">Zodl 不会也无法访问或收集有关个人用户、其设备、交易或应用内活动的信息。数据完全匿名。</string>
+    <string name="crash_report_detail_item_title_1">哪些内容会被分享？</string>
+    <string name="home_message_crash_reporting_title">帮助改进 Zodl</string>
+    <string name="home_message_crash_reporting_subtitle">允许分享崩溃报告</string>
+    <string name="balances_spendableBalance_title">可支出余额</string>
+    <string name="balances_everythingDone">你的所有资金均已屏蔽且可支出。</string>
+    <string name="balances_infoPending">等待之前交易的找零到账。</string>
+    <string name="balances_infoSyncing">Zodl 正在扫描区块链，以确保余额显示正确。</string>
+    <string name="balances_infoShielding">屏蔽你的透明 %1$s 以使其可支出且保持私密。这将创建一笔钱包内屏蔽交易，合并你的透明资金和屏蔽资金。（典型费用：%2$s %3$s）</string>
+    <string name="balances_spendableBalance">已屏蔽（可支出）</string>
+    <string name="balances_pending">待处理</string>
+    <string name="crosspay_pay">支付</string>
+    <string name="swapAndPay_swap">兑换</string>
+
+    <!-- ===== 余额不足 ===== -->
+    <string name="sheet_insufficientBalance_title">余额不足</string>
+    <string name="sheet_insufficientBalance_msg">我们无法为你创建此交易。你的钱包余额不足以支付交易金额和交易费用。请降低交易金额以覆盖费用。</string>
+
+    <!-- ===== 集成 ===== -->
+    <string name="torSetup_option3_title">集成</string>
+    <string name="integrations_coinbase">通过 Coinbase 购买 <xliff:g id="currency" example="ZEC">%1$s</xliff:g></string>
+    <string name="integrations_coinbase_subtitle">一种轻松购买 <xliff:g id="currency" example="ZEC">%1$s</xliff:g> 并直接存入你的 Zodl 钱包的方式。</string>
+    <string name="integrations_info">Zodl 集成提供对第三方服务的访问。与它们分享的功能和信息不在我们的控制范围内，并受其隐私政策的约束。</string>
+    <string name="integrations_dialog_info">与 Zodl 集成分享的信息受其隐私政策的约束。</string>
+    <string name="integrations_disabled_info">在恢复过程中，无法使用支付集成。</string>
+    <string name="settings_flexa">使用 Flexa 支付</string>
+    <string name="settings_flexaDesc">在数千个零售点使用 ZEC。</string>
+    <string name="integrations_flexa_biometric_message">验证你的身份以使用 Flexa 支付</string>
+    <string name="settings_keystone">连接 Keystone</string>
+    <string name="settings_keystoneDesc">连接气隙硬件钱包以存储屏蔽 ZEC。</string>
+    <string name="integrations_disabled_info_flexa">从 Keystone 切换到 Zodl 以使用 Flexa。</string>
+    <string name="integrations_dialog_more_options">更多选项</string>
+    <string name="integrations_near_swap">使用 NEAR Intents 兑换 %s</string>
+    <string name="integrations_near_swap_message">将 %s 兑换为其他加密货币。</string>
+    <string name="integrations_coinbase_subtitle_disabled">Coinbase Onramp 暂时不可用。</string>
+
+    <!-- ===== 保持打开 ===== -->
+    <string name="restoreInfo_title">保持 Zodl 打开！</string>
+    <string name="keep_open_description">Zodl 正在扫描区块链以检索你的交易。较旧的钱包可能需要数小时才能同步。请按照以下步骤操作以防止中断：</string>
+    <string name="keep_open_bullet_1">保持 Zodl 应用在活跃的手机屏幕上打开。</string>
+    <string name="keep_open_bullet_2">为防止手机屏幕变暗，请关闭省电模式并保持手机充电。</string>
+    <string name="keepZodlOpenInstructionsHWWallet">Zodl 正在扫描区块链以检索你的交易。较旧的钱包可能需要数小时才能完成同步。请按照以下步骤操作以防止中断：</string>
+    <string name="keepZodlOpenSubtitleHWWallet">你的钱包正在同步。</string>
+    <string name="keep_open_keystone_warning">在你的 Keystone 钱包同步完成之前，你的 Zodl 资金无法支出。</string>
+    <string name="keepScreenOnSyncing">同步时保持屏幕常亮</string>
+    <string name="keepZodlOpenInstructionsResyncing">Zodl 正在扫描区块链以检索你的交易。较旧的钱包可能需要数小时才能重新同步。请按照以下步骤操作以防止中断：</string>
+    <string name="keepZodlOpenSubtitleResync">你的钱包正在重新同步。</string>
+    <string name="keep_open_resync_warning">在钱包重新同步完成之前，你的资金无法支出。</string>
+    <string name="keepScreenOnResyncing">重新同步时保持屏幕常亮</string>
+    <string name="keepZodlOpenSubtitleRestore">你的钱包正在恢复。</string>
+    <string name="keep_open_restore_warning">在钱包恢复完成之前，你的资金无法支出。</string>
+    <string name="keepScreenOnRestoring">恢复时保持屏幕常亮</string>
+
+    <!-- ===== 引导 ===== -->
+    <string name="plainOnboarding_title">为金融主权而生的 Zcash 驱动移动钱包。</string>
+    <string name="plainOnboarding_button_createNewWallet">创建新钱包</string>
+    <string name="plainOnboarding_button_restoreWallet">恢复现有钱包</string>
+
+    <!-- ===== 支付 ===== -->
+    <string name="crosspay_help_payWith">使用以下方式 CrossPay</string>
+    <string name="pay_info_subtitle">使用任何 NEAR 支持的代币或通证进行跨链支付。\n\n如果实际滑点和网络状况导致收款人收到的金额低于承诺金额，你的交易将被撤销。你将收到扣除网络费用后的全额退款。</string>
+    <string name="swapAndPay_slippageWarn">如果兑换执行时的滑点低于预期，未使用的滑点费用部分将退还。</string>
+
+    <!-- ===== 支付请求 ===== -->
+    <string name="send_requestPayment_title">支付请求</string>
+    <string name="send_requestPayment_requestedBy">请求方</string>
+    <string name="send_requestPayment_for">用途：</string>
+    <string name="send_feeSummary">费用</string>
+    <string name="send_requestPayment_total">总计</string>
+    <string name="partners_flexa_transactionFailedTitle">交易失败</string>
+    <string name="payment_request_dialog_error_text">发生错误，发送资金的操作失败。请重试。</string>
+    <string name="payment_request_dialog_error_grpc_title">连接错误</string>
+    <string name="payment_request_dialog_error_grpc_text">Zodl 在向网络提交交易时遇到了一些连接问题。它将在接下来的几分钟内重试。</string>
+    <string name="payment_request_send_failed_report_unable_open_email">无法启动电子邮件应用。</string>
+
+    <!-- ===== 二维码 ===== -->
+    <string name="qr_code_unified_content_description">统一地址二维码</string>
+    <string name="qr_code_sapling_content_description">Sapling 地址二维码</string>
+    <string name="qr_code_transparent_content_description">透明地址二维码</string>
+    <string name="accounts_zashi_shieldedAddress">Zcash 屏蔽地址</string>
+    <string name="receive_saplingAddress">Zcash Sapling 地址</string>
+    <string name="accounts_zashi_transparentAddress">Zcash 透明地址</string>
+    <string name="component_maxPrivacy">私密</string>
+    <string name="component_lowPrivacy">非私密</string>
+    <string name="addressDetails_shareQR">分享二维码</string>
+    <string name="addressDetails_copyAddress">复制地址</string>
+    <string name="qr_code_clipboard_tag">Zcash 钱包地址</string>
+    <string name="qr_code_data_unable_to_share">找不到用于分享二维码的应用。</string>
+    <string name="qr_code_share_chooser_title">我的 Zodl %s 地址</string>
+    <string name="qr_code_share_chooser_text">嗨，扫描此二维码即可向我发送 %s 付款！下载链接：
+        https://play.google.com/store/apps/details?id=co.electriccoin.zcash</string>
+    <string name="qr_code_wallet_address_shielded_keystone">Keystone 屏蔽地址</string>
+    <string name="qr_code_wallet_address_sapling_keystone">Keystone Sapling 地址</string>
+    <string name="qr_code_wallet_address_transparent_keystone">Keystone 透明地址</string>
+
+    <!-- ===== 接收 ===== -->
+    <string name="receive_title">接收 %s</string>
+    <string name="receive_warning">为保护隐私，请始终使用屏蔽地址。</string>
+    <string name="receive_qrCode">二维码</string>
+    <string name="receive_clipboard_tag">Zcash 钱包地址</string>
+    <string name="accounts_keystone_shieldedAddress">Zcash 屏蔽地址</string>
+    <string name="accounts_keystone_transparentAddress">Zcash 透明地址</string>
+    <string name="receive_wallet_address_unified_subtitle">每次使用时轮换</string>
+    <string name="receive_help_shielded_title">Zcash 屏蔽地址（轮换）</string>
+    <string name="receive_info_shielded_bullet_1">使用此地址私密地接收和存储你的 %s。发送到此地址的透明和屏蔽 %s 将作为屏蔽 %s 接收和存储。</string>
+    <string name="receive_help_shielded_desc2">每次打开接收屏幕时，都会生成一个新的 Zcash 屏蔽地址。</string>
+    <string name="receive_help_shielded_desc3">发送到你不同轮换屏蔽地址的所有交易都将成为同一钱包余额的一部分，归属于同一个种子短语。</string>
+    <string name="receive_help_shielded_desc4">虽然我们建议每次都使用新地址，但每个唯一地址都可以重复使用。</string>
+    <string name="receive_help_transparent_title">Zcash 透明地址（静态）</string>
+    <string name="receive_help_transparent_desc1">这种地址类型的工作方式与比特币地址相同，不提供任何隐私保护。发送到此地址的交易详情将是公开的，并可在区块链上查看。</string>
+    <string name="receive_help_transparent_desc2">我们不建议使用这种地址类型，除非发送 %s 的钱包或交易所不支持向屏蔽 Zcash 地址发送资金。</string>
+    <string name="receive_help_transparent_desc3">为保护你的隐私，Zodl 将引导你一键屏蔽收到的任何透明 %s。</string>
+    <string name="receive_info_transparent_bullet_4">你必须先屏蔽透明 %s，然后才能支出。</string>
+
+    <!-- ===== 请求 ===== -->
+    <string name="zecKeyboard_invalid">此交易金额无效</string>
+    <string name="requestZec_summary_shareQR">分享二维码</string>
+    <string name="request_amount_empty">0</string>
+    <string name="request_amount_keyboard_zero">0</string>
+    <string name="request_amount_keyboard_one">1</string>
+    <string name="request_amount_keyboard_two">2</string>
+    <string name="request_amount_keyboard_three">3</string>
+    <string name="request_amount_keyboard_four">4</string>
+    <string name="request_amount_keyboard_five">5</string>
+    <string name="request_amount_keyboard_six">6</string>
+    <string name="request_amount_keyboard_seven">7</string>
+    <string name="request_amount_keyboard_eight">8</string>
+    <string name="request_amount_keyboard_nine">9</string>
+    <string name="general_delete">删除</string>
+    <string name="requestZec_whatFor">这是用来做什么的？</string>
+    <string name="request_memo_bytes_counter">
+        <xliff:g id="typed_bytes" example="12">%1$s</xliff:g>/<xliff:g id="max_bytes" example="512">%2$s</xliff:g>
+    </string>
+    <string name="request_qr_code_content_description">请求二维码</string>
+    <string name="request_qr_code_data_unable_to_share">找不到用于分享二维码的应用。</string>
+    <string name="request_qr_code_share_chooser_title">请求 %s</string>
+    <string name="request_qr_code_share_chooser_text">嗨，扫描此二维码即可向我发送 %s 付款！下载链接：
+        https://play.google.com/store/apps/details?id=co.electriccoin.zcash</string>
+
+    <!-- ===== 恢复 ===== -->
+    <string name="root_existingWallet_restore">恢复</string>
+    <string name="restore_subtitle">种子恢复短语</string>
+    <string name="restoreWallet_info">请按正确顺序输入你的 24 个单词秘密恢复短语。</string>
+    <string name="restore_dialog_message_1_bold_part">秘密恢复短语</string>
+    <string name="restore_dialog_message_1">是一组独特的 24 个单词，按精确顺序排列。它可以通过任何 Zcash 钱包应用在任何设备上用于完全控制你的资金。
+        可以把它想象成你钱包的主钥匙。它存储在 Zodl 的高级设置中。</string>
+    <string name="restore_dialog_message_2_bold_part">钱包生日高度</string>
+    <string name="restore_dialog_message_2">是你的钱包在区块链上创建时的区块高度（区块编号）。如果你无法访问 Zodl 应用并且需要恢复资金，提供区块高度和恢复短语可以显著加快恢复过程。
+    </string>
+    <string name="restoreWallet_birthday_estimate">估算我的区块高度</string>
+    <string name="firstWalletTransactionSubtitleRestore">决定 Zodl 应扫描多远。输入一个早于你第一笔收款交易的日期。如果不确定，请选择更早的日期。</string>
+    <string name="restore_seed_warning_suggestions">此单词不在种子短语词典中。请从建议中选择正确的单词。</string>
+    <string name="torSettingsSheet_msg">如果你所在地区可用 Tor，我们建议在钱包恢复期间启用它以增强隐私保护。此步骤完全可选。</string>
+    <string name="torSettingsSheet_desc">通过 Tor 网络路由你的连接，以增强匿名性和隐私保护。</string>
+    <string name="firstWalletTransactionSubtitleResync">决定 Zodl 应重新同步多远。输入一个早于你第一笔收款交易的日期。如果不确定，请选择更早的日期。</string>
+    <string name="resync_bd_estimation_message">你的钱包将从 %1$s（%2$s 个区块）开始重新同步。Zodl 将扫描并恢复以下区块号之后发生的所有交易。</string>
+    <string name="resyncWallet_confirmTitle">确认重新同步</string>
+    <string name="confirm_resync_subtitle">在不重置应用的情况下重新同步当前钱包。这可用于排查通常需要恢复钱包才能解决的问题，例如修复你的 Keystone 余额。\n\n除非你在下方另有指定，否则 Zodl 将从显示的日期开始重新同步。</string>
+    <string name="resyncWallet_dateInfo">除非你在下方另有指定，否则 Zodl 将从显示的日期开始重新同步。</string>
+    <string name="confirm_resync_info">你的钱包将从 %1$s（%2$s 个区块）开始重新同步。如果你想更改，请使用下方的按钮。</string>
+    <string name="resyncWallet_change">更改</string>
+    <string name="resyncWallet_failedTitle">重新同步失败</string>
+    <string name="resyncWallet_failedDescription">无法完成钱包重新同步。请重试或报告问题。</string>
+
+    <!-- ===== 审核 Keystone 交易 ===== -->
+    <string name="keystone_confirm">使用 Keystone 确认</string>
+
+    <!-- ===== 扫描 ===== -->
+    <string name="scan_preview_content_description">相机</string>
+    <string name="scan_settings_open_failed">无法启动设置应用。</string>
+    <string name="scan_cameraSettings">相机未授权。请前往 Zodl 的系统设置并开启权限。</string>
+    <string name="scan_state_failed">相机初始化失败。请重试。</string>
+    <string name="scan_invalidQR">此二维码不包含有效的 Zcash 地址。</string>
+    <string name="scan_invalidImage">此图片不包含有效的 Zcash 地址。</string>
+    <string name="scan_severalCodesFound">此图片包含多个有效的 Zcash 地址。</string>
+    <string name="scan_torch_content_description">相机手电筒开关</string>
+    <string name="gallery_content_description">相册</string>
+    <string name="deeplinkWarning_screenTitle">你好！</string>
+    <string name="deeplinkWarning_title">看起来你使用了第三方应用来扫描付款。</string>
+    <string name="deeplinkWarning_desc">为了更好的安全保障，请使用 Zodl 重新扫描二维码。</string>
+    <string name="deeplinkWarning_cta">在 Zodl 中重新扫描</string>
+
+    <!-- ===== 扫描 Keystone ===== -->
+    <string name="scan_keystone_failure">此二维码不是有效的 Keystone 钱包。</string>
+    <string name="scan_keystone_preview_content_description">相机</string>
+    <string name="scan_keystone_settings_open_failed">无法启动设置应用。</string>
+    <string name="scan_keystone_state_permission">相机未授权。请前往 Zodl 的系统设置并开启权限。</string>
+    <string name="scan_keystone_state_failed">相机初始化失败。请重试。</string>
+    <string name="scan_keystone_address_validation_failed">此二维码不是有效的 Zcash 地址。</string>
+    <string name="scan_keystone_torch_content_description">相机手电筒开关</string>
+    <string name="scan_keystone_gallery_content_description">相册</string>
+    <string name="scan_keystone_info">扫描你的 Keystone 钱包以连接</string>
+    <string name="coinVote_delegationSigning_scanInstructions">扫描 Keystone 二维码以签署交易</string>
+
+    <!-- ===== 种子恢复 ===== -->
+    <string name="recoveryPhraseDisplay_screenTitle">恢复短语</string>
+    <string name="recoveryPhraseDisplay_title">秘密恢复短语</string>
+    <string name="recoveryPhraseDisplay_description">这些单词是恢复你资金的唯一方式！请务必按正确顺序保存。</string>
+    <string name="recoveryPhraseDisplay_reveal">显示安全详情</string>
+    <string name="seed_recovery_saved_button">我已保存！</string>
+    <string name="recoveryPhraseDisplay_hide">隐藏安全详情</string>
+    <string name="seed_recovery_bday_tooltip_message">钱包生日高度决定了你钱包的诞生（链上）高度，有助于加快钱包恢复过程。请将此数字与种子短语一起保存在安全的地方。</string>
+    <string name="wallet_backup_title">钱包备份</string>
+    <string name="recoveryPhraseDisplay_warningTitle">你的秘密恢复短语</string>
+    <string name="recoveryPhraseDisplay_warningInfo">你的秘密恢复短语是一组独特的 24 个单词，按精确顺序排列。它保护着你资金的访问权限。</string>
+    <string name="recoveryPhraseDisplay_proceedWarning">请将此短语安全隐藏。不要截图或将其存储在手机上！</string>
+    <string name="recoveryPhraseDisplay_warningControl_title">掌控你的钱包</string>
+    <string name="recoveryPhraseDisplay_warningKeep_title">保持私密</string>
+    <string name="recoveryPhraseDisplay_warningStore_title">安全存储</string>
+    <string name="recoveryPhraseDisplay_warningControl_info">使用它从其他设备和 Zcash 钱包访问你的资金。</string>
+    <string name="recoveryPhraseDisplay_warningKeep_info">不要与任何人分享！它可以被用来完全控制你的资金。</string>
+    <string name="recoveryPhraseDisplay_warningStore_info">我们无法访问它，也绝不会索要它。如果你丢失了它，将无法恢复。</string>
+    <string name="recoveryPhraseDisplay_warningHeight_info">创建钱包时的区块高度可以显著加快钱包恢复过程。</string>
+
+    <!-- ===== 选择 Keystone 账户 ===== -->
+    <string name="keystone_wallet">Keystone 钱包</string>
+    <string name="select_keystone_account_positive">下一步</string>
+    <string name="keystone_addHWWallet_title">确认要访问的账户</string>
+    <string name="keystone_addHWWallet_desc">选择你要连接的钱包以继续。连接后，你将能够使用硬件钱包无线签署交易。</string>
+
+    <!-- ===== 发送 ===== -->
+    <string name="send_scan_content_description">扫描</string>
+    <string name="send_to">发送至</string>
+    <string name="send_addressPlaceholder">Zcash 地址</string>
+    <string name="send_amount">金额</string>
+    <string name="send_amount_hint"><xliff:g id="currency" example="ZEC">%1$s</xliff:g></string>
+    <string name="send_error_invalidAmount">金额无效</string>
+    <string name="send_message">消息</string>
+    <string name="send_memoPlaceholder">在此处写加密消息…</string>
+    <string name="send_memo_bytes_counter">
+        <xliff:g id="typed_bytes" example="12">%1$s</xliff:g>/<xliff:g id="max_bytes" example="512">%2$s</xliff:g>
+    </string>
+    <string name="send_fee">（典型费用 &lt; <xliff:g id="fee_amount" example="0.001">%1$s</xliff:g>）</string>
+    <string name="send_alert_failure_title">发送资金失败</string>
+    <string name="send_dialog_error_text">错误：发送资金的操作失败。请重试。</string>
+    <string name="send_abbreviated_address_format" formatted="true"><xliff:g id="first_five" example="zs1g7">%1$s</xliff:g>…<xliff:g id="last_five" example="mvyzg">%2$s</xliff:g></string>
+    <string name="send_info_memo">透明交易不能附带备注</string>
+    <string name="send_addressNotInBook">点击地址簿图标添加联系人。</string>
+    <string name="send_address_book_content_description">打开地址簿</string>
+
+    <!-- ===== 发送确认 ===== -->
+    <string name="send_confirmationTitle">确认</string>
+    <string name="send_orchardWarning_title">此发送需要支出 Orchard 资金</string>
+    <string name="send_orchardWarning_message">我们建议先迁移你的资金，以避免在链上泄露交易金额。</string>
+    <string name="send_orchardWarning_continue">仍然继续</string>
+    <string name="send_orchardWarning_cancel">取消</string>
+    <string name="send_amountSummary">总金额</string>
+    <string name="accounts_sendingFrom">发送自</string>
+    <string name="send_confirmation_sending_title">正在发送…</string>
+    <string name="send_sendingInfo">你的代币正在发送至\n
+        <xliff:g example="zs12ghrbdjfs24383x5T…" id="index">%1$s</xliff:g>
+    </string>
+    <string name="send_confirmation_sending_title_transparent">正在屏蔽…</string>
+    <string name="send_shieldingInfo">你的代币正在被屏蔽</string>
+    <string name="send_successShielding">已屏蔽！</string>
+    <string name="send_successShieldingInfo">你的代币已成功屏蔽</string>
+    <string name="send_failureShielding">无法屏蔽</string>
+    <string name="send_failureShieldingInfo">尝试屏蔽你的代币时出错。请重试。</string>
+    <string name="send_success">已发送！</string>
+    <string name="send_successInfo">你的代币已成功发送至\n
+        <xliff:g example="zs12ghrbdjfs24383x5T…" id="index">%1$s</xliff:g>
+    </string>
+    <string name="send_viewTransaction">查看交易</string>
+    <string name="transaction_failedSend">发送失败</string>
+    <string name="send_failureInfo">尝试发送代币时出错。\n请重试。</string>
+    <string name="send_confirmation_failure_anchor_subtitle">准备此交易时，你钱包的链状态发生了变化。请等待同步完成后重试。</string>
+    <string name="send_confirmation_failure_grpc_title">连接问题</string>
+    <string name="send_confirmation_failure_grpc_subtitle">Zodl 在提交交易时遇到连接问题。它将在接下来的几分钟内重试。</string>
+    <string name="send_confirmation_multiple_trx_failure_text">向此收款人发送需要多笔交易，但只有部分成功，其余失败。你的资金是安全的，但需要在我们这边的协助下恢复。\n\n请使用下方的按钮联系我们。它会自动准备我们需要的所有数据，以帮助你恢复资金。</string>
+    <string name="send_confirmation_multiple_trx_failure_copy_button">复制交易 ID</string>
+    <string name="send_confirmation_multiple_trx_failure_ids_title">交易 ID</string>
+    <string name="send_confirmation_multiple_report_text">你好，Zodl 团队。\n\n在向 TEX 地址发送交易时，我遇到了错误状态。我联系你们是为了获取如何恢复资金的指导。\n\n谢谢。</string>
+    <string name="send_confirmation_multiple_report_statuses" formatted="true">交易状态：</string>
+    <string name="send_confirmation_multiple_report_status_success">
+        <xliff:g example="1" id="index">%1$d</xliff:g>：成功
+    </string>
+    <string name="send_confirmation_multiple_report_status_not_attempt" formatted="true">
+        <xliff:g example="2" id="index">%1$d</xliff:g>：未尝试
+    </string>
+    <string name="send_confirmation_multiple_report_status_failure" formatted="true">
+        <xliff:g example="3" id="index">%1$d</xliff:g>：失败：
+        gRPC：<xliff:g example="true" id="grpc">%2$s</xliff:g>，
+        代码：<xliff:g example="123" id="code">%3$d</xliff:g>，
+        描述：<xliff:g example="网络不可达" id="desc">%4$s</xliff:g>
+    </string>
+    <string name="send_confirmation_multiple_trx_failure_report_unable_open_email">无法启动电子邮件应用。</string>
+    <string name="send_confirmation_multiple_trx_failure_copy_tag">交易 ID</string>
+    <string name="swapAndPay_successSwapInfo">你已成功发起兑换。\n请在交易屏幕上跟踪其状态。</string>
+    <string name="swapAndPay_failureSwapInfo">发起兑换时出错。\n请重试。</string>
+    <string name="swapAndPay_sendingInfo">你的代币正在发送至存款地址…</string>
+    <string name="swapAndPay_checkStatus">查看状态</string>
+    <string name="keystone_confirmPay">使用 Keystone 支付</string>
+    <string name="send_pendingTitle">交易待处理</string>
+    <string name="send_pendingInfo">你的交易正在处理中。</string>
+    <string name="send_pendingTimeoutInfo">等待服务器响应超时。你的交易可能已经广播。</string>
+    <string name="swapAndPay_pendingSwapTitle">兑换待处理</string>
+    <string name="swapAndPay_pendingSwapInfo">你的兑换正在处理中。请在交易屏幕上跟踪其状态。</string>
+    <string name="swapAndPay_pendingPayTitle">支付待处理</string>
+    <string name="swapAndPay_pendingPayInfo">你的跨链支付正在处理中。请在交易屏幕上跟踪其状态。</string>
+    <string name="send_pendingShieldingTitle">屏蔽待处理</string>
+    <string name="send_pendingShieldingInfo">你的屏蔽交易正在处理中。</string>
+    <string name="swapAndPay_successPayInfo">你已成功发起跨链支付。\n请在交易屏幕上跟踪其状态。</string>
+
+    <!-- ===== 设置 ===== -->
+    <string name="settings_title">设置</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_feedback">向我们发送反馈</string>
+    <string name="settings_version">版本 <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="settings_addressBook">地址簿</string>
+    <string name="settings_whats_new">新变化</string>
+    <string name="settings_coinholderPolling" tools:ignore="MissingTranslation">Beta：持币者投票</string>
+    <string name="settings_troubleshooting_menu_content_description">其他设置</string>
+    <string name="settings_troubleshooting_rescan">重新扫描区块链</string>
+    <string name="settings_troubleshooting_enable_background_sync">后台同步</string>
+    <string name="settings_troubleshooting_enable_keep_screen_on">同步期间保持屏幕常亮</string>
+
+    <!-- ===== 签署 Keystone 交易 ===== -->
+    <string name="keystone_signWith_title">使用你的 Keystone 钱包扫描</string>
+    <string name="keystone_signWith_desc">使用 Keystone 签署后，点击下方的“获取签名”按钮。</string>
+    <string name="keystone_signWith_signTransaction">签署交易</string>
+    <string name="keystone_signWith_hardware">硬件</string>
+    <string name="keystone_signWith_getSignature">获取签名</string>
+    <string name="keystone_signWith_reject">拒绝</string>
+    <string name="keystoneTransactionReject_title">确定吗？</string>
+    <string name="sign_keystone_transaction_bottom_sheet_subtitle">拒绝签名将取消交易，如果你想继续，需要重新开始。此操作无法撤销。</string>
+    <string name="keystoneTransactionReject_goBack">返回</string>
+    <string name="keystoneTransactionReject_rejectSig">拒绝签名</string>
+    <string name="coinVote_common_confirmation" tools:ignore="MissingTranslation">确认</string>
+    <string name="coinVote_delegationSigning_instruction" tools:ignore="MissingTranslation" translatable="false">使用 Keystone 签署后，点击下方的“扫描签名”按钮。</string>
+    <string name="coinVote_delegationSigning_scanSignature" tools:ignore="MissingTranslation" translatable="false">扫描签名</string>
+    <string name="sign_keystone_voting_error_title" tools:ignore="MissingTranslation" translatable="false">无法准备 Keystone 签署</string>
+    <string name="sign_keystone_voting_error_skip_remaining" tools:ignore="MissingTranslation" translatable="false">无法跳过剩余的 Keystone 捆绑包。</string>
+    <string name="sign_keystone_voting_error_no_account" tools:ignore="MissingTranslation" translatable="false">没有可用的已选 Keystone 账户。</string>
+    <string name="sign_keystone_voting_error_prepare_request" tools:ignore="MissingTranslation" translatable="false">无法准备 Keystone 签署请求。</string>
+    <string name="scan_keystone_voting_rejected_title" tools:ignore="MissingTranslation" translatable="false">签名未被接受</string>
+    <string name="coinVote_delegationSigning_duplicateSignature" tools:ignore="MissingTranslation" translatable="false">该 Keystone 签名已针对第 %2$d 个（共 %1$d 个）捆绑包扫描过。请在 Keystone 上签署当前捆绑包，然后扫描新的二维码。</string>
+    <string name="coinVote_delegationSigning_wrongSignature" tools:ignore="MissingTranslation" translatable="false">该签名对应的是另一个捆绑包。请在 Keystone 上签署第 %2$d 个（共 %1$d 个）捆绑包，然后扫描新的二维码。</string>
+    <string name="sign_keystone_voting_skip_remaining_bundle" tools:ignore="MissingTranslation" translatable="false">跳过剩余捆绑包</string>
+    <string name="sign_keystone_voting_skip_remaining_bundles" translatable="false" tools:ignore="PluralsCandidate">跳过 %1$d 个剩余捆绑包</string>
+    <string name="sign_keystone_voting_skip_remaining_title" tools:ignore="MissingTranslation" translatable="false">跳过剩余捆绑包？</string>
+    <string name="sign_keystone_voting_skip_remaining_message" tools:ignore="MissingTranslation" translatable="false">你将提交已签署的 %1$s，并放弃未签署捆绑包中的 %2$s。</string>
+    <string name="sign_keystone_voting_skip_remaining_confirm" tools:ignore="MissingTranslation" translatable="false">跳过剩余项</string>
+    <string name="coinVote_delegationSigning_title" tools:ignore="MissingTranslation" translatable="false">授权投票</string>
+    <string name="coinVote_delegationSigning_currentBundleProgress" tools:ignore="MissingTranslation" translatable="false">签名 %1$d / %2$d</string>
+    <string name="authorize_vote_signed_badge" translatable="false" tools:ignore="PluralsCandidate">已签署 %1$d / %2$d</string>
+    <string name="authorize_vote_zec_signed" tools:ignore="MissingTranslation" translatable="false">%1$s 已签署</string>
+    <string name="authorize_vote_zec_awaiting" tools:ignore="MissingTranslation" translatable="false">%1$s 等待中</string>
+    <string name="coinVote_delegationSigning_useSignedBundlesOnly" tools:ignore="MissingTranslation" translatable="false">仅使用已签署的捆绑包</string>
+    <string name="authorize_vote_use_signed_bundles_only_subtitle" tools:ignore="MissingTranslation" translatable="false">跳过剩余的 %1$s 继续</string>
+    <string name="coinVote_delegationSigning_memo" tools:ignore="MissingTranslation" translatable="false">备注</string>
+
+    <!-- ===== 兑换 ===== -->
+    <string name="swap_info_message">将 %1$s 与任何 NEAR 支持的通证进行兑换。\n\n如果兑换为 %2$s，你将需要从第三方钱包发送资金，并提供一个用于退还找零的地址。\n\n如果从 %3$s 兑换，你必须提供你要兑换到的资产的有效地址。</string>
+    <string name="swapAndPay_help_swapWith">兑换方式</string>
+    <string name="swap_select_token">选择通证</string>
+    <string name="swapAndPay_search">按名称或代码搜索…</string>
+    <string name="swapAndPay_slippage">滑点</string>
+    <string name="swapAndPay_slippageDesc">此设置决定了兑换预期价格与实际支付价格之间允许的最大差额，该差额不受 Zodl 控制。</string>
+    <string name="swap_slippage_max_threshold">请输入不超过 30%% 的最大滑点。</string>
+    <string name="swap_slippage_info">你可能收到比报价少最多 %s 的金额。</string>
+    <string name="swap_slippage_low_warning">滑点 %1$s 会增加兑换失败并退款的可能性。建议使用 %2$s，尤其是在金额较大时。</string>
+    <string name="swap_slippage_low_warning_1">低于 %s%%</string>
+    <string name="swap_slippage_low_warning_2">%s%% 或更高</string>
+    <string name="pay_slippage_info">除了交易费用外，你可能需要多支付最多 %s。</string>
+    <string name="swapAndPay_from">从</string>
+    <string name="send_error_insufficientFunds">余额不足</string>
+    <string name="balance_availableTitle">可支出：</string>
+    <string name="swapAndPay_max">可支出：%s</string>
+    <string name="swapAndPay_to">至</string>
+    <string name="swapAndPay_rate">汇率</string>
+    <string name="swap_zec_exchange_rate">1 %1$s = %2$s</string>
+    <string name="swapAndPay_slippageTolerance">滑点容忍度</string>
+    <string name="swapAndPay_canceltitle">确定吗？</string>
+    <string name="swapAndPay_cancelMsg">如果你离开此屏幕，你输入的所有信息都将丢失。</string>
+    <string name="swapAndPay_cancelSwap">取消兑换</string>
+    <string name="swap_cancel_positive">不取消</string>
+    <string name="swap_quote_error_too_low_try_at_least">金额过低，无法桥接，请至少尝试 %s</string>
+    <string name="swap_quote_error_too_low_try_higher">金额过低，无法桥接，请尝试更高金额。</string>
+    <string name="swap_quoteUnavailable">我们尝试了，但无法为你的支付参数获取报价。你可以尝试调整滑点或稍后再试。</string>
+    <string name="swap_quoteUnavailableSwap">我们尝试了，但无法为你的兑换参数获取报价。你可以尝试调整滑点或稍后再试。</string>
+    <string name="swapAndPay_quoteUnavailable">报价不可用</string>
+    <string name="swapAndPay_cancelPayment">取消支付</string>
+    <string name="swapAndPay_editPayment">编辑支付</string>
+    <string name="swapAndPay_editSwap">编辑兑换</string>
+    <string name="swapAndPay_swapNow">立即兑换</string>
+    <string name="swapToZec_review">审核报价</string>
+    <string name="swapAndPay_swapFrom">兑换来源</string>
+    <string name="swapAndPay_swapTo">兑换为</string>
+    <string name="swapAndPay_totalFees">总费用</string>
+    <string name="swapAndPay_maxSlippage">最大滑点 %s</string>
+    <string name="swapAndPay_totalAmount">总金额</string>
+    <string name="swapAndPay_quote_zashi">Zodl</string>
+    <string name="swapAndPay_swapQuoteSlippageWarn">根据你设置的 %s 滑点，你可能收到比报价少最多 %s 的金额。</string>
+    <string name="swapAndPay_getQuote">获取报价</string>
+    <string name="swapAndPay_custom">自定义</string>
+    <string name="swapAndPay_payNow">立即支付</string>
+    <string name="swapAndPay_payFrom">支付来源</string>
+    <string name="swapAndPay_payTo">支付至</string>
+    <string name="swap_to_zec_footer">使用你的 %s 钱包 \n 存入资金。存入其他资产可能会导致资金损失。</string>
+    <string name="swapToZec_info2">%2$s 上的 %1$s</string>
+    <string name="swap_to_zec_share_text">在 %3$s 上存入 %1$s %2$s 以兑换为 Zodl 中的 %4$s 的存款地址</string>
+    <string name="swapToZec_refundAddress">退款地址</string>
+    <string name="swapToZec_refundAddress_title">退款地址</string>
+    <string name="swap_refund_address_info_message_empty">如果兑换失败或市场条件发生变化，你的交易可能会被退款，扣除交易费用。\n\n退款金额将以原始货币返还至你的钱包。请输入有效地址以避免资金损失。</string>
+    <string name="swap_refund_address_info_message">如果兑换失败或市场条件发生变化，你的交易可能会被退款，扣除交易费用。\n\n退款金额将以原始货币在同一网络上返还至你的钱包。请输入有效地址以避免资金损失。</string>
+    <string name="swapToZec_swapDetails">兑换详情</string>
+    <string name="swapToZec_depositTo">存款至</string>
+    <string name="swapStatus_swapExpired">兑换已过期</string>
+    <string name="swapStatus_swapping">兑换中</string>
+    <string name="swapStatus_swapped">已兑换</string>
+    <string name="swapStatus_swapRefunded">兑换已退款</string>
+    <string name="swapStatus_swapFailed">兑换失败</string>
+    <string name="swapToZec_swapProcessing">兑换处理中</string>
+    <string name="swapToZec_deposit">存款金额</string>
+    <string name="swapToZec_sentTheFunds">我已发送资金</string>
+    <string name="depositFunds_alert_title">确定要退出吗？</string>
+    <string name="depositFunds_alert_message">如果你已发送或打算发送资金，请点击“我已发送资金”。或者取消兑换以返回上一屏幕。</string>
+    <string name="depositFunds_title">存入资金</string>
+    <string name="depositFunds_desc">使用任何 NEAR 支持的资产兑换为 ZEC。</string>
+    <string name="depositFunds_bulletPoint1">发送所显示资产的准确金额。发送更少的金额将导致退款。</string>
+    <string name="depositFunds_bulletPoint2">请仔细核对你在正确的网络上发送了正确的资产（例如，Solana 上的 USDC）。</string>
+    <string name="depositFunds_bulletPoint3">最好从你自己拥有的钱包发送。从交易所发送可能会导致延迟或退款。</string>
+
+    <!-- ===== 税务导出 ===== -->
+    <string name="taxExport_title">数据导出</string>
+    <string name="taxExport_desc">以 .csv 格式下载你的 <xliff:g example="Zodl" id="account_name">%s</xliff:g> 上一日历年的交易历史。</string>
+    <string name="taxExport_download">下载</string>
+
+    <!-- ===== TEX 不支持 ===== -->
+    <string name="texKeystone_title">不支持的地址类型</string>
+    <string name="texKeystone_warn1">Keystone 目前不支持向 Binance TEX 地址转账。</string>
+    <string name="texKeystone_warn2">请使用以下步骤完成你的交易。</string>
+    <string name="texKeystone_workaround">变通步骤</string>
+    <string name="tex_unsupported_step_1_badge">第 1 步</string>
+    <string name="texKeystone_step1_title">先发送至 Zodl</string>
+    <string name="texKeystone_step1_desc">将 ZEC 转入你的 Zodl 屏蔽地址</string>
+    <string name="tex_unsupported_step_2_badge">第 2 步</string>
+    <string name="texKeystone_step2_title">从 Zodl 发送至 TEX 地址</string>
+    <string name="texKeystone_step2_desc">在 Zodl 中收到后，将通证发送至你的最终 TEX 目标地址</string>
+
+    <!-- ===== Tor ===== -->
+    <string name="torSetup_title">Tor 保护</string>
+    <string name="tor_settings_subtitle">Tor 为你的 IP 地址提供额外保护。此功能使用 Tor 网络获取汇率、发送交易、检索交易数据并连接第三方 API。\n\n如果你所在地区允许使用 Tor，我们建议启用它。</string>
+    <string name="torSetup_enableDesc">通过 Tor 连接</string>
+    <string name="torSetup_disableDesc">不通过 Tor 连接。</string>
+    <string name="torSetup_option1_title">货币换算</string>
+    <string name="torSetup_option1_desc">从第三方服务器获取汇率，而不会泄露你的 IP 地址。（仅在启用 Tor 时可用。）</string>
+    <string name="torSetup_option2_title">交易</string>
+    <string name="torSetup_option2_desc">通过 Tor 发送和检索交易数据，以增强隐私。</string>
+    <string name="torSetup_option3_desc">通过 Tor 访问第三方 API（例如 NEAR），以增强隐私。</string>
+    <string name="tor_settings_share_feedback">分享反馈</string>
+
+    <!-- ===== 交易详情 ===== -->
+    <string name="transaction_detail_fee_minimal">&lt; 0.001 %s</string>
+    <string name="transactionHistory_viewLess">收起</string>
+    <string name="transactionHistory_viewMore">查看更多</string>
+    <string name="transactionHistory_noMessage">无消息</string>
+    <string name="transactionHistory_details">交易详情</string>
+    <string name="transactionList_transactionId">交易 ID</string>
+    <string name="swapAndPay_status">状态</string>
+    <string name="transactionDetail_feeSummary">费用</string>
+    <string name="transactionHistory_sentTo">发送至</string>
+    <string name="transactionHistory_pending">待处理</string>
+    <string name="transactionHistory_saveAddress">保存地址</string>
+    <string name="transactionHistory_sendAgain">再次发送</string>
+    <string name="transaction_sent">已发送</string>
+    <string name="transaction_sending">发送中</string>
+    <string name="transaction_noteSplit">余额拆分</string>
+    <string name="transaction_noteSplitting">正在拆分余额</string>
+    <string name="transaction_noteSplitFailed">余额拆分失败</string>
+    <string name="transaction_migrated">已迁移</string>
+    <string name="transaction_migrating">迁移中</string>
+    <string name="transaction_migrationFailed">迁移失败</string>
+    <string name="transaction_received">已接收</string>
+    <string name="transaction_receiving">接收中</string>
+    <string name="transaction_failedReceive">接收失败</string>
+    <string name="transaction_shieldedFunds">已屏蔽</string>
+    <string name="transaction_shieldingFunds">屏蔽中</string>
+    <string name="transaction_failedShieldedFunds">屏蔽失败</string>
+    <string name="transaction_detail_edit_note">编辑备注</string>
+    <string name="annotation_addArticle">添加备注</string>
+    <string name="annotation_title">备注</string>
+    <string name="swapAndPay_refundedAmount">退款金额</string>
+    <string name="swapAndPay_recipient">收款人</string>
+    <string name="swapAndPay_executedSlippage">实际滑点</string>
+    <string name="swapAndPay_maxSlippageTitle">最大滑点</string>
+    <string name="transactionHistory_timestamp">时间戳</string>
+    <string name="swapAndPay_refundInfo">已检测到你的存款，但兑换无法完成。你的资金已退还，扣除交易费用。如果你尚未收到，请联系 Zodl 支持团队。</string>
+    <string name="swapAndPay_refundTitle">资金已退还</string>
+    <string name="swapAndPay_processingMsg">你的兑换已延迟。兑换通常在几分钟内完成，但根据市场状况可能需要更长时间。</string>
+    <string name="swapAndPay_failedMsg">此兑换无法完成。如果你已存入资金但未收到兑换，请联系支持，以便我们帮助解决。</string>
+    <string name="swapAndPay_failedTitle">兑换失败</string>
+    <string name="swapAndPay_expiredMsg">此兑换在其 24 小时有效窗口后过期。如果你未发送资金，则无需采取任何操作。如果你已发送资金，请联系支持，以便我们提供帮助。</string>
+    <string name="swapAndPay_expiredTitle">兑换已过期</string>
+    <string name="reportSwap_report">报告问题</string>
+    <string name="reportSwap_title">报告兑换问题</string>
+    <string name="reportSwap_msg">点击下方按钮将把此兑换的详细信息（如存款地址和目标资产）发送给 Zodl 支持团队，以便他们帮助解决你的问题。交易信息将自动包含在内。</string>
+    <string name="transaction_detail_support_email_subject">兑换交易问题</string>
+    <string name="transaction_detail_support_email_body">请在此处描述你的问题：\n\n\n\n兑换详情：\n存款地址：%1$s\n来源资产：%2$s\n目标资产：%3$s</string>
+    <string name="deposits_info">存款可能需要几分钟才能确认。</string>
+    <string name="swapAndPay_status_incompleteDeposit">存款不完整</string>
+    <string name="swapAndPay_status_pending">待处理</string>
+    <string name="swapAndPay_status_success">已完成</string>
+    <string name="swapAndPay_status_refunded">已退款</string>
+    <string name="swapAndPay_status_failed">失败</string>
+    <string name="swapAndPay_status_expired">已过期</string>
+    <string name="swapAndPay_status_pendingDeposit">存款待处理</string>
+    <string name="swapStatus_paying">支付中</string>
+    <string name="swapStatus_swapIncomplete">兑换不完整</string>
+    <string name="swapStatus_paymentIncomplete">支付不完整</string>
+    <string name="transaction_detail_info_incomplete_deposit_message">请在 %2$s 之前额外存入 %1$s 以完成此兑换，否则你的存款将被退还。</string>
+
+    <!-- ===== 交易筛选 ===== -->
+    <string name="filter_title">筛选</string>
+    <string name="filter_sent">已发送</string>
+    <string name="filter_received">已接收</string>
+    <string name="filter_memos">备注</string>
+    <string name="transaction_filters_unread">未读</string>
+    <string name="filter_bookmarked">已收藏</string>
+    <string name="filter_notes">备注</string>
+    <string name="filter_reset">重置</string>
+    <string name="filter_apply">应用</string>
+
+    <!-- ===== 交易历史 ===== -->
+    <string name="transaction_history_plus" formatted="true">
+        <xliff:g example="1.2345" id="amount">%1$s</xliff:g> %2$s
+    </string>
+    <string name="transaction_history_minus" formatted="true">
+        - <xliff:g example="0.2" id="amount">%1$s</xliff:g> %2$s
+    </string>
+    <string name="filter_today">今天</string>
+    <string name="filter_yesterday">昨天</string>
+    <string name="filter_previous7days">过去 7 天</string>
+    <string name="filter_previous30days">过去 30 天</string>
+    <string name="filter_daysAgo" formatted="true"><xliff:g example="$" id="days">%s</xliff:g> 天前</string>
+    <string name="general_activity">活动</string>
+    <string name="transaction_history_send_transaction">获取一些 %s</string>
+    <string name="transactionHistory_seeAll">查看全部</string>
+    <string name="transaction_history_widget_send_transaction">发送交易</string>
+    <string name="transactionHistory_nothingHere">这里还没有任何内容。</string>
+    <string name="transaction_history_widget_empty_subtitle">迈出第一步…</string>
+    <string name="filter_search">搜索</string>
+    <string name="transaction_history_sending">发送中…</string>
+    <string name="transaction_history_sending_failed">发送失败</string>
+    <string name="transaction_history_noteSplitting">正在拆分余额…</string>
+    <string name="transaction_history_noteSplitFailed">拆分失败</string>
+    <string name="transaction_history_migrating">迁移中…</string>
+    <string name="transaction_history_receiving">接收中…</string>
+    <string name="transaction_history_receiving_failed">接收失败</string>
+    <string name="transaction_history_shielding">屏蔽中…</string>
+    <string name="swapStatus_paid">已支付</string>
+    <string name="transaction_history_paying">支付中…</string>
+    <string name="swapStatus_paymentFailed">支付失败</string>
+    <string name="swapStatus_paymentRefunded">支付已退款</string>
+    <string name="transaction_history_swapping">兑换中…</string>
+    <string name="swapStatus_paymentExpired">支付已过期</string>
+
+    <!-- ===== 交易备注 ===== -->
+    <string name="annotation_edit">编辑备注</string>
+    <string name="annotation_delete">删除备注</string>
+    <string name="transaction_note_max_length"><xliff:g example="34" id="chars">%s</xliff:g>/90 字符</string>
+    <string name="annotation_add">添加备注</string>
+    <string name="annotation_save">保存备注</string>
+
+    <!-- ===== 更新 ===== -->
+    <string name="update_title_available">Zodl 在此。</string>
+    <string name="osStatusError_title">不是你的问题，是我们的问题。</string>
+    <string name="update_description_required">
+        Zodl 有一个必需更新\n，它对性能和/或安全性进行了重大改进。
+    </string>
+    <string name="update_description_available">
+        Zodl 有一个新版本，它对性能和/或安全性进行了小幅更新。\n\n请花一点时间更新到最新版本。
+    </string>
+    <string name="update_link_text">在此处了解有关此更新的更多信息。</string>
+    <string name="update_download_button">更新</string>
+
+    <!-- ===== 更新联系人 ===== -->
+    <string name="update_contact_title">联系人</string>
+    <string name="addressBook_alert_message">你即将删除此联系人。此操作无法撤销。</string>
+
+    <!-- ===== 投票 ===== -->
+    <string name="coinVote_common_screenTitle" tools:ignore="MissingTranslation">持币者投票</string>
+    <string name="coinVote_common_continue" tools:ignore="MissingTranslation">继续</string>
+    <string name="coinVote_pollsList_chainConfigAccessibility" tools:ignore="MissingTranslation">投票链配置</string>
+    <string name="coinVote_configSettings_screenTitle" tools:ignore="MissingTranslation">选择数据源</string>
+    <string name="coinVote_configSettings_sectionTitle" tools:ignore="MissingTranslation">投票数据源</string>
+    <string name="coinVote_configSettings_sectionSubtitle" tools:ignore="MissingTranslation">选择一个投票源，或添加你自己的。</string>
+    <string name="coinVote_configSettings_bundledName" tools:ignore="MissingTranslation">持币者投票</string>
+    <string name="coinVote_configSettings_defaultBadge" tools:ignore="MissingTranslation">默认</string>
+    <string name="vote_chain_config_custom_empty" tools:ignore="MissingTranslation">尚无自定义链。</string>
+    <string name="vote_chain_config_add" tools:ignore="MissingTranslation">添加</string>
+    <string name="coinVote_configSettings_addCustomSource" tools:ignore="MissingTranslation">添加自定义源</string>
+    <string name="coinVote_configSettings_edit" tools:ignore="MissingTranslation">编辑</string>
+    <string name="coinVote_configSettings_delete" tools:ignore="MissingTranslation">删除</string>
+    <string name="coinVote_common_cancel" tools:ignore="MissingTranslation">取消</string>
+    <string name="coinVote_configSettings_save" tools:ignore="MissingTranslation">保存</string>
+    <string name="coinVote_configSettings_saveChanges" tools:ignore="MissingTranslation">保存更改</string>
+    <string name="coinVote_configSettings_toolbarAdd" tools:ignore="MissingTranslation">添加源</string>
+    <string name="coinVote_configSettings_toolbarEdit" tools:ignore="MissingTranslation">编辑源</string>
+    <string name="coinVote_configSettings_headerAddTitle" tools:ignore="MissingTranslation">添加自定义源</string>
+    <string name="coinVote_configSettings_headerEditTitle" tools:ignore="MissingTranslation">编辑自定义源</string>
+    <string name="coinVote_configSettings_headerAddBody" tools:ignore="MissingTranslation">添加一个默认列表中没有的投票源。你需要一个来自托管投票的提供商的有效链 URL。</string>
+    <string name="coinVote_configSettings_headerEditBody" tools:ignore="MissingTranslation">更新此自定义投票源的标题或 URL。你需要一个来自托管投票的提供商的有效链 URL。</string>
+    <string name="coinVote_configSettings_titleField" tools:ignore="MissingTranslation">标题</string>
+    <string name="coinVote_configSettings_urlField" tools:ignore="MissingTranslation">URL</string>
+    <string name="coinVote_configSettings_urlPlaceholder" tools:ignore="MissingTranslation">输入...</string>
+    <string name="vote_chain_config_error_title" tools:ignore="MissingTranslation">无效源</string>
+    <string name="vote_chain_config_error_name_required" tools:ignore="MissingTranslation">请为此源输入标题。</string>
+    <string name="coinVote_configSettings_errorTitleTooLong" tools:ignore="MissingTranslation">标题不能超过 15 个字符（包括空格）。</string>
+    <string name="vote_chain_config_error_url_required" tools:ignore="MissingTranslation">请输入静态配置 HTTPS URL。</string>
+    <string name="coinVote_configSettings_errorInvalidUrl" tools:ignore="MissingTranslation">请输入有效的 URL（例如 https://zodl.com/polls）</string>
+    <string name="vote_chain_config_error_duplicate_default" tools:ignore="MissingTranslation">该 URL 是默认源。请改为选择“默认”。</string>
+    <string name="coinVote_configSettings_errorDuplicateUrl" tools:ignore="MissingTranslation">此源 URL 已添加。</string>
+    <string name="vote_chain_config_error_validation_failed" tools:ignore="MissingTranslation">无法验证此源。请检查 URL 和校验和，然后重试。</string>
+    <string name="coinVote_howToVote_titleZodl" tools:ignore="MissingTranslation">如何使用 %1$s 投票</string>
+    <string name="coinVote_howToVote_subtitle" tools:ignore="MissingTranslation">你的 ZEC 赋予你发言权。通过对活跃提案投票来塑造 Zcash 网络的未来。</string>
+    <string name="coinVote_howToVote_stepVotingTitle" tools:ignore="MissingTranslation">对提案进行投票</string>
+    <string name="coinVote_howToVote_stepVotingBody" tools:ignore="MissingTranslation">通过选择答案对每个问题进行投票。你可以跳过问题，并在提交前随时更新你的选择。</string>
+    <string name="coinVote_howToVote_stepAuthorizeTitle" tools:ignore="MissingTranslation">授权并提交</string>
+    <string name="coinVote_howToVote_stepAuthorizeBody" tools:ignore="MissingTranslation">准备好后，你将确认一笔小额授权交易，并一步提交你的投票。提交后，你的投票无法更改。</string>
+    <string name="coinVote_howToVote_infoCard" tools:ignore="MissingTranslation">你在快照时间的余额决定了你的投票权重。你无需将资金转移到任何地方。</string>
+    <string name="coinVote_pollsList_emptyTitle" tools:ignore="MissingTranslation">目前没有投票</string>
+    <string name="coinVote_pollsList_emptyMessage" tools:ignore="MissingTranslation">目前没有任何活跃投票。请稍后再来查看。</string>
+    <string name="coinVote_common_gotIt" tools:ignore="MissingTranslation">知道了</string>
+    <string name="coinVote_common_refresh" tools:ignore="MissingTranslation">刷新</string>
+    <string name="coinVote_common_pollDescription" tools:ignore="MissingTranslation">投票描述</string>
+    <string name="coinVote_pollsList_statusActive" tools:ignore="MissingTranslation">活跃</string>
+    <string name="coinVote_common_voted" tools:ignore="MissingTranslation">已投票</string>
+    <string name="coinVote_pollsList_statusClosed" tools:ignore="MissingTranslation">已结束</string>
+    <string name="coinVote_pollsList_approvedByZodl" tools:ignore="MissingTranslation">经 Zodl 批准</string>
+    <string name="coinVote_pollsList_unverifiedSheetTitle" tools:ignore="MissingTranslation">未经验证的投票</string>
+    <string name="coinVote_pollsList_dateCloses" tools:ignore="MissingTranslation">截止于 %1$s</string>
+    <string name="coinVote_pollsList_dateClosed" tools:ignore="MissingTranslation">已于 %1$s 结束</string>
+    <string name="coinVote_pollsList_enterPoll" tools:ignore="MissingTranslation">进入投票</string>
+    <string name="coinVote_proposalList_ctaReviewAnswers" tools:ignore="MissingTranslation">审核</string>
+    <string name="coinVote_common_viewResults" tools:ignore="MissingTranslation">查看结果</string>
+    <string name="coinVote_delegationSigning_signedProgress" tools:ignore="MissingTranslation">已投票 %1$d / %2$d</string>
+    <string name="coinVote_pollsList_loadErrorTitle" tools:ignore="MissingTranslation">无法加载投票</string>
+    <string name="vote_error_unable_to_load_polls_message" tools:ignore="MissingTranslation">无法获取投票轮次。请重试。</string>
+    <string name="vote_error_confirmation_unavailable_title" tools:ignore="MissingTranslation">确认不可用</string>
+    <string name="vote_error_confirmation_unavailable_message" tools:ignore="MissingTranslation">无法加载投票详情。请重试。</string>
+    <string name="vote_error_proposal_unavailable_title" tools:ignore="MissingTranslation">提案不可用</string>
+    <string name="vote_error_proposal_unavailable_message" tools:ignore="MissingTranslation">无法加载提案。请重试。</string>
+    <string name="coinVote_error_configUnavailableTitle" tools:ignore="MissingTranslation">投票不可用</string>
+    <string name="vote_error_voting_unavailable_message" tools:ignore="MissingTranslation">无法加载投票提案。请重试。</string>
+    <string name="coinVote_results_loadErrorTitle" tools:ignore="MissingTranslation">无法加载结果</string>
+    <string name="vote_error_results_unavailable_message" tools:ignore="MissingTranslation">无法加载投票结果。请重试。</string>
+    <string name="vote_error_unable_to_load_round_title" tools:ignore="MissingTranslation">无法加载轮次</string>
+    <string name="vote_error_unable_to_load_round_message" tools:ignore="MissingTranslation">无法获取投票轮次数据。请重试。</string>
+    <string name="vote_error_something_went_wrong_message" tools:ignore="MissingTranslation">我们无法连接到投票服务。请稍后再试，或者如果问题持续存在，请联系支持。</string>
+    <string name="vote_error_wallet_update_required" tools:ignore="MissingTranslation">需要更新钱包</string>
+    <string name="vote_error_insufficient_funds_message" tools:ignore="MissingTranslation">你没有足够的 ZEC 来支付交易费用。请向你的钱包添加资金后重试。</string>
+    <string name="coinVote_common_goBack" tools:ignore="MissingTranslation">返回</string>
+    <string name="coinVote_confirmSubmission_authorizationFailedTitle" tools:ignore="MissingTranslation">授权失败</string>
+    <string name="coinVote_confirmSubmission_authorizationFailedMessage" tools:ignore="MissingTranslation">我们无法授权你的投票。请检查你的连接后重试。</string>
+    <string name="coinVote_pollClosedSheet_title" tools:ignore="MissingTranslation">投票已结束</string>
+    <string name="coinVote_pollClosedSheet_message" tools:ignore="MissingTranslation">投票期已结束。
+你的投票无法再提交。</string>
+    <string name="coinVote_votingView_unverifiedPollTitle" tools:ignore="MissingTranslation">未经验证的投票</string>
+    <string name="coinVote_votingView_unverifiedPollMessage" tools:ignore="MissingTranslation">此投票尚未经过验证。我们无法确认其合法性或结果将如何被使用。</string>
+    <string name="coinVote_pollsList_unverifiedSheetProceed" tools:ignore="MissingTranslation">仍然继续</string>
+    <string name="coinVote_common_done" tools:ignore="MissingTranslation">完成</string>
+    <string name="coinVote_common_dismiss" tools:ignore="MissingTranslation">忽略</string>
+    <string name="coinVote_common_tryAgain" tools:ignore="MissingTranslation">重试</string>
+    <string name="coinVote_common_close" tools:ignore="MissingTranslation">关闭</string>
+    <string name="coinVote_confirmSubmission_confirmWithKeystone" tools:ignore="MissingTranslation">使用 Keystone 确认</string>
+    <string name="coinVote_common_confirm" tools:ignore="MissingTranslation">确认</string>
+    <string name="vote_confirm_cta_preparing" tools:ignore="MissingTranslation">正在准备投票...</string>
+    <string name="vote_confirm_cta_resume_keystone_signing" tools:ignore="MissingTranslation">恢复 Keystone 签署</string>
+    <string name="vote_confirm_cta_sign_keystone" tools:ignore="MissingTranslation">使用 Keystone 签署</string>
+    <string name="coinVote_delegationSigning_bundleProgress" tools:ignore="MissingTranslation">签署捆绑包 %1$d/%2$d</string>
+    <string name="coinVote_submission_continuedProcessingTitle" tools:ignore="MissingTranslation">正在提交投票</string>
+    <string name="coinVote_confirmSubmission_progressAuthorizing" tools:ignore="MissingTranslation">正在授权...</string>
+    <string name="vote_confirm_cta_submitting" tools:ignore="MissingTranslation">正在提交投票 %1$d / %2$d</string>
+    <string name="coinVote_store_submissionAuthorizingVote" tools:ignore="MissingTranslation">正在授权投票...</string>
+    <string name="coinVote_confirmSubmission_progressSubmittingVoteCount" tools:ignore="MissingTranslation">正在提交投票 %1$d / %2$d...</string>
+    <string name="coinVote_results_percentValue" tools:ignore="MissingTranslation">%1$d%%</string>
+    <string name="coinVote_common_submission" tools:ignore="MissingTranslation">提交</string>
+    <string name="coinVote_confirmSubmission_headerTitleIdle" tools:ignore="MissingTranslation">确认并提交</string>
+    <string name="coinVote_confirmSubmission_headerTitleCompleted" tools:ignore="MissingTranslation">提交已确认！</string>
+    <string name="coinVote_confirmSubmission_submissionFailedTitle" tools:ignore="MissingTranslation">提交失败</string>
+    <string name="coinVote_confirmSubmission_headerSubtitleIdleKeystone" tools:ignore="MissingTranslation">在使用你的 Keystone 签署投票授权前请进行审核。这是最终操作。你的投票将被发布，且无法更改。</string>
+    <string name="coinVote_confirmSubmission_headerSubtitleIdle" tools:ignore="MissingTranslation">在确认投票授权前请进行审核。这是最终操作。你的投票将被发布，且无法更改。</string>
+    <string name="coinVote_confirmSubmission_headerSubtitleSubmitting" tools:ignore="MissingTranslation">投票提交正在进行中，请不要离开此屏幕，直到完成。</string>
+    <string name="coinVote_confirmSubmission_headerSubtitleCompleted" tools:ignore="MissingTranslation">你的投票已成功发布，且无法更改。</string>
+    <string name="coinVote_confirmSubmission_submissionFailedMessage" tools:ignore="MissingTranslation">你的投票无法提交。请检查你的连接后重试。</string>
+    <string name="vote_confirm_error_auth" tools:ignore="MissingTranslation">授权交易失败。请重试。</string>
+    <string name="vote_confirm_error_no_choices" tools:ignore="MissingTranslation">没有可提交的投票选择。</string>
+    <string name="vote_confirm_error_authentication" tools:ignore="MissingTranslation">身份验证失败。请重试。</string>
+    <string name="vote_confirm_preparing" tools:ignore="MissingTranslation">正在准备...</string>
+    <string name="vote_confirm_memo_resume_keystone" tools:ignore="MissingTranslation">恢复待处理的 Keystone 签署请求，然后继续签署剩余的委托捆绑包。</string>
+    <string name="vote_confirm_memo_sign_keystone" tools:ignore="MissingTranslation">在提交投票前，使用 Keystone 签署每个已准备的委托捆绑包。</string>
+    <string name="coinVote_delegationSigning_memoMessage" tools:ignore="MissingTranslation">我授权此由我的钱包管理的热键在 %1$s 上使用 %2$s 进行投票。</string>
+    <string name="vote_confirm_memo_preparing" tools:ignore="MissingTranslation">你的钱包仍在为此投票准备投票授权。</string>
+    <string name="coinVote_confirmSubmission_detailPoll" tools:ignore="MissingTranslation">投票</string>
+    <string name="coinVote_confirmSubmission_detailVotingPower" tools:ignore="MissingTranslation">投票权重</string>
+    <string name="coinVote_confirmSubmission_detailVotingHotkey" tools:ignore="MissingTranslation">投票热键</string>
+    <string name="coinVote_confirmSubmission_detailMemo" tools:ignore="MissingTranslation">备注</string>
+    <string name="vote_delegation_signing_title" tools:ignore="MissingTranslation">委托签署</string>
+    <string name="vote_delegation_signing_status_generating" tools:ignore="MissingTranslation">正在生成证明... %1$d%%</string>
+    <string name="vote_delegation_signing_status_complete" tools:ignore="MissingTranslation">证明完成 - 正在提交委托...</string>
+    <string name="vote_delegation_signing_status_ready" tools:ignore="MissingTranslation">已准备好生成零知识证明</string>
+    <string name="vote_delegation_signing_cta_generating" tools:ignore="MissingTranslation">正在生成...</string>
+    <string name="vote_delegation_signing_cta" tools:ignore="MissingTranslation">生成委托证明</string>
+    <string name="vote_ineligible_top_bar_title" tools:ignore="MissingTranslation">投票资格</string>
+    <string name="coinVote_ineligible_titleNoVote" tools:ignore="MissingTranslation">本轮无资格</string>
+    <string name="coinVote_ineligible_noNotesMessage" tools:ignore="MissingTranslation">你的钱包在快照区块之前没有屏蔽备注。只有在快照区块（区块 #%@）时存在的资金才有资格参与本轮投票。</string>
+    <string name="vote_ineligible_no_notes_at_snapshot" tools:ignore="MissingTranslation">你的钱包在快照区块 #%1$s 之前没有屏蔽备注。只有在快照区块时存在的资金才有资格参与本轮投票。</string>
+    <string name="vote_ineligible_balance_too_low" tools:ignore="MissingTranslation">你在快照区块的屏蔽投票权重为 %1$s ZEC，因此此钱包没有资格参与本轮投票。</string>
+    <string name="vote_ineligible_balance_too_low_at_snapshot" tools:ignore="MissingTranslation">你在快照区块 #%1$s 的屏蔽投票权重为 %2$s ZEC，因此此钱包没有资格参与本轮投票。</string>
+    <string name="coinVote_proposalDetail_position" tools:ignore="MissingTranslation">%1$d / %2$d</string>
+    <string name="coinVote_proposalList_ctaConfirmSubmit" tools:ignore="MissingTranslation">确认并提交</string>
+    <string name="coinVote_proposalList_ctaStartVoting" tools:ignore="MissingTranslation">开始投票</string>
+    <string name="coinVote_proposalList_ctaContinueVoting" tools:ignore="MissingTranslation">继续投票</string>
+    <string name="coinVote_proposalList_reviewTitle" tools:ignore="MissingTranslation">审核并提交投票</string>
+    <string name="vote_proposal_list_meta_line" tools:ignore="MissingTranslation">%1$s  &#8226;  %2$s</string>
+    <string name="coinVote_proposalList_headerEndsAt" tools:ignore="MissingTranslation">截止于 %1$s</string>
+    <string name="coinVote_common_votedDate" tools:ignore="MissingTranslation">已于 %1$s 投票</string>
+    <string name="coinVote_proposalList_votingPower" tools:ignore="MissingTranslation">投票权重 %1$s</string>
+    <string name="coinVote_tallying_detailEnded" tools:ignore="MissingTranslation">已结束</string>
+    <string name="vote_proposal_list_time_minutes_left" tools:ignore="MissingTranslation">剩余 %1$d 分钟</string>
+    <string name="vote_proposal_list_time_hours_left" tools:ignore="MissingTranslation">剩余 %1$d 小时</string>
+    <string name="vote_proposal_list_time_day_left" tools:ignore="MissingTranslation">剩余 %1$d 天</string>
+    <string name="vote_proposal_list_time_days_left" tools:ignore="MissingTranslation">剩余 %1$d 天</string>
+    <string name="coinVote_common_viewMore" tools:ignore="MissingTranslation">查看更多</string>
+    <string name="coinVote_common_viewLess" tools:ignore="MissingTranslation">收起</string>
+    <string name="coinVote_proposalList_viewForumDiscussions" tools:ignore="MissingTranslation">查看论坛讨论</string>
+    <string name="coinVote_common_support" tools:ignore="MissingTranslation">支持</string>
+    <string name="coinVote_common_oppose" tools:ignore="MissingTranslation">反对</string>
+    <string name="coinVote_common_abstain" tools:ignore="MissingTranslation">弃权</string>
+    <string name="coinVote_common_back" tools:ignore="MissingTranslation">返回</string>
+    <string name="coinVote_common_next" tools:ignore="MissingTranslation">下一步</string>
+    <string name="coinVote_common_save" tools:ignore="MissingTranslation">保存</string>
+    <string name="coinVote_proposalDetail_viewForumDiscussion" tools:ignore="MissingTranslation">查看论坛讨论</string>
+    <string name="coinVote_proposalDetail_unansweredTitle" tools:ignore="MissingTranslation">未回答的问题</string>
+    <string name="coinVote_proposalDetail_skippedMessageSingle" tools:ignore="MissingTranslation">你有 1 个问题未回答。确认跳过此问题，或返回作答。</string>
+    <string name="coinVote_proposalDetail_skippedMessageMultiple" tools:ignore="MissingTranslation">你有 %1$d 个问题未回答。确认跳过这些问题，或返回作答。</string>
+    <string name="vote_proposal_detail_no_choices_message" tools:ignore="MissingTranslation">在审核并提交投票前，请至少选择一个答案。</string>
+    <string name="coinVote_proposalList_reviewSubtitle" tools:ignore="MissingTranslation">点击问题即可编辑你的任何答案。审核完答案后，点击“确认并提交”。</string>
+    <string name="coinVote_proposalList_yourVote" tools:ignore="MissingTranslation">你的投票：</string>
+    <string name="coinVote_results_title" tools:ignore="MissingTranslation">结果</string>
+    <string name="coinVote_common_zecValue" tools:ignore="MissingTranslation">%1$.3f ZEC</string>
+    <string name="coinVote_results_total" tools:ignore="MissingTranslation">总计：%1$.3f ZEC</string>
+    <string name="vote_results_ended" tools:ignore="MissingTranslation">已于 %1$s 结束</string>
+    <string name="vote_results_voted" tools:ignore="MissingTranslation">已于 %1$s 投票</string>
+    <string name="coinVote_common_votingPower" tools:ignore="MissingTranslation">投票权重 %1$.3f ZEC</string>
+    <string name="coinVote_results_metaLine" tools:ignore="MissingTranslation">%1$s  &#8226;  %2$s</string>
+    <string name="coinVote_results_votedLine" tools:ignore="MissingTranslation">已投票：%1$s</string>
+    <string name="coinVote_common_governanceTitle" tools:ignore="MissingTranslation">治理</string>
+    <string name="coinVote_tallying_titleInProgress" tools:ignore="MissingTranslation">投票已结束</string>
+    <string name="coinVote_tallying_bodyInProgress" tools:ignore="MissingTranslation">正在统计结果。选举机构正在解密汇总投票总数。</string>
+    <string name="coinVote_tallying_status" tools:ignore="MissingTranslation">统计中</string>
+    <string name="coinVote_tallying_detailRound" tools:ignore="MissingTranslation">轮次</string>
+    <string name="coinVote_tallying_detailProposals" tools:ignore="MissingTranslation">提案</string>
+    <string name="coinVote_configError_title" tools:ignore="MissingTranslation">需要更新钱包</string>
+    <string name="coinVote_store_userError_noReachableVoteServers" tools:ignore="MissingTranslation">无法访问任何投票服务器。请检查你的互联网连接后重试。</string>
+    <string name="coinVote_store_userError_nullifierAlreadySpent" tools:ignore="MissingTranslation">此钱包已注册参加本轮投票。如果你在多个设备上使用此钱包，请使用你最初开始投票流程的设备。</string>
+    <string name="coinVote_store_userError_roundNotActive" tools:ignore="MissingTranslation">本轮投票不再接受投票。它可能已经结束或尚未开始。</string>
+    <string name="coinVote_store_userError_roundNotFound" tools:ignore="MissingTranslation">在网络上找不到本轮投票。</string>
+    <string name="coinVote_store_userError_pirSnapshotMismatch" tools:ignore="MissingTranslation">无效器服务与本轮快照不同步。在 PIR 服务器报告匹配的快照之前，投票无法继续。请几分钟后重试。</string>
+    <string name="coinVote_store_userError_pirInvalidProofData" tools:ignore="MissingTranslation">无效器服务返回了无效的证明数据。请几分钟后重试。</string>
+    <string name="coinVote_store_userError_pirUnavailable" tools:ignore="MissingTranslation">无法访问无效器服务。请检查你的互联网连接后重试。</string>
+    <string name="coinVote_store_userError_pirEndpointsMissing" tools:ignore="MissingTranslation">投票配置缺少无效器服务端点。请更新应用后重试。</string>
+    <string name="coinVote_store_userError_commitmentTreeNotGrown" tools:ignore="MissingTranslation">你的交易尚未确认。网络可能拥堵——请稍等片刻后重试。</string>
+    <string name="coinVote_store_userError_invalidAnchorHeight" tools:ignore="MissingTranslation">投票状态不同步。请重试以使用最新数据。</string>
+    <string name="coinVote_store_userError_invalidProof" tools:ignore="MissingTranslation">你的证明被网络拒绝。请重试。</string>
+    <string name="coinVote_store_userError_proofGenerationFailed" tools:ignore="MissingTranslation">证明生成失败。请重试。</string>
+    <string name="coinVote_store_userError_noTreeState" tools:ignore="MissingTranslation">投票承诺树尚不可用。本轮投票可能尚未开始，或者链上尚未处理任何承诺。</string>
+    <string name="coinVote_store_userError_http5" tools:ignore="MissingTranslation">投票服务器暂时不可用。请稍后重试。</string>
+    <string name="coinVote_store_userError_lightwalletdUnavailable" tools:ignore="MissingTranslation">无法访问 Zcash lightwalletd 服务器。请检查你的互联网连接，或尝试在设置中切换到其他服务器。</string>
+    <string name="vote_error_mapper_pir_connection" tools:ignore="MissingTranslation">无法连接到隐私保护投票服务器。请检查你的连接后重试。</string>
+    <string name="vote_error_mapper_insufficient_funds" tools:ignore="MissingTranslation">资金不足以授权你的投票。需要少量费用。</string>
+    <string name="coinVote_delegation_insufficientSnapshotBalance" tools:ignore="MissingTranslation">你在快照时的屏蔽余额（%1$s ZEC）低于投票所需的最低金额（%2$s ZEC）。</string>
+    <string name="vote_error_mapper_wallet_sync" tools:ignore="MissingTranslation">你的钱包尚未完全同步。请等待同步完成后再投票。</string>
+    <string name="vote_error_mapper_network" tools:ignore="MissingTranslation">网络错误。请检查你的连接后重试。</string>
+    <string name="vote_error_mapper_version" tools:ignore="MissingTranslation">你的应用可能需要更新才能参与本轮投票。</string>
+    <string name="vote_error_mapper_unknown" tools:ignore="MissingTranslation">发生意外错误。请重试。</string>
+    <string name="coinVote_walletSyncing_title" tools:ignore="MissingTranslation">钱包同步中</string>
+    <string name="coinVote_walletSyncing_subtitle" tools:ignore="MissingTranslation">你的钱包需要同步到快照区块高度，然后才能参与投票。</string>
+    <string name="vote_wallet_syncing_top_bar_title" tools:ignore="MissingTranslation">钱包同步</string>
+    <string name="vote_wallet_syncing_title" tools:ignore="MissingTranslation">正在同步你的钱包</string>
+    <string name="vote_wallet_syncing_message" tools:ignore="MissingTranslation">你的钱包需要扫描到区块 %1$d 才能投票。当前位于区块 %2$d。</string>
+    <string name="vote_wallet_syncing_progress_complete" tools:ignore="MissingTranslation">100%% 完成</string>
+    <string name="vote_wallet_syncing_progress_percent" tools:ignore="MissingTranslation">%1$d%% 完成</string>
+    <string name="vote_wallet_syncing_status_complete" tools:ignore="MissingTranslation">同步完成</string>
+    <string name="vote_wallet_syncing_status_progress" tools:ignore="MissingTranslation">%1$d%% - 区块 %2$d / %3$d</string>
+
+    <!-- ===== 警告 ===== -->
+    <string name="notEnoughFreeSpace_title">可用空间不足</string>
+    <string name="notEnoughFreeSpace_messagePre">Zodl 需要 <xliff:g example="1" id="required_gigabytes">%1$d</xliff:g> GB 的空间来同步 Zcash 区块链，但目前只有</string>
+    <string name="not_enough_space_description_2"><xliff:g example="300" id="available_megabytes">%1$d</xliff:g> MB 可用</string>
+    <string name="not_enough_space_description_3">。在有更多可用空间之前，同步将保持暂停。\n\n需要约 <xliff:g example="300" id="required_megabytes">%1$d</xliff:g> MB 的额外空间才能继续</string>
+    <string name="not_enough_space_system_settings_btn">系统设置</string>
+    <string name="not_enough_space_settings_open_failed">无法启动设置应用。</string>
+
+    <!-- ===== 新变化 ===== -->
+    <string name="whats_new_title">新变化</string>
+
+    <!-- ===== 迁移（MigrationNotifier：通知渠道 + Orchard→Ironwood 进度） ===== -->
+    <string name="migration_notification_channelName">Ironwood 迁移</string>
+    <string name="migration_notification_channelDescription">Orchard 到 Ironwood 迁移进度通知</string>
+    <string name="migration_notification_title">Ironwood 迁移</string>
+    <string name="migration_notification_noteSplitProgress">备注拆分 %1$d / %2$d</string>
+    <string name="migration_notification_noteSplitPreparing">正在为迁移准备你的余额</string>
+    <string name="migration_notification_transferComplete">转账 %1$d / %2$d 已完成</string>
+    <string name="migration_notification_rescheduleWithCounts">转账 %1$d / %2$d 无法发送——点击以重新安排迁移。</string>
+    <string name="migration_notification_rescheduleGeneric">迁移受阻——点击以重新安排。</string>
+    <string name="migration_notification_actionRequiredTitle">迁移：需要操作</string>
+    <string name="migration_notification_manualConfirmationWithCounts">转账 %1$d / %2$d 已准备就绪。点击确认。</string>
+    <string name="migration_notification_manualConfirmationGeneric">一笔迁移转账已准备就绪。点击确认。</string>
+    <string name="migration_notification_torFailureTitle">迁移：无法连接到 Tor</string>
+    <string name="migration_notification_torFailureText">一笔已安排的转账无法通过 Tor 发送。打开 Zodl 以解决。</string>
+    <string name="migration_notification_stepDueText">你的迁移已准备好继续——点击运行下一步。</string>
+    <string name="migration_notification_planInvalidText">迁移计划需要更新。打开 Zodl 查看详情。</string>
+    <string name="migration_notification_transferExpiredText">一笔转账已过期。打开 Zodl 继续迁移。</string>
+    <string name="migration_notification_completeTitle">Ironwood 迁移完成</string>
+    <string name="migration_notification_completeText">你的所有资金已迁移至 Ironwood。</string>
+
+    <!-- 重新开始迁移 -->
+    <string name="restartMigration_settingsItem">重新开始迁移</string>
+    <string name="restartMigration_title">重新开始迁移</string>
+    <string name="restartMigration_body">如果你的迁移看起来卡住了，你可以安全地重新开始。这将为你的剩余资金创建一个新计划。已完成的转账不受影响。</string>
+    <string name="restartMigration_summaryMigratedLabel">已迁移</string>
+    <string name="restartMigration_summaryMigratedValue">%1$d / %2$d 笔转账</string>
+    <string name="restartMigration_summaryRemainingLabel">剩余余额</string>
+    <string name="restartMigration_warning">这将取消当前的迁移计划。一旦确认，无法撤销。</string>
+    <string name="restartMigration_support">如果重新开始仍无法解决问题，请通过“发送反馈”联系 Zodl 支持。</string>
+    <string name="restartMigration_next">下一步</string>
+    <string name="restartMigration_confirmTitle">重新开始此迁移？</string>
+    <string name="restartMigration_confirmMessage">将为你的剩余 %1$s 创建一个新计划。已完成的 %2$d 笔转账将保持不变，不会重复。</string>
+    <string name="restartMigration_confirmPrimary">确认重新开始</string>
+
+    <!-- ===== 迁移（功能迁移界面文案） ===== -->
+    <string name="migration_common_gotIt">知道了</string>
+    <string name="migration_common_skip">跳过</string>
+    <string name="migration_common_allow">允许</string>
+    <string name="migration_common_continue">继续</string>
+    <string name="migration_common_retry">重试</string>
+    <string name="migration_common_dismiss">忽略</string>
+    <string name="migration_common_continueWithoutTor">不使用 Tor 继续</string>
+    <string name="migration_common_tryAgain">重试</string>
+    <string name="migration_common_whatAreTheRisks">有哪些风险？</string>
+    <string name="migration_common_splitBalanceTitle">拆分余额</string>
+    <string name="migration_common_splitBalanceNumbered">拆分余额 %1$d</string>
+    <string name="migration_common_transferTitle">转账 %1$d</string>
+    <string name="migration_common_showDetails">显示详情</string>
+    <string name="migration_common_progressTitle">迁移进度</string>
+    <string name="migration_common_enableTorProtectionTitle">启用 Tor 保护</string>
+    <string name="migration_common_torCheckboxSubtitle">通过 Tor 网络路由你的连接，以增强匿名性和隐私保护。</string>
+
+    <string name="migration_status_done">完成</string>
+
+    <string name="migrationPrivacy_bodyImmediate">如果你所在地区可用 Tor，我们强烈建议启用它，以防止将你的余额与 IP 地址关联。如果你所在地区无法使用 Tor，你也可以使用受信任的 VPN。</string>
+    <string name="migrationPrivacy_bodyAutomatic">如果你所在地区可用 Tor，我们强烈建议启用它，以防止将迁移金额与你的 IP 地址关联。如果你所在地区无法使用 Tor，你也可以使用受信任的 VPN。</string>
+
+    <string name="migrationKeystoneScan_instructions">签署后扫描 Keystone 设备上显示的二维码。</string>
+    <string name="migrationKeystoneScan_errorMessage">处理该扫描时出错。请重试。</string>
+    <string name="migrationKeystoneScan_firmwareUnsupported">你的 Keystone 固件尚不支持迁移。请更新你的 Keystone 设备，然后回来重试。</string>
+
+    <string name="migrationSuccess_title">已发送！</string>
+    <string name="migrationSuccess_subtitle">你的 ZEC 已成功\n迁移至 Ironwood。</string>
+    <string name="migrationSuccess_viewTransaction">查看交易</string>
+
+    <string name="migrationSending_title">正在发送...</string>
+    <string name="migrationSending_subtitle">你的 ZEC 正在迁移至\nIronwood...</string>
+
+    <string name="migrationProgress_subtitleComplete">全部 %1$d 笔转账已完成。</string>
+    <string name="migrationProgress_subtitlePreStart">你的余额将在 %2$s 内拆分为 %1$d 笔转账。剩余 %3$d 笔转账。</string>
+    <string name="migrationProgress_subtitleInProgressRemaining">你的余额拆分为 %1$d 笔转账。大约还剩 %2$s。剩余 %3$d 笔转账。</string>
+    <string name="migrationProgress_subtitleInProgressLate">你的余额拆分为 %1$d 笔转账。即将完成… 剩余 %2$d 笔转账。</string>
+    <string name="migrationProgress_orchardLabel">Orchard</string>
+    <string name="migrationProgress_ironwoodLabel">Ironwood</string>
+
+    <string name="migrationComplete_title">迁移完成</string>
+    <string name="migrationComplete_subtitle">你的 ZEC 现在位于 Ironwood 资金池中。</string>
+    <string name="migrationComplete_totalTransferredLabel">总迁移金额</string>
+    <string name="migrationComplete_remainingDustLabel">剩余粉尘</string>
+    <string name="migrationComplete_transfersLabel">转账</string>
+    <string name="migrationComplete_durationLabel">持续时间</string>
+    <string name="migrationComplete_orchardBalanceRemainingTitle">Orchard 剩余余额</string>
+    <string name="migrationComplete_orchardBalanceRemainingBody">%1$s 留在了 Orchard 中。如此具体的金额可能会在网络上识别出你的身份。为保护你的隐私，我们建议锁定此余额而不是迁移它。</string>
+    <string name="migrationComplete_migrateAnyway">仍然迁移</string>
+    <string name="migrationComplete_migrating">迁移中…</string>
+    <string name="migrationComplete_lockBalance">锁定余额</string>
+    <string name="migrationComplete_lockingBalance">正在锁定余额…</string>
+    <string name="migrationComplete_orchardBalanceLockedTitle">Orchard 余额已锁定</string>
+    <string name="migrationComplete_orchardBalanceLockedBody">%1$s 现已锁定在 Orchard 中。锁定可使此金额无法支出，以保护你的隐私。</string>
+    <string name="migrationComplete_transfersProgress">已发送 %1$d / %2$d</string>
+    <string name="migrationComplete_migrateAnywayFailureNetworkError">无法连接到网络。请检查你的连接后重试。</string>
+    <string name="migrationComplete_migrateAnywayFailureRejected">网络拒绝了此交易。请联系支持。</string>
+    <string name="migrationComplete_migrateAnywayFailureError">发送时出错。请联系支持。</string>
+    <string name="migrationComplete_migrateAnywayFailurePartial">此交易的部分内容已发送。请联系支持。</string>
+
+    <string name="migrationNotifPermission_title">允许通知</string>
+    <string name="migrationNotifPermission_subtitle">如果错过了已安排的转账或后台提交失败，我们可以向你发送本地通知，提示你打开 Zodl。获取以下通知：</string>
+    <string name="migrationNotifPermission_statusTitle">迁移状态</string>
+    <string name="migrationNotifPermission_statusBody">当你的资金完全迁移至 Ironwood 时，我们会通知你。</string>
+    <string name="migrationNotifPermission_actionNeededTitle">需要操作</string>
+    <string name="migrationNotifPermission_actionNeededBody">如果我们错过了时间窗口，我们会提示你打开应用并手动发送转账。</string>
+    <string name="migrationNotifPermission_planChangesTitle">转账计划变更</string>
+    <string name="migrationNotifPermission_planChangesBody">如果分配的资金已被支出，或者已安排的转账无法再发送，我们会通知你。</string>
+    <string name="migrationNotifPermission_warningHint">如果没有通知，迁移无法自行继续。你需要负责在每一步打开 Zodl 来发送每笔转账。</string>
+
+    <string name="migrationCustomServerTor_title">你的服务器不支持 Tor</string>
+    <string name="migrationCustomServerTor_bodyImmediate">当你使用自定义服务器时，迁移交易无法通过 Tor 广播。如果你继续，此交易将在没有 Tor IP 保护的情况下发送。</string>
+    <string name="migrationCustomServerTor_bodyAutomatic">当你使用自定义服务器时，迁移交易无法通过 Tor 广播。如果你继续，这些交易将在没有 Tor IP 保护的情况下发送。</string>
+    <string name="migrationCustomServerTor_riskBodyImmediate">如果没有 Tor，你的 IP 地址将暴露给自定义服务器，并可能与你的全部余额关联。</string>
+    <string name="migrationCustomServerTor_riskBodyAutomatic">如果没有 Tor，你的 IP 地址将暴露给自定义服务器，并可能与迁移金额关联。</string>
+    <string name="migrationCustomServerTor_switchServer">切换服务器</string>
+
+    <string name="migrationTorFailure_title">无法连接到 Tor</string>
+    <string name="migrationTorFailure_body">我们无法建立 Tor 连接。你可以不使用 Tor 保护继续，或者取消并重试。</string>
+    <string name="migrationTorFailure_riskBody">如果没有 Tor，你的 IP 地址将暴露给服务器，并可能与迁移金额关联。</string>
+
+    <string name="migrationSetup_title">迁移至 Ironwood</string>
+    <string name="migrationSetup_bodyPrefix">“最新的 Zcash 网络升级要求将你的“</string>
+    <string name="migrationSetup_bodyFiatSuffix">”（%1$s）</string>
+    <string name="migrationSetup_bodySuffix">“从 Orchard 资金池迁移至新的 Ironwood 资金池。你的资金是安全的。”</string>
+    <string name="migrationSetup_findOutMore">了解更多</string>
+    <string name="migrationSetup_immediateWarning">此交易中转移的所有资金将在链上公开。</string>
+    <string name="migrationSetup_automaticWarning">跨资金池单笔转账的金额将在链上公开。</string>
+    <string name="migrationSetup_automaticTitle">隐私迁移</string>
+    <string name="migrationSetup_automaticSubtitle">随时间拆分转账 · 后台安排 · 最大隐私</string>
+    <string name="migrationSetup_immediateTitle">立即迁移</string>
+    <string name="migrationSetup_immediateSubtitle">单笔转账 · 立即发送 · 隐私较低</string>
+
+    <string name="migrationLockExplainer_title">锁定有什么作用？</string>
+    <string name="migrationLockExplainer_bullet1Prefix">锁定会将此余额标记为</string>
+    <string name="migrationLockExplainer_bullet1Bold">不可支出</string>
+    <string name="migrationLockExplainer_bullet1Suffix">，因此它不会在未来交易中损害你的隐私。</string>
+    <string name="migrationLockExplainer_bullet2Bold">锁定仅存在于当前 Zodl/Keystone 实例上。</string>
+    <string name="migrationLockExplainer_bullet2Suffix">恢复钱包不会保留它。</string>
+    <string name="migrationLockExplainer_bullet3Prefix">未来版本将允许你</string>
+    <string name="migrationLockExplainer_bullet3Bold">解锁此余额。</string>
+
+    <string name="migrationFailureSheet_title">无法发送</string>
+    <string name="migrationFailureMessage_networkError">无法连接到网络。请检查你的连接后重试。</string>
+    <string name="migrationFailureMessage_invalidNote">此转账的备注已在其他地方被支出。请重新安排以规划新的转账。</string>
+    <string name="migrationFailureMessage_expired">此转账的锚点已过期。请重新安排以规划新的转账。</string>
+    <string name="migrationSending_notReady">此转账尚未准备好发送。请稍后再试。</string>
+
+    <string name="migrationPreparationDetails_title">准备你的余额</string>
+    <string name="migrationPreparationDetails_body">在你的已安排转账开始之前，你的余额需要在 %1$d 个步骤中拆分为转账大小的备注。</string>
+    <string name="migrationPreparationDetails_stepsTitle">准备步骤</string>
+    <string name="migrationPreparationDetails_amountBeingSplitTitle">正在拆分的金额</string>
+
+    <string name="migrationTransferInvalid_planUpdateTitle">更新迁移计划</string>
+    <string name="migrationTransferInvalid_planUpdateBody">一些 Orchard 备注在迁移流程之外被支出，这使预签名的转账计划失效。需要为剩余余额重新创建计划。资金不会丢失——只有预签名交易被丢弃。</string>
+    <string name="migrationTransferInvalid_planUpdateFirstStep">失效的转账被丢弃</string>
+    <string name="migrationTransferInvalid_transferExpiredTitle">转账不再有效</string>
+    <string name="migrationTransferInvalid_transferExpiredBodyPlural">转账 %1$s 在未发送的情况下过期——应用未及时打开以广播它们。需要为剩余余额重新创建迁移计划。资金不会丢失——只有预签名交易被丢弃。</string>
+    <string name="migrationTransferInvalid_transferExpiredBodySingular">转账 %1$s 在未发送的情况下过期——应用未及时打开以广播它。需要为剩余余额重新创建迁移计划。资金不会丢失——只有预签名交易被丢弃。</string>
+    <string name="migrationTransferInvalid_expiredStepLabelPlural">过期的转账被丢弃</string>
+    <string name="migrationTransferInvalid_expiredStepLabelSingular">过期的转账被丢弃</string>
+    <string name="migrationTransferInvalid_whatHappensNextTitle">接下来会发生什么</string>
+    <string name="migrationTransferInvalid_remainingBalanceReproposed">剩余余额被重新规划</string>
+    <string name="migrationTransferInvalid_transfersDoneProgress">%1$d / %2$d 笔转账已完成；迁移将继续。</string>
+
+    <string name="migrationHowItWorks_title">工作原理</string>
+    <string name="migrationHowItWorks_subtitle">在 Zcash 资金池之间转移资金会公开每笔转账的金额。以下是我们如何在迁移期间保护你的隐私。</string>
+    <string name="migrationHowItWorks_splitScheduleTitle">拆分与安排</string>
+    <string name="migrationHowItWorks_splitScheduleDescription">你的余额被分成较小的金额并随时间间隔开，使其更难被关联在一起。</string>
+    <string name="migrationHowItWorks_approveOnceTitle">一次批准</string>
+    <string name="migrationHowItWorks_approveOnceDescription">Zodl 处理其余工作，在应用后台运行时自动在其安排的时间窗口内发送每笔转账。</string>
+    <string name="migrationHowItWorks_ifSomethingFailsTitle">如果出现问题</string>
+    <string name="migrationHowItWorks_ifSomethingFailsDescription">我们会通知你，以便你手动完成。</string>
+    <string name="migrationHowItWorks_largeBalanceTitle">大额余额</string>
+    <string name="migrationHowItWorks_largeBalanceDescription">如果你的钱包持有大额余额或许多小额备注，迁移可能会跨多个已安排的轮次运行。</string>
+    <string name="migrationHowItWorks_disclaimer">选择此选项可能需要将少量（少于 0.01 ZEC）留在 Orchard 资金池中，这些资金将不会被转移。</string>
+
+    <string name="migrationReview_title">审核转账</string>
+    <string name="migrationReview_immediateBody">你的全部 Orchard 余额将通过一笔链上转账转移至 Ironwood。一旦确认，此转账无法取消。</string>
+    <string name="migrationReview_feeLabel">费用</string>
+    <string name="migrationReview_amountLabel">金额</string>
+    <string name="migrationReview_signing">签署中...</string>
+    <string name="migrationReview_confirm">确认</string>
+    <string name="migrationReview_confirmTransferPlanTitle">确认转账计划</string>
+    <string name="migrationReview_privacyBody">你的余额将在 %2$s 内拆分为 %1$d 笔转账。批准一次，剩下的交给我们——只需保持应用在后台运行即可。金额会随机化以保护隐私。如果我们错过了时间窗口，Zodl 将在下次打开时提示你。</string>
+    <string name="migrationReview_roundOfTotal">第 %1$d / %2$d 轮</string>
+    <string name="migrationReview_startMigration">开始迁移</string>
+    <string name="migrationReview_sendImmediately">立即发送</string>
+
+    <string name="migrationKeystoneSign_prepareErrorMessage">无法准备迁移以供签署。请重试。</string>
+    <string name="migrationKeystoneSign_barTitle">签署交易</string>
+    <string name="migrationKeystoneSign_scanWithKeystone">使用你的 Keystone 钱包扫描%1$s</string>
+    <string name="migrationKeystoneSign_roundSuffix">（%1$d / %2$d）</string>
+    <string name="migrationKeystoneSign_subtitle">使用 Keystone 签署后，点击下方的“获取签名”按钮。</string>
+    <string name="migrationKeystoneSign_badgeHardware">硬件</string>
+    <string name="migrationKeystoneSign_getSignature">获取签名</string>
+    <string name="migrationKeystoneSign_reject">拒绝</string>
+
+    <string name="migrationBattery_title">允许后台发送</string>
+    <string name="migrationBattery_body">为了在安排的时间发送迁移转账，Zodl 需要在后台保持运行。请在设备设置中允许 Zodl 的后台活动。</string>
+    <string name="migrationBattery_scheduledWindowsTitle">转账在安排的时间窗口发送</string>
+    <string name="migrationBattery_scheduledWindowsBody">Zodl 会在每笔转账的安排时间唤醒并发送——无需任何操作。</string>
+    <string name="migrationBattery_noNeedToOpenTitle">无需每次发送时打开应用</string>
+    <string name="migrationBattery_noNeedToOpenBody">一旦你确认了新的时间表，我们将在后台发送转账。</string>
+    <string name="migrationBattery_fixedScheduleTitle">按固定时间表发送，而非你的活动</string>
+    <string name="migrationBattery_fixedScheduleBody">转账在网络范围内设定的时间发出，因此它们不会与你打开 Zodl 的时间关联。</string>
+    <string name="migrationBattery_withoutPermissionHint">没有此权限，你将需要在每个安排的时间手动打开 Zodl 来发送。</string>
+
+    <string name="migrationScheduled_schedulingTitle">正在安排...</string>
+    <string name="migrationScheduled_schedulingSubtitle">你的 ZEC 迁移时间表正在确认中。</string>
+    <string name="migrationScheduled_totalToTransferLabel">待转移总额</string>
+    <string name="migrationScheduled_poolLabel">资金池</string>
+    <string name="migrationScheduled_poolValue">Orchard → Ironwood</string>
+    <string name="migrationScheduled_transfersLabel">转账</string>
+    <string name="migrationScheduled_durationLabel">持续时间</string>
+    <string name="migrationScheduled_doneTitle">迁移已安排</string>
+    <string name="migrationScheduled_doneSubtitle">你的 ZEC 将根据你批准的时间表迁移至 Ironwood 资金池。</string>
+    <string name="migrationScheduled_finalizeErrorMessage">完成迁移时间表时出错。请重试。</string>
+    <string name="migrationScheduled_backgroundActivityHint">转账在你打开应用时运行——在设置中启用后台活动以自动发送。</string>
+    <string name="migrationScheduled_transfersProgressPending">0 / %1$d</string>
+
+    <string name="migrationHome_completeTitle">迁移完成</string>
+    <string name="migrationHome_requiredTitle">需要迁移</string>
+    <string name="migrationHome_readyToSendTitle">转账已就绪</string>
+    <string name="migrationHome_attentionTitle">迁移计划需要更新</string>
+    <string name="migrationHome_defaultSubtitle">将你的资金迁移至 Ironwood。</string>
+
+</resources>
+```
