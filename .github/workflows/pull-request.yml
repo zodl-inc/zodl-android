@@ -252,6 +252,9 @@ jobs:
           import subprocess
           import sys
 
+          sys.path.insert(0, "scripts")
+          from check_translations import Issue, baseline_additions
+
           show = subprocess.run(
               ["git", "show", "FETCH_HEAD:scripts/translation-baseline.json"],
               capture_output=True, text=True,
@@ -260,14 +263,12 @@ jobs:
               print("No baseline on the base branch; initial adoption is allowed.")
               sys.exit(0)
 
-          # Identity ignores the resource path so a moved strings file can be
-          # re-keyed in the baseline without tripping this guard.
           def debts(data):
-              return {(e["key"], e["locale"], e["defect"], e.get("variant", "")) for e in data["issues"]}
+              return {Issue(**entry) for entry in data["issues"]}
 
           base = debts(json.loads(show.stdout))
           head = debts(json.load(open("scripts/translation-baseline.json")))
-          added = sorted(head - base)
+          added = sorted(baseline_additions(head, base))
           for entry in added:
               print("ADDED:", entry)
           if added:

@@ -11,6 +11,11 @@ SPEC.loader.exec_module(results)
 
 
 class UnitTestResultsTests(unittest.TestCase):
+    def test_new_regression_suites_are_required(self):
+        suites = {suite for group in results.SUITES.values() for suite in group}
+        self.assertIn("co.electriccoin.zcash.ui.common.usecase.PrefillSendZip321AmountTest", suites)
+        self.assertIn("co.electriccoin.zcash.ui.common.repository.MetadataRepositorySelectedAccountTest", suites)
+
     def test_missing_empty_skipped_and_failing_results_fail(self):
         with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
             root = Path(directory)

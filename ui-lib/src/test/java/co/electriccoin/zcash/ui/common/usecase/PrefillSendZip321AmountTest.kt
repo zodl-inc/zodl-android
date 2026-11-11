@@ -20,7 +20,9 @@ import kotlin.test.assertIs
  * The parser stores `100000001` zatoshis exactly, but `requestFromZip321` renders the
  * amount through `NonNegativeAmount.toZecValueString()` (org.zecdev:zip321 1.0.2), whose
  * eight-significant-digit MathContext drops the ninth digit. See the P1 amount-rendering
- * row in docs/testing/unit-test-roadmap.md. This pin fails deliberately when the
+ * row in docs/testing/unit-test-roadmap.md and the tracked fix:
+ * https://linear.app/zodl/issue/MOB-2484
+ * This pin fails deliberately when the
  * dependency or conversion path is fixed; flip the expected value with that fix.
  */
 class PrefillSendZip321AmountTest {

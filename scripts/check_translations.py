@@ -11,6 +11,7 @@ test_translations.py the same way, whenever either copy changes.
 """
 
 import argparse
+from collections import Counter
 from dataclasses import asdict, dataclass
 import json
 from pathlib import Path
@@ -91,9 +92,21 @@ def arguments(value, android=False):
     return slots
 
 
-def compatible(source, target, android=False):
+def compatible(source, target, android=False, singular=False):
     try:
-        return arguments(source, android) == arguments(target, android)
+        source_args = arguments(source, android)
+        target_args = arguments(target, android)
+        if source_args == target_args:
+            return True
+        # A singular may spell out its count. Only the unique integer argument
+        # may disappear; every retained argument must keep its index and type.
+        counts = [
+            index for index, kind in source_args.items()
+            if kind == "int" or re.fullmatch(r"(?:hh|ll|[hljztLq])?[duox]", kind)
+        ]
+        if singular and len(counts) == 1:
+            return {index: kind for index, kind in source_args.items() if index != counts[0]} == target_args
+        return False
     except ValueError:
         return False
 
@@ -167,7 +180,8 @@ def apple_issues(root):
                     if unit.get("state") != "translated":
                         result.add(Issue(resource, key, locale, "unreviewed", variant))
                     reference = apple_reference(source, path)
-                    if locale != "en" and reference and not compatible(reference["value"], unit.get("value", "")):
+                    singular = ("plural", "one") in path
+                    if locale != "en" and reference and not compatible(reference["value"], unit.get("value", ""), singular=singular):
                         result.add(Issue(resource, key, locale, "format", variant))
                 # English and Spanish both have 'one' and 'other' plural categories.
                 # A plain string is not a replacement for the source's plural selection.
@@ -175,7 +189,8 @@ def apple_issues(root):
                     if any(d == "plural" for d, _ in path) and path not in units:
                         result.add(Issue(resource, key, locale, "missing-plural", "/".join(f"{d}:{v}" for d, v in path)))
                     target = apple_reference(units, path)
-                    if locale != "en" and target and not compatible(source[path]["value"], target.get("value", "")):
+                    singular = ("plural", "one") in path
+                    if locale != "en" and target and not compatible(source[path]["value"], target.get("value", ""), singular=singular):
                         result.add(Issue(resource, key, locale, "format", "/".join(f"{d}:{v}" for d, v in path)))
     return result
 
@@ -200,6 +215,12 @@ def android_resources(roots, locale):
     entries = {}
     directory = "values" if locale == "en" else f"values-{locale}"
     for root in roots:
+        if locale == "es":
+            # Regional or qualified Spanish folders need explicit fallback
+            # handling before adoption. Never silently leave their strings unchecked.
+            for folder in root.glob("values-*"):
+                if re.match(r"values-(?:es(?:-|$)|b\+es(?:\+|$))", folder.name) and folder.name != "values-es":
+                    raise ValueError(f"unsupported Spanish resource configuration: {folder}")
         for file in sorted((root / directory).glob("*.xml")):
             for entry in ET.parse(file).getroot():
                 if entry.tag in ("string", "plurals", "string-array"):
@@ -247,7 +268,8 @@ def android_issues(root):
                         if not text.strip():
                             result.add(Issue(target_resource, key, locale, "empty", variant))
                         reference = source_units.get(variant, source_units.get("other"))
-                        if source.attrib.get("formatted") != "false" and (reference is None or not compatible(reference, text, android=True)):
+                        singular = source.tag == "plurals" and variant == "one"
+                        if source.attrib.get("formatted") != "false" and (reference is None or not compatible(reference, text, android=True, singular=singular)):
                             result.add(Issue(target_resource, key, locale, "format", variant))
                     if target.tag == "plurals" and "other" not in units:
                         result.add(Issue(target_resource, key, locale, "missing-other"))
@@ -269,6 +291,15 @@ def android_units(entry):
 
 def compare_baseline(issues, baseline):
     return issues - baseline, baseline - issues
+
+
+def baseline_additions(issues, baseline):
+    # Count each resource's debt separately. Moving an entry is allowed only
+    # when a matching key/locale/defect/variant disappears from the old path.
+    def debts(entries):
+        return Counter((i.key, i.locale, i.defect, i.variant) for i in set(entries))
+
+    return list((debts(issues) - debts(baseline)).elements())
 
 
 def write_baseline(path, issues):

@@ -10,6 +10,8 @@ SUITES = {
     "ui-lib/build/test-results/testZcashmainnetStoreDebugUnitTest": [
         "co.electriccoin.zcash.ui.common.usecase.Zip321ParseUriValidationUseCaseTest",
         "co.electriccoin.zcash.ui.common.usecase.SyncProgressPercentageTest",
+        "co.electriccoin.zcash.ui.common.usecase.PrefillSendZip321AmountTest",
+        "co.electriccoin.zcash.ui.common.repository.MetadataRepositorySelectedAccountTest",
     ],
     "preference-impl-android-lib/build/test-results/testDebugUnitTest": [
         "co.electriccoin.zcash.preference.EncryptedPreferenceRecoveryTest",

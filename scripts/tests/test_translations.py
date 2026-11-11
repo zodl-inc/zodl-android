@@ -94,6 +94,18 @@ class TranslationTests(unittest.TestCase):
         english["variations"]["device"]["mac"] = unit("Vault %lld")
         self.assertEqual({i.variant for i in self.apple(english, unit("Billetera %@"))}, {"device:mac"})
 
+    def test_apple_singular_plural_may_spell_out_only_its_integer_count(self):
+        english = {"variations": {"plural": {"one": unit("%lld item"), "other": unit("%lld items")}}}
+        spanish = {"variations": {"plural": {"one": unit("Un elemento"), "other": unit("%lld elementos")}}}
+        self.assertEqual(self.apple(english, spanish), set())
+        spanish["variations"]["plural"]["other"] = unit("Elementos")
+        self.assertEqual({(i.defect, i.variant) for i in self.apple(english, spanish)}, {("format", "plural:other")})
+        self.assertTrue(checker.compatible("%1$lld item for %2$@", "Un elemento para %2$@", singular=True))
+        self.assertFalse(checker.compatible("%1$lld item for %2$@", "Un elemento", singular=True))
+        self.assertFalse(checker.compatible("%@ item", "Un elemento", singular=True))
+        self.assertFalse(checker.compatible("%lld item", "%@ elemento", singular=True))
+        self.assertEqual({i.defect for i in self.apple(unit("%lld item"), unit("Un elemento"))}, {"format"})
+
     def test_apple_malformed_plural_fails_instead_of_silently_skipping(self):
         with self.assertRaises(ValueError):
             self.apple(unit("Hello"), {"variations": {"plural": {"one": unit("Hola")}}})
@@ -127,6 +139,38 @@ class TranslationTests(unittest.TestCase):
         en = '<string-array name="list"><item>A</item><item>B</item></string-array>'
         es = '<string-array name="list"><item>A</item></string-array>'
         self.assertEqual({i.defect for i in self.android(en, es)}, {"array-size"})
+
+    def test_android_singular_plural_may_spell_out_only_its_integer_count(self):
+        en = '<plurals name="count"><item quantity="one">%1$d item for %2$s</item><item quantity="other">%1$d items for %2$s</item></plurals>'
+        es = '<plurals name="count"><item quantity="one">Un elemento para %2$s</item><item quantity="other">%1$d elementos para %2$s</item></plurals>'
+        self.assertEqual(self.android(en, es), set())
+        issues = self.android(en, es.replace("%1$d elementos", "Elementos"))
+        self.assertEqual({(i.defect, i.variant) for i in issues}, {("format", "other")})
+        self.assertTrue(checker.compatible("%d item", "Un elemento", android=True, singular=True))
+        for source, target, singular in (
+            ("%d items", "Elementos", False),
+            ("%s item", "Un elemento", True),
+            ("%d item", "%s elemento", True),
+            ("%1$d item for %2$s", "Un elemento", True),
+            ("%1$d item for %2$s", "Un elemento para %2$d", True),
+            ("%1$d item for %2$d", "Un elemento para %2$d", True),
+        ):
+            with self.subTest(source=source, target=target, singular=singular):
+                self.assertFalse(checker.compatible(source, target, android=True, singular=singular))
+        # The exception applies only to plurals, never an ordinary string.
+        issues = self.android('<string name="count">%d item</string>', '<string name="count">Un elemento</string>')
+        self.assertEqual({i.defect for i in issues}, {"format"})
+
+    def test_android_regional_spanish_folders_fail_closed(self):
+        for source_set, locale in (("main", "es-rMX"), ("debug", "b+es+419")):
+            with self.subTest(source_set=source_set, locale=locale):
+                self.android('<string name="hello">Hello</string>', '<string name="hello">Hola</string>')
+                path = f"ui-lib/src/{source_set}/res/values-{locale}/strings.xml"
+                self.write(path, '<resources><string name="hello">Hola</string></resources>')
+                with self.assertRaisesRegex(ValueError, "unsupported Spanish resource configuration"):
+                    checker.android_issues(self.root)
+                (self.root / path).unlink()
+                (self.root / path).parent.rmdir()
 
     def test_android_configured_resource_directories_are_checked(self):
         self.write("ui-lib/build.gradle.kts", 'res.setSrcDirs(setOf("src/main/res/ui/common", "src/main/res/ui/send"))')
@@ -171,6 +215,17 @@ class TranslationTests(unittest.TestCase):
             checker.apple_issues(self.root)
         with self.assertRaises(ValueError):
             checker.android_issues(self.root)
+
+    def test_baseline_growth_counts_resources_and_allows_only_paired_moves(self):
+        old = checker.Issue("module-a/values/strings.xml", "hello", "es", "missing")
+        moved = checker.Issue("module-b/values/strings.xml", "hello", "es", "missing")
+        identity = ("hello", "es", "missing", "")
+        self.assertEqual(checker.baseline_additions({old, moved}, {old}), [identity])
+        self.assertEqual(checker.baseline_additions({moved}, {old}), [])
+        self.assertEqual(checker.baseline_additions(set(), {old}), [])
+        self.assertEqual(checker.baseline_additions({old}, {old}), [])
+        different = checker.Issue("module-b/values/strings.xml", "hello", "es", "format", "one")
+        self.assertEqual(checker.baseline_additions({different}, {old}), [("hello", "es", "format", "one")])
 
     def test_apple_unexpected_source_language_fails_closed(self):
         self.write("secant/Resources/Localizable.xcstrings", json.dumps({"sourceLanguage": "de", "strings": {}}))
