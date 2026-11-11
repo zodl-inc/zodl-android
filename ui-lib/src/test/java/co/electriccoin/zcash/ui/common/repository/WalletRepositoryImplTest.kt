@@ -200,6 +200,45 @@ class WalletRepositoryImplTest {
         }
 
     @Test
+    fun initMovesAnAutomaticWalletOffAGatewayHostWhenTheBuildHasOhttpOff() =
+        runTest {
+            // A build with OHTTP saved the gateway; this build has OHTTP off, so the SDK would dial that host
+            // as a plain server, which the gateway does not answer ("Wallet Disconnected").
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(GATEWAY),
+                    isAutomaticPreference = true,
+                    hasOhttpGateway = false,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(ZEC_ROCKS, harness.walletProvider.getPersistableWallet()?.endpoint)
+        }
+
+    @Test
+    fun initKeepsAManualCustomServerWhenTheBuildHasOhttpOff() =
+        runTest {
+            val custom = LightWalletEndpoint(host = "lightwalletd.example", port = 443, isSecure = true)
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(custom),
+                    isAutomaticPreference = false,
+                    hasOhttpGateway = false,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(custom, harness.walletProvider.getPersistableWallet()?.endpoint)
+        }
+
+    @Test
     fun initMovesAnUpgradedWalletWithoutAModePreferenceOnABundledClearnetServerToTheGateway() =
         runTest {
             val (repository, harness) =
@@ -304,6 +343,68 @@ class WalletRepositoryImplTest {
             advanceUntilIdle()
 
             assertEquals(custom, harness.walletProvider.getPersistableWallet()?.endpoint)
+        }
+
+    @Test
+    fun initMigratesAWalletWithNullPreferenceOffGatewayWhenOhttpIsOff() =
+        runTest {
+            // A new wallet created on a build with OHTTP, then updated to a build without OHTTP:
+            // null preference + endpoint = gateway host should migrate to default.
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(GATEWAY),
+                    isAutomaticPreference = null,
+                    hasOhttpGateway = false,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(ZEC_ROCKS, harness.walletProvider.getPersistableWallet()?.endpoint)
+            coVerify(exactly = 1) { harness.isAutomaticProvider.store(true) }
+        }
+
+    @Test
+    fun initKeepsAManualCustomServerWithNullPreferenceWhenOhttpIsOff() =
+        runTest {
+            // A manual custom server selection should not be migrated even with a null preference.
+            val custom = LightWalletEndpoint(host = "lightwalletd.example", port = 443, isSecure = true)
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(custom),
+                    isAutomaticPreference = false,
+                    hasOhttpGateway = false,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(custom, harness.walletProvider.getPersistableWallet()?.endpoint)
+            coVerify(exactly = 0) { harness.isAutomaticProvider.store(any()) }
+        }
+
+    @Test
+    fun initMigratesAWalletWithTruePreferenceOffGatewayWhenOhttpIsOff() =
+        runTest {
+            // A wallet with true preference + gateway endpoint and OHTTP off should migrate.
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = walletOn(GATEWAY),
+                    isAutomaticPreference = true,
+                    hasOhttpGateway = false,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(ZEC_ROCKS, harness.walletProvider.getPersistableWallet()?.endpoint)
+            coVerify(exactly = 1) { harness.isAutomaticProvider.store(true) }
         }
 
     @Test

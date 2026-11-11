@@ -84,6 +84,40 @@ interface WalletRepository {
     fun refreshFastestServers()
 }
 
+private fun isDecommissionedEndpoint(
+    endpoint: LightWalletEndpoint,
+    decommissionedHosts: Set<String>
+): Boolean = endpoint.host in decommissionedHosts
+
+private suspend fun isAutomaticOffGatewayEndpoint(
+    endpoint: LightWalletEndpoint,
+    lightWalletEndpointProvider: LightWalletEndpointProvider,
+    isPublicConnection: Boolean,
+    isAutomaticPreference: Boolean?,
+    knownEndpoints: List<LightWalletEndpoint>
+): Boolean =
+    lightWalletEndpointProvider.hasOhttpGateway() &&
+        !lightWalletEndpointProvider.isOhttpGateway(endpoint) &&
+        !isPublicConnection &&
+        resolveIsServerSelectionAutomatic(
+            isAutomaticPreference = isAutomaticPreference,
+            currentEndpoint = endpoint,
+            knownEndpoints = knownEndpoints,
+        )
+
+private fun isAutomaticWithoutOhttpEndpoint(
+    endpoint: LightWalletEndpoint,
+    hasOhttpGateway: Boolean,
+    isAutomaticPreference: Boolean?,
+    fallbackEndpoints: List<LightWalletEndpoint>
+): Boolean =
+    !hasOhttpGateway &&
+        // Treat an unset preference as Automatic: a new wallet never stores the preference
+        // (it is stored only by the migration and by PersistServerSelectionUseCase), and a
+        // manual selection always stores false explicitly via PersistServerSelectionUseCase.
+        isAutomaticPreference != false &&
+        endpoint !in fallbackEndpoints
+
 class WalletRepositoryImpl(
     configurationRepository: ConfigurationRepository,
     private val application: Application,
@@ -308,6 +342,11 @@ class WalletRepositoryImpl(
      * Automatic mode but still on a clearnet server (a wallet upgraded from before OHTTP): Automatic
      * mode selects only the gateway tier, so it must not start on a clearnet server (ZIP #10).
      *
+     * Moves an Automatic-mode wallet to the default (clearnet) server when this build has OHTTP off and the
+     * wallet is on a server that is not one of the built-in ones: in practice the gateway host a build with
+     * OHTTP saved. Without a configuration that host is a plain server to the SDK, which the gateway does not
+     * answer, so the wallet would stay disconnected.
+     *
      * Manual selection of the OHTTP gateway is converted to Private mode, since they're functionally
      * identical (same endpoint, no fastest-server lookup) and Private receives the gateway health check
      * and unavailable prompt.
@@ -327,17 +366,27 @@ class WalletRepositoryImpl(
             isServerSelectionAutomaticProvider.store(true)
             isPublicConnectionProvider.store(false)
         }
-        val isDecommissioned = endpoint.host in lightWalletEndpointProvider.getDecommissionedHosts()
+        val isDecommissioned =
+            isDecommissionedEndpoint(
+                endpoint = endpoint,
+                decommissionedHosts = lightWalletEndpointProvider.getDecommissionedHosts()
+            )
         val isAutomaticOffGateway =
-            lightWalletEndpointProvider.hasOhttpGateway() &&
-                !lightWalletEndpointProvider.isOhttpGateway(endpoint) &&
-                !isPublicConnectionProvider.get() &&
-                resolveIsServerSelectionAutomatic(
-                    isAutomaticPreference = isServerSelectionAutomaticProvider.get(),
-                    currentEndpoint = endpoint,
-                    knownEndpoints = lightWalletEndpointProvider.getEndpoints(),
-                )
-        if (isDecommissioned || isAutomaticOffGateway) {
+            isAutomaticOffGatewayEndpoint(
+                endpoint = endpoint,
+                lightWalletEndpointProvider = lightWalletEndpointProvider,
+                isPublicConnection = isPublicConnectionProvider.get(),
+                isAutomaticPreference = isServerSelectionAutomaticProvider.get(),
+                knownEndpoints = lightWalletEndpointProvider.getEndpoints()
+            )
+        val isAutomaticWithoutOhttp =
+            isAutomaticWithoutOhttpEndpoint(
+                endpoint = endpoint,
+                hasOhttpGateway = lightWalletEndpointProvider.hasOhttpGateway(),
+                isAutomaticPreference = isServerSelectionAutomaticProvider.get(),
+                fallbackEndpoints = lightWalletEndpointProvider.getFallbackEndpoints()
+            )
+        if (isDecommissioned || isAutomaticOffGateway || isAutomaticWithoutOhttp) {
             val replacement =
                 lightWalletEndpointProvider
                     .takeIf { isPublicConnectionProvider.get() }
@@ -348,6 +397,11 @@ class WalletRepositoryImpl(
             if (lightWalletEndpointProvider.isOhttpGateway(replacement)) {
                 isServerSelectionAutomaticProvider.store(true)
                 isPublicConnectionProvider.store(false)
+            }
+            // Persist the Automatic preference when migrating without OHTTP: the isAutomaticWithoutOhttp
+            // case is always Automatic (by the condition above), but a new wallet has a null preference.
+            if (isAutomaticWithoutOhttp) {
+                isServerSelectionAutomaticProvider.store(true)
             }
         }
     }

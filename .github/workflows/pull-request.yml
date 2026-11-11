@@ -18,23 +18,14 @@ on:
       - 'README.md'
       - 'docs/**'
 
+# No OHTTP value is needed here: the SDK carries none, and the app's unit tests use example values. An
+# APK built by this workflow has OHTTP off (Public only); the 8 ZODL_OHTTP_* values reach only the jobs
+# that build an APK for people to use (release.yaml, deploy.yml, firebase-app-distribution.yml) and the
+# E2E smoke build.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# The OHTTP endpoint configuration the companion SDK's native library is compiled with
-# (zodl-ohttp-client reads it at build time; unset = OHTTP off in that build). Repository secrets, so
-# the log masks them; no step prints them. Only builds with SDK_COMMIT_PIN compile the SDK, so a
-# release (published SDK) never reads them.
-env:
-  ZODL_OHTTP_GATEWAY_HOST_MAINNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_MAINNET }}
-  ZODL_OHTTP_GATEWAY_HOST_TESTNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_TESTNET }}
-  ZODL_OHTTP_RELAY_URL_MAINNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_MAINNET }}
-  ZODL_OHTTP_RELAY_URL_TESTNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_TESTNET }}
-  ZODL_OHTTP_KEYS_DNS_NAME_MAINNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_MAINNET }}
-  ZODL_OHTTP_KEYS_DNS_NAME_TESTNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_TESTNET }}
-  ZODL_OHTTP_SIGNING_PUBKEY_MAINNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_MAINNET }}
-  ZODL_OHTTP_SIGNING_PUBKEY_TESTNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_TESTNET }}
 
 jobs:
   validate_gradle_wrapper:
@@ -50,6 +41,21 @@ jobs:
       - name: Gradle Wrapper Validation
         timeout-minutes: 1
         uses: gradle/actions/wrapper-validation@v6
+
+  test_scripts:
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        timeout-minutes: 1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Test OHTTP build values script
+        timeout-minutes: 1
+        run: python3 -m unittest scripts.test_ohttp_build_values
+      - name: Test OHTTP release values check script
+        timeout-minutes: 1
+        run: python3 -m unittest scripts.test_check_ohttp_release_values
 
   check_firebase_secrets:
     runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}

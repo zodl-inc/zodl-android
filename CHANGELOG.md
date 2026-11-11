@@ -11,6 +11,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Changed:
 
+- The OHTTP configuration is part of the app build instead of the SDK: release builds (Google Play and both FOSS
+  builds, so also foss.zodl.com) pass it to the SDK at startup. A build without it, such as a local or third-party
+  build, offers only the Public connection.
+
 - The app now connects to Zcash servers through OHTTP relays by default for private network
   connections. Exchange rate updates also route through OHTTP without requiring a build-time API key.
 - Choose a Server now offers three connection modes: Private (Zodl servers over OHTTP, the default for

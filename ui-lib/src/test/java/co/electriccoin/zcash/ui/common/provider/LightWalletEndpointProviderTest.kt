@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 
 /**
  * The gateway hosts come from the SDK ([LightWalletClient.ohttpGatewayHost]), stubbed here with example hosts so
- * the result does not depend on the `ZODL_OHTTP_*` configuration the SDK under test was built with.
+ * the result does not depend on any OHTTP configuration installed in the SDK under test.
  */
 class LightWalletEndpointProviderTest {
     @AfterTest

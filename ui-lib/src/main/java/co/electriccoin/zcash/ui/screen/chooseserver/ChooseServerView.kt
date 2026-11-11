@@ -166,13 +166,15 @@ private fun ConnectionModeSection(state: ServerConnectionModeState) {
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        ConnectionModeRow(
-            radio = state.private,
-            badge = state.privateBadge,
-            onInfoClick = state.onPrivateInfoClick,
-            infoLabel = state.privateInfoLabel,
-        )
-        Spacer(modifier = Modifier.height(4.dp))
+        if (state.isPrivateAvailable) {
+            ConnectionModeRow(
+                radio = state.private,
+                badge = state.privateBadge,
+                onInfoClick = state.onPrivateInfoClick,
+                infoLabel = state.privateInfoLabel,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+        }
         ConnectionModeRow(radio = state.public, badge = state.publicBadge)
         Spacer(modifier = Modifier.height(4.dp))
         ConnectionModeRow(radio = state.manual, badge = state.manualBadge)
