@@ -295,6 +295,23 @@ jobs:
       - name: Install zbar
         run: sudo apt-get install -y zbar-tools
 
+      - name: Set up metrics Python
+        if: ${{ matrix.phase == 2 }}
+        continue-on-error: true
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install metrics observer
+        if: ${{ matrix.phase == 2 }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          python3 -m venv "$RUNNER_TEMP/zodl-metrics-venv"
+          "$RUNNER_TEMP/zodl-metrics-venv/bin/python" -m pip install --only-binary=:all: \
+            -r zodl-qa/scripts/metrics-requirements.txt
+          echo "ZODL_METRICS_PYTHON=$RUNNER_TEMP/zodl-metrics-venv/bin/python" >> "$GITHUB_ENV"
+
       # android-emulator-runner executes each script line in a separate sh.
       # Keep the private directory, traps and exit status in one Bash process.
       - name: Prepare private Speedrun runner
@@ -328,6 +345,7 @@ jobs:
       - name: Run smoke tests
         uses: reactivecircus/android-emulator-runner@v2
         env:
+          ZODL_E2E_METRICS: "1"
           # Wallet config consumed by scripts/run-smoke-android.sh — the
           # wrapper sources .env locally, but on CI we read each value
           # from GitHub Secrets / repo variables instead. The wrapper

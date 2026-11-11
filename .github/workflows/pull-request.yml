@@ -341,7 +341,7 @@ jobs:
   test_android_modules_emulator:
     name: test_android_modules_emulator (${{ matrix.shard }})
     needs: [validate_gradle_wrapper]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # 120 minutes for cold-cache first run: the `app` shard needs the SDK compiled, and when
     # SDK_COMMIT_PIN is set (see setup-sdk-companion) a cold cargo/target cache (vendored
     # zodl-slipstream + arti/hpke, x86_64 only) takes ~45+ min before emulator/test steps start.
@@ -358,6 +358,11 @@ jobs:
         include:
           - shard: libs
             coverage: true
+            assemble-tasks: >-
+              assembleDebugAndroidTest
+              -x :app:assembleZcashmainnetStoreDebugAndroidTest
+              :app:assembleZcashmainnetStoreDebug
+              :ui-integration-test:assembleZcashmainnetStoreDebug
             gradle-tasks: >-
               connectedDebugAndroidTest
               -x :app:connectedZcashmainnetStoreDebugAndroidTest
@@ -367,6 +372,10 @@ jobs:
               :ui-integration-test:connectedZcashmainnetStoreDebugAndroidTest
           - shard: app
             coverage: false
+            assemble-tasks: >-
+              :app:assembleZcashmainnetStoreDebug
+              :app:assembleZcashmainnetStoreDebugAndroidTest
+              :ui-screenshot-test:assembleZcashmainnetStoreDebug
             gradle-tasks: >-
               :app:connectedZcashmainnetStoreDebugAndroidTest
               :ui-screenshot-test:connectedZcashmainnetStoreDebugAndroidTest
@@ -390,48 +399,48 @@ jobs:
       - name: Set up Gradle
         uses: ./.github/actions/setup-gradle
         timeout-minutes: 5
-      - name: Pre-build companion SDK native libs (app shard only)
-        # When SDK_COMMIT_PIN is set, the app shard's instrumentation-test Gradle
-        # invocation would otherwise compile the companion SDK's Rust natives for the
-        # first time while the emulator is already up and running screenshot tests --
-        # observed causing rendering contention (ComposeTimeoutException, "Failed to
-        # find ColorBuffer") from CPU/memory pressure, not real UI regressions.
-        # Assembling (not running) the instrumentation APKs here forces that
-        # compilation to finish before Enable KVM/emulator boot, so the later
-        # `connectedAndroidTest` step only installs and runs against
-        # already-built artifacts. The libs shard doesn't depend on feature-voting
-        # (confirmed: it passes unaffected), so it skips this entirely.
-        # 120 minutes for cold-cache first run (cross-compiles vendored zodl-slipstream +
-        # arti/hpke for x86_64). Warm-cache runs complete in <45 min.
-        if: matrix.shard == 'app'
+      - name: Pre-build instrumentation APKs
+        # Both shards compile before emulator boot. The libs runner has repeatedly
+        # shut down while compiling APKs alongside an already-running emulator.
+        # Keep the same resource and coverage settings as the test invocation so
+        # it can reuse these APKs instead of compiling them again after boot.
+        # Keep Kotlin in the bounded Gradle heap, then release that heap before
+        # emulator startup on the standard hosted runner.
         timeout-minutes: 120
+        env:
+          ORG_GRADLE_PROJECT_ZCASH_DEBUG_APP_NAME_SUFFIX: ""
+          ORG_GRADLE_PROJECT_IS_ANDROID_INSTRUMENTATION_TEST_COVERAGE_ENABLED: ${{ matrix.coverage }}
         run: |
-          ./gradlew :app:assembleZcashmainnetStoreDebugAndroidTest :ui-screenshot-test:assembleAndroidTest
+          ./gradlew ${{ matrix.assemble-tasks }} --max-workers=2 --no-parallel --stacktrace \
+            "-Dorg.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1g" -Pkotlin.compiler.execution.strategy=in-process
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          variant = "zcashmainnetStoreDebug"
+          modules = ["app", "ui-screenshot-test" if "${{ matrix.shard }}" == "app" else "ui-integration-test"]
+          for module in modules:
+              metadata = []
+              for path in (Path(module) / "build/outputs/apk").rglob("output-metadata.json"):
+                  data = json.loads(path.read_text())
+                  if data.get("variantName") == variant:
+                      metadata.append((path, data))
+              if len(metadata) != 1:
+                  raise SystemExit(f"Expected one prepared {variant} APK metadata file for {module}")
+              path, data = metadata[0]
+              apks = [path.parent / entry["outputFile"] for entry in data.get("elements", [])]
+              if not apks or not all(apk.is_file() and apk.stat().st_size for apk in apks):
+                  raise SystemExit(f"Prepared {variant} APK is missing for {module}")
+              print(f"Verified {module}: {len(apks)} prepared {variant} APK(s)")
+          PY
+          ./gradlew --stop
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: AVD cache
-        uses: actions/cache@v5
-        id: avd-cache
-        with:
-          path: |
-            ~/.android/avd/*
-            ~/.android/adb*
-          key: avd-api-35-x86_64-pixel_6-default-v2
-      - name: Create AVD and generate snapshot for caching
-        if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          arch: x86_64
-          profile: pixel_6
-          target: default
-          force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: false
-          script: echo "Generated AVD snapshot for caching"
+      # Boot once from a fresh AVD. The separate cache-warming boot timed out
+      # before the library tests started; tests do not need a saved snapshot.
       - name: Run instrumentation tests
         uses: reactivecircus/android-emulator-runner@v2
         env:
@@ -443,10 +452,20 @@ jobs:
           arch: x86_64
           profile: pixel_6
           target: default
-          force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          force-avd-creation: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: ./gradlew ${{ matrix.gradle-tasks }}
+          script: >-
+            ./gradlew ${{ matrix.gradle-tasks }} --max-workers=2 --no-parallel --stacktrace
+            "-Dorg.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1g" -Pkotlin.compiler.execution.strategy=in-process
+      - name: Emulator host diagnostics
+        if: failure()
+        run: |
+          free -m
+          df -h /
+          # Process names and memory only: never print command arguments.
+          ps -eo pid,comm,rss --sort=-rss | sed -n '1,16p'
+          sudo dmesg | grep -Ei 'out of memory|oom-kill|killed process|segfault' || true
       - name: Collect Artifacts
         if: ${{ always() }}
         timeout-minutes: 1
@@ -585,6 +604,9 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: android
         shell: bash
         run: |
+          # Match the bounded concurrency used by the E2E APK build. This job
+          # packages several variants, so avoid overlapping their packaging workers
+          # and include the underlying exception if APK packaging fails.
           # This step's worker processes (bundletool's standalone-APK packaging,
           # in particular) can OOM on the standard runner's RAM when SDK_COMMIT_PIN
           # is set and the companion SDK's Rust compilation is sharing the box with
@@ -593,11 +615,11 @@ jobs:
           # zodl-helpers/scripts/deploy.sh's established OOM-retry-once handling for
           # this same build.
           TASKS=":app:assembleZcashmainnetStoreDebug :app:assembleZcashtestnetStoreDebug :app:bundleZcashmainnetStoreRelease :app:bundleZcashtestnetStoreRelease :app:packageZcashmainnetStoreReleaseUniversalApk"
-          if ! ./gradlew ${TASKS} 2>&1 | tee build-store-apk.log; then
+          if ! ./gradlew ${TASKS} --max-workers=2 --no-parallel --stacktrace 2>&1 | tee build-store-apk.log; then
             if grep -qi "OutOfMemoryError\|Java heap space" build-store-apk.log; then
               echo "::warning::Build Store APK failed with OOM -- stopping the daemon and retrying once with a fresh heap."
               ./gradlew --stop
-              ./gradlew ${TASKS}
+              ./gradlew ${TASKS} --max-workers=2 --no-parallel --stacktrace
             else
               exit 1
             fi
