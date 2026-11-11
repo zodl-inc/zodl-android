@@ -36,18 +36,35 @@ if (hasFirebaseApiKeys) {
 
 // The OHTTP configuration the app passes to the SDK at startup (cash.z.ecc.android.sdk.Ohttp.configure):
 // for mainnet and testnet the gateway host, relay URL, key DNS name and signing public key. The SDK carries
-// none. Each value is read from the Gradle property or, when that is unset, the environment variable of the
-// same name (ZODL_OHTTP_GATEWAY_HOST_MAINNET and so on), which CI fills from secrets. A network has all four
-// values or none; none = OHTTP off for that network, and a build with none at all behaves as Public only.
-// Errors name the variable, never the value, and nothing here prints a value.
+// none. Each value is read from (1) the Gradle property, (2) the environment variable of the same name
+// (ZODL_OHTTP_GATEWAY_HOST_MAINNET and so on, which CI fills from secrets), or (3) the local cache file
+// ~/.gradle/zodl-ohttp-values.properties (managed by scripts/ohttp-build-values.py, never in the repo).
+// A network has all four values or none; none = OHTTP off for that network, and a build with none at all
+// behaves as Public only. Errors name the variable, never the value, and nothing here prints a value.
 val ohttpFields = listOf("GATEWAY_HOST", "RELAY_URL", "KEYS_DNS_NAME", "SIGNING_PUBKEY")
 val ohttpNetworks = listOf("MAINNET", "TESTNET")
+
+// Read cache file if it exists (for local development convenience)
+val ohttpCacheFile = File(System.getProperty("user.home"), ".gradle/zodl-ohttp-values.properties")
+val ohttpCache: Map<String, String> = if (ohttpCacheFile.exists()) {
+    ohttpCacheFile.readLines()
+        .filter { it.isNotBlank() && !it.trim().startsWith("#") && "=" in it }
+        .associate { line ->
+            val (key, value) = line.split("=", limit = 2)
+            key.trim() to value.trim()
+        }
+} else {
+    emptyMap()
+}
+
 val ohttpConfig: Map<String, String> =
     ohttpNetworks
         .flatMap { network -> ohttpFields.map { field -> "${field}_$network" } }
         .associateWith { key ->
             val name = "ZODL_OHTTP_$key"
-            (providers.gradleProperty(name).orNull ?: providers.environmentVariable(name).orNull)
+            (providers.gradleProperty(name).orNull
+                ?: providers.environmentVariable(name).orNull
+                ?: ohttpCache[name])
                 .orEmpty()
                 .trim()
         }

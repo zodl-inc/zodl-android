@@ -42,6 +42,21 @@ jobs:
         timeout-minutes: 1
         uses: gradle/actions/wrapper-validation@v6
 
+  test_scripts:
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        timeout-minutes: 1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Test OHTTP build values script
+        timeout-minutes: 1
+        run: python3 -m unittest scripts.test_ohttp_build_values
+      - name: Test OHTTP release values check script
+        timeout-minutes: 1
+        run: python3 -m unittest scripts.test_check_ohttp_release_values
+
   check_firebase_secrets:
     runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     outputs:

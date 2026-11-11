@@ -48,6 +48,11 @@ Start by making sure the command line with Gradle works first, because **all the
     1. Create a new SSH key, following [GitHub's instructions](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent)
     1. Add the SSH key under [GitHub account settings](https://github.com/settings/keys)
     1. Clone repo in a terminal on your computer `git clone git@github.com:zodl-inc/zodl-android.git`
+1. (Optional) Configure OHTTP values for local builds
+    1. If you have AWS access with permission to read the OHTTP secrets (configured with profile `zodl-ohttp`), run `./scripts/ohttp-build-values.py refresh` to download and cache the OHTTP configuration values
+    1. This is a one-time setup — cached values are reused across builds until you run `./scripts/ohttp-build-values.py clear`
+    1. Without cached values, local builds have OHTTP off (Public connection only)
+    1. CI and release builds always use values from repository secrets
 1. Compile from the command line
     1. Navigate to the repo checkout in a terminal
     1. Compile the application with the gradle command `./gradlew assemble`
