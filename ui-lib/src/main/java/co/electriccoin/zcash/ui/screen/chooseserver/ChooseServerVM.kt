@@ -149,6 +149,7 @@ class ChooseServerVM(
                     hapticFeedbackType =
                         if (local.mode == ServerConnectionMode.MANUAL) null else HapticFeedbackType.SegmentTick
                 ),
+            isPrivateAvailable = lightWalletEndpointProvider.getOhttpEndpoint() != null,
             privateBadge = createPrivateBadge(persisted, isOhttpUnavailable, gatewayRelayIndependence),
             publicBadge = createPublicBadge(local, persisted, testingBadge, isTesting),
             manualBadge = if (local.mode == ServerConnectionMode.MANUAL && isTesting) testingBadge else null,

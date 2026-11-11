@@ -34,6 +34,37 @@ if (hasFirebaseApiKeys) {
     apply(plugin = "com.google.firebase.crashlytics")
 }
 
+// The OHTTP configuration the app passes to the SDK at startup (cash.z.ecc.android.sdk.Ohttp.configure):
+// for mainnet and testnet the gateway host, relay URL, key DNS name and signing public key. The SDK carries
+// none. Each value is read from the Gradle property or, when that is unset, the environment variable of the
+// same name (ZODL_OHTTP_GATEWAY_HOST_MAINNET and so on), which CI fills from secrets. A network has all four
+// values or none; none = OHTTP off for that network, and a build with none at all behaves as Public only.
+// Errors name the variable, never the value, and nothing here prints a value.
+val ohttpFields = listOf("GATEWAY_HOST", "RELAY_URL", "KEYS_DNS_NAME", "SIGNING_PUBKEY")
+val ohttpNetworks = listOf("MAINNET", "TESTNET")
+val ohttpConfig: Map<String, String> =
+    ohttpNetworks
+        .flatMap { network -> ohttpFields.map { field -> "${field}_$network" } }
+        .associateWith { key ->
+            val name = "ZODL_OHTTP_$key"
+            (providers.gradleProperty(name).orNull ?: providers.environmentVariable(name).orNull)
+                .orEmpty()
+                .trim()
+        }
+for (network in ohttpNetworks) {
+    val set = ohttpFields.filter { ohttpConfig.getValue("${it}_$network").isNotEmpty() }
+    require(set.isEmpty() || set.size == ohttpFields.size) {
+        "ZODL_OHTTP_*_$network: set all four values of the network or none; set now: " +
+            set.joinToString { "ZODL_OHTTP_${it}_$network" }
+    }
+}
+for ((key, value) in ohttpConfig) {
+    // The value goes into generated Java source: refuse anything that could break out of the string.
+    require(value.none { it == '"' || it == '\\' || it.isWhitespace() || it.isISOControl() }) {
+        "ZODL_OHTTP_$key contains a quote, a backslash, whitespace or a control character"
+    }
+}
+
 val packageName = project.property("ZCASH_RELEASE_PACKAGE_NAME").toString()
 
 val testnetNetworkName = "Testnet"
@@ -275,6 +306,13 @@ androidComponents {
                     comment = "Whether is the strict mode enabled"
                 )
             )
+
+            for ((key, value) in ohttpConfig) {
+                variant.buildConfigFields?.put(
+                    "OHTTP_$key",
+                    BuildConfigField(type = "String", value = "\"$value\"", comment = null)
+                )
+            }
 
             variant.resValues.put(
                 // Key matches the one in crash-android-lib/src/res/values/bools.xml

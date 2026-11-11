@@ -14,20 +14,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# The OHTTP endpoint configuration the companion SDK's native library is compiled with
-# (zodl-ohttp-client reads it at build time; unset = OHTTP off in that build). Repository secrets, so
-# the log masks them; no step prints them. Only builds with SDK_COMMIT_PIN compile the SDK, so a
-# release (published SDK) never reads them.
 env:
   QA_REVISION: 56f09f225d84660f3c1ae04d13130ffe390ebb04
-  ZODL_OHTTP_GATEWAY_HOST_MAINNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_MAINNET }}
-  ZODL_OHTTP_GATEWAY_HOST_TESTNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_TESTNET }}
-  ZODL_OHTTP_RELAY_URL_MAINNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_MAINNET }}
-  ZODL_OHTTP_RELAY_URL_TESTNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_TESTNET }}
-  ZODL_OHTTP_KEYS_DNS_NAME_MAINNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_MAINNET }}
-  ZODL_OHTTP_KEYS_DNS_NAME_TESTNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_TESTNET }}
-  ZODL_OHTTP_SIGNING_PUBKEY_MAINNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_MAINNET }}
-  ZODL_OHTTP_SIGNING_PUBKEY_TESTNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_TESTNET }}
 
 jobs:
   validate_artifact_privacy:
@@ -86,8 +74,19 @@ jobs:
           path: app/build/outputs/apk/zcashmainnetInternal/debug
           key: ${{ runner.os }}-android-apk-${{ hashFiles('app/src/**', 'ui-lib/src/**', 'sdk-ext-lib/src/**', 'ui-design-lib/src/**', 'buildSrc/src/**', 'build-conventions-secant/src/**', '**/*.gradle.kts', 'gradle.properties', 'gradle/libs.versions.toml') }}
 
+      # The app passes the OHTTP configuration to the SDK at startup; the build takes it from these
+      # repository secrets (masked; no step prints them). Only this step sees them.
       - name: Build debug APK
         if: steps.apk-cache.outputs.cache-hit != 'true'
+        env:
+          ZODL_OHTTP_GATEWAY_HOST_MAINNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_MAINNET }}
+          ZODL_OHTTP_RELAY_URL_MAINNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_MAINNET }}
+          ZODL_OHTTP_KEYS_DNS_NAME_MAINNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_MAINNET }}
+          ZODL_OHTTP_SIGNING_PUBKEY_MAINNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_MAINNET }}
+          ZODL_OHTTP_GATEWAY_HOST_TESTNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_TESTNET }}
+          ZODL_OHTTP_RELAY_URL_TESTNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_TESTNET }}
+          ZODL_OHTTP_KEYS_DNS_NAME_TESTNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_TESTNET }}
+          ZODL_OHTTP_SIGNING_PUBKEY_TESTNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_TESTNET }}
         # The root task also assembles screenshot-test APKs and can exhaust D8 heap.
         run: ./gradlew :app:assembleZcashmainnetInternalDebug --max-workers=2 --no-parallel
 

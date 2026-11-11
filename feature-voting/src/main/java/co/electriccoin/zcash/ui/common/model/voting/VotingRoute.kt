@@ -17,8 +17,18 @@ data class VotingRouteDecision(
      * operation uses the same selection as [isCustomServer] even if the user switches chains
      * mid-operation.
      */
-    val configSource: VotingConfigSourceSnapshot = VotingConfigSourceSnapshot.Unset
-)
+    val configSource: VotingConfigSourceSnapshot = VotingConfigSourceSnapshot.Unset,
+    /**
+     * Whether this build has OHTTP on for the wallet's network (the app installed a configuration for it).
+     * Without it, predefined servers are reached like custom ones (Tor or direct), as the SDK's own voting
+     * route does: there is no gateway to ride.
+     */
+    val isOhttpAvailable: Boolean = true,
+) {
+    /** Tor off, a predefined server and OHTTP on: the request rides the OHTTP gateway and fails closed. */
+    val usesOhttp: Boolean
+        get() = !isTor && !isCustomServer && isOhttpAvailable
+}
 
 /** The chain-config selection captured with a [VotingRouteDecision]. */
 sealed interface VotingConfigSourceSnapshot {

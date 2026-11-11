@@ -123,6 +123,21 @@ App module build variants:
 - `zcashmainnetDebug` - same as previous, but is built upon mainnet network
 - `zcashmainnetRelease` and `zcashtestnetRelease` - are usually used by our CI jobs to prepare binaries for testing and releasing to the Google Play Store
 
+### OHTTP configuration
+This section is optional.
+
+The SDK carries no OHTTP endpoint or key: the app passes its OHTTP configuration to the SDK at startup
+(`Ohttp.configure`). A build takes the eight values (gateway host, relay URL, key DNS name and signing public key, for
+mainnet and testnet) from the Gradle properties or environment variables `ZODL_OHTTP_GATEWAY_HOST_MAINNET`,
+`ZODL_OHTTP_RELAY_URL_MAINNET`, `ZODL_OHTTP_KEYS_DNS_NAME_MAINNET`, `ZODL_OHTTP_SIGNING_PUBKEY_MAINNET` and the same
+four with `_TESTNET`. A network needs all four values or none. A build without them (the default) has OHTTP off: it
+offers only the Public connection, and the services that need the gateway (exchange rates, swaps, Flexa) are not
+available.
+
+CI injects the values from secrets in the release, Firebase distribution and E2E builds. Developers with access can read
+them from AWS Secrets Manager (`/github/zodl-android-private/ZODL_OHTTP_*`, one secret per value) and export them
+before a local build; never commit them or put them in `gradle.properties`.
+
 ### Included builds
 This section is optional.
 
