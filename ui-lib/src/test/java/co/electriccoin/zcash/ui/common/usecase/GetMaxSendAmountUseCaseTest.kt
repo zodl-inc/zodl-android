@@ -147,6 +147,17 @@ class GetMaxSendAmountUseCaseTest {
         }
 
     @Test
+    fun aMemoOverTheLimitIsAnInvalidRecipientNotAnUnknownFailure() =
+        runTest {
+            val e =
+                assertFailsWith<MaxSendAmountUnavailableException> {
+                    useCase(MaxSendTarget.Recipient(ADDRESS, AddressType.Unified, "x".repeat(600)))
+                }
+
+            assertEquals(MaxSendAmountFailure.INVALID_RECIPIENT, e.reason)
+        }
+
+    @Test
     fun transparentAndTexRecipientsCarryNoMemo() =
         runTest {
             assertNull(memoSentFor(AddressType.Transparent, "hi"))

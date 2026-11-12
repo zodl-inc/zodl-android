@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import cash.z.ecc.android.sdk.model.MemoContent
+import cash.z.ecc.android.sdk.model.MemoException
 import cash.z.ecc.android.sdk.model.RecipientAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.Zip317
@@ -113,7 +114,12 @@ class GetMaxSendAmountUseCase(
     private fun memoFor(target: MaxSendTarget): MemoContent? =
         when (target) {
             is MaxSendTarget.Recipient -> {
-                ProposalMemoPolicy.memoFor(target.type, target.memoText)?.let { MemoContent.fromString(it) }
+                try {
+                    ProposalMemoPolicy.memoFor(target.type, target.memoText)?.let { MemoContent.fromString(it) }
+                } catch (e: MemoException) {
+                    // a memo over 512 bytes is the recipient's data being wrong, not an unknown failure
+                    throw MaxSendAmountUnavailableException(MaxSendAmountFailure.INVALID_RECIPIENT, e)
+                }
             }
 
             MaxSendTarget.OwnTransparentReceiver,
