@@ -230,20 +230,26 @@ class SendViewModel(
         }
     }
 
-    fun onRecipientAddressChanged(state: RecipientAddressState) {
+    /**
+     * @param repriceMax whether a Max amount filled earlier is priced again for the new recipient. The screen passes
+     * false when it writes the address and the amount itself (a payment request, a cleared form): the Max intent
+     * then ends and the amount that is written next is not replaced.
+     */
+    fun onRecipientAddressChanged(state: RecipientAddressState, repriceMax: Boolean = true) {
         val changed = recipientAddressState.value != state
         val hadMaxIntent = maxAmountRequester.activeBaseline.value != null || maxAmountRequester.isInFlight.value
-        if (changed) {
+        if (changed || !repriceMax) {
             maxAmountRequester.cancel()
             dropUnappliedMaxAmounts()
             maxFeedback.clearError()
         }
+        if (!repriceMax) maxAmountRequester.clearIntent()
         recipientAddressState.update { state }
-        if (changed && hadMaxIntent) {
+        if (changed && hadMaxIntent && repriceMax) {
             // The filled amount was priced for the previous recipient (the fee differs by recipient type, e.g. a TEX
             // recipient needs two steps), so it is requested again for the new one. While a typed address is not
             // valid yet the amount stays as it is: Review is off for it anyway.
-            requestMax()
+            requestMax(isReprice = true)
         }
     }
 
@@ -266,7 +272,7 @@ class SendViewModel(
 
     fun onMaxClick() {
         if (!maxChipState.value.isEnabled) return
-        requestMax()
+        requestMax(isReprice = false)
     }
 
     /**
@@ -274,7 +280,7 @@ class SendViewModel(
      * preview for no recipient yet ([MaxSendTarget.NoRecipientYet]). Does nothing while a typed address is not valid.
      * A request already in flight is left alone ([MaxAmountRequester] ignores the second one).
      */
-    private fun requestMax() {
+    private fun requestMax(isReprice: Boolean) {
         val recipient = recipientAddressState.value
         val type = recipient.type
         val target =
@@ -293,7 +299,17 @@ class SendViewModel(
             }
         if (maxAmountRequester.isInFlight.value) return
         maxFeedback.clearError()
-        maxAmountRequester.request(target) { max ->
+        maxAmountRequester.request(
+            target = target,
+            onFailure = {
+                if (isReprice) {
+                    // The amount on the form was priced for the previous recipient and no longer holds: clear it, so
+                    // Review cannot go ahead with it.
+                    maxAmountRequester.clearIntent()
+                    amountClearEvents.tryEmit(Unit)
+                }
+            }
+        ) { max ->
             // The recipient can change while the request runs; the max is only valid for the one it was computed for.
             if (recipientAddressState.value.address == recipient.address) {
                 maxAmountResolvedEvents.send(ResolvedMaxAmount(recipient.address, max.amount))

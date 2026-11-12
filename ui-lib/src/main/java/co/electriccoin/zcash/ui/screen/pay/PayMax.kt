@@ -82,7 +82,8 @@ internal data class MaxQuotePoint(
  * - After one quote the token amount is scaled by `target / zecIn` (the cost is taken as proportional).
  * - After two quotes that are both over, the line through them (cost = fixed + proportional * token) gives the next
  *   amount. The fit is used only when it is sound (the token fell and the cost fell, and the result is a smaller
- *   positive amount); otherwise the last quote is scaled again with twice the margin.
+ *   positive amount, and the fixed part is at most half of the last cost); otherwise the last quote is scaled again
+ *   with twice the margin.
  *
  * At most [MAX_REVISIONS] re-quotes follow the first; a quote still over the cap after them stops the Review with the
  * Max failure line.
@@ -94,6 +95,8 @@ internal object MaxQuoteSizing {
     const val MAX_REVISIONS = 2
 
     private val TWO = BigDecimal(2)
+
+    private val MIN_SLOPE_SHARE = BigDecimal("0.5")
 
     /**
      * The token amount to quote next, or null if none is left.
@@ -124,10 +127,17 @@ internal object MaxQuoteSizing {
     private fun fit(prev: MaxQuotePoint, last: MaxQuotePoint, target: BigDecimal): BigDecimal? {
         val dToken = prev.token - last.token
         val dZec = prev.zecIn - last.zecIn
-        if (dToken <= BigDecimal.ZERO || dZec <= BigDecimal.ZERO) return null
-        val perToken = dZec.divide(dToken, MathContext.DECIMAL128)
-        val fitted = last.token + (target - last.zecIn).divide(perToken, MathContext.DECIMAL128)
-        return fitted.takeIf { it > BigDecimal.ZERO && it < last.token }
+        val perToken = if (dToken > BigDecimal.ZERO) dZec.divide(dToken, MathContext.DECIMAL128) else BigDecimal.ZERO
+        // A slope far below the average cost per token means the two quotes do not lie on one line (a price or route
+        // change between them): the fit would jump to a tiny amount. Trust it only while the fixed part is at most
+        // half of the last cost.
+        val averagePerToken = last.zecIn.divide(last.token, MathContext.DECIMAL128)
+        return if (perToken <= BigDecimal.ZERO || perToken < averagePerToken.multiply(MIN_SLOPE_SHARE)) {
+            null
+        } else {
+            val fitted = last.token + (target - last.zecIn).divide(perToken, MathContext.DECIMAL128)
+            fitted.takeIf { it > BigDecimal.ZERO && it < last.token }
+        }
     }
 
     private fun harderScaled(last: MaxQuotePoint, cap: BigDecimal): BigDecimal =

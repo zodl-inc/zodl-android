@@ -375,13 +375,7 @@ internal class PayVM(
                 maxCap(baseline, reserve, spendable)
             }
         val capDecimal = cap?.let { BigDecimal(it.value) }
-        if (cap != null && capDecimal != null) {
-            // Only the cost relative to the cap is logged: no amount, address or asset
-            Twig.info {
-                "Pay Max quote ${history.size + 1}: cost/cap " +
-                    quote.amountIn.divide(capDecimal, COST_LOG_SCALE, java.math.RoundingMode.HALF_UP).toPlainString()
-            }
-        }
+        logQuoteCost(quote, capDecimal, history.size + 1)
         return if (cap == null || capDecimal == null || quote.amountIn <= capDecimal) {
             MaxRevision.None
         } else {
@@ -394,6 +388,15 @@ internal class PayVM(
             } else {
                 MaxRevision.None
             }
+        }
+    }
+
+    /** Only the cost relative to the cap and the quote number are logged: no amount, address or asset. */
+    private fun logQuoteCost(quote: SwapQuote, cap: BigDecimal?, number: Int) {
+        if (cap == null || cap <= BigDecimal.ZERO) return
+        Twig.info {
+            "Pay Max quote $number: cost/cap " +
+                quote.amountIn.divide(cap, COST_LOG_SCALE, java.math.RoundingMode.HALF_UP).toPlainString()
         }
     }
 

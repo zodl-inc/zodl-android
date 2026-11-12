@@ -21,6 +21,7 @@ import co.electriccoin.zcash.ui.screen.send.SendVmMaxHarness.Companion.OWN_UNIFI
 import co.electriccoin.zcash.ui.screen.send.SendVmMaxHarness.Companion.UNIFIED
 import co.electriccoin.zcash.ui.screen.send.SendVmMaxHarness.Companion.account
 import co.electriccoin.zcash.ui.screen.send.model.AmountState
+import co.electriccoin.zcash.ui.screen.send.model.RecipientAddressState
 import co.electriccoin.zcash.ui.screen.send.model.ResolvedMaxAmount
 import co.electriccoin.zcash.ui.screen.send.model.SendStage
 import io.mockk.coEvery
@@ -196,6 +197,75 @@ class SendViewModelMaxTest {
             vm.recipient(address = UNIFIED)
 
             assertEquals(listOf(UNIFIED, OTHER, UNIFIED), resolved.map { it.address })
+        }
+
+    @Test
+    fun theAmountIsPricedAgainForTheRecipientThatWasEntered() =
+        runTest {
+            val vm = harness.newViewModel()
+            vm.recipient()
+            vm.onMaxClick()
+
+            vm.recipient(address = OTHER)
+
+            coVerify(exactly = 1) {
+                harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), harness.recipientFor(UNIFIED), any(), any())
+            }
+            coVerify(exactly = 1) {
+                harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), harness.recipientFor(OTHER), any(), any())
+            }
+        }
+
+    @Test
+    fun aFailedPriceForTheNewRecipientClearsTheAmountAndEndsTheMaxIntent() =
+        runTest {
+            val vm = harness.newViewModel()
+            val cleared = mutableListOf<Unit>()
+            backgroundScope.launch(harness.mainDispatcher) { vm.amountClears.toList(cleared) }
+            vm.recipient()
+            vm.onMaxClick()
+            harness.failWith(MaxSendAmountFailure.OTHER)
+
+            vm.recipient(address = OTHER)
+
+            // The amount was priced for the previous recipient: it must not stay on the form with Review on
+            assertEquals(1, cleared.size)
+            assertFalse(vm.maxChipState.value.isRequesting)
+            // and the intent ended: another change does not price again
+            vm.recipient(address = UNIFIED)
+            coVerify(exactly = 2) { harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun aPaymentRequestThatBringsItsOwnAmountIsNotReplacedByMax() =
+        runTest {
+            val vm = harness.newViewModel()
+            val resolved = mutableListOf<ResolvedMaxAmount>()
+            backgroundScope.launch(harness.mainDispatcher) { vm.maxAmountResolved.toList(resolved) }
+            vm.recipient()
+            vm.onMaxClick()
+
+            vm.onRecipientAddressChanged(RecipientAddressState.new(OTHER, AddressType.Unified), repriceMax = false)
+
+            assertEquals(listOf(UNIFIED), resolved.map { it.address })
+            // the Max intent ended with it
+            vm.recipient(address = UNIFIED)
+            coVerify(exactly = 1) { harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun aClearedSendFormIsNotFilledWithAMaxPreview() =
+        runTest {
+            val vm = harness.newViewModel()
+            val resolved = mutableListOf<ResolvedMaxAmount>()
+            backgroundScope.launch(harness.mainDispatcher) { vm.maxAmountResolved.toList(resolved) }
+            vm.recipient()
+            vm.onMaxClick()
+
+            vm.onRecipientAddressChanged(RecipientAddressState.new("", null), repriceMax = false)
+
+            assertEquals(listOf(UNIFIED), resolved.map { it.address })
+            coVerify(exactly = 1) { harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) }
         }
 
     @Test

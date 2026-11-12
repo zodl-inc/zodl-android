@@ -32,4 +32,11 @@ class SendReviewGatingTest {
     fun reviewIsEnabledWhenSpendableAndTheFormIsValid() {
         assertTrue(isReviewEnabled(Spendability.Some(Zatoshi(1)), isFormValid = true))
     }
+
+    @Test
+    fun reviewIsHeldBackWhileAMaxAmountIsBeingPriced() {
+        assertFalse(
+            isReviewEnabled(Spendability.Some(Zatoshi(1)), isFormValid = true, isMaxRequesting = true)
+        )
+    }
 }

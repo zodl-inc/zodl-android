@@ -68,11 +68,13 @@ class MaxAmountRequester(
      * @param spendableAtTap the shielded spendable balance at the moment of the tap, read synchronously by the
      * caller. Swap and Pay pass it so the Max intent can record its reserve; Send keeps the amount fixed and may
      * leave it out.
+     * @param onFailure called after [onFailed] when the max amount could not be determined
      * @return whether a request was started
      */
     fun request(
         target: MaxSendTarget,
         spendableAtTap: Zatoshi? = null,
+        onFailure: () -> Unit = {},
         onResolved: suspend (MaxSendAmount) -> Unit
     ): Boolean {
         if (inFlight.value) return false
@@ -86,9 +88,11 @@ class MaxAmountRequester(
                             getMaxSendAmount(target)
                         } catch (_: InsufficientFundsException) {
                             onFailed(MaxSendAmountFailure.OTHER)
+                            onFailure()
                             null
                         } catch (e: MaxSendAmountUnavailableException) {
                             onFailed(e.reason)
+                            onFailure()
                             null
                         }
                     if (max != null) {

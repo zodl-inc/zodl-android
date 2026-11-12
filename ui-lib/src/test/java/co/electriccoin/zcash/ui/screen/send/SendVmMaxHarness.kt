@@ -52,12 +52,15 @@ internal class SendVmMaxHarness {
     val accounts = MutableStateFlow<WalletAccount?>(account(spendable = 1_000_000, pending = 0))
     val maxSendAmountDataSource = mockk<MaxSendAmountDataSource>()
     val createProposal = mockk<CreateProposalUseCase>(relaxed = true)
-    private val recipient = mockk<RecipientAddress>()
+    private val recipients = mutableMapOf<String, RecipientAddress>()
+
+    /** The [RecipientAddress] the use case gets for [address], so a test can tell which recipient was priced. */
+    fun recipientFor(address: String): RecipientAddress = recipients.getOrPut(address) { mockk() }
 
     fun setUp() {
         Dispatchers.setMain(mainDispatcher)
         mockkObject(RecipientAddress.Companion)
-        coEvery { RecipientAddress.new(any(), any()) } returns recipient
+        coEvery { RecipientAddress.new(any(), any()) } coAnswers { recipientFor(firstArg()) }
         coEvery { maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) } returns MAX
     }
 

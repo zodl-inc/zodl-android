@@ -347,6 +347,8 @@ class RequestSwapQuoteUseCaseTest {
                 swapRepository.requestExactOutputQuote(BigDecimal("0.8"), any(), any(), any(), any())
             }
             assertEquals(1, checked.size)
+            // the quote is dropped before each of the two re-requests
+            verify(exactly = 2) { swapRepository.clearQuote() }
             coVerify(exactly = 1) { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) }
             assertForwardedToQuote()
         }
@@ -373,6 +375,8 @@ class RequestSwapQuoteUseCaseTest {
 
             assertEquals(2, revisions)
             assertEquals(1, checked.size)
+            // two re-requests, plus once more to drop the quote that was not acceptable
+            verify(exactly = 3) { swapRepository.clearQuote() }
             coVerify(exactly = 0) { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) }
             verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
         }

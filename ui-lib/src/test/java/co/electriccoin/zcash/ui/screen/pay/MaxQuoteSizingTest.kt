@@ -78,4 +78,32 @@ class MaxQuoteSizingTest {
     fun anAmountThatFloorsToZeroIsNull() {
         assertNull(MaxQuoteSizing.nextToken(listOf(point("0.00000001", "1000")), cap))
     }
+
+    @Test
+    fun quotesThatDoNotLieOnOneLineDoNotMakeTheFitJumpToATinyAmount() {
+        // the cost per token worsened by about 17 percent between the two quotes: the line through them would say that
+        // the fixed part is almost the whole cost and ask for 0.27 tokens
+        val history = listOf(point("4", "120"), point("3.32333333", "116.31666667"))
+
+        val next = MaxQuoteSizing.nextToken(history, cap)!!
+
+        // 3.32333333 * (100 * 0.994) / 116.31666667 = 2.84...
+        assertTrue(next > BigDecimal("2.8"), next.toPlainString())
+        assertTrue(next < BigDecimal("3.32333333"))
+    }
+
+    @Test
+    fun aFitWhoseFixedPartIsHalfOfTheCostOrLessIsStillUsed() {
+        // cost = 10 + 30 * token: the fixed part is under a third of the cost
+        val first = BigDecimal("4")
+        val second = BigDecimal("3.0")
+        val next =
+            MaxQuoteSizing.nextToken(
+                listOf(MaxQuotePoint(first, cost(first)), MaxQuotePoint(second, cost(second))),
+                cap
+            )!!
+
+        assertTrue(cost(next) <= cap)
+        assertTrue(cost(next) >= BigDecimal("99.6"))
+    }
 }

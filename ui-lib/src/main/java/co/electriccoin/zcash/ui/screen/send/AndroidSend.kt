@@ -243,7 +243,7 @@ internal fun WrapSend(
         observeClearSend().collect {
             setSendStage(SendStage.Form)
             setZecSend(null)
-            viewModel.onRecipientAddressChanged(RecipientAddressState.new("", null))
+            viewModel.onRecipientAddressChanged(RecipientAddressState.new("", null), repriceMax = false)
             setAmountState(
                 AmountState.newFromZec(
                     value = "",
@@ -264,10 +264,13 @@ internal fun WrapSend(
                     setSendStage(SendStage.Form)
                     setZecSend(null)
                     viewModel.onRecipientAddressChanged(
-                        RecipientAddressState.new(
-                            address = it.address.orEmpty(),
-                            type = type
-                        )
+                        state =
+                            RecipientAddressState.new(
+                                address = it.address.orEmpty(),
+                                type = type
+                            ),
+                        // the payment request brings its own amount
+                        repriceMax = false
                     )
 
                     val fee = it.fee

@@ -503,6 +503,29 @@ class PayVMMaxTest {
         }
 
     @Test
+    fun aQuoteWhenNothingIsSpendableAnymoreDoesNotCrashAndIsNotRevised() =
+        runTest {
+            val harness = maxHarness()
+            harness.collectState(this)
+            harness.onMaxClick()
+            harness.revisedAmounts.clear()
+            coEvery {
+                harness.requestSwapQuote.requestExactOutput(any(), any(), any(), any(), any(), any(), any(), any())
+            } coAnswers {
+                // The balance fell to the reserve while the quote was being requested: the cap is zero
+                harness.account.value = account(spendable = 20_000, pending = 0)
+                kotlinx.coroutines.yield()
+                val revise = arg<suspend (SwapQuote) -> BigDecimal?>(5)
+                harness.revisedAmounts += revise(fakeQuote(124_000_000))
+                null
+            }
+
+            harness.onRequestSwapQuoteClick(expectedToken, null, "destination-address")
+
+            assertEquals(listOf<BigDecimal?>(null), harness.revisedAmounts)
+        }
+
+    @Test
     fun aQuoteThatFitsAfterTheFirstRevisionEndsTheRevisions() =
         runTest {
             val harness = maxHarness()
