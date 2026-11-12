@@ -5,6 +5,7 @@ import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
 import cash.z.ecc.android.sdk.type.AddressType
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
@@ -230,6 +231,9 @@ class RequestSwapQuoteUseCase(
     @Suppress("TooGenericExceptionCaught", "ThrowsCount")
     private suspend fun createProposal(quote: SwapQuote) {
         val account = accountDataSource.getSelectedAccount().requireSpendable()
+        // Max prices a swap for a transparent deposit, so the kind of address the provider returns matters: only the
+        // class name is logged, never the address
+        Twig.info { "Swap quote deposit address: ${quote.depositAddress::class.simpleName}" }
         val send =
             ZecSend(
                 destination = getWalletAddress(quote.depositAddress.address),
