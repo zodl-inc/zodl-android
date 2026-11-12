@@ -7,49 +7,42 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class MaxFeedbackTest {
-    private val hint = maxFundsConfirmingHintState()
-    private val banner = maxFailedBannerState()
+    private val sendError = MaxFeedback.Error(MaxVariant.SEND)
+    private val swapError = MaxFeedback.Error(MaxVariant.SWAP)
 
     @Test
-    fun nothingIsShownWithoutHintOrBanner() {
-        assertNull(MaxFeedback.of(hint = null, banner = null))
+    fun nothingIsShownWithoutHintOrError() {
+        assertNull(MaxFeedback.of(hint = null, error = null))
     }
 
     @Test
     fun aLoneHintIsShown() {
-        assertEquals(MaxFeedback.Hint(hint), MaxFeedback.of(hint = hint, banner = null))
+        assertEquals(MaxFeedback.Hint, MaxFeedback.of(hint = MaxFeedback.Hint, error = null))
     }
 
     @Test
-    fun aLoneBannerIsShown() {
-        assertEquals(MaxFeedback.Banner(banner), MaxFeedback.of(hint = null, banner = banner))
+    fun aLoneErrorIsShown() {
+        assertEquals(sendError, MaxFeedback.of(hint = null, error = sendError))
     }
 
     @Test
-    fun theBannerWinsOverTheHint() {
-        assertEquals(MaxFeedback.Banner(banner), MaxFeedback.of(hint = hint, banner = banner))
+    fun theErrorWinsOverTheHint() {
+        assertEquals(swapError, MaxFeedback.of(hint = MaxFeedback.Hint, error = swapError))
     }
 
     @Test
-    fun theFailedBannerUsesTheGenericCopy() {
-        assertEquals(stringRes(R.string.general_maxFailedTitle), banner.title)
-        assertEquals(stringRes(R.string.general_maxFailedSubtitle), banner.subtitle)
+    fun theHintCoversFeesAndSlippage() {
+        assertEquals(stringRes(R.string.general_maxFeeSlippageHint), MaxFeedback.Hint.text)
     }
 
     @Test
-    fun theFundsConfirmingHintHasNoAction() {
-        assertEquals(stringRes(R.string.general_maxHintConfirming), hint.text)
-        assertNull(hint.button)
+    fun theErrorCarriesTheSendOrSwapCopy() {
+        assertEquals(stringRes(R.string.general_maxUnavailableSend), sendError.text)
+        assertEquals(stringRes(R.string.general_maxUnavailableSwap), swapError.text)
     }
 
     @Test
-    fun theShieldedOnlyHintOffersShield() {
-        var shieldClicks = 0
-        val state = maxShieldedOnlyHintState(onShield = { shieldClicks++ })
-
-        assertEquals(stringRes(R.string.general_maxHintShieldedOnly), state.text)
-        assertEquals(stringRes(R.string.general_maxHintShield), state.button?.text)
-        state.button?.onClick?.invoke()
-        assertEquals(1, shieldClicks)
+    fun theSlotKeeps24dpToTheButton() {
+        assertEquals(24f, ZashiMaxFeedbackSlotDefaults.SpacingToButton.value)
     }
 }

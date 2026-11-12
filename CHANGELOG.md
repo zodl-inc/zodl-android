@@ -7,6 +7,50 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Added:
+
+- [MOB-1987] Send Max: a Max chip next to the Send amount fills in everything the selected account can spend to the
+  entered recipient, net of the network fee and priced with the typed memo. It is available once the recipient is
+  valid and shows a spinner while the amount is computed or the balances load; changing the recipient or tapping
+  Review cancels it. When Max is unavailable a hint above the Review button says why: "Max uses shielded ZEC only."
+  with a Shield button that opens the shielding flow when only transparent funds can be shielded, or "Max will be
+  available once your funds confirm." while shielded funds are pending. A failure is shown as an inline banner above
+  the Review button instead of a snackbar, in the hint's place, until Max is tapped again or the amount or recipient
+  is changed. A wallet
+  with too many notes for one transaction gets a "Too many notes to send at once" sheet, both when Max is tapped and
+  at Review, instead of the raw error; "Send a smaller amount" clears and focuses the amount.
+- [MOB-1989] Swap Max: a Max chip next to the From amount fills in everything the selected account can swap, net of
+  the network fees, in ZEC or, in USD mode, floored to the cent. It does not request a quote and is not updated
+  when the balance changes later; it is unavailable while a quote is being requested and, in USD mode, without a
+  ZEC price.
+  After a Max fill the screen notes how much ZEC Max keeps for the network fee. When Max is unavailable, a hint above
+  "Get a quote" says why: only transparent funds that can be shielded (with a Shield action, which wins when funds
+  are also confirming) or shielded funds still confirming. A failed Max shows an inline banner, in the hint's place,
+  instead of a toast; it clears on another Max tap, on editing the amount, or on changing the asset or swap direction. A wallet with too
+  many notes for one transaction gets a "Too many notes to send at once" sheet, whose "Send a smaller amount" button
+  clears the amount and focuses the field.
+- [MOB-1988] Pay Max: a Max chip next to the Pay amount fills in the largest token amount the selected account can
+  pay, converted from its spendable ZEC (net of the network fees) through the USD prices and floored to 8 decimals,
+  with the USD amount following from it. It does not request a quote and is not updated when the balance or the
+  prices change later; it is unavailable while a quote is being requested or without both prices.
+  When Max is unavailable a hint above the Review button says why: only transparent funds (with a Shield button; this
+  wins over the other hint) or funds still confirming, and none while the address is empty. A failed Max shows an
+  inline banner, in the hint's place, instead of a toast; it stays until you tap Max again, edit the amount or change the address or asset.
+  A wallet with too many notes for one transaction gets a "Too many notes to send at once" sheet whose "Send a smaller
+  amount" button clears the amount and focuses it. Without a USD price Max is disabled and the USD field shows a dash.
+
+### Changed:
+
+- [MOB-2296] How many notes a send can spend in one transaction now follows the memory available on the device when
+  you send (and, for a hardware signer, what it signs at once), so a large send no longer runs a phone out of memory. A Max,
+  a manual amount or a swap over that limit shows the "Too many notes to send at once" message.
+- [MOB-2296] A transaction the network refuses for good is shown as failed in the history instead of pending, and when
+  it is refused for having too many notes the send screen shows the "Too many notes to send at once" message.
+- [MOB-2296] Redeeming a gift card that holds more notes than one transaction can spend now says so instead of
+  failing with a generic error, and a redemption in several rounds shows which round it is on.
+- [MOB-1988] The USD amount on the Pay screen that is computed from the token amount (after Max, or when the asset
+  changes) is now written without grouping separators, such as `1234.5` instead of `1,234.5`, as on iOS.
+
 ## [3.20.0 (3807)] - 2026-11-09
 
 ### Changed:
@@ -40,6 +84,13 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - The private connection's info and opt-in sheets say what it covers: the wallet servers' requests, not
   Flexa's pages and images, custom servers or opened links.
 - Choose a Server marks Private as "Not private" when this build reaches the gateway through a test relay.
+
+### Fixed:
+
+- [MOB-2167] Sending to a TEX address now treats it like a transparent one: a memo typed before the recipient was
+  changed to a TEX address is no longer sent (the payment used to fail because a TEX address cannot receive a memo),
+  a memo that is too long no longer disables the Send button, and a zero amount is rejected whichever way the
+  amount was entered.
 
 ## [3.19.0 (3234)] - 2026-10-29
 

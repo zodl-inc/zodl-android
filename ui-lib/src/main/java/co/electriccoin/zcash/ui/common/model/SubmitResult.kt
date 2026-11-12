@@ -1,5 +1,7 @@
 package co.electriccoin.zcash.ui.common.model
 
+import cash.z.ecc.android.sdk.model.SubmitRejection
+
 sealed interface SubmitResult {
     val txIds: List<String>
 
@@ -10,7 +12,9 @@ sealed interface SubmitResult {
     data class Failure(
         override val txIds: List<String>,
         val code: Int,
-        val description: String?
+        val description: String?,
+        /** Why the server refused the transaction for good, or null when the SDK does not know it to be final. */
+        val rejection: SubmitRejection? = null
     ) : NonResubmittableError
 
     data class GrpcFailure(

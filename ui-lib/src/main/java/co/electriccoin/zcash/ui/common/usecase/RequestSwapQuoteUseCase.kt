@@ -20,6 +20,7 @@ import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
 import co.electriccoin.zcash.ui.common.model.ZodlAccount
+import co.electriccoin.zcash.ui.common.model.isProposalTooLarge
 import co.electriccoin.zcash.ui.common.model.requireSpendable
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
@@ -46,6 +47,7 @@ class RequestSwapQuoteUseCase(
     private val ledgerProposalPipeline: LedgerProposalPipeline,
     private val accountDataSource: AccountDataSource,
     private val synchronizerProvider: SynchronizerProvider,
+    private val navigateToTooManyNotes: NavigateToTooManyNotesUseCase,
 ) {
     suspend fun requestExactInput(
         amount: BigDecimal,
@@ -53,9 +55,9 @@ class RequestSwapQuoteUseCase(
         selectedAsset: SwapAsset,
         slippage: BigDecimal,
         canNavigateToSwapQuote: () -> Boolean
-    ) {
+    ): TooManyNotesOutcome? {
         val newAddress = accountDataSource.requestNextShieldedAddress()
-        requestQuote(
+        return requestQuote(
             requestQuote = {
                 swapRepository.requestExactInputQuote(
                     amount = amount,
@@ -70,18 +72,29 @@ class RequestSwapQuoteUseCase(
         )
     }
 
+    /**
+     * @param reviseAmount called once with the first successful quote, before its proposal is created. A non-null
+     * result is a new [amount] to quote instead (Pay's Max, whose fill the provider fee pushes past what is
+     * spendable): the quote is requested again, once, for it and that quote proceeds as usual.
+     * @param isRevisedQuoteAcceptable called with the re-quoted successful quote, only after a revision. If it returns
+     * false the request stops there: the quote is cleared, no proposal is created and nothing is navigated to (the
+     * caller has already told the user why).
+     */
     suspend fun requestExactOutput(
         amount: BigDecimal,
         address: String,
         selectedAsset: SwapAsset,
         slippage: BigDecimal,
-        canNavigateToSwapQuote: () -> Boolean
-    ) {
+        canNavigateToSwapQuote: () -> Boolean,
+        reviseAmount: suspend (SwapQuote) -> BigDecimal? = { null },
+        isRevisedQuoteAcceptable: suspend (SwapQuote) -> Boolean = { true }
+    ): TooManyNotesOutcome? {
         val newAddress = accountDataSource.requestNextShieldedAddress()
-        requestQuote(
+        var requestedAmount = amount
+        return requestQuote(
             requestQuote = {
                 swapRepository.requestExactOutputQuote(
-                    amount = amount,
+                    amount = requestedAmount,
                     address = address,
                     refundAddress = newAddress,
                     destinationAsset = selectedAsset,
@@ -89,7 +102,9 @@ class RequestSwapQuoteUseCase(
                 )
             },
             createProposal = true,
-            canNavigateToSwapQuote = canNavigateToSwapQuote
+            canNavigateToSwapQuote = canNavigateToSwapQuote,
+            reviseQuote = { quote -> reviseAmount(quote)?.also { requestedAmount = it } != null },
+            isRevisedQuoteAcceptable = isRevisedQuoteAcceptable
         )
     }
 
@@ -99,9 +114,9 @@ class RequestSwapQuoteUseCase(
         selectedAsset: SwapAsset,
         slippage: BigDecimal,
         canNavigateToSwapQuote: () -> Boolean
-    ) {
+    ): TooManyNotesOutcome? {
         val newAddress = accountDataSource.requestNextShieldedAddress()
-        requestQuote(
+        return requestQuote(
             requestQuote = {
                 swapRepository
                     .requestFlexInputIntoZec(
@@ -121,53 +136,71 @@ class RequestSwapQuoteUseCase(
     private suspend fun requestQuote(
         requestQuote: suspend () -> Unit,
         createProposal: Boolean,
-        canNavigateToSwapQuote: () -> Boolean
-    ) = withContext(Dispatchers.Default) {
-        requestQuote()
+        canNavigateToSwapQuote: () -> Boolean,
+        reviseQuote: suspend (SwapQuote) -> Boolean = { false },
+        isRevisedQuoteAcceptable: suspend (SwapQuote) -> Boolean = { true }
+    ): TooManyNotesOutcome? =
+        withContext(Dispatchers.Default) {
+            requestQuote()
 
-        val result = swapRepository.quote.first { it !in listOf(null, SwapQuoteData.Loading) }
+            var result = swapRepository.quote.first { it !in listOf(null, SwapQuoteData.Loading) }
+            if (result is SwapQuoteData.Success && reviseQuote(result.quote)) {
+                // Once only: the revised quote is not offered for another revision
+                swapRepository.clearQuote()
+                requestQuote()
+                result = swapRepository.quote.first { it !in listOf(null, SwapQuoteData.Loading) }
+                if (result is SwapQuoteData.Success && !isRevisedQuoteAcceptable(result.quote)) {
+                    swapRepository.clearQuote()
+                    return@withContext null
+                }
+            }
 
-        val mismatchArgs = (result as? SwapQuoteData.Error)?.toMismatchArgs()
-        if (mismatchArgs != null) {
+            val mismatchArgs = (result as? SwapQuoteData.Error)?.toMismatchArgs()
+            if (mismatchArgs != null) {
+                if (canNavigateToSwapQuote()) {
+                    swapRepository.clearQuote()
+                    navigationRouter.forward(mismatchArgs)
+                }
+                return@withContext null
+            }
+
+            if (result is SwapQuoteData.Success && createProposal) {
+                try {
+                    createProposal(result.quote)
+                } catch (_: TexUnsupportedOnKSException) {
+                    swapRepository.clearQuote()
+                    zashiProposalRepository.clear()
+                    keystoneProposalRepository.clear()
+                    ledgerProposalPipeline.clear()
+                    val isLedger = accountDataSource.getSelectedAccount() is LedgerAccount
+                    navigationRouter.forward(TEXUnsupportedArgs(isLedger = isLedger))
+                    return@withContext null
+                } catch (_: InsufficientFundsException) {
+                    swapRepository.clearQuote()
+                    zashiProposalRepository.clear()
+                    keystoneProposalRepository.clear()
+                    ledgerProposalPipeline.clear()
+                    navigationRouter.forward(InsufficientFundsArgs)
+                    return@withContext null
+                } catch (e: Exception) {
+                    swapRepository.clearQuote()
+                    zashiProposalRepository.clear()
+                    keystoneProposalRepository.clear()
+                    ledgerProposalPipeline.clear()
+                    if (e.isProposalTooLarge()) {
+                        return@withContext navigateToTooManyNotes()
+                    } else {
+                        navigateToErrorUseCase(ErrorArgs.General(e))
+                    }
+                    return@withContext null
+                }
+            }
+
             if (canNavigateToSwapQuote()) {
-                swapRepository.clearQuote()
-                navigationRouter.forward(mismatchArgs)
+                navigationRouter.forward(SwapQuoteArgs)
             }
-            return@withContext
+            null
         }
-
-        if (result is SwapQuoteData.Success && createProposal) {
-            try {
-                createProposal(result.quote)
-            } catch (_: TexUnsupportedOnKSException) {
-                swapRepository.clearQuote()
-                zashiProposalRepository.clear()
-                keystoneProposalRepository.clear()
-                ledgerProposalPipeline.clear()
-                val isLedger = accountDataSource.getSelectedAccount() is LedgerAccount
-                navigationRouter.forward(TEXUnsupportedArgs(isLedger = isLedger))
-                return@withContext
-            } catch (_: InsufficientFundsException) {
-                swapRepository.clearQuote()
-                zashiProposalRepository.clear()
-                keystoneProposalRepository.clear()
-                ledgerProposalPipeline.clear()
-                navigationRouter.forward(InsufficientFundsArgs)
-                return@withContext
-            } catch (e: Exception) {
-                swapRepository.clearQuote()
-                zashiProposalRepository.clear()
-                keystoneProposalRepository.clear()
-                ledgerProposalPipeline.clear()
-                navigateToErrorUseCase(ErrorArgs.General(e))
-                return@withContext
-            }
-        }
-
-        if (canNavigateToSwapQuote()) {
-            navigationRouter.forward(SwapQuoteArgs)
-        }
-    }
 
     /**
      * Spends from the selected account, so an account that cannot spend is refused before anything

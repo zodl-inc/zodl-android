@@ -5,6 +5,7 @@ import cash.z.ecc.android.sdk.MigrationState
 import cash.z.ecc.android.sdk.MigrationSummary
 import cash.z.ecc.android.sdk.OrchardMigrationSdk
 import cash.z.ecc.android.sdk.model.Proposal
+import cash.z.ecc.android.sdk.model.TransactionSizeBound
 import cash.z.ecc.android.sdk.model.UnifiedSpendingKey
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.BaseNavigationCommand
@@ -265,7 +266,8 @@ class MigrationCompleteVMTest {
                     coEvery { proposeImmediateMigration() } returns proposal
                     coEvery { getMigrationSummary() } returns null
                 }
-            coEvery { proposalDataSource.submitTransaction(proposal, usk) } returns SubmitResult.Success(listOf("txid"))
+            coEvery { proposalDataSource.submitTransaction(proposal, usk, TransactionSizeBound.CONSENSUS) } returns
+                SubmitResult.Success(listOf("txid"))
 
             val vm =
                 vm(
@@ -281,7 +283,9 @@ class MigrationCompleteVMTest {
             invokeOnMigrateAnyway(vm)
             advanceUntilIdle()
 
-            coVerify(exactly = 1) { proposalDataSource.submitTransaction(proposal, usk) }
+            coVerify(exactly = 1) {
+                proposalDataSource.submitTransaction(proposal, usk, TransactionSizeBound.CONSENSUS)
+            }
             assertEquals(listOf<Any>(MigrationSuccessArgs("txid")), router.forwardedRoutes)
         }
 
@@ -314,7 +318,9 @@ class MigrationCompleteVMTest {
 
             coVerify(exactly = 1) { keystoneProposalRepository.setMigrationSweepProposal(proposal, Zatoshi(500_000L)) }
             coVerify(exactly = 1) { keystoneProposalRepository.createPCZTFromProposal() }
-            coVerify(exactly = 0) { proposalDataSource.submitTransaction(any<Proposal>(), any<UnifiedSpendingKey>()) }
+            coVerify(exactly = 0) {
+                proposalDataSource.submitTransaction(any<Proposal>(), any<UnifiedSpendingKey>(), any())
+            }
             assertEquals(1, router.forwardedRoutes.count { it == SignKeystoneTransactionArgs })
         }
 
@@ -516,7 +522,9 @@ class MigrationCompleteVMTest {
                 assertIs<AccountOperationUnsupportedException>(error.cause).kind
             )
             coVerify(exactly = 0) { zashiSpendingKeyDataSource.getZashiSpendingKey() }
-            coVerify(exactly = 0) { proposalDataSource.submitTransaction(any<Proposal>(), any<UnifiedSpendingKey>()) }
+            coVerify(exactly = 0) {
+                proposalDataSource.submitTransaction(any<Proposal>(), any<UnifiedSpendingKey>(), any())
+            }
             coVerify(exactly = 0) { keystoneProposalRepository.setMigrationSweepProposal(any(), any()) }
             coVerify(exactly = 0) { keystoneProposalRepository.createPCZTFromProposal() }
             assertEquals(emptyList(), router.forwardedRoutes)

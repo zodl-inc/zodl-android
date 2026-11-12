@@ -15,8 +15,10 @@ import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposalNotCreatedException
 import co.electriccoin.zcash.ui.common.datasource.ZashiSpendingKeyDataSource
 import co.electriccoin.zcash.ui.common.datasource.Zip321TransactionProposal
+import co.electriccoin.zcash.ui.common.datasource.sizeBoundFor
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapQuote
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -66,6 +68,7 @@ class ZashiProposalRepositoryImpl(
     private val accountDataSource: AccountDataSource,
     private val proposalDataSource: ProposalDataSource,
     private val zashiSpendingKeyDataSource: ZashiSpendingKeyDataSource,
+    private val signerCapabilitiesProvider: SignerCapabilitiesProvider,
 ) : ZashiProposalRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -140,9 +143,15 @@ class ZashiProposalRepositoryImpl(
                         val result =
                             proposalDataSource.submitTransaction(
                                 proposal = transactionProposal.proposal,
-                                usk = zashiSpendingKeyDataSource.getZashiSpendingKey()
+                                usk = zashiSpendingKeyDataSource.getZashiSpendingKey(),
+                                sizeBound =
+                                    signerCapabilitiesProvider.sizeBoundFor(
+                                        account = accountDataSource.getSelectedAccount(),
+                                        proposal = transactionProposal
+                                    )
                             )
                         submitState.update { SubmitProposalState.Result(result) }
+                        if (result is SubmitResult.Success) signerCapabilitiesProvider.endFlow()
                         result
                     } catch (e: Exception) {
                         submitState.update { SubmitProposalState.Result(SubmitResult.Error(e)) }

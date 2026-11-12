@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.common.datasource.LedgerSigningDataSource
 import co.electriccoin.zcash.ui.common.datasource.ProposalDataSource
 import co.electriccoin.zcash.ui.common.datasource.RegularTransactionProposal
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -42,6 +43,8 @@ abstract class LedgerProposalRepositoryTestBase {
     protected val ledgerDeviceDataSource = mockk<LedgerDeviceDataSource>()
     protected val ledgerSigningDataSource = mockk<LedgerSigningDataSource>(relaxed = true)
 
+    protected val signerCapabilitiesProvider = mockk<SignerCapabilitiesProvider>(relaxed = true)
+
     protected val devices = MutableStateFlow<List<LedgerBluetoothDevice>>(emptyList())
 
     protected val repository =
@@ -50,6 +53,7 @@ abstract class LedgerProposalRepositoryTestBase {
             proposalDataSource = proposalDataSource,
             ledgerDeviceDataSource = ledgerDeviceDataSource,
             ledgerSigningDataSource = ledgerSigningDataSource,
+            signerCapabilitiesProvider = signerCapabilitiesProvider,
         ).apply { scope = CoroutineScope(dispatcher) }
 
     init {
@@ -73,7 +77,7 @@ abstract class LedgerProposalRepositoryTestBase {
                 memo = Memo(""),
                 proposal = mockk<Proposal>()
             )
-        coEvery { proposalDataSource.createPcztFromProposal(any(), any()) } returns pczt
+        coEvery { proposalDataSource.createPcztFromProposal(any(), any(), any()) } returns pczt
         coEvery { proposalDataSource.addProofsToPczt(any()) } coAnswers {
             try {
                 proofsGate?.await()

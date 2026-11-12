@@ -1,11 +1,13 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import cash.z.ecc.android.sdk.Synchronizer
+import cash.z.ecc.android.sdk.exception.TransactionEncoderException
 import cash.z.ecc.android.sdk.type.AddressType
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
 import co.electriccoin.zcash.ui.common.datasource.TexUnsupportedOnKSException
+import co.electriccoin.zcash.ui.common.datasource.TransactionProposalNotCreatedException
 import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.FakeSwapQuote
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
@@ -45,6 +47,8 @@ import org.junit.Test
 import java.math.BigDecimal
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /**
  * Coverage of [RequestSwapQuoteUseCase]'s orchestration: for each public request method, both account
@@ -69,6 +73,8 @@ class RequestSwapQuoteUseCaseTest {
     private val ledgerProposalPipeline = mockk<LedgerProposalPipeline>(relaxed = true)
     private val swapRepository = mockk<SwapRepository>(relaxed = true)
     private val accountDataSource = mockk<AccountDataSource>()
+    private val navigateToTooManyNotes =
+        mockk<NavigateToTooManyNotesUseCase> { coEvery { this@mockk.invoke() } returns TooManyNotesOutcome.DISMISSED }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val dispatcher = StandardTestDispatcher()
@@ -107,6 +113,42 @@ class RequestSwapQuoteUseCaseTest {
             coVerify { ledgerProposalPipeline.createExactInputSwapProposal(any(), any()) }
             coVerify { ledgerProposalPipeline.createPCZTFromProposal() }
             assertForwardedToQuote()
+        }
+
+    @Test
+    fun exactInputProposalOverTheBoundShowsTheTooManyNotesSheet() =
+        runBlocking {
+            coEvery { zashiProposalRepository.createExactInputSwapProposal(any(), any()) } throws
+                TransactionProposalNotCreatedException(
+                    TransactionEncoderException.ProposalTooLargeException(RuntimeException("raw"))
+                )
+            val outcome = useCase(swapQuote(originAsset = zec, destinationAsset = btc), zodl()).exactInput()
+            assertEquals(TooManyNotesOutcome.DISMISSED, outcome)
+            coVerify(exactly = 1) { navigateToTooManyNotes() }
+            verify(exactly = 0) { navigateToError(any(), any()) }
+            verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
+        }
+
+    @Test
+    fun exactOutputProposalOverTheBoundShowsTheTooManyNotesSheet() =
+        runBlocking {
+            coEvery { keystoneProposalRepository.createExactOutputSwapProposal(any(), any()) } throws
+                TransactionProposalNotCreatedException(
+                    TransactionEncoderException.ProposalTooLargeException(RuntimeException("raw"))
+                )
+            coEvery { navigateToTooManyNotes() } returns TooManyNotesOutcome.OK
+            val outcome = useCase(exactOutputQuote(), keystone()).exactOutput()
+            assertEquals(TooManyNotesOutcome.OK, outcome)
+            coVerify(exactly = 1) { navigateToTooManyNotes() }
+            verify(exactly = 0) { navigateToError(any(), any()) }
+        }
+
+    @Test
+    fun aQuoteThatReachesTheQuoteScreenReportsNoTooManyNotesOutcome() =
+        runBlocking {
+            val outcome = useCase(swapQuote(originAsset = zec, destinationAsset = btc), zodl()).exactInput()
+            assertNull(outcome)
+            coVerify(exactly = 0) { navigateToTooManyNotes() }
         }
 
     @Test
@@ -201,6 +243,109 @@ class RequestSwapQuoteUseCaseTest {
             useCase(exactOutputQuote(), zodl()).exactOutput()
             coVerify { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) }
             assertForwardedToQuote()
+        }
+
+    @Test
+    fun exactOutputRevisedAmountIsQuotedOnceMoreAndThatQuoteProceeds() =
+        runBlocking {
+            val revisions = mutableListOf<SwapQuote>()
+            useCase(exactOutputQuote(), zodl())
+                .requestExactOutput(
+                    amount = BigDecimal("1"),
+                    address = "destination",
+                    selectedAsset = btc,
+                    slippage = BigDecimal("2"),
+                    canNavigateToSwapQuote = { true },
+                    reviseAmount = {
+                        revisions += it
+                        BigDecimal("0.9")
+                    }
+                )
+
+            assertEquals(1, revisions.size)
+            verify(exactly = 1) { swapRepository.clearQuote() }
+            verify(exactly = 1) {
+                swapRepository.requestExactOutputQuote(BigDecimal("1"), any(), any(), any(), any())
+            }
+            verify(exactly = 1) {
+                swapRepository.requestExactOutputQuote(BigDecimal("0.9"), any(), any(), any(), any())
+            }
+            coVerify(exactly = 1) { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) }
+            assertForwardedToQuote()
+        }
+
+    @Test
+    fun exactOutputRevisedQuoteThatIsNotAcceptableStopsWithoutAProposalOrNavigation() =
+        runBlocking {
+            val checked = mutableListOf<SwapQuote>()
+            useCase(exactOutputQuote(), zodl())
+                .requestExactOutput(
+                    amount = BigDecimal("1"),
+                    address = "destination",
+                    selectedAsset = btc,
+                    slippage = BigDecimal("2"),
+                    canNavigateToSwapQuote = { true },
+                    reviseAmount = { BigDecimal("0.9") },
+                    isRevisedQuoteAcceptable = {
+                        checked += it
+                        false
+                    }
+                )
+
+            assertEquals(1, checked.size)
+            // Once for the revision, once more to drop the rejected re-quote
+            verify(exactly = 2) { swapRepository.clearQuote() }
+            coVerify(exactly = 0) { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) }
+            verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
+            verify(exactly = 0) { navigationRouter.forward(InsufficientFundsArgs) }
+        }
+
+    @Test
+    fun exactOutputRevisedQuoteThatIsAcceptableProceeds() =
+        runBlocking {
+            useCase(exactOutputQuote(), zodl())
+                .requestExactOutput(
+                    amount = BigDecimal("1"),
+                    address = "destination",
+                    selectedAsset = btc,
+                    slippage = BigDecimal("2"),
+                    canNavigateToSwapQuote = { true },
+                    reviseAmount = { BigDecimal("0.9") },
+                    isRevisedQuoteAcceptable = { true }
+                )
+
+            coVerify(exactly = 1) { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) }
+            assertForwardedToQuote()
+        }
+
+    @Test
+    fun exactOutputKeptAmountNeverChecksTheRevisionAcceptance() =
+        runBlocking {
+            var checks = 0
+            useCase(exactOutputQuote(), zodl())
+                .requestExactOutput(
+                    amount = BigDecimal("1"),
+                    address = "destination",
+                    selectedAsset = btc,
+                    slippage = BigDecimal("2"),
+                    canNavigateToSwapQuote = { true },
+                    isRevisedQuoteAcceptable = {
+                        checks++
+                        false
+                    }
+                )
+
+            assertEquals(0, checks)
+            assertForwardedToQuote()
+        }
+
+    @Test
+    fun exactOutputKeptAmountIsQuotedOnce() =
+        runBlocking {
+            useCase(exactOutputQuote(), zodl()).exactOutput()
+
+            verify(exactly = 1) { swapRepository.requestExactOutputQuote(any(), any(), any(), any(), any()) }
+            verify(exactly = 0) { swapRepository.clearQuote() }
         }
 
     @Test
@@ -501,7 +646,8 @@ class RequestSwapQuoteUseCaseTest {
             keystoneProposalRepository = keystoneProposalRepository,
             ledgerProposalPipeline = ledgerProposalPipeline,
             accountDataSource = accountDataSource,
-            synchronizerProvider = synchronizerProvider
+            synchronizerProvider = synchronizerProvider,
+            navigateToTooManyNotes = navigateToTooManyNotes
         )
     }
 

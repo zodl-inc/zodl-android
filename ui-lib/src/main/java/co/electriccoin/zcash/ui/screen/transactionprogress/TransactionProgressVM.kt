@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.screen.transactionprogress
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.exception.TransactionEncoderException
+import cash.z.ecc.android.sdk.model.SubmitRejection
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.ExactInputSwapTransactionProposal
@@ -15,6 +16,7 @@ import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.Zip321TransactionProposal
 import co.electriccoin.zcash.ui.common.model.SubmitResult
+import co.electriccoin.zcash.ui.common.model.isProposalTooLarge
 import co.electriccoin.zcash.ui.common.repository.SubmitProposalState
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetProposalUseCase
@@ -25,6 +27,7 @@ import co.electriccoin.zcash.ui.common.usecase.ViewTransactionDetailAfterSuccess
 import co.electriccoin.zcash.ui.common.usecase.ViewTransactionsAfterSuccessfulProposalUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
+import co.electriccoin.zcash.ui.design.component.MaxTooManyNotesSheetState
 import co.electriccoin.zcash.ui.design.util.StyledStringResource
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.loadingImageRes
@@ -35,6 +38,7 @@ import co.electriccoin.zcash.ui.design.util.withStyle
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.ERROR
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.PENDING
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.SUCCESS
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
@@ -51,8 +55,14 @@ class TransactionProgressVM(
     private val sendEmail: SendEmailUseCase,
     private val copyToClipboard: CopyToClipboardUseCase
 ) : ViewModel() {
+    private val isTooLargeSheetDismissed = MutableStateFlow(false)
+
     val state: StateFlow<TransactionProgressState?> =
-        combine(observeTransactionProposal(), observeTransactionSubmitState()) { proposal, submitState ->
+        combine(
+            observeTransactionProposal(),
+            observeTransactionSubmitState(),
+            isTooLargeSheetDismissed
+        ) { proposal, submitState, isSheetDismissed ->
             when (submitState) {
                 null, SubmitProposalState.Submitting -> {
                     createSendingState(proposal)
@@ -65,7 +75,11 @@ class TransactionProgressVM(
                         }
 
                         is SubmitResult.NonResubmittableError -> {
-                            createNonResubmittableErrorState(proposal, submitState.submitResult)
+                            createNonResubmittableErrorState(
+                                proposal = proposal,
+                                result = submitState.submitResult,
+                                isSheetDismissed = isSheetDismissed
+                            )
                         }
 
                         is SubmitResult.GrpcFailure -> {
@@ -368,11 +382,32 @@ class TransactionProgressVM(
 
     private fun createNonResubmittableErrorState(
         proposal: TransactionProposal,
-        result: SubmitResult.NonResubmittableError
+        result: SubmitResult.NonResubmittableError,
+        isSheetDismissed: Boolean
     ): TransactionProgressState =
         TransactionProgressState(
             onBack = ::onCloseClick,
             background = ERROR,
+            sheet =
+                when {
+                    !result.isTooLarge() || isSheetDismissed -> {
+                        null
+                    }
+
+                    // Refused after it was broadcast: its notes stay locked until it expires, so there is nothing
+                    // to change but to close.
+                    result is SubmitResult.Failure -> {
+                        MaxTooManyNotesSheetState.createCloseOnly(onClose = { isTooLargeSheetDismissed.value = true })
+                    }
+
+                    // Refused before anything was created: a smaller amount can be sent right away.
+                    else -> {
+                        MaxTooManyNotesSheetState.create(
+                            onOk = ::onCloseClick,
+                            onDismiss = { isTooLargeSheetDismissed.value = true }
+                        )
+                    }
+                },
             title =
                 if (proposal is ShieldTransactionProposal) {
                     stringRes(R.string.send_failureShielding)
@@ -460,6 +495,16 @@ internal fun SubmitResult.GrpcFailure.pendingDescription(): StyledStringResource
                 ?.takeIf { it.isNotBlank() }
                 ?.let { stringRes(it).withStyle() }
         }
+    }
+
+/**
+ * Whether the transaction was too large: the server refused it as such after it was created, or the SDK refused to
+ * create it within the size bound ([isProposalTooLarge]). Either way, the notes it needs do not fit in one transaction.
+ */
+internal fun SubmitResult.NonResubmittableError.isTooLarge(): Boolean =
+    when (this) {
+        is SubmitResult.Failure -> rejection == SubmitRejection.TOO_LARGE
+        is SubmitResult.Error -> cause.isProposalTooLarge()
     }
 
 // MOB-385 / MOB-1616: TransactionEncoderException.AnchorNotFoundException is the SDK's typed

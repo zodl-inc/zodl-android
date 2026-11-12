@@ -1,41 +1,59 @@
 package co.electriccoin.zcash.ui.design.component
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
+import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
+import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 /**
- * The one slot above the main button that tells the user why Max is not working (Figma annotation 9044:812): the
- * failure [banner] or the unavailability [hint]. When both apply the banner wins (see [MaxFeedback.of]).
+ * The one-line disclaimer above the main button (Figma annotation 9162:3138): a neutral hint (info icon, tertiary
+ * text) or the Max failure (alert icon, error text). Nothing is drawn when [feedback] is null.
  *
- * Nothing is drawn when both are null, so [modifier] (typically the spacing to the button) only applies to content.
+ * The slot owns its spacing to the button: it adds [ZashiMaxFeedbackSlotDefaults.SpacingToButton] below the row, so a
+ * caller places the slot directly above the primary button and passes no bottom spacing of its own.
  */
 @Composable
 fun ZashiMaxFeedbackSlot(
-    hint: ZashiMaxHintRowState?,
-    banner: ZashiInlineBannerState?,
+    feedback: MaxFeedback?,
     modifier: Modifier = Modifier,
 ) {
-    when (val feedback = MaxFeedback.of(hint = hint, banner = banner)) {
-        is MaxFeedback.Banner -> {
-            ZashiInlineBanner(
-                state = feedback.state,
-                modifier = modifier.testTag(ZashiMaxFeedbackSlotTags.BANNER)
+    when (feedback) {
+        is MaxFeedback.Hint -> {
+            FeedbackRow(
+                icon = R.drawable.ic_info,
+                text = feedback.text,
+                color = ZashiColors.Text.textTertiary,
+                modifier = modifier.testTag(ZashiMaxFeedbackSlotTags.HINT)
             )
         }
 
-        is MaxFeedback.Hint -> {
-            ZashiMaxHintRow(
-                state = feedback.state,
-                modifier = modifier.testTag(ZashiMaxFeedbackSlotTags.HINT)
+        is MaxFeedback.Error -> {
+            FeedbackRow(
+                icon = R.drawable.ic_alert_circle_outline,
+                text = feedback.text,
+                color = ZashiColors.Text.textError,
+                modifier = modifier.testTag(ZashiMaxFeedbackSlotTags.ERROR)
             )
         }
 
@@ -45,72 +63,102 @@ fun ZashiMaxFeedbackSlot(
     }
 }
 
-/** What [ZashiMaxFeedbackSlot] shows. */
-@Immutable
-sealed interface MaxFeedback {
-    data class Banner(
-        val state: ZashiInlineBannerState
-    ) : MaxFeedback
-
-    data class Hint(
-        val state: ZashiMaxHintRowState
-    ) : MaxFeedback
-
-    companion object {
-        /**
-         * The banner wins over the hint: it answers the user's last tap and clears itself on the next edit, while
-         * the hint describes the balance and comes back on its own.
-         */
-        fun of(
-            hint: ZashiMaxHintRowState?,
-            banner: ZashiInlineBannerState?
-        ): MaxFeedback? = banner?.let(::Banner) ?: hint?.let(::Hint)
+@Composable
+private fun FeedbackRow(
+    icon: Int,
+    text: StringResource,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(bottom = ZashiMaxFeedbackSlotDefaults.SpacingToButton),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(
+            painter = painterResource(icon),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(color)
+        )
+        Spacer(8.dp)
+        Text(
+            modifier = Modifier.weight(1f, false),
+            text = text.getValue(),
+            style = ZashiTypography.textXs,
+            color = color
+        )
     }
 }
 
-/** The generic "couldn't calculate the max amount" banner (Figma 9043:2986); the reason is only logged. */
-fun maxFailedBannerState() =
-    ZashiInlineBannerState(
-        title = stringRes(R.string.general_maxFailedTitle),
-        subtitle = stringRes(R.string.general_maxFailedSubtitle)
-    )
+/** What the Max chip's owner says to the user above the main button: a neutral [Hint] or an [Error]. */
+@Immutable
+sealed interface MaxFeedback {
+    val text: StringResource
 
-/** "Max uses shielded ZEC only." with a Shield action (Figma 9043:926); [onShield] opens the shielding flow. */
-fun maxShieldedOnlyHintState(onShield: () -> Unit) =
-    ZashiMaxHintRowState(
-        text = stringRes(R.string.general_maxHintShieldedOnly),
-        button = ChipButtonState(text = stringRes(R.string.general_maxHintShield), onClick = onShield)
-    )
+    /** Neutral hint: Max leaves room for fees and slippage and follows each new quote. */
+    data object Hint : MaxFeedback {
+        override val text: StringResource = stringRes(R.string.general_maxFeeSlippageHint)
+    }
 
-/** "Max will be available once your funds confirm." (Figma 9043:1056). */
-fun maxFundsConfirmingHintState() = ZashiMaxHintRowState(text = stringRes(R.string.general_maxHintConfirming))
+    /** Max failed; the user enters the amount instead. [variant] picks "send" or "swap" in the copy. */
+    data class Error(
+        val variant: MaxVariant
+    ) : MaxFeedback {
+        override val text: StringResource =
+            when (variant) {
+                MaxVariant.SEND -> stringRes(R.string.general_maxUnavailableSend)
+                MaxVariant.SWAP -> stringRes(R.string.general_maxUnavailableSwap)
+            }
+    }
+
+    companion object {
+        /**
+         * The error wins over the hint: it answers the user's last tap and clears itself on the next edit, while
+         * the hint describes the Max fill and clears with it.
+         */
+        fun of(
+            hint: Hint?,
+            error: Error?
+        ): MaxFeedback? = error ?: hint
+    }
+}
+
+/** What the user wants to do with the amount, which only changes the copy of [MaxFeedback.Error]. */
+enum class MaxVariant {
+    SEND,
+    SWAP
+}
+
+object ZashiMaxFeedbackSlotDefaults {
+    /** Space between the one-line row and the primary button below it (Figma 9162:3138). */
+    val SpacingToButton: Dp = 24.dp
+}
 
 object ZashiMaxFeedbackSlotTags {
-    const val BANNER = "zashi_max_feedback_banner"
+    const val ERROR = "zashi_max_feedback_error"
     const val HINT = "zashi_max_feedback_hint"
 }
 
-private typealias MaxFeedbackPreviewInput = Pair<ZashiMaxHintRowState?, ZashiInlineBannerState?>
-
-private class MaxFeedbackPreviewProvider : PreviewParameterProvider<MaxFeedbackPreviewInput> {
+private class MaxFeedbackPreviewProvider : PreviewParameterProvider<MaxFeedback> {
     override val values =
         sequenceOf(
-            maxShieldedOnlyHintState(onShield = {}) to null,
-            maxFundsConfirmingHintState() to null,
-            maxShieldedOnlyHintState(onShield = {}) to maxFailedBannerState(),
+            MaxFeedback.Hint,
+            MaxFeedback.Error(MaxVariant.SEND),
+            MaxFeedback.Error(MaxVariant.SWAP),
         )
 }
 
 @PreviewScreens
 @Composable
 private fun ZashiMaxFeedbackSlotPreview(
-    @PreviewParameter(MaxFeedbackPreviewProvider::class) feedback: MaxFeedbackPreviewInput
+    @PreviewParameter(MaxFeedbackPreviewProvider::class) feedback: MaxFeedback
 ) = ZcashTheme {
     BlankSurface {
         ZashiMaxFeedbackSlot(
-            hint = feedback.first,
-            banner = feedback.second,
-            modifier = Modifier.padding(ZcashTheme.dimens.spacingDefault)
+            feedback = feedback,
+            modifier = Modifier.padding(horizontal = ZcashTheme.dimens.spacingDefault)
         )
     }
 }

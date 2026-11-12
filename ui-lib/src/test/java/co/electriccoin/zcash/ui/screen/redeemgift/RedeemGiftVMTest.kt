@@ -8,6 +8,7 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.GiftCardException
+import co.electriccoin.zcash.ui.common.model.GiftCardRedeemProgress
 import co.electriccoin.zcash.ui.common.model.GiftCardRedemption
 import co.electriccoin.zcash.ui.common.model.GiftCardStatus
 import co.electriccoin.zcash.ui.common.model.WalletAccount
@@ -60,6 +61,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import co.electriccoin.zcash.ui.design.R as DesignR
 
 /**
  * The redeem screen over a real [GiftCardRepositoryImpl] and a [FakeGiftCardDataSource]: each session phase maps to
@@ -68,6 +70,7 @@ import kotlin.time.Duration.Companion.seconds
  * model observes the session for its whole lifetime, so the UI no longer collecting its state does not close the card.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
+@Suppress("LargeClass")
 class RedeemGiftVMTest {
     private lateinit var dispatcher: TestDispatcher
 
@@ -689,6 +692,80 @@ class RedeemGiftVMTest {
         runTest(dispatcher) {
             val env = Env(this)
             env.dataSource.redeemError = GiftCardException.InUse()
+            val vm = env.startedVm()
+
+            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
+            runCurrent()
+
+            assertEquals(stringRes(R.string.redeemGift_failure_title), statusOf(vm).title)
+            assertNotNull(statusOf(vm).primaryButton)
+        }
+
+    @Test
+    fun aRedemptionInSeveralRoundsShowsTheRoundsAcceptedSoFar() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.redeemProgress = listOf(GiftCardRedeemProgress(round = 1, estimatedRounds = 3))
+            env.dataSource.redeemGate = CompletableDeferred()
+            val vm = env.startedVm()
+
+            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
+            runCurrent()
+
+            assertEquals(stringRes(R.string.redeemGift_redeeming_title), cardStatusOf(vm).title)
+            assertEquals(
+                stringRes(R.string.redeemGift_redeeming_rounds_subtitle, 1, 3).withStyle(),
+                cardStatusOf(vm).subtitle
+            )
+        }
+
+    @Test
+    fun aSingleTransactionRedemptionShowsTheUsualSubtitle() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.redeemGate = CompletableDeferred()
+            val vm = env.startedVm()
+
+            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
+            runCurrent()
+
+            assertEquals(stringRes(R.string.redeemGift_redeeming_subtitle).withStyle(), cardStatusOf(vm).subtitle)
+        }
+
+    @Test
+    fun aCardWithTooManyNotesShowsTheTooManyNotesCopyWithOnlyClose() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.redeemError = GiftCardException.TooManyNotes()
+            val vm = env.startedVm()
+
+            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
+            runCurrent()
+
+            assertEquals(stringRes(DesignR.string.general_maxTooManyNotesTitle), statusOf(vm).title)
+            assertEquals(stringRes(DesignR.string.general_maxTooManyNotesBody).withStyle(), statusOf(vm).subtitle)
+            assertNull(statusOf(vm).secondaryButton)
+        }
+
+    @Test
+    fun aFailedRoundShowsTheRedeemFailureWithRetry() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.redeemError = GiftCardException.RoundFailed(round = 2)
+            val vm = env.startedVm()
+
+            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
+            runCurrent()
+
+            assertEquals(stringRes(R.string.redeemGift_failure_title), statusOf(vm).title)
+            assertNotNull(statusOf(vm).primaryButton)
+        }
+
+    @Test
+    fun anExpiredRoundShowsTheRedeemFailureWithRetry() =
+        runTest(dispatcher) {
+            val env = Env(this)
+            env.dataSource.redeemError = GiftCardException.RoundExpired(round = 2)
             val vm = env.startedVm()
 
             assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()

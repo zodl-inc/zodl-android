@@ -7,6 +7,9 @@ sealed class SendStage {
 
     data object Proposing : SendStage()
 
+    /** The transaction needs more notes than one transaction can spend on this device; nothing was created. */
+    data object TooManyNotes : SendStage()
+
     data class SendFailure(
         val error: String
     ) : SendStage()
@@ -15,6 +18,7 @@ sealed class SendStage {
         private const val TYPE_FORM = "form" // $NON-NLS
         private const val TYPE_PROPOSING = "proposing" // $NON-NLS
         private const val TYPE_FAILURE = "failure" // $NON-NLS
+        private const val TYPE_TOO_MANY_NOTES = "too_many_notes" // $NON-NLS
         private const val KEY_TYPE = "type" // $NON-NLS
         private const val KEY_ERROR = "error" // $NON-NLS
 
@@ -32,6 +36,7 @@ sealed class SendStage {
                                     TYPE_FORM -> Form
                                     TYPE_PROPOSING -> Proposing
                                     TYPE_FAILURE -> SendFailure((it[KEY_ERROR] as String))
+                                    TYPE_TOO_MANY_NOTES -> TooManyNotes
                                     else -> null
                                 }
                             }
@@ -48,6 +53,10 @@ sealed class SendStage {
 
                 Proposing -> {
                     saverMap[KEY_TYPE] = TYPE_PROPOSING
+                }
+
+                TooManyNotes -> {
+                    saverMap[KEY_TYPE] = TYPE_TOO_MANY_NOTES
                 }
 
                 is SendFailure -> {

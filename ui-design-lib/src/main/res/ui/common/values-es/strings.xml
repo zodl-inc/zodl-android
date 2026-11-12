@@ -2,19 +2,12 @@
     <string name="amount_with_fiat_currency_symbol" formatted="true"><xliff:g example="$" id="fiat_currency_symbol">%1$s</xliff:g><xliff:g example="123" id="amount">%2$s</xliff:g></string>
     <string name="general_hideBalancesMost">-----</string>
     <string name="general_max">Máx.</string>
-    <string name="general_maxFailedTitle">No pudimos calcular el monto máximo</string>
-    <string name="general_maxFailedSubtitle">Inténtalo de nuevo o ingresa un monto.</string>
-    <string name="general_maxHintShieldedOnly">Máx. solo usa ZEC protegidos.</string>
-    <string name="general_maxHintShield">Proteger</string>
-    <string name="general_maxHintConfirming">Máx. estará disponible cuando se confirmen tus fondos.</string>
     <string name="general_maxFeeBufferHint">Máx. reserva %s ZEC para la comisión de red.</string>
     <string name="general_maxFeeSlippageHint">Máx. deja margen para comisiones y slippage, y se actualiza con cada nueva cotización.</string>
-    <string name="general_maxUnavailableSend">Máx. no está disponible en este momento. Ingresa el monto que quieres enviar.</string>
-    <string name="general_maxUnavailableSwap">Máx. no está disponible en este momento. Ingresa el monto del swap que quieres hacer.</string>
+    <string name="general_maxUnavailableSend">Máx. no está disponible ahora. Ingresa el monto que quieres enviar.</string>
+    <string name="general_maxUnavailableSwap">Máx. no está disponible ahora. Ingresa el monto que quieres intercambiar.</string>
     <string name="general_maxTooManyNotesTitle">Demasiadas notas para enviar a la vez</string>
     <string name="general_maxTooManyNotesBody">Tu saldo está dividido en muchas partes pequeñas, así que no se puede enviar todo en una sola transacción. Intenta enviar un monto menor.</string>
-    <string name="general_maxTooManyNotesCta">Enviar un monto menor</string>
-    <string name="general_maxTooManyNotesClose">Cerrar</string>
     <string name="triple_dots">…</string>
     <string name="seed_recovery_reveal">Mostrar frase de recuperación</string>
     <string name="general_masked_seed_word">•••••</string>
@@ -615,6 +608,7 @@
     <string name="redeemGift_checkFailed_subtitle">Algo salió mal al verificar la tarjeta de regalo. Revisa tu conexión e inténtalo de nuevo.</string>
     <string name="redeemGift_redeeming_title">Canjeando tu regalo…</string>
     <string name="redeemGift_redeeming_subtitle">Enviando los fondos de la tarjeta de regalo a tu billetera.</string>
+    <string name="redeemGift_redeeming_rounds_subtitle">Ronda %1$d de %2$d enviada. Esperando confirmación.</string>
     <string name="redeemGift_success_title">¡Regalo canjeado!</string>
     <string name="redeemGift_success_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> está en camino a tu billetera.\nAparecerá en tu actividad en breve.</string>
     <string name="redeemGift_success_subtitle_noAmount">Tu regalo está en camino a tu billetera.\nAparecerá en tu actividad en breve.</string>

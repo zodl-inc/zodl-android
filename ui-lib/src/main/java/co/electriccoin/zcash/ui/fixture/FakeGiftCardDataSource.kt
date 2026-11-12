@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.common.datasource.ParsedGiftCard
 import co.electriccoin.zcash.ui.common.datasource.StoredCardWallet
 import co.electriccoin.zcash.ui.common.model.GiftCardHandle
 import co.electriccoin.zcash.ui.common.model.GiftCardOrigin
+import co.electriccoin.zcash.ui.common.model.GiftCardRedeemProgress
 import co.electriccoin.zcash.ui.common.model.GiftCardRedemption
 import co.electriccoin.zcash.ui.common.model.GiftCardStatus
 import co.electriccoin.zcash.ui.common.model.GiftCardSummary
@@ -20,6 +21,7 @@ import kotlinx.coroutines.CompletableDeferred
  * @param checkError thrown by [check], when set.
  * @param redeemError thrown by [redeem], when set.
  * @param walletAlias the card wallet alias every parse reports.
+ * @param redeemProgress what [redeem] reports to its caller before it finishes.
  *
  * [checkGate] and [redeemGate], when set, hold [check] and [redeem] until completed, to observe in-flight states.
  */
@@ -33,6 +35,7 @@ class FakeGiftCardDataSource(
         GiftCardRedemption(txId = GiftCardSummaryFixture.TX_ID, received = Zatoshi(GiftCardSummaryFixture.RECEIVED)),
     var walletAlias: String = GiftCardSummaryFixture.WALLET_ALIAS,
     var storedWallets: List<StoredCardWallet> = emptyList(),
+    var redeemProgress: List<GiftCardRedeemProgress> = emptyList(),
 ) : GiftCardDataSource {
     val parsedLinks = mutableListOf<String>()
     val checkedHandles = mutableListOf<GiftCardHandle>()
@@ -63,9 +66,11 @@ class FakeGiftCardDataSource(
 
     override suspend fun redeem(
         handle: GiftCardHandle,
-        toAddress: String
+        toAddress: String,
+        onProgress: suspend (GiftCardRedeemProgress) -> Unit
     ): GiftCardRedemption {
         redeemedTo += toAddress
+        redeemProgress.forEach { onProgress(it) }
         redeemGate?.await()
         redeemError?.let { throw it }
         return redemption

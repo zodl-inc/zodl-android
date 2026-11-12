@@ -8,14 +8,11 @@ import co.electriccoin.zcash.ui.util.CloseableScopeHolder
 import co.electriccoin.zcash.ui.util.CloseableScopeHolderImpl
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -132,6 +129,15 @@ private class MultiEndpointTransactionSubmitterImpl(
         )
     }
 
+    /**
+     * Submits [transaction] to every endpoint concurrently. The first acceptance wins. Otherwise the result is a
+     * refusal only once every endpoint has answered: a refusal (for good or transient) and a transport failure
+     * are answers, while a submission that threw, was cancelled or is still in flight at the deadline is not,
+     * because that endpoint may still accept the transaction. Any unanswered endpoint leaves the result pending.
+     *
+     * A refusal returned here is never by itself the transaction failing: whether it did is the SDK's verdict over
+     * every endpoint ([cash.z.ecc.android.sdk.Synchronizer.rejectedTransactions]).
+     */
     private suspend fun broadcastToEndpoints(
         transaction: CreatedTransaction,
         endpoints: List<LightWalletEndpoint>,
@@ -139,69 +145,54 @@ private class MultiEndpointTransactionSubmitterImpl(
         logTag: String
     ): TransactionSubmitResult {
         val completion = CompletableDeferred<BroadcastCompletion>()
-        val failureCount = AtomicInteger(0)
-        val failures = ConcurrentLinkedQueue<EndpointSubmission>()
+        val settled = ConcurrentLinkedQueue<EndpointSubmission>()
+
+        fun settle(submission: EndpointSubmission) {
+            settled += submission
+            val result = submission.result
+            if (result is TransactionSubmitResult.Success) {
+                completion.complete(
+                    BroadcastCompletion.Accepted(endpointLabel = submission.endpointLabel, result = result)
+                )
+            } else if (settled.size >= endpoints.size) {
+                completion.complete(
+                    BroadcastCompletion.Refused(result = selectSettledResult(transaction, settled.toList()))
+                )
+            }
+        }
+
         val jobs =
             endpoints.mapIndexed { endpointIndex, endpoint ->
                 val endpointLabel = endpointLabel(endpointIndex, endpoints.size)
 
-                scope
-                    .async {
-                        val submission =
-                            EndpointSubmission(
+                scope.launch {
+                    var result: TransactionSubmitResult? = null
+                    try {
+                        result =
+                            submitToEndpoint(
+                                transaction = transaction,
+                                endpoint = endpoint,
                                 endpointLabel = endpointLabel,
-                                result =
-                                    submitToEndpoint(
-                                        transaction = transaction,
-                                        endpoint = endpoint,
-                                        endpointLabel = endpointLabel,
-                                        transactionLabel = transactionLabel,
-                                        logTag = logTag
-                                    )
+                                transactionLabel = transactionLabel,
+                                logTag = logTag
                             )
-
-                        when (val result = submission.result) {
-                            is TransactionSubmitResult.Success -> {
-                                completion.complete(
-                                    BroadcastCompletion.Accepted(
-                                        endpointLabel = submission.endpointLabel,
-                                        result = result
-                                    )
-                                )
-                            }
-
-                            is TransactionSubmitResult.Failure,
-                            is TransactionSubmitResult.NotAttempted -> {
-                                failures += submission
-                                if (failureCount.incrementAndGet() >= endpoints.size) {
-                                    completion.complete(
-                                        BroadcastCompletion.Rejected(
-                                            result = selectRejectedResult(transaction, failures.toList())
-                                        )
-                                    )
-                                }
-                            }
-                        }
-
-                        submission
+                    } finally {
+                        // A submission that threw or was cancelled settles unanswered: its request may have left.
+                        settle(EndpointSubmission(endpointLabel = endpointLabel, result = result))
                     }
+                }
             }
         val timeoutJob =
             scope.launch {
                 // Let endpoint calls that completed at the deadline publish their result before reporting timeout.
                 delay(globalTimeout + timeoutDrain)
-                if (completion.isCompleted) {
-                    return@launch
-                }
-                val completedSubmissions =
-                    jobs.completedSubmissions()
-                val timeoutResult =
-                    selectTimeoutCompletion(
-                        transaction = transaction,
-                        submissions = completedSubmissions,
-                        endpointCount = endpoints.size
+                // An endpoint still in flight has not answered and may yet accept: the transaction is pending.
+                if (completion.complete(
+                        BroadcastCompletion.Refused(
+                            result = createGrpcFailure(transaction, MULTI_SUBMIT_TIMEOUT_DESCRIPTION)
+                        )
                     )
-                if (completion.complete(timeoutResult)) {
+                ) {
                     logger.error { "$logTag Timed out waiting for any endpoint to accept $transactionLabel." }
                     jobs.forEach { it.cancel() }
                 }
@@ -236,10 +227,10 @@ private class MultiEndpointTransactionSubmitterImpl(
                     result.result
                 }
 
-                is BroadcastCompletion.Rejected -> {
+                is BroadcastCompletion.Refused -> {
                     state.cancel()
                     logger.error {
-                        "$logTag $transactionLabel rejected by all $endpointCount endpoint(s)."
+                        "$logTag $transactionLabel not accepted by any of $endpointCount endpoint(s)."
                     }
                     result.result
                 }
@@ -268,7 +259,7 @@ private class MultiEndpointTransactionSubmitterImpl(
         endpointLabel: String,
         transactionLabel: String,
         logTag: String
-    ): TransactionSubmitResult =
+    ): TransactionSubmitResult? =
         try {
             val result = submit(transaction, endpoint)
             when (result) {
@@ -290,49 +281,29 @@ private class MultiEndpointTransactionSubmitterImpl(
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            logger.warn { "$logTag $endpointLabel FAILED $transactionLabel with exception." }
-            createGrpcFailure(transaction, "Endpoint submission failed")
+            // Unlike a transport failure the SDK returns, a thrown submission is no answer: its request may have
+            // left, so the endpoint may still accept the transaction.
+            logger.warn { "$logTag $endpointLabel FAILED $transactionLabel with exception; no answer." }
+            null
         }
 
-    private fun selectRejectedResult(
+    /**
+     * The result once every endpoint settled without accepting: pending when any of them has not answered (its
+     * submission threw or was cancelled, or the SDK did not attempt it), otherwise the most telling refusal.
+     */
+    private fun selectSettledResult(
         transaction: CreatedTransaction,
         submissions: List<EndpointSubmission>
     ): TransactionSubmitResult {
-        val failures =
-            submissions.mapNotNull { submission ->
-                submission.result as? TransactionSubmitResult.Failure
-            }
-
-        return failures
-            .firstOrNull { !it.grpcError }
-            ?: failures.firstOrNull()
-            ?: createGrpcFailure(transaction, "All endpoints rejected transaction")
+        val failures = submissions.map { it.result as? TransactionSubmitResult.Failure }
+        if (failures.any { it == null }) {
+            return createGrpcFailure(transaction, MULTI_SUBMIT_UNANSWERED_DESCRIPTION)
+        }
+        val answers = failures.filterNotNull()
+        return answers.firstOrNull { it.rejection != null }
+            ?: answers.firstOrNull { !it.grpcError }
+            ?: answers.first()
     }
-
-    private fun selectTimeoutCompletion(
-        transaction: CreatedTransaction,
-        submissions: List<EndpointSubmission>,
-        endpointCount: Int
-    ): BroadcastCompletion =
-        submissions
-            .firstNotNullOfOrNull { submission ->
-                (submission.result as? TransactionSubmitResult.Success)?.let {
-                    BroadcastCompletion.Accepted(
-                        endpointLabel = submission.endpointLabel,
-                        result = it
-                    )
-                }
-            }
-            ?: submissions
-                .takeIf { it.size >= endpointCount }
-                ?.let {
-                    BroadcastCompletion.Rejected(
-                        result = selectRejectedResult(transaction, it)
-                    )
-                }
-            ?: BroadcastCompletion.Rejected(
-                result = createGrpcFailure(transaction, MULTI_SUBMIT_TIMEOUT_DESCRIPTION)
-            )
 
     private fun createGrpcFailure(transaction: CreatedTransaction, description: String?) =
         TransactionSubmitResult.Failure(
@@ -342,15 +313,6 @@ private class MultiEndpointTransactionSubmitterImpl(
             description = description
         )
 }
-
-private suspend fun List<Deferred<EndpointSubmission>>.completedSubmissions() =
-    mapNotNull { job ->
-        if (job.isCompleted && !job.isCancelled) {
-            runCatching { job.await() }.getOrNull()
-        } else {
-            null
-        }
-    }
 
 private fun endpointLabel(index: Int, count: Int) = "endpoint ${index + 1}/$count"
 
@@ -373,16 +335,19 @@ private object TwigMultiEndpointTransactionSubmitterLogger : MultiEndpointTransa
 private const val MULTI_SUBMIT_GRPC_FAILURE_CODE = -1
 internal const val MULTI_SUBMIT_TIMEOUT_DESCRIPTION =
     "Timed out waiting for endpoint response; transaction may still have been broadcast"
+internal const val MULTI_SUBMIT_UNANSWERED_DESCRIPTION =
+    "An endpoint did not answer; transaction may still have been broadcast"
 
 private data class BroadcastSubmissionState(
     val completion: CompletableDeferred<BroadcastCompletion>,
-    val jobs: List<Deferred<EndpointSubmission>>,
+    val jobs: List<Job>,
     val timeoutJob: Job
 )
 
+/** One endpoint's settled submission; [result] is null when it did not answer (it threw or was cancelled). */
 private data class EndpointSubmission(
     val endpointLabel: String,
-    val result: TransactionSubmitResult
+    val result: TransactionSubmitResult?
 )
 
 private sealed interface BroadcastCompletion {
@@ -391,7 +356,8 @@ private sealed interface BroadcastCompletion {
         val result: TransactionSubmitResult.Success
     ) : BroadcastCompletion
 
-    data class Rejected(
+    /** No endpoint accepted: every one refused, or the result is pending (see [selectSettledResult]). */
+    data class Refused(
         val result: TransactionSubmitResult
     ) : BroadcastCompletion
 }

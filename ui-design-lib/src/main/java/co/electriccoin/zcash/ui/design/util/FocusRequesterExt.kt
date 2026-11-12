@@ -41,6 +41,16 @@ suspend fun FocusRequester.requestFocusWhenHidden(
     return tryRequestFocus()
 }
 
+/**
+ * Requests focus once [view]'s window has the window focus back, for a dialog destination that was just closed.
+ *
+ * @see requestFocusWhenHidden
+ */
+suspend fun FocusRequester.requestFocusWhenWindowFocused(view: View): Boolean? {
+    view.awaitWindowFocus()
+    return tryRequestFocus()
+}
+
 private suspend fun View.awaitWindowFocus() {
     if (hasWindowFocus()) return
     suspendCancellableCoroutine { continuation ->

@@ -2,8 +2,11 @@ package co.electriccoin.zcash.ui.screen.pay
 
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.Spendability
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.maxChipState
+import co.electriccoin.zcash.ui.common.model.spendability
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.repository.GiftCardSecretDetector.mayContainGiftCardSecret
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
@@ -12,8 +15,10 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ChipButtonState
 import co.electriccoin.zcash.ui.design.component.IconButtonState
+import co.electriccoin.zcash.ui.design.component.MaxFeedback
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldInnerState
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldState
+import co.electriccoin.zcash.ui.design.component.SendMaxChipState
 import co.electriccoin.zcash.ui.design.component.TextFieldState
 import co.electriccoin.zcash.ui.design.component.TextSelection
 import co.electriccoin.zcash.ui.design.util.StringResource
@@ -67,6 +72,9 @@ internal class ExactOutputVMMapper {
             amount = amountState,
             amountFiat = createFiatAmountState(state, callbacks.onTextFieldChange),
             amountError = createAmountErrorState(state),
+            max = createMaxState(state, callbacks.onMaxClick),
+            maxFeedback = state.maxFeedback,
+            isFiatPriceUnavailable = isFiatPriceUnavailable(state),
             zecAmount = createZecAmount(state),
             slippage = createSlippageState(state, callbacks.onSlippageClick),
             errorFooter = createErrorFooterState(state),
@@ -126,7 +134,9 @@ internal class ExactOutputVMMapper {
         return fiatInnerState.copy(
             innerTextFieldState =
                 fiatInnerState.innerTextFieldState.copy(
-                    value = fiat?.let { stringResByDynamicNumber(it) } ?: stringRes(""),
+                    value =
+                        fiat?.let { stringResByDynamicNumber(it, includeGroupingSeparator = false) }
+                            ?: stringRes(""),
                     selection = TextSelection.End
                 ),
             amount = fiat,
@@ -160,6 +170,23 @@ internal class ExactOutputVMMapper {
             lastValidAmount = amount ?: amountInnerState.lastValidAmount
         )
     }
+
+    private fun createMaxState(state: ExactOutputInternalState, onMaxClick: () -> Unit): SendMaxChipState =
+        maxChipState(
+            spendability = state.account?.spendability ?: Spendability.Determining,
+            isExtraEnabled =
+                !state.isRequestingQuote &&
+                    PayMax.hasUsablePrices(state.swapAssets.zecAsset?.usdPrice, state.asset?.usdPrice),
+            onClick = onMaxClick
+        )
+
+    private fun isFiatPriceUnavailable(state: ExactOutputInternalState): Boolean =
+        PayMax.isPriceUnavailable(
+            arePricesLoaded = state.swapAssets.data != null && !state.swapAssets.isLoading,
+            hasAsset = state.asset != null,
+            zecUsdPrice = state.swapAssets.zecAsset?.usdPrice,
+            tokenUsdPrice = state.asset?.usdPrice
+        )
 
     private fun createAmountErrorState(state: ExactOutputInternalState): StringResource? =
         if (state.isInsufficientFunds) {
@@ -389,6 +416,7 @@ internal class ExactOutputVMMapper {
                             !textField.isError &&
                             amount != null &&
                             amount > BigDecimal(0) &&
+                            (state.account?.spendability ?: Spendability.Determining).allowsPrimaryAction &&
                             (state.address.isNotBlank() || state.selectedABContact != null) &&
                             !mayContainGiftCardSecret(state.selectedABContact?.address ?: state.address) &&
                             !state.isRequestingQuote
@@ -432,7 +460,8 @@ private data class ExactOutputInternalState(
     override val account: WalletAccount?,
     override val swapAssets: SwapAssetsData,
     override val isABHintVisible: Boolean,
-    override val isEphemeralAddressLocked: Boolean
+    override val isEphemeralAddressLocked: Boolean,
+    override val maxFeedback: MaxFeedback?,
 ) : InternalState {
     constructor(original: InternalState) : this(
         address = original.address,
@@ -445,7 +474,8 @@ private data class ExactOutputInternalState(
         account = original.account,
         swapAssets = original.swapAssets,
         isABHintVisible = original.isABHintVisible,
-        isEphemeralAddressLocked = original.isEphemeralAddressLocked
+        isEphemeralAddressLocked = original.isEphemeralAddressLocked,
+        maxFeedback = original.maxFeedback
     )
 
     /**
@@ -508,4 +538,5 @@ internal data class ExactOutputStateCallbacks(
     val onQrCodeScannerClick: () -> Unit,
     val onAddressBookClick: () -> Unit,
     val onDeleteSelectedContactClick: () -> Unit,
+    val onMaxClick: () -> Unit,
 )

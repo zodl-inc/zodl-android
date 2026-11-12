@@ -3,19 +3,12 @@
     <string name="general_hideBalancesMost">-----</string>
     <string name="general_back">Back</string>
     <string name="general_max">Max</string>
-    <string name="general_maxFailedTitle">Couldn\'t calculate the max amount</string>
-    <string name="general_maxFailedSubtitle">Try again or enter an amount.</string>
-    <string name="general_maxHintShieldedOnly">Max uses shielded ZEC only.</string>
-    <string name="general_maxHintShield">Shield</string>
-    <string name="general_maxHintConfirming">Max will be available once your funds confirm.</string>
     <string name="general_maxFeeBufferHint">Max keeps %s ZEC for the network fee.</string>
     <string name="general_maxFeeSlippageHint">Max leaves room for fees and slippage, and updates with each new quote.</string>
     <string name="general_maxUnavailableSend">Max isn\'t available right now. Enter the amount you want to send.</string>
     <string name="general_maxUnavailableSwap">Max isn\'t available right now. Enter the amount you want to swap.</string>
     <string name="general_maxTooManyNotesTitle">Too many notes to send at once</string>
     <string name="general_maxTooManyNotesBody">Your balance is split into many small pieces, so it can\'t all go in one transaction. Try sending a smaller amount.</string>
-    <string name="general_maxTooManyNotesCta">Send a smaller amount</string>
-    <string name="general_maxTooManyNotesClose">Close</string>
     <string name="triple_dots">…</string>
     <string name="seed_recovery_reveal">Reveal recovery phrase</string>
     <string name="general_masked_seed_word">•••••</string>
@@ -650,6 +643,7 @@
     <string name="redeemGift_checkFailed_subtitle">Something went wrong while checking the gift card. Check your connection and try again.</string>
     <string name="redeemGift_redeeming_title">Redeeming your gift…</string>
     <string name="redeemGift_redeeming_subtitle">Sending the gift card\'s funds to your wallet.</string>
+    <string name="redeemGift_redeeming_rounds_subtitle">Round %1$d of %2$d sent. Waiting for confirmation.</string>
     <string name="redeemGift_success_title">Gift redeemed!</string>
     <string name="redeemGift_success_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> is on its way to your wallet.\nIt will show up in your activity shortly.</string>
     <string name="redeemGift_success_subtitle_noAmount">Your gift is on its way to your wallet.\nIt will show up in your activity shortly.</string>

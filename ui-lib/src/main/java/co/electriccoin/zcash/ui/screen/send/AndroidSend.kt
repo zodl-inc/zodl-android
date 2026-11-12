@@ -11,7 +11,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cash.z.ecc.android.sdk.model.ZecSend
@@ -23,6 +25,7 @@ import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarVM
 import co.electriccoin.zcash.ui.common.compose.LocalActivity
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.isTransparentOrTex
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveClearSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.PrefillSendData
@@ -30,6 +33,7 @@ import co.electriccoin.zcash.ui.common.usecase.PrefillSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.ValidateAddressUseCase
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
+import co.electriccoin.zcash.ui.design.component.ZashiMaxTooManyNotesSheet
 import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
 import co.electriccoin.zcash.ui.design.util.TickerLocation
 import co.electriccoin.zcash.ui.design.util.getString
@@ -133,6 +137,12 @@ internal fun WrapSend(
 
     val recipientAddressState by viewModel.recipientAddressState.collectAsStateWithLifecycle()
 
+    val maxChipState by viewModel.maxChipState.collectAsStateWithLifecycle()
+
+    val maxFeedback by viewModel.maxFeedbackState.collectAsStateWithLifecycle()
+    val tooManyNotesSheet by viewModel.tooManyNotesSheet.collectAsStateWithLifecycle()
+    val amountFocusRequester = remember { FocusRequester() }
+
     val observeClearSend = koinInject<ObserveClearSendUseCase>()
     val prefillSend = koinInject<PrefillSendUseCase>()
 
@@ -158,9 +168,7 @@ internal fun WrapSend(
                 AmountState.newFromZec(
                     value = zecSend?.amount?.toZecString(NUMBER_FORMAT_LOCALE) ?: "",
                     fiatValue = "",
-                    isTransparentOrTextRecipient =
-                        recipientAddressState.type?.let { it == AddressType.Transparent }
-                            ?: false,
+                    isTransparentOrTextRecipient = recipientAddressState.type.isTransparentOrTex,
                     exchangeRateState = exchangeRateState,
                 )
             )
@@ -175,9 +183,7 @@ internal fun WrapSend(
                 AmountState.newFromZec(
                     value = amountState.value.getString(context),
                     fiatValue = amountState.fiatValue.getString(context),
-                    isTransparentOrTextRecipient =
-                        recipientAddressState.type
-                            ?.let { it == AddressType.Transparent } ?: false,
+                    isTransparentOrTextRecipient = recipientAddressState.type.isTransparentOrTex,
                     exchangeRateState = exchangeRateState,
                     lastFieldChangedByUser = amountState.lastFieldChangedByUser,
                 )
@@ -185,9 +191,7 @@ internal fun WrapSend(
                 AmountState.newFromFiat(
                     value = amountState.value.getString(context),
                     fiatValue = amountState.fiatValue.getString(context),
-                    isTransparentOrTextRecipient =
-                        recipientAddressState.type
-                            ?.let { it == AddressType.Transparent } ?: false,
+                    isTransparentOrTextRecipient = recipientAddressState.type.isTransparentOrTex,
                     exchangeRateState = exchangeRateState,
                 )
             }
@@ -199,6 +203,41 @@ internal fun WrapSend(
         rememberSaveable(stateSaver = MemoState.Saver) {
             mutableStateOf(MemoState.new(zecSend?.memo?.value ?: ""))
         }
+
+    // The view model prices Max with the memo, so it follows every change, including prefill and restore
+    LaunchedEffect(memoState.text) { viewModel.onMemoChanged(memoState.text) }
+
+    // Max amount: applied only while the form is shown, so a late result never changes a reviewed amount.
+    val isFormStage by rememberUpdatedState(sendStage == SendStage.Form)
+    val currentExchangeRateState by rememberUpdatedState(exchangeRateState)
+    val currentRecipientType by rememberUpdatedState(recipientAddressState.type)
+
+    LaunchedEffect(Unit) {
+        viewModel.maxAmountResolved.collect {
+            if (isFormStage) {
+                setAmountState(
+                    it.toAmountState(
+                        isTransparentOrTextRecipient = currentRecipientType.isTransparentOrTex,
+                        exchangeRateState = currentExchangeRateState
+                    )
+                )
+            }
+        }
+    }
+
+    // The too-many-notes OK: clear the amount; the sheet focuses the field once it is hidden
+    LaunchedEffect(Unit) {
+        viewModel.amountClears.collect {
+            setAmountState(
+                AmountState.newFromZec(
+                    value = "",
+                    fiatValue = "",
+                    isTransparentOrTextRecipient = currentRecipientType.isTransparentOrTex,
+                    exchangeRateState = currentExchangeRateState,
+                )
+            )
+        }
+    }
 
     LaunchedEffect(Unit) {
         observeClearSend().collect {
@@ -243,7 +282,7 @@ internal fun WrapSend(
                         AmountState.newFromZec(
                             value = stringRes(value, TickerLocation.HIDDEN).getString(context),
                             fiatValue = amountState.fiatValue.getString(context),
-                            isTransparentOrTextRecipient = type == AddressType.Transparent,
+                            isTransparentOrTextRecipient = type.isTransparentOrTex,
                             exchangeRateState = exchangeRateState,
                         )
                     )
@@ -275,6 +314,8 @@ internal fun WrapSend(
                 // no action - wait until the sending is done
             }
 
+            SendStage.TooManyNotes,
+            SendStage.TooManyNotes,
             is SendStage.SendFailure -> {
                 setSendStage(SendStage.Form)
             }
@@ -317,14 +358,27 @@ internal fun WrapSend(
                         )
                     }
             },
-            setAmountState = setAmountState,
+            setAmountState = {
+                // Only the user's typing reaches here; Max results and restores write the state directly
+                viewModel.onAmountEdited()
+                setAmountState(it)
+            },
             amountState = amountState,
             setMemoState = setMemoState,
             memoState = memoState,
             selectedAccount = selectedAccount,
             exchangeRateState = exchangeRateState,
             sendAddressBookState = sendAddressBookState,
-            zashiMainTopAppBarState = zashiMainTopAppBarState
+            zashiMainTopAppBarState = zashiMainTopAppBarState,
+            maxChipState = maxChipState,
+            maxFeedback = maxFeedback,
+            amountFocusRequester = amountFocusRequester,
+            onTooManyNotesOk = viewModel::onTooManyNotesOk
+        )
+        ZashiMaxTooManyNotesSheet(
+            state = tooManyNotesSheet,
+            focusRequests = viewModel.amountFocusRequests,
+            focusRequester = amountFocusRequester
         )
     }
 }

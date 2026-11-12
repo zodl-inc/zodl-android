@@ -37,7 +37,7 @@ import kotlinx.coroutines.flow.emptyFlow
  * The blocking "Too many notes to send at once" sheet of Send, Swap and Pay (Figma 9043:3302).
  *
  * Each emission of [focusRequests] focuses [focusRequester] once the sheet has been hidden, which is how
- * "Send a smaller amount" lands the user in the cleared amount field.
+ * OK lands the user in the cleared amount field.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,54 +96,46 @@ private fun TooManyNotesContent(
         )
         Spacer(24.dp)
         ZashiButton(
-            state = state.sendSmallerAmount,
+            state = state.ok,
             modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(12.dp)
-        ZashiButton(
-            state = state.close,
-            modifier = Modifier.fillMaxWidth(),
-            defaultSecondaryColors =
-                ZashiButtonDefaults.secondaryColors(
-                    borderColor = ZashiColors.Btns.Secondary.btnSecondaryBorder
-                )
         )
     }
 }
 
 /**
- * The too-many-notes sheet. [sendSmallerAmount] dismisses the sheet, clears the amount and focuses the amount field;
- * [close] and [onBack] (back press, scrim tap or drag) only dismiss it.
+ * The too-many-notes sheet with its single "OK" button (Figma 9162:2867). [ok] runs the owner's action, [onBack]
+ * (back press, scrim tap or drag) only dismisses the sheet.
+ *
+ * Use [create] where there is an amount to change: OK dismisses the sheet, clears the amount and focuses the amount
+ * field. Use [createCloseOnly] after the transaction was broadcast, when the notes it spends are locked and there is
+ * no amount to change: OK only dismisses.
  */
 @Immutable
 data class MaxTooManyNotesSheetState(
     val title: StringResource,
     val body: StringResource,
-    val sendSmallerAmount: ButtonState,
-    val close: ButtonState,
+    val ok: ButtonState,
     override val onBack: () -> Unit,
 ) : ModalBottomSheetState {
     companion object {
+        /** [onOk] is the whole OK action (dismiss, clear the amount, focus it); [onDismiss] is back/scrim only. */
         fun create(
-            onSendSmallerAmount: () -> Unit,
-            onClose: () -> Unit
+            onOk: () -> Unit,
+            onDismiss: () -> Unit
         ) = MaxTooManyNotesSheetState(
             title = stringRes(R.string.general_maxTooManyNotesTitle),
             body = stringRes(R.string.general_maxTooManyNotesBody),
-            sendSmallerAmount =
+            ok =
                 ButtonState(
-                    text = stringRes(R.string.general_maxTooManyNotesCta),
+                    text = stringRes(R.string.general_ok),
                     style = ButtonStyle.PRIMARY,
-                    onClick = onSendSmallerAmount
+                    onClick = onOk
                 ),
-            close =
-                ButtonState(
-                    text = stringRes(R.string.general_maxTooManyNotesClose),
-                    style = ButtonStyle.SECONDARY,
-                    onClick = onClose
-                ),
-            onBack = onClose
+            onBack = onDismiss
         )
+
+        /** The sheet of a transaction that was broadcast and refused for being too large: OK only dismisses. */
+        fun createCloseOnly(onClose: () -> Unit) = create(onOk = onClose, onDismiss = onClose)
     }
 }
 
@@ -157,7 +149,7 @@ object ZashiMaxTooManyNotesSheetTags {
 private fun ZashiMaxTooManyNotesSheetPreview() =
     ZcashTheme {
         ZashiMaxTooManyNotesSheet(
-            state = MaxTooManyNotesSheetState.create(onSendSmallerAmount = {}, onClose = {}),
+            state = MaxTooManyNotesSheetState.create(onOk = {}, onDismiss = {}),
             focusRequests = emptyFlow(),
             focusRequester = remember { FocusRequester() }
         )

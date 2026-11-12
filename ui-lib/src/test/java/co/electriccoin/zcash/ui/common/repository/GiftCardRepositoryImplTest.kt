@@ -5,6 +5,7 @@ import co.electriccoin.zcash.ui.common.model.GiftCardException
 import co.electriccoin.zcash.ui.common.model.GiftCardFailure
 import co.electriccoin.zcash.ui.common.model.GiftCardHandle
 import co.electriccoin.zcash.ui.common.model.GiftCardPhase
+import co.electriccoin.zcash.ui.common.model.GiftCardRedeemProgress
 import co.electriccoin.zcash.ui.common.model.GiftCardRedemption
 import co.electriccoin.zcash.ui.common.model.GiftCardStatus
 import co.electriccoin.zcash.ui.fixture.FakeGiftCardDataSource
@@ -347,6 +348,80 @@ class GiftCardRepositoryImplTest {
             assertIs<GiftCardPhase.Ready>(observer.latest().phase)
             observer.job.cancel()
         }
+
+    @Test
+    fun aCardOverTheBoundIsNotRetryableAndSaysSo() =
+        runTest {
+            assertRedeemFailure(GiftCardException.TooManyNotes(), GiftCardFailure.TOO_MANY_NOTES)
+        }
+
+    @Test
+    fun aRoundTheNetworkDidNotAcceptIsARetryableRoundFailure() =
+        runTest {
+            assertRedeemFailure(GiftCardException.RoundFailed(round = 2), GiftCardFailure.ROUND_FAILED)
+        }
+
+    @Test
+    fun aRoundNotMinedInTimeIsARetryableRoundExpiry() =
+        runTest {
+            assertRedeemFailure(GiftCardException.RoundExpired(round = 2), GiftCardFailure.ROUND_EXPIRED)
+        }
+
+    @Test
+    fun aSingleTransactionCardShowsNoRoundProgress() =
+        runTest {
+            dataSource.redeemProgress = listOf(GiftCardRedeemProgress(round = 1, estimatedRounds = 1))
+            dataSource.redeemGate = CompletableDeferred()
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            repository.redeem(linkId) { ADDRESS }
+            runCurrent()
+
+            assertEquals(GiftCardPhase.Redeeming, observer.latest().phase)
+            assertEquals(null, observer.latest().redeemProgress)
+            dataSource.redeemGate?.complete(Unit)
+            runCurrent()
+            observer.job.cancel()
+        }
+
+    @Test
+    fun theRoundsAcceptedSoFarAreShownWhileRedeeming() =
+        runTest {
+            dataSource.redeemProgress = listOf(GiftCardRedeemProgress(round = 1, estimatedRounds = 3))
+            dataSource.redeemGate = CompletableDeferred()
+            val repository = repository()
+            val linkId = store.stash(LINK)
+            val observer = observe(repository.observeSession(linkId))
+            runCurrent()
+
+            repository.redeem(linkId) { ADDRESS }
+            runCurrent()
+
+            assertEquals(GiftCardPhase.Redeeming, observer.latest().phase)
+            assertEquals(GiftCardRedeemProgress(round = 1, estimatedRounds = 3), observer.latest().redeemProgress)
+            dataSource.redeemGate?.complete(Unit)
+            runCurrent()
+            assertIs<GiftCardPhase.Redeemed>(observer.latest().phase)
+            assertEquals(null, observer.latest().redeemProgress)
+            observer.job.cancel()
+        }
+
+    private suspend fun TestScope.assertRedeemFailure(error: GiftCardException, expected: GiftCardFailure) {
+        dataSource.redeemError = error
+        val repository = repository()
+        val linkId = store.stash(LINK)
+        val observer = observe(repository.observeSession(linkId))
+        runCurrent()
+
+        repository.redeem(linkId) { ADDRESS }
+        runCurrent()
+
+        assertEquals(GiftCardPhase.Failed(expected), observer.latest().phase)
+        observer.job.cancel()
+    }
 
     @Test
     fun anUnexpectedRedeemFailureIsARetryableRedeemFailure() =

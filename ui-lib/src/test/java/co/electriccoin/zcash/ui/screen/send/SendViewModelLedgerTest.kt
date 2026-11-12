@@ -3,12 +3,16 @@ package co.electriccoin.zcash.ui.screen.send
 import cash.z.ecc.android.sdk.model.ZecSend
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.usecase.CreateProposalUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetMaxSendAmountUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.screen.send.model.AmountState
 import co.electriccoin.zcash.ui.screen.send.model.SendStage
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -62,7 +66,11 @@ class SendViewModelLedgerTest {
             observeContactPicked = mockk(relaxed = true),
             createProposal = createProposal,
             observeWalletAccounts = mockk(relaxed = true),
+            getSelectedWalletAccount =
+                mockk<GetSelectedWalletAccountUseCase> { every { observe() } returns flowOf(null) },
+            getMaxSendAmount = mockk<GetMaxSendAmountUseCase>(relaxed = true),
             navigateToSelectRecipient = mockk(relaxed = true),
             navigationRouter = mockk<NavigationRouter>(relaxed = true),
+            signerCapabilitiesProvider = mockk(relaxed = true),
         )
 }

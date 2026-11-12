@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.exception.PcztException
 import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerSigningProgress
 import cash.z.ecc.android.sdk.model.Pczt
+import cash.z.ecc.android.sdk.model.TransactionSizeBound
 import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.ZecSend
 import co.electriccoin.zcash.spackle.Twig
@@ -33,6 +34,7 @@ import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.toLedgerIssue
 import co.electriccoin.zcash.ui.common.provider.LEDGER_SCAN_TIMEOUT
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -112,6 +114,7 @@ class LedgerProposalRepositoryImpl(
     private val proposalDataSource: ProposalDataSource,
     private val ledgerDeviceDataSource: LedgerDeviceDataSource,
     private val ledgerSigningDataSource: LedgerSigningDataSource,
+    private val signerCapabilitiesProvider: SignerCapabilitiesProvider,
 ) : LedgerProposalRepository {
     @VisibleForTesting
     internal var scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -219,7 +222,10 @@ class LedgerProposalRepositoryImpl(
             try {
                 proposalDataSource.createPcztFromProposal(
                     account = accountDataSource.getSelectedAccount(),
-                    proposal = transactionProposal.proposal
+                    proposal = transactionProposal.proposal,
+                    // Decided: the hardware-signer PCZT path stays at the consensus bound; its own bound is tracked
+                    // in the Ledger epic
+                    sizeBound = TransactionSizeBound.CONSENSUS
                 )
             } catch (e: PcztException.MultiStepProposalUnsupportedException) {
                 if (transactionProposal.paysTexAddress()) throw TexUnsupportedOnKSException() else throw e
@@ -585,6 +591,7 @@ class LedgerProposalRepositoryImpl(
                                     pcztWithSignatures = pcztWithSignatures
                                 )
                             submitState.update { SubmitProposalState.Result(result) }
+                            if (result is SubmitResult.Success) signerCapabilitiesProvider.endFlow()
                             result
                         } catch (e: Exception) {
                             val result = SubmitResult.Error(e)
