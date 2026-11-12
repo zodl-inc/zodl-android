@@ -460,12 +460,7 @@ class GiftCardRepositoryImpl(
         val phase =
             try {
                 withTimeout(TO_ADDRESS_TIMEOUT) { toAddress() }.let { address ->
-                    GiftCardPhase.Redeemed(
-                        giftCardDataSource.redeem(handle, address) { progress ->
-                            // A card redeemed in one transaction has no rounds to show.
-                            if (progress.estimatedRounds > 1) session.update { it.copy(redeemProgress = progress) }
-                        }
-                    )
+                    GiftCardPhase.Redeemed(giftCardDataSource.redeem(handle, address))
                 }
             } catch (_: TimeoutCancellationException) {
                 Twig.error { "The destination address of a gift card redemption did not arrive in time" }
@@ -489,7 +484,7 @@ class GiftCardRepositoryImpl(
         if (phase == null) {
             check(session, isQuiet = false)
         } else {
-            session.update { it.copy(phase = phase, redeemProgress = null) }
+            session.update { it.copy(phase = phase) }
         }
     }
 
@@ -628,9 +623,6 @@ class GiftCardRepositoryImpl(
             is GiftCardException.UnknownHandle -> GiftCardPhase.Failed(GiftCardFailure.LINK_UNAVAILABLE)
             is GiftCardException.InvalidLink -> GiftCardPhase.Failed(GiftCardFailure.INVALID_LINK)
             is GiftCardException.SubmitFailed -> GiftCardPhase.Failed(GiftCardFailure.REDEEM_FAILED)
-            is GiftCardException.TooManyNotes -> GiftCardPhase.Failed(GiftCardFailure.TOO_MANY_NOTES)
-            is GiftCardException.RoundFailed -> GiftCardPhase.Failed(GiftCardFailure.ROUND_FAILED)
-            is GiftCardException.RoundExpired -> GiftCardPhase.Failed(GiftCardFailure.ROUND_EXPIRED)
             is GiftCardException.NothingToRedeem -> GiftCardPhase.Empty()
             else -> GiftCardPhase.Failed(GiftCardFailure.CHECK_FAILED)
         }

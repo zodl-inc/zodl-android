@@ -11,8 +11,6 @@ import cash.z.ecc.android.sdk.model.GiftCardLinkError
 import cash.z.ecc.android.sdk.model.MemoContent
 import cash.z.ecc.android.sdk.model.PersistableWallet
 import cash.z.ecc.android.sdk.model.RecipientAddress
-import cash.z.ecc.android.sdk.model.TransactionId
-import cash.z.ecc.android.sdk.model.TransactionSizeBound
 import cash.z.ecc.android.sdk.model.TransactionSubmitResult
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
@@ -21,13 +19,10 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.GiftCardException
 import co.electriccoin.zcash.ui.common.model.GiftCardHandle
 import co.electriccoin.zcash.ui.common.model.GiftCardOrigin
-import co.electriccoin.zcash.ui.common.model.GiftCardRedeemProgress
 import co.electriccoin.zcash.ui.common.model.GiftCardRedemption
 import co.electriccoin.zcash.ui.common.model.GiftCardStatus
 import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
-import co.electriccoin.zcash.ui.common.provider.SignerCapabilities
-import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -62,7 +57,6 @@ import cash.z.ecc.android.sdk.model.GiftCardOrigin as SdkGiftCardOrigin
  * are closed exactly once and the card's key is wiped when it is closed.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-@Suppress("LargeClass")
 class GiftCardDataSourceImplTest {
     private val application =
         mockk<Application>(relaxed = true) {
@@ -79,13 +73,6 @@ class GiftCardDataSourceImplTest {
         }
 
     private val isTorEnabledStorageProvider = mockk<IsTorEnabledStorageProvider>()
-
-    private val sizeBound = TransactionSizeBound(maxShieldedActions = 42)
-
-    private val signerCapabilities =
-        mockk<SignerCapabilitiesProvider> {
-            coEvery { forSoftwareSigning() } returns SignerCapabilities(sizeBound)
-        }
 
     private val redeemer = mockk<GiftCardRedeemer>()
 
@@ -183,7 +170,7 @@ class GiftCardDataSourceImplTest {
         runTest {
             val dataSource = dataSource(this)
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery { redeemer.redeem(recipient, any(), any(), any(), any(), any()) } returns
+            coEvery { redeemer.redeem(recipient, any(), any()) } returns
                 GiftCardRedeemer.Redemption(
                     fee = Zatoshi(FEE),
                     results = listOf(TransactionSubmitResult.NotAttempted(TX_ID))
@@ -252,8 +239,7 @@ class GiftCardDataSourceImplTest {
             val balance =
                 GiftCardRedeemer.Balance(total = Zatoshi(300), spendable = Zatoshi(200), pending = Zatoshi(100))
 
-            coEvery { redeemer.check() } returns
-                GiftCardRedeemer.Status.Ready(balance, fee = Zatoshi(150), redeemable = Zatoshi(50))
+            coEvery { redeemer.check() } returns GiftCardRedeemer.Status.Ready(balance, fee = Zatoshi(150))
             assertEquals(
                 GiftCardStatus.Ready(spendable = Zatoshi(200), redeemable = Zatoshi(50)),
                 dataSource.check(handle)
@@ -310,7 +296,7 @@ class GiftCardDataSourceImplTest {
             val dataSource = dataSource(this)
             val handle = dataSource.parse(LINK).summary.handle
             val cause = IllegalStateException("no connection to the server")
-            coEvery { redeemer.redeem(recipient, any(), any(), any(), any(), any()) } throws cause
+            coEvery { redeemer.redeem(recipient, any(), any()) } throws cause
 
             val failure = assertFailsWith<GiftCardException.SubmitFailed> { dataSource.redeem(handle, ADDRESS) }
             assertSame(cause, failure.cause)
@@ -324,118 +310,11 @@ class GiftCardDataSourceImplTest {
         }
 
     @Test
-    fun redeemPassesTheSoftwareSigningBoundToTheSdk() =
-        runTest {
-            val dataSource = dataSource(this)
-            val handle = dataSource.parse(LINK).summary.handle
-            coEvery { redeemer.redeem(recipient, any(), any(), sizeBound, any(), any()) } returns
-                GiftCardRedeemer.Redemption(fee = Zatoshi(FEE), results = listOf(success(TX_ID)))
-
-            dataSource.redeem(handle, ADDRESS)
-
-            coVerify(exactly = 1) { redeemer.redeem(recipient, any(), any(), sizeBound, any(), any()) }
-        }
-
-    @Test
-    fun redeemReportsEachRoundWithTheRoundsTheRemainingNotesNeed() =
-        runTest {
-            val dataSource = dataSource(this)
-            val handle = dataSource.parse(LINK).summary.handle
-            coEvery { redeemer.redeem(recipient, any(), any(), any(), any(), any()) } coAnswers {
-                val onProgress = arg<suspend (GiftCardRedeemer.RedeemProgress) -> Unit>(5)
-                onProgress(
-                    GiftCardRedeemer.RedeemProgress(
-                        round = 1,
-                        txIds = emptyList(),
-                        remainder = GiftCardRedeemer.Remainder(Zatoshi(1), noteCount = 85)
-                    )
-                )
-                GiftCardRedeemer.Redemption(fee = Zatoshi(FEE), results = listOf(success(TX_ID)))
-            }
-            val reported = mutableListOf<GiftCardRedeemProgress>()
-
-            dataSource.redeem(handle, ADDRESS) { reported += it }
-
-            // 85 notes left at 42 actions per round: 3 more rounds after the first
-            assertEquals(listOf(GiftCardRedeemProgress(round = 1, estimatedRounds = 4)), reported)
-        }
-
-    @Test
-    fun aCardOverTheBoundFailsTypedAndKeepsItsRedeemer() =
-        runTest {
-            val dataSource = dataSource(this)
-            val handle = dataSource.parse(LINK).summary.handle
-            val cause = SdkGiftCardException.TooManyNotes()
-            coEvery { redeemer.redeem(recipient, any(), any(), any(), any(), any()) } throws cause
-
-            val failure = assertFailsWith<GiftCardException.TooManyNotes> { dataSource.redeem(handle, ADDRESS) }
-            advanceUntilIdle()
-
-            assertSame(cause, failure.cause)
-            coVerify(exactly = 0) { redeemer.close() }
-            assertEquals(1, newRedeemerCalls)
-        }
-
-    @Test
-    fun aCardOverTheBoundAfterEarlierRoundsStartsOverWithAFreshRedeemer() =
-        runTest {
-            val dataSource = dataSource(this)
-            val handle = dataSource.parse(LINK).summary.handle
-            coEvery { redeemer.redeem(recipient, any(), any(), any(), any(), any()) } throws
-                SdkGiftCardException.TooManyNotes(sentTxIds = listOf(TransactionId.new(ByteArray(32))))
-
-            assertFailsWith<GiftCardException.TooManyNotes> { dataSource.redeem(handle, ADDRESS) }
-            advanceUntilIdle()
-
-            coVerify(exactly = 1) { redeemer.close() }
-            assertEquals(2, newRedeemerCalls)
-        }
-
-    @Test
-    fun aRoundTheNetworkDidNotAcceptFailsTypedWithItsRoundAndStartsOver() =
-        runTest {
-            val dataSource = dataSource(this)
-            val handle = dataSource.parse(LINK).summary.handle
-            val redemption =
-                GiftCardRedeemer.Redemption(
-                    fee = Zatoshi(FEE),
-                    results = listOf(TransactionSubmitResult.NotAttempted(TX_ID))
-                )
-            coEvery { redeemer.redeem(recipient, any(), any(), any(), any(), any()) } throws
-                SdkGiftCardException.RoundFailed(round = 2, redemption = redemption)
-
-            val failure = assertFailsWith<GiftCardException.RoundFailed> { dataSource.redeem(handle, ADDRESS) }
-            advanceUntilIdle()
-
-            assertEquals(2, failure.round)
-            coVerify(exactly = 1) { redeemer.close() }
-            assertEquals(2, newRedeemerCalls)
-        }
-
-    @Test
-    fun aRoundNotMinedInTimeFailsTypedWithItsRoundAndStartsOver() =
-        runTest {
-            val dataSource = dataSource(this)
-            val handle = dataSource.parse(LINK).summary.handle
-            coEvery { redeemer.redeem(recipient, any(), any(), any(), any(), any()) } throws
-                SdkGiftCardException.RoundExpired(round = 3, txIds = emptyList())
-
-            val failure = assertFailsWith<GiftCardException.RoundExpired> { dataSource.redeem(handle, ADDRESS) }
-            advanceUntilIdle()
-
-            assertEquals(3, failure.round)
-            coVerify(exactly = 1) { redeemer.close() }
-            assertEquals(2, newRedeemerCalls)
-        }
-
-    @Test
     fun aCancellationFromInsideTheRedeemerAlsoStartsOver() =
         runTest {
             val dataSource = dataSource(this)
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery {
-                redeemer.redeem(recipient, any(), any(), any(), any(), any())
-            } throws CancellationException("foreign")
+            coEvery { redeemer.redeem(recipient, any(), any()) } throws CancellationException("foreign")
 
             assertFailsWith<GiftCardException.SubmitFailed> { dataSource.redeem(handle, ADDRESS) }
             advanceUntilIdle()
@@ -449,9 +328,7 @@ class GiftCardDataSourceImplTest {
         runTest {
             val dataSource = dataSource(this)
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery {
-                redeemer.redeem(recipient, any(), any(), any(), any(), any())
-            } throws IllegalStateException("submit")
+            coEvery { redeemer.redeem(recipient, any(), any()) } throws IllegalStateException("submit")
             coEvery { isTorEnabledStorageProvider.get() } throws IllegalStateException("preferences")
 
             assertFailsWith<GiftCardException.SubmitFailed> { dataSource.redeem(handle, ADDRESS) }
@@ -467,9 +344,7 @@ class GiftCardDataSourceImplTest {
         runTest {
             val dataSource = dataSource(this)
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery {
-                redeemer.redeem(recipient, any(), any(), any(), any(), any())
-            } throws IllegalStateException("submit")
+            coEvery { redeemer.redeem(recipient, any(), any()) } throws IllegalStateException("submit")
             coEvery { isTorEnabledStorageProvider.get() } throws CancellationException("cancelled")
 
             assertFailsWith<CancellationException> { dataSource.redeem(handle, ADDRESS) }
@@ -502,9 +377,7 @@ class GiftCardDataSourceImplTest {
         runTest {
             val dataSource = dataSource()
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery {
-                redeemer.redeem(recipient, any(), any(), any(), any(), any())
-            } throws SdkGiftCardException.NotChecked()
+            coEvery { redeemer.redeem(recipient, any(), any()) } throws SdkGiftCardException.NotChecked()
 
             assertFailsWith<GiftCardException.NotChecked> { dataSource.redeem(handle, ADDRESS) }
         }
@@ -514,9 +387,7 @@ class GiftCardDataSourceImplTest {
         runTest {
             val dataSource = dataSource()
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery {
-                redeemer.redeem(recipient, any(), any(), any(), any(), any())
-            } throws SdkGiftCardException.InUse()
+            coEvery { redeemer.redeem(recipient, any(), any()) } throws SdkGiftCardException.InUse()
 
             assertFailsWith<GiftCardException.InUse> { dataSource.redeem(handle, ADDRESS) }
         }
@@ -526,9 +397,7 @@ class GiftCardDataSourceImplTest {
         runTest {
             val dataSource = dataSource()
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery {
-                redeemer.redeem(recipient, any(), any(), any(), any(), any())
-            } throws SdkGiftCardException.NothingToRedeem()
+            coEvery { redeemer.redeem(recipient, any(), any()) } throws SdkGiftCardException.NothingToRedeem()
 
             assertFailsWith<GiftCardException.NothingToRedeem> { dataSource.redeem(handle, ADDRESS) }
         }
@@ -547,7 +416,7 @@ class GiftCardDataSourceImplTest {
         runTest {
             val dataSource = dataSource(this)
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery { redeemer.redeem(recipient, any(), any(), any(), any(), any()) } returns
+            coEvery { redeemer.redeem(recipient, any(), any()) } returns
                 GiftCardRedeemer.Redemption(fee = Zatoshi(FEE), results = listOf(success(TX_ID)))
 
             assertEquals(success(TX_ID).txIdString(), dataSource.redeem(handle, ADDRESS).txId)
@@ -559,7 +428,7 @@ class GiftCardDataSourceImplTest {
         runTest {
             val dataSource = dataSource(this)
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery { redeemer.redeem(recipient, any(), mainSynchronizer, any(), any(), any()) } returns
+            coEvery { redeemer.redeem(recipient, any(), mainSynchronizer) } returns
                 GiftCardRedeemer.Redemption(
                     fee = Zatoshi(FEE),
                     results = listOf(success(TX_ID)),
@@ -567,7 +436,7 @@ class GiftCardDataSourceImplTest {
                 )
 
             assertEquals(success(TX_ID).txIdString(), dataSource.redeem(handle, ADDRESS).txId)
-            coVerify(exactly = 1) { redeemer.redeem(recipient, any(), mainSynchronizer, any(), any(), any()) }
+            coVerify(exactly = 1) { redeemer.redeem(recipient, any(), mainSynchronizer) }
         }
 
     @Test
@@ -575,7 +444,7 @@ class GiftCardDataSourceImplTest {
         runTest {
             val dataSource = dataSource(this)
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery { redeemer.redeem(recipient, any(), mainSynchronizer, any(), any(), any()) } returns
+            coEvery { redeemer.redeem(recipient, any(), mainSynchronizer) } returns
                 GiftCardRedeemer.Redemption(
                     fee = Zatoshi(FEE),
                     results = listOf(success(TX_ID)),
@@ -593,9 +462,7 @@ class GiftCardDataSourceImplTest {
         runTest {
             val dataSource = dataSource()
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery {
-                redeemer.redeem(recipient, any(), any(), any(), any(), any())
-            } throws SdkGiftCardException.NetworkMismatch()
+            coEvery { redeemer.redeem(recipient, any(), any()) } throws SdkGiftCardException.NetworkMismatch()
 
             assertFailsWith<GiftCardException.WrongNetwork> { dataSource.redeem(handle, ADDRESS) }
         }
@@ -635,7 +502,7 @@ class GiftCardDataSourceImplTest {
         val dataSource = dataSource(this)
         val handle = dataSource.parse(LINK).summary.handle
         val memo = slot<MemoContent?>()
-        coEvery { redeemer.redeem(recipient, captureNullable(memo), any(), any(), any(), any()) } returns
+        coEvery { redeemer.redeem(recipient, captureNullable(memo), any()) } returns
             GiftCardRedeemer.Redemption(fee = Zatoshi(FEE), results = listOf(success(TX_ID)))
 
         dataSource.redeem(handle, ADDRESS)
@@ -648,7 +515,7 @@ class GiftCardDataSourceImplTest {
         runTest {
             val dataSource = dataSource(this)
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery { redeemer.redeem(recipient, any(), any(), any(), any(), any()) } returns
+            coEvery { redeemer.redeem(recipient, any(), any()) } returns
                 GiftCardRedeemer.Redemption(
                     fee = Zatoshi(FEE),
                     results = listOf(TransactionSubmitResult.NotAttempted(TX_ID))
@@ -684,7 +551,7 @@ class GiftCardDataSourceImplTest {
         runTest {
             val dataSource = dataSource(this)
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery { redeemer.redeem(recipient, any(), any(), any(), any(), any()) } returns
+            coEvery { redeemer.redeem(recipient, any(), any()) } returns
                 GiftCardRedeemer.Redemption(
                     fee = Zatoshi(FEE),
                     results = listOf(TransactionSubmitResult.NotAttempted(TX_ID))
@@ -701,7 +568,7 @@ class GiftCardDataSourceImplTest {
         runTest {
             val dataSource = dataSource(this)
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery { redeemer.redeem(recipient, any(), any(), any(), any(), any()) } returns
+            coEvery { redeemer.redeem(recipient, any(), any()) } returns
                 GiftCardRedeemer.Redemption(fee = Zatoshi(FEE), results = emptyList())
 
             assertFailsWith<GiftCardException.SubmitFailed> { dataSource.redeem(handle, ADDRESS) }
@@ -715,7 +582,7 @@ class GiftCardDataSourceImplTest {
         runTest {
             val dataSource = dataSource(this)
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery { redeemer.redeem(recipient, any(), any(), any(), any(), any()) } returns
+            coEvery { redeemer.redeem(recipient, any(), any()) } returns
                 GiftCardRedeemer.Redemption(
                     fee = Zatoshi(FEE),
                     results = listOf(success(TX_ID)),
@@ -797,7 +664,7 @@ class GiftCardDataSourceImplTest {
             val dataSource = dataSource()
             val handle = dataSource.parse(LINK).summary.handle
             val cause = SdkGiftCardException.Closed()
-            coEvery { redeemer.redeem(recipient, any(), any(), any(), any(), any()) } throws cause
+            coEvery { redeemer.redeem(recipient, any(), any()) } throws cause
 
             val e = assertFailsWith<GiftCardException.UnknownHandle> { dataSource.redeem(handle, ADDRESS) }
 
@@ -809,7 +676,7 @@ class GiftCardDataSourceImplTest {
         runTest {
             val dataSource = dataSource(this)
             val handle = dataSource.parse(LINK).summary.handle
-            coEvery { redeemer.redeem(recipient, any(), any(), any(), any(), any()) } answers {
+            coEvery { redeemer.redeem(recipient, any(), any()) } answers {
                 dataSource.close(handle)
                 GiftCardRedeemer.Redemption(
                     fee = Zatoshi(FEE),
@@ -834,7 +701,7 @@ class GiftCardDataSourceImplTest {
                 delay(CLOSE_DURATION_MS)
                 events += "closed"
             }
-            coEvery { replacementRedeemer.redeem(recipient, any(), any(), any(), any(), any()) } coAnswers {
+            coEvery { replacementRedeemer.redeem(recipient, any(), any()) } coAnswers {
                 events += "redeemed"
                 GiftCardRedeemer.Redemption(fee = Zatoshi(FEE), results = listOf(success(TX_ID)))
             }
@@ -888,7 +755,6 @@ class GiftCardDataSourceImplTest {
             persistableWalletProvider = persistableWalletProvider,
             synchronizerProvider = synchronizerProvider,
             isTorEnabledStorageProvider = isTorEnabledStorageProvider,
-            signerCapabilitiesProvider = signerCapabilities,
         ).also { dataSource -> scope?.let { dataSource.scope = it } }
 
     private fun wallet(network: ZcashNetwork) =

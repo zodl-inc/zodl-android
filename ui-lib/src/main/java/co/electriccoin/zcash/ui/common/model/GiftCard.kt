@@ -130,42 +130,7 @@ sealed class GiftCardException(
     class SubmitFailed(
         cause: Throwable? = null
     ) : GiftCardException("Gift card redemption was not submitted", cause)
-
-    /**
-     * The card holds more notes than one transaction can spend within the size bound of this device, and redeeming it
-     * in several transactions is not available. Nothing was sent.
-     */
-    class TooManyNotes(
-        cause: Throwable? = null
-    ) : GiftCardException("Gift card holds too many notes to redeem at once", cause)
-
-    /**
-     * A round of a redemption in several transactions was not accepted by the network. The rounds before it stand, and
-     * the card has been reset: redeeming it again, once the round's transactions expire, sends the rest.
-     */
-    class RoundFailed(
-        val round: Int,
-        cause: Throwable? = null
-    ) : GiftCardException("Round $round of the gift card redemption was not accepted", cause)
-
-    /**
-     * A round of a redemption in several transactions was not mined in time. The rounds before it stand, and the card
-     * has been reset: redeeming it again sends the rest.
-     */
-    class RoundExpired(
-        val round: Int,
-        cause: Throwable? = null
-    ) : GiftCardException("Round $round of the gift card redemption was not mined in time", cause)
 }
-
-/**
- * How far a redemption in several rounds has come: [round] was accepted by the network, of about [estimatedRounds].
- * The total is an estimate from the notes the card still holds, which later rounds can only lower.
- */
-data class GiftCardRedeemProgress(
-    val round: Int,
-    val estimatedRounds: Int
-)
 
 /**
  * A successful redemption.
@@ -187,9 +152,7 @@ data class GiftCardRedemption(
  */
 data class GiftCardSession(
     val summary: GiftCardSummary?,
-    val phase: GiftCardPhase,
-    /** While [phase] is [GiftCardPhase.Redeeming] in several rounds: the last round accepted; otherwise null. */
-    val redeemProgress: GiftCardRedeemProgress? = null
+    val phase: GiftCardPhase
 )
 
 /**
@@ -264,14 +227,5 @@ enum class GiftCardFailure(
     CHECK_FAILED(isRetryable = true),
 
     /** The redemption failed; it is retried through a fresh check. */
-    REDEEM_FAILED(isRetryable = true),
-
-    /** The card holds more notes than one transaction can spend on this device; nothing was sent. */
-    TOO_MANY_NOTES(isRetryable = false),
-
-    /** A round of a redemption in several rounds was not accepted; checking the card again shows what is left. */
-    ROUND_FAILED(isRetryable = true),
-
-    /** A round of a redemption in several rounds was not mined in time; checking the card again shows what is left. */
-    ROUND_EXPIRED(isRetryable = true)
+    REDEEM_FAILED(isRetryable = true)
 }

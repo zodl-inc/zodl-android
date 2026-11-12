@@ -119,7 +119,7 @@ class RedeemGiftVM(
             }
 
             GiftCardPhase.Redeeming -> {
-                RedeemGiftState.redeeming(session.redeemProgress)
+                RedeemGiftState.redeeming()
             }
 
             is GiftCardPhase.Redeemed -> {
@@ -153,17 +153,8 @@ class RedeemGiftVM(
                 retryableStatus(R.string.redeemGift_checkFailed_title, R.string.redeemGift_checkFailed_subtitle)
             }
 
-            GiftCardFailure.REDEEM_FAILED,
-            GiftCardFailure.ROUND_FAILED,
-            GiftCardFailure.ROUND_EXPIRED -> {
+            GiftCardFailure.REDEEM_FAILED -> {
                 retryableStatus(R.string.redeemGift_failure_title, R.string.redeemGift_failure_subtitle)
-            }
-
-            GiftCardFailure.TOO_MANY_NOTES -> {
-                errorStatus(
-                    co.electriccoin.zcash.ui.design.R.string.general_maxTooManyNotesTitle,
-                    co.electriccoin.zcash.ui.design.R.string.general_maxTooManyNotesBody
-                )
             }
         }
 
