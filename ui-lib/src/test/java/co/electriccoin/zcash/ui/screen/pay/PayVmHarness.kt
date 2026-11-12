@@ -221,7 +221,7 @@ internal class PayVmHarness(
     fun makeQuoteHang(): CompletableDeferred<Unit> {
         val gate = CompletableDeferred<Unit>()
         coEvery {
-            requestSwapQuote.requestExactOutput(any(), any(), any(), any(), any(), any(), any())
+            requestSwapQuote.requestExactOutput(any(), any(), any(), any(), any(), any(), any(), any())
         } coAnswers {
             gate.await()
             null

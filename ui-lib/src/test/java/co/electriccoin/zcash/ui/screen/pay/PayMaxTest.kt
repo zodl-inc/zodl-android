@@ -20,9 +20,9 @@ class PayMaxTest {
 
     @Test
     fun tokenAmountIsFlooredNotRounded() {
-        // 1.23456789 * 30 / 11 = 3.367003336...
+        // 1.23456789 * (1 - 0.0067) * 30 / 11 = 3.344444414010...
         assertEquals(
-            BigDecimal("3.36700333"),
+            BigDecimal("3.34444441"),
             PayMax.tokenAmount(BigDecimal("1.23456789"), BigDecimal("30"), BigDecimal("11"))
         )
     }
@@ -42,9 +42,9 @@ class PayMaxTest {
 
     @Test
     fun zecEquivalentIsFlooredToAZatoshi() {
-        // 3.35225338 * 11 / 30 = 1.22916...; floored to zatoshi
+        // 3.35225338 * 11 / 30 / (1 - 0.0067); floored to zatoshi
         assertEquals(
-            122_915_957L,
+            123_745_049L,
             PayMax.zecEquivalentZatoshi(BigDecimal("3.35225338"), BigDecimal("30"), BigDecimal("11"))
         )
     }

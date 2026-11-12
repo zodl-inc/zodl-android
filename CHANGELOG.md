@@ -32,7 +32,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   clears the amount and focuses the field.
 - [MOB-1988] Pay Max: a Max chip next to the Pay amount fills in the largest token amount the selected account can
   pay, converted from its spendable ZEC (net of the network fees) through the USD prices and floored to 8 decimals,
-  with the USD amount following from it. It does not request a quote and is not updated when the balance or the
+  with the USD amount following from it. The fill leaves out the 0.67 percent app fee, and at Review the amount is quoted again, up to
+  twice, aiming 0.3 percent below what is spendable, so a quote comes back far more often (about 0.3 percent of the
+  balance stays unspent). It does not request a quote and is not updated when the balance or the
   prices change later; it is unavailable while a quote is being requested or without both prices.
   When Max is unavailable a hint above the Review button says why: only transparent funds (with a Shield button; this
   wins over the other hint) or funds still confirming, and none while the address is empty. A failed Max shows an

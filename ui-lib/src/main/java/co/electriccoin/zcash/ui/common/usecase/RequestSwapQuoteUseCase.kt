@@ -73,12 +73,14 @@ class RequestSwapQuoteUseCase(
     }
 
     /**
-     * @param reviseAmount called once with the first successful quote, before its proposal is created. A non-null
-     * result is a new [amount] to quote instead (Pay's Max, whose fill the provider fee pushes past what is
-     * spendable): the quote is requested again, once, for it and that quote proceeds as usual.
-     * @param isRevisedQuoteAcceptable called with the re-quoted successful quote, only after a revision. If it returns
-     * false the request stops there: the quote is cleared, no proposal is created and nothing is navigated to (the
-     * caller has already told the user why).
+     * @param reviseAmount called with each successful quote, before its proposal is created. A non-null result is a
+     * new [amount] to quote instead (Pay's Max, whose fill the provider fee pushes past what is spendable): the quote
+     * is requested again for it, up to [maxRevisions] times. A null result keeps the quote, which proceeds as usual.
+     * @param isRevisedQuoteAcceptable called with the last re-quoted successful quote, only after a revision. If it
+     * returns false the request stops there: the quote is cleared, no proposal is created and nothing is navigated to
+     * (the caller has already told the user why).
+     * @param maxRevisions how many times the amount may be revised; the quote after the last one is only checked by
+     * [isRevisedQuoteAcceptable]
      */
     suspend fun requestExactOutput(
         amount: BigDecimal,
@@ -87,7 +89,8 @@ class RequestSwapQuoteUseCase(
         slippage: BigDecimal,
         canNavigateToSwapQuote: () -> Boolean,
         reviseAmount: suspend (SwapQuote) -> BigDecimal? = { null },
-        isRevisedQuoteAcceptable: suspend (SwapQuote) -> Boolean = { true }
+        isRevisedQuoteAcceptable: suspend (SwapQuote) -> Boolean = { true },
+        maxRevisions: Int = 1
     ): TooManyNotesOutcome? {
         val newAddress = accountDataSource.requestNextShieldedAddress()
         var requestedAmount = amount
@@ -104,7 +107,8 @@ class RequestSwapQuoteUseCase(
             createProposal = true,
             canNavigateToSwapQuote = canNavigateToSwapQuote,
             reviseQuote = { quote -> reviseAmount(quote)?.also { requestedAmount = it } != null },
-            isRevisedQuoteAcceptable = isRevisedQuoteAcceptable
+            isRevisedQuoteAcceptable = isRevisedQuoteAcceptable,
+            maxRevisions = maxRevisions
         )
     }
 
@@ -138,21 +142,16 @@ class RequestSwapQuoteUseCase(
         createProposal: Boolean,
         canNavigateToSwapQuote: () -> Boolean,
         reviseQuote: suspend (SwapQuote) -> Boolean = { false },
-        isRevisedQuoteAcceptable: suspend (SwapQuote) -> Boolean = { true }
+        isRevisedQuoteAcceptable: suspend (SwapQuote) -> Boolean = { true },
+        maxRevisions: Int = 1
     ): TooManyNotesOutcome? =
         withContext(Dispatchers.Default) {
             requestQuote()
 
-            var result = swapRepository.quote.first { it !in listOf(null, SwapQuoteData.Loading) }
-            if (result is SwapQuoteData.Success && reviseQuote(result.quote)) {
-                // Once only: the revised quote is not offered for another revision
+            val (result, revisions) = reviseWhileOver(requestQuote, reviseQuote, maxRevisions)
+            if (revisions > 0 && result is SwapQuoteData.Success && !isRevisedQuoteAcceptable(result.quote)) {
                 swapRepository.clearQuote()
-                requestQuote()
-                result = swapRepository.quote.first { it !in listOf(null, SwapQuoteData.Loading) }
-                if (result is SwapQuoteData.Success && !isRevisedQuoteAcceptable(result.quote)) {
-                    swapRepository.clearQuote()
-                    return@withContext null
-                }
+                return@withContext null
             }
 
             val mismatchArgs = (result as? SwapQuoteData.Error)?.toMismatchArgs()
@@ -201,6 +200,28 @@ class RequestSwapQuoteUseCase(
             }
             null
         }
+
+    /**
+     * The first quote, then, while [reviseQuote] asks for a new amount and fewer than [maxRevisions] revisions were
+     * made, the quote for the revised amount. The quote after the last allowed revision is not offered for another one.
+     *
+     * @return the last quote result and the number of revisions made
+     */
+    private suspend fun reviseWhileOver(
+        requestQuote: suspend () -> Unit,
+        reviseQuote: suspend (SwapQuote) -> Boolean,
+        maxRevisions: Int
+    ): Pair<SwapQuoteData?, Int> {
+        var result = swapRepository.quote.first { it !in listOf(null, SwapQuoteData.Loading) }
+        var revisions = 0
+        while (result is SwapQuoteData.Success && revisions < maxRevisions && reviseQuote(result.quote)) {
+            revisions++
+            swapRepository.clearQuote()
+            requestQuote()
+            result = swapRepository.quote.first { it !in listOf(null, SwapQuoteData.Loading) }
+        }
+        return result to revisions
+    }
 
     /**
      * Spends from the selected account, so an account that cannot spend is refused before anything

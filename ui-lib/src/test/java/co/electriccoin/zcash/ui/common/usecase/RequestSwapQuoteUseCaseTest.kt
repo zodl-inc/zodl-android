@@ -319,6 +319,65 @@ class RequestSwapQuoteUseCaseTest {
         }
 
     @Test
+    fun exactOutputIsRevisedAgainUntilTheQuoteIsKeptOrTheLimitIsReached() =
+        runBlocking {
+            val amounts = ArrayDeque(listOf(BigDecimal("0.9"), BigDecimal("0.8"), null))
+            val checked = mutableListOf<SwapQuote>()
+            useCase(exactOutputQuote(), zodl())
+                .requestExactOutput(
+                    amount = BigDecimal("1"),
+                    address = "destination",
+                    selectedAsset = btc,
+                    slippage = BigDecimal("2"),
+                    canNavigateToSwapQuote = { true },
+                    reviseAmount = { amounts.removeFirst() },
+                    isRevisedQuoteAcceptable = {
+                        checked += it
+                        true
+                    },
+                    maxRevisions = 3
+                )
+
+            // 1.0 -> revised to 0.9 -> revised to 0.8 -> kept: three requests, the kept quote proceeds
+            verify(exactly = 1) { swapRepository.requestExactOutputQuote(BigDecimal("1"), any(), any(), any(), any()) }
+            verify(exactly = 1) {
+                swapRepository.requestExactOutputQuote(BigDecimal("0.9"), any(), any(), any(), any())
+            }
+            verify(exactly = 1) {
+                swapRepository.requestExactOutputQuote(BigDecimal("0.8"), any(), any(), any(), any())
+            }
+            assertEquals(1, checked.size)
+            coVerify(exactly = 1) { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) }
+            assertForwardedToQuote()
+        }
+
+    @Test
+    fun exactOutputNeverRevisesMoreOftenThanAllowedAndChecksTheLastQuote() =
+        runBlocking {
+            var revisions = 0
+            val checked = mutableListOf<SwapQuote>()
+            useCase(exactOutputQuote(), zodl())
+                .requestExactOutput(
+                    amount = BigDecimal("1"),
+                    address = "destination",
+                    selectedAsset = btc,
+                    slippage = BigDecimal("2"),
+                    canNavigateToSwapQuote = { true },
+                    reviseAmount = { BigDecimal("0.9").subtract(BigDecimal(revisions++).movePointLeft(1)) },
+                    isRevisedQuoteAcceptable = {
+                        checked += it
+                        false
+                    },
+                    maxRevisions = 2
+                )
+
+            assertEquals(2, revisions)
+            assertEquals(1, checked.size)
+            coVerify(exactly = 0) { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) }
+            verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
+        }
+
+    @Test
     fun exactOutputKeptAmountNeverChecksTheRevisionAcceptance() =
         runBlocking {
             var checks = 0

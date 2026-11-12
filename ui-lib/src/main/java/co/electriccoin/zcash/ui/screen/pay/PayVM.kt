@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.ext.toZecExact
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.MaxSendAmountFailure
@@ -349,9 +350,9 @@ internal class PayVM(
     /**
      * Review of a Max fill (the quote only exists now): the quote's `amountIn` includes the provider fee, so the fill
      * the form showed can need more ZEC than is spendable and the proposal would fail. If `amountIn` is above the
-     * [maxCap], the token amount is scaled by the provider's own ratio `cap / amountIn` (floored to 8 decimals in the
-     * token), which does not depend on the app's USD prices. The use case then requests the quote once more for it,
-     * so there is at most one revision per Max intent per Review; [isRevisedQuoteWithinCap] checks that second quote.
+     * [maxCap], the token amount is sized by [MaxQuoteSizing] to land [MaxQuoteSizing]'s margin below the cap, using
+     * the quotes of this Review so far ([history]). The use case then requests the quote again, up to
+     * [MaxQuoteSizing.MAX_REVISIONS] times; [isRevisedQuoteWithinCap] checks the last one.
      *
      * The ceiling the refreshes honor afterwards is the ZEC equivalent of the revised token amount as the form now
      * shows it ([PayMax.zecEquivalentZatoshi]), so a later refresh never puts the amount above it.
@@ -359,7 +360,11 @@ internal class PayVM(
      * @param requested the token amount the quote was requested for
      * @return [MaxRevision.Revised] with the token amount to quote instead, or [MaxRevision.None] to keep the quote
      */
-    private fun reviseMaxAmount(quote: SwapQuote, requested: BigDecimal): MaxRevision {
+    private fun reviseMaxAmount(
+        quote: SwapQuote,
+        requested: BigDecimal,
+        history: MutableList<MaxQuotePoint>
+    ): MaxRevision {
         val baseline = maxAmountRequester.activeBaseline.value
         val reserve = maxAmountRequester.activeReserve.value
         val spendable = selectedAccount.value?.spendability?.shieldedSpendableOrNull()
@@ -370,15 +375,18 @@ internal class PayVM(
                 maxCap(baseline, reserve, spendable)
             }
         val capDecimal = cap?.let { BigDecimal(it.value) }
+        if (cap != null && capDecimal != null) {
+            // Only the cost relative to the cap is logged: no amount, address or asset
+            Twig.info {
+                "Pay Max quote ${history.size + 1}: cost/cap " +
+                    quote.amountIn.divide(capDecimal, COST_LOG_SCALE, java.math.RoundingMode.HALF_UP).toPlainString()
+            }
+        }
         return if (cap == null || capDecimal == null || quote.amountIn <= capDecimal) {
             MaxRevision.None
         } else {
-            val ratio = capDecimal.divide(quote.amountIn, MathContext.DECIMAL128)
-            val token =
-                requested
-                    .multiply(ratio, MathContext.DECIMAL128)
-                    .floorToScale(PayMax.TOKEN_SCALE)
-                    .takeIf { it > BigDecimal.ZERO }
+            history += MaxQuotePoint(token = requested, zecIn = quote.amountIn)
+            val token = MaxQuoteSizing.nextToken(history, capDecimal)
             val ceilingValue = token?.let { zecEquivalentOf(it) }
             if (token != null && ceilingValue != null && applyToken(token)) {
                 reviewCeiling = Zatoshi(minOf(ceilingValue, cap.value))
@@ -390,7 +398,7 @@ internal class PayVM(
     }
 
     /**
-     * The check on the one re-quote after [reviseMaxAmount]: a provider fee with a fixed component, or a price move,
+     * The check on the last re-quote after [reviseMaxAmount]: a provider fee with a fixed component, or a price move,
      * can leave the revised quote's `amountIn` above the cap again. Then the Review stops here with the Max failure
      * line and no proposal is created; the Max intent ends, and the user taps Max again.
      */
@@ -576,6 +584,8 @@ internal class PayVM(
                 return@launch
             }
             var revision: MaxRevision = MaxRevision.None
+            val quoteHistory = mutableListOf<MaxQuotePoint>()
+            var requested = amount
             internalState.update { it.copy(isRequestingQuote = true) }
             val tooManyNotes =
                 requestSwapQuote.requestExactOutput(
@@ -585,10 +595,11 @@ internal class PayVM(
                     slippage = slippage,
                     canNavigateToSwapQuote = { !isCancelStateVisible.value },
                     reviseAmount = { quote ->
-                        revision = reviseMaxAmount(quote, amount)
-                        (revision as? MaxRevision.Revised)?.token
+                        revision = reviseMaxAmount(quote, requested, quoteHistory)
+                        (revision as? MaxRevision.Revised)?.token?.also { requested = it }
                     },
-                    isRevisedQuoteAcceptable = { quote -> isRevisedQuoteWithinCap(quote, revision) }
+                    isRevisedQuoteAcceptable = { quote -> isRevisedQuoteWithinCap(quote, revision) },
+                    maxRevisions = MaxQuoteSizing.MAX_REVISIONS
                 )
             internalState.update { it.copy(isRequestingQuote = false) }
             if (tooManyNotes == TooManyNotesOutcome.OK) onTooManyNotesOk()
@@ -692,3 +703,6 @@ internal data class InternalStateImpl(
     override val isEphemeralAddressLocked: Boolean,
     override val maxFeedback: MaxFeedback? = null,
 ) : InternalState
+
+/** Decimals of the cost/cap ratio in the Max quote log. */
+private const val COST_LOG_SCALE = 4

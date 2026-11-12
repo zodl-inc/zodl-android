@@ -146,7 +146,7 @@ class PayVMTest {
             )
 
             coEvery {
-                harness.requestSwapQuote.requestExactOutput(any(), any(), any(), any(), any(), any(), any())
+                harness.requestSwapQuote.requestExactOutput(any(), any(), any(), any(), any(), any(), any(), any())
             } returns TooManyNotesOutcome.OK
             harness.onRequestSwapQuoteClick(BigDecimal("25"), BigDecimal("50"), "destination-address")
 
@@ -165,7 +165,7 @@ class PayVMTest {
                 harness.vm.amountFocusRequests.collect { focusRequests += it }
             }
             coEvery {
-                harness.requestSwapQuote.requestExactOutput(any(), any(), any(), any(), any(), any(), any())
+                harness.requestSwapQuote.requestExactOutput(any(), any(), any(), any(), any(), any(), any(), any())
             } returns TooManyNotesOutcome.DISMISSED
             harness.onTextFieldChange(
                 NumberTextFieldInnerState.fromAmount(BigDecimal("25")),
@@ -207,7 +207,8 @@ class PayVMTest {
                     slippage = BigDecimal("2"),
                     canNavigateToSwapQuote = any(),
                     reviseAmount = any(),
-                    isRevisedQuoteAcceptable = any()
+                    isRevisedQuoteAcceptable = any(),
+                    maxRevisions = any()
                 )
             }
         }
@@ -224,7 +225,7 @@ class PayVMTest {
 
             assertNull(harness.capturedState.asset)
             coVerify(exactly = 0) {
-                harness.requestSwapQuote.requestExactOutput(any(), any(), any(), any(), any(), any(), any())
+                harness.requestSwapQuote.requestExactOutput(any(), any(), any(), any(), any(), any(), any(), any())
             }
         }
 
@@ -251,7 +252,7 @@ class PayVMTest {
             harness.onRequestSwapQuoteClick(BigDecimal("1"), BigDecimal("100"), "destination-address")
 
             coVerify(exactly = 0) {
-                harness.requestSwapQuote.requestExactOutput(any(), any(), any(), any(), any(), any(), any())
+                harness.requestSwapQuote.requestExactOutput(any(), any(), any(), any(), any(), any(), any(), any())
             }
             assertEquals(false, harness.capturedState.isRequestingQuote)
         }

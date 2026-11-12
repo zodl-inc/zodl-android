@@ -44,6 +44,8 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+private val NET_OF_APP_FEE = BigDecimal("0.9933")
+
 /** [PayVM] Max: fills the token amount with what the account can spend, converted through USD and floored. */
 @Suppress("LargeClass")
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -62,7 +64,7 @@ class PayVMMaxTest {
 
     // 1.23456789 ZEC at $30 into a $11 token is 3.367003336..., so flooring (3.36700333) differs from rounding.
     private val maxZatoshi = Zatoshi(123_456_789L)
-    private val expectedToken = BigDecimal("3.36700333")
+    private val expectedToken = BigDecimal("3.34444441")
 
     @Test
     fun maxFillsFlooredTokenAmountAndMirrorsFiatFromIt() =
@@ -105,7 +107,8 @@ class PayVMMaxTest {
     @Test
     fun maxWritesTokenAmountWithoutGroupingSeparators() =
         runTest {
-            // 2,000,000 ZEC at $30 into a $1 token is 60,000,000 (the account holds the fee and buffer on top).
+            // 2,000,000 ZEC net of the 0.67 percent app fee at $30 into a $1 token is 59,598,000 (the account holds
+            // the fee and buffer on top).
             val harness =
                 maxHarness(
                     max = Zatoshi(200_000_000_000_000L),
@@ -117,7 +120,7 @@ class PayVMMaxTest {
             harness.onMaxClick()
 
             assertEquals(
-                stringResByDynamicNumber(BigDecimal("60000000.00000000"), includeGroupingSeparator = false),
+                stringResByDynamicNumber(BigDecimal("59598000.00000000"), includeGroupingSeparator = false),
                 harness.capturedState.amount.innerTextFieldState.value
             )
         }
@@ -270,6 +273,7 @@ class PayVMMaxTest {
     private fun tokenFor(zatoshi: Long, zecPrice: String = "30", tokenPrice: String = "11") =
         Zatoshi(zatoshi)
             .toZecExact()
+            .multiply(NET_OF_APP_FEE)
             .multiply(BigDecimal(zecPrice))
             .divide(BigDecimal(tokenPrice), java.math.MathContext.DECIMAL128)
             .setScale(8, RoundingMode.FLOOR)
@@ -409,7 +413,7 @@ class PayVMMaxTest {
             )
         harness.revisedAmounts.clear()
         coEvery {
-            harness.requestSwapQuote.requestExactOutput(any(), any(), any(), any(), any(), any(), any())
+            harness.requestSwapQuote.requestExactOutput(any(), any(), any(), any(), any(), any(), any(), any())
         } coAnswers {
             val revise = arg<suspend (SwapQuote) -> BigDecimal?>(5)
             val revised = revise(quote)
@@ -431,19 +435,102 @@ class PayVMMaxTest {
             amountOutUsd = amountOutUsd
         )
 
+    /**
+     * The quotes the provider returns for successive requests of one Review, in order: each one is offered for a
+     * revision and the one after the last allowed revision is checked, as `RequestSwapQuoteUseCase` does.
+     */
+    private fun quotesWith(harness: PayVmHarness, vararg amountIns: Long) {
+        harness.revisedAmounts.clear()
+        coEvery {
+            harness.requestSwapQuote.requestExactOutput(any(), any(), any(), any(), any(), any(), any(), any())
+        } coAnswers {
+            val revise = arg<suspend (SwapQuote) -> BigDecimal?>(5)
+            val accept = arg<suspend (SwapQuote) -> Boolean>(6)
+            val maxRevisions = arg<Int>(7)
+            var index = 0
+            var revisions = 0
+            while (revisions < maxRevisions) {
+                val revised = revise(fakeQuote(amountIns[index]))
+                harness.revisedAmounts += revised
+                if (revised == null) break
+                revisions++
+                index++
+            }
+            if (revisions > 0) harness.acceptedRevisions += accept(fakeQuote(amountIns[index]))
+            null
+        }
+    }
+
+    private fun fakeQuote(amountIn: Long) =
+        FakeSwapQuote(
+            destinationAsset = SwapAssetTestFixture.asset(),
+            mode = SwapMode.EXACT_OUTPUT,
+            amountIn = BigDecimal(amountIn),
+            amountInUsd = BigDecimal("100"),
+            amountOutUsd = BigDecimal("99")
+        )
+
+    @Test
+    fun aSecondQuoteStillOverTheCapIsRevisedAgainAndAThirdWithinTheCapIsAccepted() =
+        runTest {
+            val harness = maxHarness()
+            harness.collectState(this)
+            harness.onMaxClick()
+            // A fixed part of the provider's fee: the ratio-sized second quote is still over the cap
+            quotesWith(harness, 124_000_000, 123_600_000, 123_300_000)
+
+            harness.onRequestSwapQuoteClick(expectedToken, null, "destination-address")
+
+            assertEquals(2, harness.revisedAmounts.count { it != null })
+            assertEquals(listOf(true), harness.acceptedRevisions)
+            assertFalse(harness.isMaxBannerVisible)
+            // Each revision lowers the amount
+            assertTrue(harness.revisedAmounts[1]!! < harness.revisedAmounts[0]!!)
+        }
+
+    @Test
+    fun aThirdQuoteStillOverTheCapStopsWithTheMaxFailureLine() =
+        runTest {
+            val harness = maxHarness()
+            harness.collectState(this)
+            harness.onMaxClick()
+            quotesWith(harness, 124_000_000, 123_600_000, 123_500_000)
+
+            harness.onRequestSwapQuoteClick(expectedToken, null, "destination-address")
+
+            assertEquals(listOf(false), harness.acceptedRevisions)
+            assertEquals(MaxFeedback.Error(MaxVariant.SEND), harness.capturedState.maxFeedback)
+        }
+
+    @Test
+    fun aQuoteThatFitsAfterTheFirstRevisionEndsTheRevisions() =
+        runTest {
+            val harness = maxHarness()
+            harness.collectState(this)
+            harness.onMaxClick()
+            quotesWith(harness, 124_000_000, 123_000_000)
+
+            harness.onRequestSwapQuoteClick(expectedToken, null, "destination-address")
+
+            // revised once, then the fitting quote was offered and kept
+            assertEquals(2, harness.revisedAmounts.size)
+            assertNull(harness.revisedAmounts[1])
+            assertEquals(listOf(true), harness.acceptedRevisions)
+        }
+
     @Test
     fun aMaxFillThatTheQuoteCostsMoreThanSpendableIsRefilledOnceForTheCostRatio() =
         runTest {
             val harness = maxHarness()
             harness.collectState(this)
             harness.onMaxClick()
-            // The provider quotes 124_000_000 zat for the 3.36700333 tokens: scaled by cap / amountIn
-            // (123_456_789 / 124_000_000), not by the app's USD prices
+            // The provider quotes 124_000_000 zat for the 3.34444441 tokens: scaled by cap / amountIn with the
+            // margin below the cap (123_456_789 * 0.997 / 124_000_000), not by the app's USD prices
             quoteWith(harness, amountIn = 124_000_000)
 
             harness.onRequestSwapQuoteClick(expectedToken, null, "destination-address")
 
-            val revisedToken = BigDecimal("3.35225338")
+            val revisedToken = BigDecimal("3.31980390")
             assertEquals(listOf<BigDecimal?>(revisedToken), harness.revisedAmounts)
             assertEquals(revisedToken, harness.capturedState.amount.amount)
         }
@@ -459,7 +546,7 @@ class PayVMMaxTest {
 
             harness.onRequestSwapQuoteClick(expectedToken, null, "destination-address")
 
-            assertEquals(listOf<BigDecimal?>(BigDecimal("3.35225338")), harness.revisedAmounts)
+            assertEquals(listOf<BigDecimal?>(BigDecimal("3.31980390")), harness.revisedAmounts)
         }
 
     @Test
@@ -535,7 +622,7 @@ class PayVMMaxTest {
 
             setZecPrice(harness, "60")
 
-            assertEquals(tokenFor(122_915_957, zecPrice = "60"), harness.capturedState.amount.amount)
+            assertEquals(tokenFor(122_547_209, zecPrice = "60"), harness.capturedState.amount.amount)
         }
 
     @Test
