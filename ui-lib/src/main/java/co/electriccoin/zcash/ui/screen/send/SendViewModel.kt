@@ -72,6 +72,9 @@ class SendViewModel(
     /** The memo text typed in the form; the Max proposal is priced with it. */
     private val memoText = MutableStateFlow("")
 
+    /** This form's send flow: only this form's clearing ends it, not a late clearing of an earlier form. */
+    private val flowToken = signerCapabilitiesProvider.beginFlow()
+
     /**
      * A channel rather than a plain shared flow: a result that arrives while the screen's collector is being
      * recreated (recomposition, configuration change) waits for the next collector instead of being dropped, and is
@@ -351,7 +354,7 @@ class SendViewModel(
      * not be reused by the next send. Review keeps this view model alive, so it does not end the flow early.
      */
     override fun onCleared() {
-        signerCapabilitiesProvider.endFlow()
+        signerCapabilitiesProvider.endFlow(flowToken)
         super.onCleared()
     }
 }

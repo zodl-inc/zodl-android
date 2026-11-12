@@ -83,6 +83,24 @@ class SignerCapabilitiesProviderTest {
         }
 
     @Test
+    fun aLateEndFromAnEarlierFlowDoesNotEndTheCurrentOne() =
+        runTest {
+            val earlier = provider.beginFlow()
+            val current = provider.beginFlow()
+            memory = memory.copy(availableBytes = 8 * GIB)
+            val atMax = actionsInFlow(zashi)
+
+            provider.endFlow(earlier)
+            memory = memory.copy(availableBytes = 1000 * MIB)
+
+            assertEquals(TransactionSizeBound.MAX_PROVING_ACTIONS, atMax)
+            assertEquals(atMax, actionsInFlow(zashi))
+
+            provider.endFlow(current)
+            assertEquals(TransactionSizeBound.MIN_PROVING_ACTIONS, actionsInFlow(zashi))
+        }
+
+    @Test
     fun aFlowNobodyEndedIsNotTrustedForeverEither() =
         runTest {
             memory = memory.copy(availableBytes = 8 * GIB)

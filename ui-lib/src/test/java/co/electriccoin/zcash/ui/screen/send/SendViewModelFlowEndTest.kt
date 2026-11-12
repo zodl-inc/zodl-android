@@ -6,6 +6,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +36,7 @@ class SendViewModelFlowEndTest {
     fun clearingTheViewModelEndsTheFlowExactlyOnce() =
         runTest {
             val signerCapabilities = mockk<SignerCapabilitiesProvider>(relaxed = true)
+            every { signerCapabilities.beginFlow() } returns 7L
             val store = ViewModelStore()
             val vm =
                 SendViewModel(
@@ -51,9 +53,9 @@ class SendViewModelFlowEndTest {
                 )
             ViewModelProvider.create(store, viewModelFactory { initializer { vm } })[SendViewModel::class]
 
-            verify(exactly = 0) { signerCapabilities.endFlow() }
+            verify(exactly = 0) { signerCapabilities.endFlow(any()) }
             store.clear()
 
-            verify(exactly = 1) { signerCapabilities.endFlow() }
+            verify(exactly = 1) { signerCapabilities.endFlow(7L) }
         }
 }

@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.viewmodel
 
 import cash.z.ecc.android.sdk.model.Zatoshi
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
 import co.electriccoin.zcash.ui.common.datasource.MaxSendAmount
 import co.electriccoin.zcash.ui.common.datasource.MaxSendAmountFailure
@@ -8,6 +9,7 @@ import co.electriccoin.zcash.ui.common.datasource.MaxSendAmountUnavailableExcept
 import co.electriccoin.zcash.ui.common.model.presentation
 import co.electriccoin.zcash.ui.common.usecase.GetMaxSendAmountUseCase
 import co.electriccoin.zcash.ui.common.usecase.MaxSendTarget
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -87,24 +89,52 @@ class MaxAmountRequester(
                         try {
                             getMaxSendAmount(target)
                         } catch (_: InsufficientFundsException) {
-                            onFailed(MaxSendAmountFailure.OTHER)
-                            onFailure()
+                            fail(MaxSendAmountFailure.OTHER, onFailure)
                             null
                         } catch (e: MaxSendAmountUnavailableException) {
-                            onFailed(e.reason)
-                            onFailure()
+                            fail(e.reason, onFailure)
                             null
                         }
                     if (max != null) {
                         baseline.value = max.amount
                         reserve.value = spendableAtTap?.let { Zatoshi(maxOf(0L, it.value - max.amount.value)) }
-                        onResolved(max)
+                        deliver(max, onFailure, onResolved)
                     }
                 } finally {
                     if (requestGeneration == generation) inFlight.value = false
                 }
             }
         return true
+    }
+
+    /** A failed tap leaves no Max intent: a later quote refresh must not fill from an earlier tap's amount. */
+    private fun fail(
+        failure: MaxSendAmountFailure,
+        onFailure: () -> Unit
+    ) {
+        clearIntent()
+        onFailed(failure)
+        onFailure()
+    }
+
+    /**
+     * Hands the result on. A consumer that throws would otherwise crash through the scope: it is reported as a failed
+     * Max instead, and the intent ends.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun deliver(
+        max: MaxSendAmount,
+        onFailure: () -> Unit,
+        onResolved: suspend (MaxSendAmount) -> Unit
+    ) {
+        try {
+            onResolved(max)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Twig.error(e) { "Delivering the max amount failed" }
+            fail(MaxSendAmountFailure.OTHER, onFailure)
+        }
     }
 
     /** Cancels the running request, if any; its result is never delivered. */

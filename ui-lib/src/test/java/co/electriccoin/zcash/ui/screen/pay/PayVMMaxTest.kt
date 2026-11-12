@@ -248,6 +248,22 @@ class PayVMMaxTest {
             assertEquals(expectedToken, harness.capturedState.amount.amount)
         }
 
+    @Test
+    fun anEditWhileTheMaxRequestIsInFlightIsNotOverwrittenByItsResult() =
+        runTest {
+            val typed = NumberTextFieldInnerState.fromAmount(BigDecimal("2"))
+            val harness = maxHarness()
+            harness.collectState(this)
+            val gate = CompletableDeferred<MaxSendAmount>()
+            coEvery { harness.getMaxSendAmount(any()) } coAnswers { gate.await() }
+            harness.onMaxClick()
+
+            harness.onTextFieldChange(typed, NumberTextFieldInnerState())
+            gate.complete(MaxSendAmount(maxZatoshi, Zatoshi(10_000)))
+
+            assertEquals(BigDecimal("2"), harness.capturedState.amount.amount)
+        }
+
     /**
      * With a dispatcher that does not run coroutines on the spot, both taps happen before anything is launched: the
      * in-flight flag must already be raised by the first one.

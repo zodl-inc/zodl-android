@@ -330,6 +330,7 @@ internal class PayVM(
      * The ZEC fill a Review revised the Max amount down to, held until the intent ends so the refreshes do not put the
      * larger fill back. Null when the Review needed no revision.
      */
+    @Volatile
     private var reviewCeiling: Zatoshi? = null
 
     /**
@@ -426,6 +427,8 @@ internal class PayVM(
     /** The user changed the amount or the asset by hand: the failure line and the Max intent end. */
     private fun onFillEditedByUser() {
         maxFeedback.clearError()
+        // A request still in flight must not write its fill over what the user just typed
+        maxAmountRequester.cancel()
         maxAmountRequester.clearIntent()
     }
 

@@ -38,6 +38,16 @@ interface SignerCapabilitiesProvider {
     /** Ends the current send flow (sent, cancelled or abandoned): the next [forAccount] measures the memory again. */
     fun endFlow()
 
+    /**
+     * Starts a send flow owned by one screen and returns its token. The next [forAccount] measures the memory again.
+     * Only the owner's token ends it through [endFlow], so a screen that is cleared late cannot end the flow of the
+     * screen that replaced it.
+     */
+    fun beginFlow(): Long
+
+    /** Ends the flow [token] belongs to; nothing happens when another flow has started or ended since. */
+    fun endFlow(token: Long)
+
     /** The capabilities of signing with a key this device holds, as a gift card's is: the device alone limits them. */
     suspend fun forSoftwareSigning(): SignerCapabilities
 }
@@ -89,6 +99,7 @@ class SignerCapabilitiesProviderImpl(
     private val lock = Any()
     private var flowBound: TransactionSizeBound? = null
     private var flowStartedAt = 0L
+    private var flowToken = 0L
 
     override suspend fun forAccount(account: WalletAccount): SignerCapabilities =
         when (account) {
@@ -98,7 +109,23 @@ class SignerCapabilitiesProviderImpl(
 
     override fun endFlow() =
         synchronized(lock) {
+            flowToken++
             flowBound = null
+        }
+
+    override fun beginFlow(): Long =
+        synchronized(lock) {
+            flowToken++
+            flowBound = null
+            flowToken
+        }
+
+    override fun endFlow(token: Long) =
+        synchronized(lock) {
+            if (token == flowToken) {
+                flowToken++
+                flowBound = null
+            }
         }
 
     override suspend fun forSoftwareSigning(): SignerCapabilities = SignerCapabilities(memoryBound())

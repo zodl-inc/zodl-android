@@ -43,6 +43,42 @@ class MaxAmountRequesterTest {
     }
 
     @Test
+    fun aFailedTapEndsTheIntentOfTheEarlierOne() =
+        runTest {
+            coEvery { getMaxSendAmount(any()) } returnsMany
+                listOf(MAX) andThenThrows MaxSendAmountUnavailableException(MaxSendAmountFailure.OTHER, RuntimeException())
+            val requester = requester()
+            requester.request(MaxSendTarget.OwnTransparentReceiver, spendableAtTap = Zatoshi(110_000)) { }
+            runCurrent()
+            assertEquals(MAX.amount, requester.activeBaseline.value)
+
+            requester.request(MaxSendTarget.OwnTransparentReceiver, spendableAtTap = Zatoshi(110_000)) { }
+            runCurrent()
+
+            assertNull(requester.activeBaseline.value)
+            assertNull(requester.activeReserve.value)
+            assertEquals(listOf(MaxSendAmountFailure.OTHER), failures)
+        }
+
+    @Test
+    fun aConsumerThatThrowsIsReportedAsAFailedMaxInsteadOfCrashing() =
+        runTest {
+            answers(CompletableDeferred(MAX))
+            val requester = requester()
+            var failureCalls = 0
+
+            requester.request(MaxSendTarget.OwnTransparentReceiver, onFailure = { failureCalls++ }) {
+                error("consumer failed")
+            }
+            runCurrent()
+
+            assertEquals(listOf(MaxSendAmountFailure.OTHER), failures)
+            assertEquals(1, failureCalls)
+            assertNull(requester.activeBaseline.value)
+            assertFalse(requester.isInFlight.value)
+        }
+
+    @Test
     fun theFlagIsRaisedBeforeTheRequestRuns() =
         runTest {
             answers(CompletableDeferred())
