@@ -13,6 +13,7 @@ import co.electriccoin.zcash.ui.common.datasource.MaxSendAmountDataSource
 import co.electriccoin.zcash.ui.common.datasource.MaxSendAmountFailure
 import co.electriccoin.zcash.ui.common.datasource.MaxSendAmountUnavailableException
 import co.electriccoin.zcash.ui.common.model.ProposalMemoPolicy
+import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import kotlinx.coroutines.CancellationException
@@ -33,6 +34,14 @@ sealed interface MaxSendTarget {
      * ([Zip317.marginalFee]) is kept back from the result as a buffer.
      */
     data object OwnTransparentReceiver : MaxSendTarget
+
+    /**
+     * No recipient has been entered yet. The amount is priced for the selected account's own unified address, with no
+     * memo and no buffer, so it is only a preview: the fee depends on the recipient's pool (a transparent, Sapling or
+     * TEX recipient costs more than an Orchard one), and the caller must request it again with [Recipient] as soon
+     * as a valid address is entered.
+     */
+    data object NoRecipientYet : MaxSendTarget
 }
 
 /**
@@ -63,7 +72,7 @@ class GetMaxSendAmountUseCase(
     suspend operator fun invoke(target: MaxSendTarget): MaxSendAmount =
         try {
             val account = accountDataSource.getSelectedAccount()
-            val recipient = recipientFor(target, account.transparentAddress)
+            val recipient = recipientFor(target, account)
             val memo = memoFor(target)
             maxSendAmountDataSource
                 .proposeMaxSendAmount(
@@ -85,11 +94,12 @@ class GetMaxSendAmountUseCase(
             throw MaxSendAmountUnavailableException(MaxSendAmountFailure.OTHER, e)
         }
 
-    private suspend fun recipientFor(target: MaxSendTarget, ownTransparentAddress: String): RecipientAddress {
+    private suspend fun recipientFor(target: MaxSendTarget, account: WalletAccount): RecipientAddress {
         val encoding =
             when (target) {
                 is MaxSendTarget.Recipient -> target.address
-                MaxSendTarget.OwnTransparentReceiver -> ownTransparentAddress
+                MaxSendTarget.OwnTransparentReceiver -> account.transparentAddress
+                MaxSendTarget.NoRecipientYet -> account.unifiedAddress
             }
         return try {
             RecipientAddress.new(encoding, synchronizerProvider.getSynchronizer().network)
@@ -104,7 +114,8 @@ class GetMaxSendAmountUseCase(
                 ProposalMemoPolicy.memoFor(target.type, target.memoText)?.let { MemoContent.fromString(it) }
             }
 
-            MaxSendTarget.OwnTransparentReceiver -> {
+            MaxSendTarget.OwnTransparentReceiver,
+            MaxSendTarget.NoRecipientYet -> {
                 null
             }
         }
@@ -112,7 +123,9 @@ class GetMaxSendAmountUseCase(
     private suspend fun MaxSendAmount.withBuffer(target: MaxSendTarget): MaxSendAmount {
         val buffer =
             when (target) {
-                is MaxSendTarget.Recipient -> Zatoshi(0)
+                is MaxSendTarget.Recipient,
+                MaxSendTarget.NoRecipientYet -> Zatoshi(0)
+
                 MaxSendTarget.OwnTransparentReceiver -> marginalFeeProvider.get()
             }
         if (amount.value <= buffer.value) throw InsufficientFundsException()

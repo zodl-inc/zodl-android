@@ -51,6 +51,7 @@ class GetMaxSendAmountUseCaseTest {
     private val account =
         mockk<WalletAccount> {
             every { transparentAddress } returns OWN_T_ADDRESS
+            every { unifiedAddress } returns OWN_U_ADDRESS
         }
     private val accountDataSource =
         mockk<AccountDataSource> { coEvery { getSelectedAccount() } returns account }
@@ -159,6 +160,19 @@ class GetMaxSendAmountUseCaseTest {
 
             assertEquals(MaxSendAmount(Zatoshi(95_000), Zatoshi(10_000)), result)
             coVerify { maxSendAmountDataSource.proposeMaxSendAmount(account, ownRecipient, null, bound) }
+        }
+
+    @Test
+    fun noRecipientYetIsPricedForTheOwnUnifiedAddressWithNoMemoAndNoBuffer() =
+        runTest {
+            val ownUnified = mockk<RecipientAddress>()
+            coEvery { RecipientAddress.new(OWN_U_ADDRESS, any()) } returns ownUnified
+            coEvery { maxSendAmountDataSource.proposeMaxSendAmount(account, ownUnified, null, bound) } returns
+                MaxSendAmount(Zatoshi(100_000), Zatoshi(10_000))
+
+            val result = useCase(MaxSendTarget.NoRecipientYet)
+
+            assertEquals(MaxSendAmount(Zatoshi(100_000), Zatoshi(10_000)), result)
         }
 
     @Test
@@ -281,5 +295,6 @@ class GetMaxSendAmountUseCaseTest {
     private companion object {
         const val ADDRESS = "u1recipient"
         const val OWN_T_ADDRESS = "t1own"
+        const val OWN_U_ADDRESS = "u1own"
     }
 }

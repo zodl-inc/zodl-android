@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import cash.z.ecc.android.sdk.exception.TransactionEncoderException
 import cash.z.ecc.android.sdk.model.MemoContent
+import cash.z.ecc.android.sdk.model.RecipientAddress
 import cash.z.ecc.android.sdk.model.ZecSend
 import cash.z.ecc.android.sdk.type.AddressType
 import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
@@ -16,6 +17,7 @@ import co.electriccoin.zcash.ui.design.component.MaxVariant
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.send.SendVmMaxHarness.Companion.MAX
 import co.electriccoin.zcash.ui.screen.send.SendVmMaxHarness.Companion.OTHER
+import co.electriccoin.zcash.ui.screen.send.SendVmMaxHarness.Companion.OWN_UNIFIED
 import co.electriccoin.zcash.ui.screen.send.SendVmMaxHarness.Companion.UNIFIED
 import co.electriccoin.zcash.ui.screen.send.SendVmMaxHarness.Companion.account
 import co.electriccoin.zcash.ui.screen.send.model.AmountState
@@ -158,36 +160,101 @@ class SendViewModelMaxTest {
             vm.recipient(address = OTHER)
             gate.complete(Unit)
 
-            assertTrue(resolved.isEmpty())
+            // Only the request for the current recipient delivers
+            assertEquals(listOf(OTHER), resolved.map { it.address })
         }
 
     @Test
-    fun changingTheRecipientAfterAMaxFillClearsTheAmount() =
+    fun changingTheRecipientAfterAMaxFillPricesMaxAgainForTheNewRecipient() =
         runTest {
             val vm = harness.newViewModel()
             val cleared = mutableListOf<Unit>()
+            val resolved = mutableListOf<ResolvedMaxAmount>()
             backgroundScope.launch(harness.mainDispatcher) { vm.amountClears.toList(cleared) }
+            backgroundScope.launch(harness.mainDispatcher) { vm.maxAmountResolved.toList(resolved) }
             vm.recipient()
             vm.onMaxClick()
 
             vm.recipient(address = OTHER)
 
-            assertEquals(1, cleared.size)
+            // The fee differs by recipient type, so the amount is requested again instead of being cleared
+            assertTrue(cleared.isEmpty())
+            assertEquals(listOf(UNIFIED, OTHER), resolved.map { it.address })
+            coVerify(exactly = 2) { harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) }
         }
 
     @Test
-    fun changingTheRecipientEndsTheMaxIntentSoASecondChangeClearsNothing() =
+    fun everyRecipientChangeAfterAMaxFillPricesMaxAgain() =
         runTest {
             val vm = harness.newViewModel()
-            val cleared = mutableListOf<Unit>()
-            backgroundScope.launch(harness.mainDispatcher) { vm.amountClears.toList(cleared) }
+            val resolved = mutableListOf<ResolvedMaxAmount>()
+            backgroundScope.launch(harness.mainDispatcher) { vm.maxAmountResolved.toList(resolved) }
             vm.recipient()
             vm.onMaxClick()
 
             vm.recipient(address = OTHER)
             vm.recipient(address = UNIFIED)
 
-            assertEquals(1, cleared.size)
+            assertEquals(listOf(UNIFIED, OTHER, UNIFIED), resolved.map { it.address })
+        }
+
+    @Test
+    fun aManualAmountIsNotPricedAgainWhenTheRecipientChanges() =
+        runTest {
+            val vm = harness.newViewModel()
+            vm.recipient()
+
+            vm.recipient(address = OTHER)
+
+            coVerify(exactly = 0) { harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun maxWithoutARecipientIsPricedForTheOwnUnifiedAddress() =
+        runTest {
+            val vm = harness.newViewModel()
+            val resolved = mutableListOf<ResolvedMaxAmount>()
+            backgroundScope.launch(harness.mainDispatcher) { vm.maxAmountResolved.toList(resolved) }
+
+            vm.onMaxClick()
+
+            coVerify(exactly = 1) { RecipientAddress.new(OWN_UNIFIED, any()) }
+            assertEquals(listOf(ResolvedMaxAmount("", MAX.amount)), resolved)
+        }
+
+    @Test
+    fun anAddressTypedAfterAnAddressLessMaxPricesMaxAgainOnceItIsValid() =
+        runTest {
+            val vm = harness.newViewModel()
+            val resolved = mutableListOf<ResolvedMaxAmount>()
+            val cleared = mutableListOf<Unit>()
+            backgroundScope.launch(harness.mainDispatcher) { vm.maxAmountResolved.toList(resolved) }
+            backgroundScope.launch(harness.mainDispatcher) { vm.amountClears.toList(cleared) }
+            vm.onMaxClick()
+
+            // A half typed address changes nothing: the amount stays and nothing is requested
+            vm.recipient(address = "u1ha", type = AddressType.Invalid())
+            assertTrue(cleared.isEmpty())
+            coVerify(exactly = 1) { harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) }
+
+            vm.recipient(address = UNIFIED)
+
+            assertEquals(listOf("", UNIFIED), resolved.map { it.address })
+        }
+
+    @Test
+    fun reviewIsHeldBackWhileMaxIsBeingPriced() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            harness.gatedProposal(gate)
+            val vm = harness.newViewModel()
+
+            assertFalse(vm.maxChipState.value.isRequesting)
+            vm.onMaxClick()
+            assertTrue(vm.maxChipState.value.isRequesting)
+
+            gate.complete(Unit)
+            assertFalse(vm.maxChipState.value.isRequesting)
         }
 
     @Test
@@ -279,28 +346,26 @@ class SendViewModelMaxTest {
             vm.recipient(address = OTHER)
             gate.complete(Unit)
 
-            assertTrue(resolved.isEmpty())
+            assertEquals(listOf(OTHER), resolved.map { it.address })
         }
 
     @Test
     fun staleRequestDoesNotClearTheFlagOfItsSuccessor() =
         runTest {
-            val first = CompletableDeferred<Unit>()
-            val second = CompletableDeferred<Unit>()
-            harness.gatedProposal(first, nonCancellable = true)
+            val gate = CompletableDeferred<Unit>()
+            harness.gatedProposal(gate, nonCancellable = true)
             val vm = harness.newViewModel()
             vm.recipient()
             vm.onMaxClick()
+            // The recipient change cancels the first request and starts its successor
             vm.recipient(address = OTHER)
-            harness.gatedProposal(second)
+
+            gate.complete(Unit)
+            assertFalse(vm.maxChipState.value.isRequesting)
             vm.onMaxClick()
 
-            first.complete(Unit)
-
-            // the stale request's end must not release the guard of the current one: this re-tap is still ignored
-            vm.onMaxClick()
-            coVerify(exactly = 2) { harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) }
-            second.complete(Unit)
+            // the stale request's end must not hide that the successor ran: each priced exactly once, plus this tap
+            coVerify(exactly = 3) { harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) }
         }
 
     @Test
@@ -370,8 +435,8 @@ class SendViewModelMaxTest {
         runTest {
             val vm = harness.newViewModel()
 
-            // No recipient yet
-            assertEquals(false, vm.maxChipState.value.isEnabled)
+            // No recipient yet: Max is a preview
+            assertTrue(vm.maxChipState.value.isEnabled)
 
             vm.recipient()
             assertTrue(vm.maxChipState.value.isEnabled)

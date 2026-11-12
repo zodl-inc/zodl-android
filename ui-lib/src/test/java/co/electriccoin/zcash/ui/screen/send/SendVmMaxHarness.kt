@@ -119,6 +119,7 @@ internal class SendVmMaxHarness {
     companion object {
         const val UNIFIED = "u1recipient"
         const val OTHER = "u1other"
+        const val OWN_UNIFIED = "u1own"
         val MAX = MaxSendAmount(amount = Zatoshi(123_456_789), fee = Zatoshi(10_000))
 
         fun account(
@@ -132,6 +133,7 @@ internal class SendVmMaxHarness {
             every { this@mockk.isShieldingAvailable } returns isShieldingAvailable
             every { this@mockk.isShieldedPending } returns isShieldedPending
             every { transparentAddress } returns "t-own"
+            every { unifiedAddress } returns OWN_UNIFIED
         }
     }
 }

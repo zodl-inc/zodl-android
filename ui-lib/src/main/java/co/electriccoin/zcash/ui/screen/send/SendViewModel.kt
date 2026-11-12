@@ -131,12 +131,16 @@ class SendViewModel(
     val maxChipState: StateFlow<SendMaxChipState> =
         combine(
             recipientAddressState,
-            getSelectedWalletAccount.observe()
-        ) { recipient, account ->
+            getSelectedWalletAccount.observe(),
+            maxAmountRequester.isInFlight
+        ) { recipient, account, isRequesting ->
             maxChipState(
                 spendability = account?.spendability ?: Spendability.Nothing(Spendability.Nothing.Reason.Empty),
-                isExtraEnabled = recipient.type?.isNotValid == false,
-                onClick = onMaxClickAction
+                // Max also works before a recipient is entered (a preview, see MaxSendTarget.NoRecipientYet); it is
+                // only off while a typed address is not valid.
+                isExtraEnabled = recipient.address.isEmpty() || recipient.type?.isNotValid == false,
+                onClick = onMaxClickAction,
+                isRequesting = isRequesting
             )
         }.stateIn(
             viewModelScope,
@@ -227,19 +231,20 @@ class SendViewModel(
     }
 
     fun onRecipientAddressChanged(state: RecipientAddressState) {
-        if (recipientAddressState.value != state) {
+        val changed = recipientAddressState.value != state
+        val hadMaxIntent = maxAmountRequester.activeBaseline.value != null || maxAmountRequester.isInFlight.value
+        if (changed) {
             maxAmountRequester.cancel()
             dropUnappliedMaxAmounts()
             maxFeedback.clearError()
-            if (maxAmountRequester.activeBaseline.value != null) {
-                // The filled amount was priced for the previous recipient (the fee differs by recipient type, e.g. a
-                // TEX recipient needs two steps), so it no longer holds: clear it and end the Max intent. The user
-                // taps Max again for the new recipient.
-                maxAmountRequester.clearIntent()
-                amountClearEvents.tryEmit(Unit)
-            }
         }
         recipientAddressState.update { state }
+        if (changed && hadMaxIntent) {
+            // The filled amount was priced for the previous recipient (the fee differs by recipient type, e.g. a TEX
+            // recipient needs two steps), so it is requested again for the new one. While a typed address is not
+            // valid yet the amount stays as it is: Review is off for it anyway.
+            requestMax()
+        }
     }
 
     fun onMemoChanged(text: String) {
@@ -260,12 +265,35 @@ class SendViewModel(
     }
 
     fun onMaxClick() {
+        if (!maxChipState.value.isEnabled) return
+        requestMax()
+    }
+
+    /**
+     * Requests the max amount for the recipient as it is now: the entered address, or, while the field is empty, the
+     * preview for no recipient yet ([MaxSendTarget.NoRecipientYet]). Does nothing while a typed address is not valid.
+     * A request already in flight is left alone ([MaxAmountRequester] ignores the second one).
+     */
+    private fun requestMax() {
         val recipient = recipientAddressState.value
         val type = recipient.type
-        val chip = maxChipState.value
-        if (type == null || !chip.isEnabled || maxAmountRequester.isInFlight.value) return
+        val target =
+            when {
+                type != null && type.isNotValid == false -> {
+                    MaxSendTarget.Recipient(recipient.address, type, memoText.value)
+                }
+
+                recipient.address.isEmpty() -> {
+                    MaxSendTarget.NoRecipientYet
+                }
+
+                else -> {
+                    return
+                }
+            }
+        if (maxAmountRequester.isInFlight.value) return
         maxFeedback.clearError()
-        maxAmountRequester.request(MaxSendTarget.Recipient(recipient.address, type, memoText.value)) { max ->
+        maxAmountRequester.request(target) { max ->
             // The recipient can change while the request runs; the max is only valid for the one it was computed for.
             if (recipientAddressState.value.address == recipient.address) {
                 maxAmountResolvedEvents.send(ResolvedMaxAmount(recipient.address, max.amount))

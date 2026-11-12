@@ -75,6 +75,11 @@ fun ZashiMaxChip(
 data class SendMaxChipState(
     val isEnabled: Boolean,
     val onClick: () -> Unit,
+    /**
+     * A max amount is being computed. The chip does not change for it (there is no spinner, D2); the screen uses it
+     * to keep Review off until the amount that is about to be filled has arrived.
+     */
+    val isRequesting: Boolean = false,
 )
 
 object ZashiMaxChipTags {

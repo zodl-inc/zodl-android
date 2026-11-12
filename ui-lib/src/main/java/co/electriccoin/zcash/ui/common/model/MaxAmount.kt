@@ -29,8 +29,10 @@ fun maxChipState(
     spendability: Spendability,
     isExtraEnabled: Boolean,
     onClick: () -> Unit,
+    isRequesting: Boolean = false,
 ): SendMaxChipState =
     SendMaxChipState(
         isEnabled = spendability is Spendability.Some && isExtraEnabled,
-        onClick = onClick
+        onClick = onClick,
+        isRequesting = isRequesting
     )

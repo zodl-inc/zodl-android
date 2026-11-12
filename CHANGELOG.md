@@ -10,9 +10,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ### Added:
 
 - [MOB-1987] Send Max: a Max chip next to the Send amount fills in everything the selected account can spend to the
-  entered recipient, net of the network fee and priced with the typed memo. It is available once the recipient is
-  valid and shows a spinner while the amount is computed or the balances load; changing the recipient or tapping
-  Review cancels it. When Max is unavailable a hint above the Review button says why: "Max uses shielded ZEC only."
+  entered recipient, net of the network fee and priced with the typed memo. It also works before a recipient is
+  entered, as a preview priced for the account's own address, and the amount is priced again for the recipient as soon as
+  a valid address is entered or the address changes (the fee depends on the recipient's pool); Review stays off while
+  the amount is being computed. When Max is unavailable a hint above the Review button says why: "Max uses shielded ZEC only."
   with a Shield button that opens the shielding flow when only transparent funds can be shielded, or "Max will be
   available once your funds confirm." while shielded funds are pending. A failure is shown as an inline banner above
   the Review button instead of a snackbar, in the hint's place, until Max is tapped again or the amount or recipient

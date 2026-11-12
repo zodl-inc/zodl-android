@@ -377,6 +377,7 @@ private fun SendForm(
             onCreateZecSend = onCreateZecSend,
             recipientAddressState = recipientAddressState,
             selectedAccount = selectedAccount,
+            isMaxRequesting = maxChipState.isRequesting,
         )
     }
 }
@@ -387,8 +388,9 @@ private fun SendForm(
  */
 internal fun isReviewEnabled(
     spendability: Spendability,
-    isFormValid: Boolean
-): Boolean = spendability.allowsPrimaryAction && isFormValid
+    isFormValid: Boolean,
+    isMaxRequesting: Boolean = false
+): Boolean = spendability.allowsPrimaryAction && isFormValid && !isMaxRequesting
 
 @Suppress("CyclomaticComplexMethod")
 @Composable
@@ -398,6 +400,7 @@ fun SendButton(
     onCreateZecSend: (ZecSend) -> Unit,
     recipientAddressState: RecipientAddressState,
     selectedAccount: WalletAccount,
+    isMaxRequesting: Boolean = false,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -406,6 +409,7 @@ fun SendButton(
     val sendButtonEnabled =
         isReviewEnabled(
             spendability = selectedAccount.spendability,
+            isMaxRequesting = isMaxRequesting,
             isFormValid =
                 recipientAddressState.type !is AddressType.Invalid &&
                     recipientAddressState.address.isNotEmpty() &&
