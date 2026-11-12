@@ -61,6 +61,28 @@ class MaxAmountRequesterTest {
         }
 
     @Test
+    fun aRequesterThatKeepsItsIntentOnFailureKeepsTheEarlierTapsBaseline() =
+        runTest {
+            val unavailable = MaxSendAmountUnavailableException(MaxSendAmountFailure.OTHER, RuntimeException())
+            coEvery { getMaxSendAmount(any()) } returnsMany listOf(MAX) andThenThrows unavailable
+            val requester =
+                MaxAmountRequester(
+                    scope = backgroundScope,
+                    getMaxSendAmount = getMaxSendAmount,
+                    onFailed = { failures += it },
+                    endsIntentOnFailure = false
+                )
+            requester.request(MaxSendTarget.OwnTransparentReceiver) { }
+            runCurrent()
+
+            requester.request(MaxSendTarget.OwnTransparentReceiver) { }
+            runCurrent()
+
+            assertEquals(MAX.amount, requester.activeBaseline.value)
+            assertEquals(listOf(MaxSendAmountFailure.OTHER), failures)
+        }
+
+    @Test
     fun aConsumerThatThrowsIsReportedAsAFailedMaxInsteadOfCrashing() =
         runTest {
             answers(CompletableDeferred(MAX))

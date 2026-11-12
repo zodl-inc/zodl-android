@@ -94,7 +94,8 @@ class SendViewModel(
         MaxAmountRequester(
             scope = viewModelScope,
             getMaxSendAmount = getMaxSendAmount,
-            onFailed = maxFeedback::onFailed
+            onFailed = maxFeedback::onFailed,
+            endsIntentOnFailure = false
         )
 
     /** The max amount for the recipient it was computed for. */

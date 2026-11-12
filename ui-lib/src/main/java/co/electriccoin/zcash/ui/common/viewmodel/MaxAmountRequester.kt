@@ -31,6 +31,7 @@ class MaxAmountRequester(
     private val scope: CoroutineScope,
     private val getMaxSendAmount: GetMaxSendAmountUseCase,
     private val onFailed: (MaxSendAmountFailure) -> Unit,
+    private val endsIntentOnFailure: Boolean = true,
 ) {
     private val inFlight = MutableStateFlow(false)
 
@@ -107,12 +108,16 @@ class MaxAmountRequester(
         return true
     }
 
-    /** A failed tap leaves no Max intent: a later quote refresh must not fill from an earlier tap's amount. */
+    /**
+     * A failed tap leaves no Max intent by default: a later quote refresh must not fill from an earlier tap's amount.
+     * Send passes `endsIntentOnFailure = false`: its amount stays what the earlier tap filled, so the intent must
+     * survive for the re-price when the recipient changes.
+     */
     private fun fail(
         failure: MaxSendAmountFailure,
         onFailure: () -> Unit
     ) {
-        clearIntent()
+        if (endsIntentOnFailure) clearIntent()
         onFailed(failure)
         onFailure()
     }

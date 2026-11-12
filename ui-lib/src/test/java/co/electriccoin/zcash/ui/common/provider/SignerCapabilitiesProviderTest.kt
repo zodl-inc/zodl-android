@@ -101,6 +101,22 @@ class SignerCapabilitiesProviderTest {
         }
 
     @Test
+    fun theOwnerCanStillEndItsFlowAfterAnUnconditionalEnd() =
+        runTest {
+            val owner = provider.beginFlow()
+            memory = memory.copy(availableBytes = 8 * GIB)
+            actionsInFlow(zashi)
+            provider.endFlow() // a cancelled Review ends the flow while the form lives on
+            memory = memory.copy(availableBytes = 8 * GIB)
+            actionsInFlow(zashi)
+
+            provider.endFlow(owner)
+            memory = memory.copy(availableBytes = 1000 * MIB)
+
+            assertEquals(TransactionSizeBound.MIN_PROVING_ACTIONS, actionsInFlow(zashi))
+        }
+
+    @Test
     fun aFlowNobodyEndedIsNotTrustedForeverEither() =
         runTest {
             memory = memory.copy(availableBytes = 8 * GIB)

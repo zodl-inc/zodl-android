@@ -22,7 +22,7 @@ data class SignerCapabilities(
 
 /**
  * The one place that decides, per account, how large a transaction the wallet may build. Max, Review, Swap and Pay and
- * the gift card redemption all ask it, and nothing else switches on the type of an account for this.
+ * and the flows that sign on the device all ask it, and nothing else switches on the type of an account for this.
  *
  * Shielding and the Orchard to Ironwood migration never ask: they are not bounded.
  *
@@ -48,7 +48,7 @@ interface SignerCapabilitiesProvider {
     /** Ends the flow [token] belongs to; nothing happens when another flow has started or ended since. */
     fun endFlow(token: Long)
 
-    /** The capabilities of signing with a key this device holds, as a gift card's is: the device alone limits them. */
+    /** The capabilities of signing with a key this device holds: the device alone limits them. */
     suspend fun forSoftwareSigning(): SignerCapabilities
 }
 
@@ -109,7 +109,7 @@ class SignerCapabilitiesProviderImpl(
 
     override fun endFlow() =
         synchronized(lock) {
-            flowToken++
+            // The owner's token stays valid: the screen that began the flow may still be alive (Review keeps it)
             flowBound = null
         }
 

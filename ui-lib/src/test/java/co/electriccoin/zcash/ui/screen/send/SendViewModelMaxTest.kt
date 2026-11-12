@@ -166,6 +166,24 @@ class SendViewModelMaxTest {
         }
 
     @Test
+    fun aFailedRetapKeepsTheIntentSoARecipientChangeStillPricesMaxAgain() =
+        runTest {
+            val vm = harness.newViewModel()
+            val resolved = mutableListOf<ResolvedMaxAmount>()
+            backgroundScope.launch(harness.mainDispatcher) { vm.maxAmountResolved.toList(resolved) }
+            vm.recipient()
+            vm.onMaxClick()
+            harness.failWith(MaxSendAmountFailure.OTHER)
+            vm.onMaxClick()
+            harness.gatedProposal(CompletableDeferred<Unit>().also { it.complete(Unit) })
+
+            vm.recipient(address = OTHER)
+
+            // The amount the first tap filled is priced again for the new recipient
+            assertEquals(listOf(UNIFIED, OTHER), resolved.map { it.address })
+        }
+
+    @Test
     fun changingTheRecipientAfterAMaxFillPricesMaxAgainForTheNewRecipient() =
         runTest {
             val vm = harness.newViewModel()
