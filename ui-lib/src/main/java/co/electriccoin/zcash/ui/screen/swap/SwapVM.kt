@@ -383,7 +383,6 @@ internal class SwapVM(
 
     private fun onChangeButtonClick() {
         if (isSelectedAccountSpendable.value != true) return
-        maxAmountRequester.cancel()
         endMaxIntent()
         internalState.update {
             it.copy(

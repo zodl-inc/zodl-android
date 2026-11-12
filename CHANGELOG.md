@@ -40,6 +40,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   a manual amount or a swap over that limit shows the "Too many notes to send at once" message.
 - [MOB-2296] A transaction the network refuses for good is shown as failed in the history instead of pending, and when
   it is refused for having too many notes the send screen shows the "Too many notes to send at once" message.
+- [MOB-1987] The Send Review button is off while the wallet has nothing it can spend (only pending or transparent
+  funds, or a balance that is not known yet), the same condition that turns Max off, and while a Max amount is being
+  computed.
 - [MOB-1988] The USD amount on the Pay screen that is computed from the token amount (after Max, or when the asset
   changes) is now written without grouping separators, such as `1234.5` instead of `1,234.5`, as on iOS.
 
