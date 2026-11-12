@@ -45,8 +45,8 @@ class MaxAmountRequesterTest {
     @Test
     fun aFailedTapEndsTheIntentOfTheEarlierOne() =
         runTest {
-            coEvery { getMaxSendAmount(any()) } returnsMany
-                listOf(MAX) andThenThrows MaxSendAmountUnavailableException(MaxSendAmountFailure.OTHER, RuntimeException())
+            val unavailable = MaxSendAmountUnavailableException(MaxSendAmountFailure.OTHER, RuntimeException())
+            coEvery { getMaxSendAmount(any()) } returnsMany listOf(MAX) andThenThrows unavailable
             val requester = requester()
             requester.request(MaxSendTarget.OwnTransparentReceiver, spendableAtTap = Zatoshi(110_000)) { }
             runCurrent()
