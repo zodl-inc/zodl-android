@@ -104,10 +104,13 @@ class SendViewModel(
     val amountFocusRequests: SharedFlow<Unit> = maxFeedback.focusRequests
 
     /**
-     * The one-line "Max isn't available right now" error above the Review button, or null. A Max retap, an amount
-     * edit or an address change clears it.
+     * The one-line status above the Review button: the Max failure, which wins and is cleared by a Max retap, an amount
+     * edit or an address change, or the fee hint while a Max fill is active. A manual amount edit ends the hint.
      */
-    val maxFeedbackState: StateFlow<MaxFeedback?> = maxFeedback.error
+    val maxFeedbackState: StateFlow<MaxFeedback?> =
+        combine(maxAmountRequester.activeBaseline, maxFeedback.error) { baseline, error ->
+            MaxFeedback.of(hint = MaxFeedback.SendHint.takeIf { baseline != null }, error = error)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** The blocking too-many-notes sheet while it is shown, null otherwise. */
     val tooManyNotesSheet: StateFlow<MaxTooManyNotesSheetState?> = maxFeedback.sheet

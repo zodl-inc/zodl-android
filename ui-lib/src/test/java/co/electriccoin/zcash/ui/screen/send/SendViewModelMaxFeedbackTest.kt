@@ -102,7 +102,8 @@ class SendViewModelMaxFeedbackTest {
 
             assertNull(vm.maxFeedbackState.value)
             gate.complete(Unit)
-            assertNull(vm.maxFeedbackState.value)
+            // the retap succeeded: the error is gone and the fee hint of the active Max fill shows instead
+            assertEquals(MaxFeedback.SendHint, vm.maxFeedbackState.value)
         }
 
     @Test

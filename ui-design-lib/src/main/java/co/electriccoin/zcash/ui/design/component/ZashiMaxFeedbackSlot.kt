@@ -39,7 +39,7 @@ fun ZashiMaxFeedbackSlot(
     modifier: Modifier = Modifier,
 ) {
     when (feedback) {
-        is MaxFeedback.Hint -> {
+        is MaxFeedback.Hint, is MaxFeedback.SendHint -> {
             FeedbackRow(
                 icon = R.drawable.ic_info,
                 text = feedback.text,
@@ -102,6 +102,11 @@ sealed interface MaxFeedback {
         override val text: StringResource = stringRes(R.string.general_maxFeeSlippageHint)
     }
 
+    /** Neutral hint on Send: the Max amount is fixed at the tap and leaves room for the network fee. */
+    data object SendHint : MaxFeedback {
+        override val text: StringResource = stringRes(R.string.general_maxFeeHint)
+    }
+
     /** Max failed; the user enters the amount instead. [variant] picks "send" or "swap" in the copy. */
     data class Error(
         val variant: MaxVariant
@@ -119,7 +124,7 @@ sealed interface MaxFeedback {
          * the hint describes the Max fill and clears with it.
          */
         fun of(
-            hint: Hint?,
+            hint: MaxFeedback?,
             error: Error?
         ): MaxFeedback? = error ?: hint
     }

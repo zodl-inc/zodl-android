@@ -9,38 +9,29 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Added:
 
-- [MOB-1987] Send Max: a Max chip next to the Send amount fills in everything the selected account can spend to the
-  entered recipient, net of the network fee and priced with the typed memo. It also works before a recipient is
-  entered, as a preview priced for the account's own address, and the amount is priced again for the recipient as soon as
-  a valid address is entered or the address changes (the fee depends on the recipient's pool); Review stays off while
-  the amount is being computed. When Max is unavailable a hint above the Review button says why: "Max uses shielded ZEC only."
-  with a Shield button that opens the shielding flow when only transparent funds can be shielded, or "Max will be
-  available once your funds confirm." while shielded funds are pending. A failure is shown as an inline banner above
-  the Review button instead of a snackbar, in the hint's place, until Max is tapped again or the amount or recipient
-  is changed. A wallet
-  with too many notes for one transaction gets a "Too many notes to send at once" sheet, both when Max is tapped and
-  at Review, instead of the raw error; "Send a smaller amount" clears and focuses the amount.
+- [MOB-1987] Send Max: a Max chip next to the Send amount fills in everything the selected account can spend, net of
+  the network fee. Before a recipient is entered the amount is a preview priced for the account's own address, and it
+  is priced again for the recipient as soon as a valid address is entered or changed (the fee depends on the
+  recipient's pool) and for the typed memo. Review stays off while the amount is being computed. While a Max amount is
+  filled, a line above the Review button says "Max leaves room for a transaction fee."; editing the amount removes it.
+  A failure is shown as an inline banner in the same place instead of a snackbar, until Max is tapped again or the
+  amount or recipient is changed. A wallet with too many notes for one transaction gets a "Too many notes to send at
+  once" sheet, both when Max is tapped and at Review, instead of the raw error; "Send a smaller amount" clears and
+  focuses the amount.
 - [MOB-1989] Swap Max: a Max chip next to the From amount fills in everything the selected account can swap, net of
-  the network fees, in ZEC or, in USD mode, floored to the cent. It does not request a quote and is not updated
-  when the balance changes later; it is unavailable while a quote is being requested and, in USD mode, without a
-  ZEC price.
-  After a Max fill the screen notes how much ZEC Max keeps for the network fee. When Max is unavailable, a hint above
-  "Get a quote" says why: only transparent funds that can be shielded (with a Shield action, which wins when funds
-  are also confirming) or shielded funds still confirming. A failed Max shows an inline banner, in the hint's place,
-  instead of a toast; it clears on another Max tap, on editing the amount, or on changing the asset or swap direction. A wallet with too
-  many notes for one transaction gets a "Too many notes to send at once" sheet, whose "Send a smaller amount" button
-  clears the amount and focuses the field.
+  the network fees (two marginal fees stay back for the deposit), in ZEC or, in USD mode, floored to the cent. The
+  amount follows each new quote down and back up, never above the amount at the tap, until the amount, the asset or the
+  direction is changed. It does not request a quote; it is unavailable while a quote is being requested and, in USD
+  mode, without a ZEC price. A line above "Get a quote" says that Max leaves room for fees and slippage and updates
+  with each quote. A failed Max shows an inline banner instead of a toast. A wallet with too many notes for one
+  transaction gets the "Too many notes to send at once" sheet.
 - [MOB-1988] Pay Max: a Max chip next to the Pay amount fills in the largest token amount the selected account can
-  pay, converted from its spendable ZEC (net of the network fees) through the USD prices and floored to 8 decimals,
-  with the USD amount following from it. The fill leaves out the 0.67 percent app fee, and at Review the amount is quoted again, up to
-  twice, aiming 0.3 percent below what is spendable, so a quote comes back far more often (about 0.3 percent of the
-  balance stays unspent). It does not request a quote and is not updated when the balance or the
-  prices change later; it is unavailable while a quote is being requested or without both prices.
-  When Max is unavailable a hint above the Review button says why: only transparent funds (with a Shield button; this
-  wins over the other hint) or funds still confirming, and none while the address is empty. A failed Max shows an
-  inline banner, in the hint's place, instead of a toast; it stays until you tap Max again, edit the amount or change the address or asset.
-  A wallet with too many notes for one transaction gets a "Too many notes to send at once" sheet whose "Send a smaller
-  amount" button clears the amount and focuses it. Without a USD price Max is disabled and the USD field shows a dash.
+  pay, converted from its spendable ZEC (net of the network fees and the 0.67 percent app fee) through the USD prices
+  and floored to 8 decimals, with the USD amount following from it. At Review the amount is quoted again, up to twice,
+  aiming 0.3 percent below what is spendable, so a quote comes back far more often (about 0.3 percent of the balance
+  stays unspent). It does not request a quote; it is unavailable while a quote is being requested or without both
+  prices. A failed Max shows an inline banner instead of a toast. A wallet with too many notes for one transaction gets
+  the "Too many notes to send at once" sheet. Without a USD price Max is disabled and the USD field shows a dash.
 
 ### Changed:
 

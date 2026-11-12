@@ -36,6 +36,12 @@ class MaxFeedbackTest {
     }
 
     @Test
+    fun theSendHintCoversTheTransactionFeeOnly() {
+        assertEquals(stringRes(R.string.general_maxFeeHint), MaxFeedback.SendHint.text)
+        assertEquals(sendError, MaxFeedback.of(hint = MaxFeedback.SendHint, error = sendError))
+    }
+
+    @Test
     fun theErrorCarriesTheSendOrSwapCopy() {
         assertEquals(stringRes(R.string.general_maxUnavailableSend), sendError.text)
         assertEquals(stringRes(R.string.general_maxUnavailableSwap), swapError.text)

@@ -154,11 +154,11 @@ class GetMaxSendAmountUseCaseTest {
         }
 
     @Test
-    fun ownTransparentTargetUsesTheAccountTransparentAddressAndKeepsTheMarginalFeeBack() =
+    fun ownTransparentTargetUsesTheAccountTransparentAddressAndKeepsTwoMarginalFeesBack() =
         runTest {
             val result = useCase(MaxSendTarget.OwnTransparentReceiver)
 
-            assertEquals(MaxSendAmount(Zatoshi(95_000), Zatoshi(10_000)), result)
+            assertEquals(MaxSendAmount(Zatoshi(90_000), Zatoshi(10_000)), result)
             coVerify { maxSendAmountDataSource.proposeMaxSendAmount(account, ownRecipient, null, bound) }
         }
 
@@ -182,6 +182,18 @@ class GetMaxSendAmountUseCaseTest {
                 MaxSendAmount(Zatoshi(5_000), Zatoshi(10_000))
 
             assertFailsWith<InsufficientFundsException> { useCase(MaxSendTarget.OwnTransparentReceiver) }
+        }
+
+    @Test
+    fun theOwnReceiverBufferIsTwoFeesAtTheBoundary() =
+        runTest {
+            coEvery { maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) } returns
+                MaxSendAmount(Zatoshi(10_000), Zatoshi(10_000))
+            assertFailsWith<InsufficientFundsException> { useCase(MaxSendTarget.OwnTransparentReceiver) }
+
+            coEvery { maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) } returns
+                MaxSendAmount(Zatoshi(10_001), Zatoshi(10_000))
+            assertEquals(Zatoshi(1), useCase(MaxSendTarget.OwnTransparentReceiver).amount)
         }
 
     @Test

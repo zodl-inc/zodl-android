@@ -2,7 +2,7 @@
     <string name="amount_with_fiat_currency_symbol" formatted="true"><xliff:g example="$" id="fiat_currency_symbol">%1$s</xliff:g><xliff:g example="123" id="amount">%2$s</xliff:g></string>
     <string name="general_hideBalancesMost">-----</string>
     <string name="general_max">Máx.</string>
-    <string name="general_maxFeeBufferHint">Máx. reserva %s ZEC para la comisión de red.</string>
+    <string name="general_maxFeeHint">Máx. deja margen para la comisión de la transacción.</string>
     <string name="general_maxFeeSlippageHint">Máx. deja margen para comisiones y slippage, y se actualiza con cada nueva cotización.</string>
     <string name="general_maxUnavailableSend">Máx. no está disponible ahora. Ingresa el monto que quieres enviar.</string>
     <string name="general_maxUnavailableSwap">Máx. no está disponible ahora. Ingresa el monto que quieres intercambiar.</string>

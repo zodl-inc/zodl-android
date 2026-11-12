@@ -30,8 +30,10 @@ sealed interface MaxSendTarget {
     ) : MaxSendTarget
 
     /**
-     * The selected account's own transparent receiver (Swap and Pay deposit there). One ZIP-317 marginal fee
-     * ([Zip317.marginalFee]) is kept back from the result as a buffer.
+     * The selected account's own transparent receiver (Swap and Pay deposit there). Two ZIP-317 marginal fees
+     * ([Zip317.marginalFee]) are kept back from the result as a buffer: the deposit proposal is built after the quote
+     * for the address the provider returns, which can cost more than a transparent one. A Sapling-only deposit adds one
+     * action over the transparent price and a TEX deposit two, so two marginal fees cover every shape.
      */
     data object OwnTransparentReceiver : MaxSendTarget
 
@@ -124,11 +126,18 @@ class GetMaxSendAmountUseCase(
         val buffer =
             when (target) {
                 is MaxSendTarget.Recipient,
-                MaxSendTarget.NoRecipientYet -> Zatoshi(0)
+                MaxSendTarget.NoRecipientYet -> {
+                    Zatoshi(0)
+                }
 
-                MaxSendTarget.OwnTransparentReceiver -> marginalFeeProvider.get()
+                MaxSendTarget.OwnTransparentReceiver -> {
+                    Zatoshi(marginalFeeProvider.get().value * OWN_RECEIVER_BUFFER_FEES)
+                }
             }
         if (amount.value <= buffer.value) throw InsufficientFundsException()
         return copy(amount = Zatoshi(amount.value - buffer.value))
     }
 }
+
+/** How many marginal fees Swap and Pay Max keep back for a deposit that costs more than the priced one. */
+private const val OWN_RECEIVER_BUFFER_FEES = 2

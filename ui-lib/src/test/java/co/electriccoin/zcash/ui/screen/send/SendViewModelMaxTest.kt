@@ -356,6 +356,20 @@ class SendViewModelMaxTest {
         }
 
     @Test
+    fun theFeeHintShowsWhileTheMaxFillIsActiveAndEndsWithAManualEdit() =
+        runTest {
+            val vm = harness.newViewModel()
+            vm.recipient()
+            assertNull(vm.maxFeedbackState.value)
+
+            vm.onMaxClick()
+            assertEquals(MaxFeedback.SendHint, vm.maxFeedbackState.value)
+
+            vm.onAmountEdited()
+            assertNull(vm.maxFeedbackState.value)
+        }
+
+    @Test
     fun aResultResolvedBeforeAnyCollectorIsDeliveredToTheNextOne() =
         runTest {
             val vm = harness.newViewModel()
