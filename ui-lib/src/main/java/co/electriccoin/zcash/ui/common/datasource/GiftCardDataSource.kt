@@ -7,7 +7,6 @@ import cash.z.ecc.android.sdk.model.GiftCard
 import cash.z.ecc.android.sdk.model.GiftCardLinkError
 import cash.z.ecc.android.sdk.model.MemoContent
 import cash.z.ecc.android.sdk.model.RecipientAddress
-import cash.z.ecc.android.sdk.model.TransactionSizeBound
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.spackle.Twig
@@ -16,13 +15,11 @@ import co.electriccoin.zcash.ui.common.model.GIFT_CARD_MEMO_SEPARATOR
 import co.electriccoin.zcash.ui.common.model.GiftCardException
 import co.electriccoin.zcash.ui.common.model.GiftCardHandle
 import co.electriccoin.zcash.ui.common.model.GiftCardOrigin
-import co.electriccoin.zcash.ui.common.model.GiftCardRedeemProgress
 import co.electriccoin.zcash.ui.common.model.GiftCardRedemption
 import co.electriccoin.zcash.ui.common.model.GiftCardStatus
 import co.electriccoin.zcash.ui.common.model.GiftCardSummary
 import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
-import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -72,17 +69,12 @@ interface GiftCardDataSource {
      * @throws GiftCardException.NotChecked when no [check] of this card has completed
      * @throws GiftCardException.NothingToRedeem when the card holds nothing spendable above the fee
      * @throws GiftCardException.InUse when another redemption of the same card is still using its wallet
-     * @throws GiftCardException.TooManyNotes when the card holds more notes than one transaction can spend within the
-     * bound of this device; nothing was sent
-     * @throws GiftCardException.RoundFailed when the network did not accept a round of a redemption in several rounds
-     * @throws GiftCardException.RoundExpired when a round of a redemption in several rounds was not mined in time
      * @throws GiftCardException.SubmitFailed when the network did not accept the redemption, or creating or
      * submitting it failed in any other way; the card is reset so that the next check sees its true state
      */
     suspend fun redeem(
         handle: GiftCardHandle,
-        toAddress: String,
-        onProgress: suspend (GiftCardRedeemProgress) -> Unit = {}
+        toAddress: String
     ): GiftCardRedemption
 
     /**
@@ -146,7 +138,6 @@ class GiftCardDataSourceImpl(
     private val persistableWalletProvider: PersistableWalletProvider,
     private val synchronizerProvider: SynchronizerProvider,
     private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider,
-    private val signerCapabilitiesProvider: SignerCapabilitiesProvider,
 ) : GiftCardDataSource {
     internal var scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -222,37 +213,18 @@ class GiftCardDataSourceImpl(
      * Such a failure is handled like an unsubmitted redemption: the redeemer is replaced, per the SDK contract. So is
      * a cancellation from inside the SDK while the caller itself is not cancelled.
      */
-    @Suppress("TooGenericExceptionCaught", "CyclomaticComplexMethod")
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun redeem(
         handle: GiftCardHandle,
-        toAddress: String,
-        onProgress: suspend (GiftCardRedeemProgress) -> Unit
+        toAddress: String
     ): GiftCardRedemption {
         val held = held(handle)
         held.priorClose?.join()
         val recipient = RecipientAddress.new(toAddress, held.network)
         val memo = redeemMemo(label = application.getString(R.string.redeemGift_memo), message = held.card.description)
-        val sizeBound = signerCapabilitiesProvider.forSoftwareSigning().sizeBound
         val redemption =
             try {
-                held.redeemer.redeem(
-                    toAddress = recipient,
-                    memo = memo,
-                    destination = synchronizerProvider.synchronizer.value,
-                    sizeBound = sizeBound,
-                    onProgress = { progress -> onProgress(progress.toRedeemProgress(sizeBound)) }
-                )
-            } catch (e: SdkGiftCardException.TooManyNotes) {
-                // Nothing was created in the first round, so the redeemer is untouched. After an earlier round the
-                // card wallet holds that round's transactions, and is reset like for any other failed redemption.
-                if (e.sentTxIds.isNotEmpty()) replaceRedeemer(handle, held)
-                throw GiftCardException.TooManyNotes(e)
-            } catch (e: SdkGiftCardException.RoundFailed) {
-                replaceRedeemer(handle, held)
-                throw GiftCardException.RoundFailed(e.round, e)
-            } catch (e: SdkGiftCardException.RoundExpired) {
-                replaceRedeemer(handle, held)
-                throw GiftCardException.RoundExpired(e.round, e)
+                held.redeemer.redeem(recipient, memo, synchronizerProvider.synchronizer.value)
             } catch (e: SdkGiftCardException.Closed) {
                 throw GiftCardException.UnknownHandle(e)
             } catch (e: SdkGiftCardException.NetworkMismatch) {
@@ -449,13 +421,3 @@ private fun SdkGiftCardOrigin.toAppOrigin(): GiftCardOrigin =
         SdkGiftCardOrigin.LegacyV2,
         SdkGiftCardOrigin.LegacyV3 -> GiftCardOrigin.VIZOR
     }
-
-/**
- * Where a redemption in several rounds stands after a round: the rounds so far, and the rounds the notes the card still
- * holds need at most [bound] shielded actions each (a note is at least an action).
- */
-internal fun GiftCardRedeemer.RedeemProgress.toRedeemProgress(bound: TransactionSizeBound): GiftCardRedeemProgress {
-    val perRound = (bound.maxShieldedActions ?: remainder.noteCount).coerceAtLeast(1)
-    val remainingRounds = (remainder.noteCount + perRound - 1) / perRound
-    return GiftCardRedeemProgress(round = round, estimatedRounds = round + remainingRounds)
-}

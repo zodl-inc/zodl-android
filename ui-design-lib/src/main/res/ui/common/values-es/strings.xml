@@ -608,7 +608,6 @@
     <string name="redeemGift_checkFailed_subtitle">Algo salió mal al verificar la tarjeta de regalo. Revisa tu conexión e inténtalo de nuevo.</string>
     <string name="redeemGift_redeeming_title">Canjeando tu regalo…</string>
     <string name="redeemGift_redeeming_subtitle">Enviando los fondos de la tarjeta de regalo a tu billetera.</string>
-    <string name="redeemGift_redeeming_rounds_subtitle">Ronda %1$d de %2$d enviada. Esperando confirmación.</string>
     <string name="redeemGift_success_title">¡Regalo canjeado!</string>
     <string name="redeemGift_success_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> está en camino a tu billetera.\nAparecerá en tu actividad en breve.</string>
     <string name="redeemGift_success_subtitle_noAmount">Tu regalo está en camino a tu billetera.\nAparecerá en tu actividad en breve.</string>

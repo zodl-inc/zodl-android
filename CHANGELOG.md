@@ -40,8 +40,6 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   a manual amount or a swap over that limit shows the "Too many notes to send at once" message.
 - [MOB-2296] A transaction the network refuses for good is shown as failed in the history instead of pending, and when
   it is refused for having too many notes the send screen shows the "Too many notes to send at once" message.
-- [MOB-2296] Redeeming a gift card that holds more notes than one transaction can spend now says so instead of
-  failing with a generic error, and a redemption in several rounds shows which round it is on.
 - [MOB-1988] The USD amount on the Pay screen that is computed from the token amount (after Max, or when the asset
   changes) is now written without grouping separators, such as `1234.5` instead of `1,234.5`, as on iOS.
 

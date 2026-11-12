@@ -643,7 +643,6 @@
     <string name="redeemGift_checkFailed_subtitle">Something went wrong while checking the gift card. Check your connection and try again.</string>
     <string name="redeemGift_redeeming_title">Redeeming your gift…</string>
     <string name="redeemGift_redeeming_subtitle">Sending the gift card\'s funds to your wallet.</string>
-    <string name="redeemGift_redeeming_rounds_subtitle">Round %1$d of %2$d sent. Waiting for confirmation.</string>
     <string name="redeemGift_success_title">Gift redeemed!</string>
     <string name="redeemGift_success_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> is on its way to your wallet.\nIt will show up in your activity shortly.</string>
     <string name="redeemGift_success_subtitle_noAmount">Your gift is on its way to your wallet.\nIt will show up in your activity shortly.</string>

@@ -5,7 +5,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.GIFT_CARD_MEMO_SEPARATOR
-import co.electriccoin.zcash.ui.common.model.GiftCardRedeemProgress
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.ImageResource
@@ -151,21 +150,17 @@ sealed interface RedeemGiftState {
             )
 
         /** The card is being redeemed. It cannot be left until the redemption ends, so back does nothing. */
-        fun redeeming(progress: GiftCardRedeemProgress? = null) =
+        fun redeeming() =
             cardStatus(
                 background = null,
                 image = loadingImageRes(),
                 title = stringRes(R.string.redeemGift_redeeming_title),
-                subtitle = progress?.let(::roundsSubtitle) ?: stringRes(R.string.redeemGift_redeeming_subtitle),
+                subtitle = stringRes(R.string.redeemGift_redeeming_subtitle),
                 primaryButton = null,
                 secondaryButton = null,
                 onBack = {},
                 isWaiting = true,
             )
-
-        // DES-156: provisional wording for the progress of a redemption in several rounds
-        private fun roundsSubtitle(progress: GiftCardRedeemProgress): StringResource =
-            stringRes(R.string.redeemGift_redeeming_rounds_subtitle, progress.round, progress.estimatedRounds)
 
         /**
          * The card is funded, but [amount] still needs confirmations. While [isRechecking], check again shows progress.
