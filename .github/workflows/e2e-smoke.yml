@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  QA_REVISION: 280a54bbf18092bf507f044234a3bbd98564d87e
+  QA_REVISION: ac4844ec9b5a57060d4a567dd5f4c9e6ee09b6a3
 
 jobs:
   validate_artifact_privacy:
