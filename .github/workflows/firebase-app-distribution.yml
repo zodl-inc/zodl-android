@@ -19,6 +19,8 @@
 # FIREBASE_DEBUG_JSON_BASE64 - Optional JSON to enable Firebase (e.g. Crashlytics) for debug builds
 # FIREBASE_RELEASE_JSON_BASE64 - Optional JSON to enable Firebase (e.g. Crashlytics) for release builds
 # SLACK_WEBHOOK_URL_WALLET_TEAM - Optional Slack incoming webhook for the wallet-team channel; deploy result notification is skipped when unset
+# SDK_COMPANION_TOKEN, CARGO_PRIVATE_APP_ID, CARGO_PRIVATE_APP_KEY - Only used while SDK_COMMIT_PIN is set in gradle.properties: the
+#                                  companion SDK step then builds that SDK commit into the app (same step as the Pull Request workflow)
 
 name: Firebase App Distribution
 
@@ -125,6 +127,14 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0  # To fetch all commits for the git-commit-count version code
+      - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
+        timeout-minutes: 30
+        uses: ./.github/actions/setup-sdk-companion
+        with:
+          sdk-repo: ${{ vars.SDK_COMPANION_REPO }}
+          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN }}
+          cargo-app-id: ${{ secrets.CARGO_PRIVATE_APP_ID }}
+          cargo-app-private-key: ${{ secrets.CARGO_PRIVATE_APP_KEY }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -232,7 +242,9 @@ jobs:
           mkdir -p "$HOME/.android"
           echo "$DEBUG_KEYSTORE_BASE64" | base64 --decode > "$HOME/.android/debug.keystore"
       - name: Build variant
-        timeout-minutes: 30
+        # 60 rather than 30: with SDK_COMMIT_PIN set (see the companion SDK step above) this also compiles the
+        # companion SDK's Rust on a cold cache.
+        timeout-minutes: 60
         env:
           # The OHTTP configuration the app passes to the SDK (masked; never printed).
           ZODL_OHTTP_GATEWAY_HOST_MAINNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_MAINNET }}
