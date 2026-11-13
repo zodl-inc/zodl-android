@@ -1,8 +1,6 @@
 package co.electriccoin.zcash.ui.screen.pay
 
-import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.CrossPayRequest
-import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact

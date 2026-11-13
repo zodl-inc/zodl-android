@@ -511,7 +511,11 @@ internal class PayVM(
                 // latest retry's state actually is.
                 val resolved = result.resolve(getCuratedSwapAssetsUseCase().data.orEmpty(), internalState.value.asset)
                 maxFeedback.clearError()
-                if (resolved.amount != null || resolved.isResolvedPaymentRequest) onFillEditedByUser()
+                // The Max fill ends exactly when the request rewrites the amount: it brings one, or it switches the
+                // asset and so clears the typed amount
+                val assetChanged = resolved.asset?.assetId != internalState.value.asset?.assetId
+                val rewritesAmount = resolved.amount != null || (resolved.isResolvedPaymentRequest && assetChanged)
+                if (rewritesAmount) onFillEditedByUser()
                 internalState.update {
                     val amount =
                         when {

@@ -452,7 +452,18 @@ internal class SwapVM(
                     } else {
                         result.resolve(getCuratedSwapAssetsUseCase().data.orEmpty(), internalState.value.swapAsset)
                     }
-                if (resolved != null && (resolved.amount != null || resolved.isResolvedPaymentRequest)) endMaxIntent()
+                // The Max fill ends exactly when the request rewrites the amount: it brings one, or it switches the
+                // asset and so clears the typed amount
+                val rewritesAmount =
+                    resolved != null &&
+                        (
+                            resolved.amount != null ||
+                                (
+                                    resolved.isResolvedPaymentRequest &&
+                                        resolved.asset?.assetId != internalState.value.swapAsset?.assetId
+                                )
+                        )
+                if (rewritesAmount) endMaxIntent()
                 internalState.update {
                     it.copy(
                         selectedContact = null,
