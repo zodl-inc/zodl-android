@@ -15,10 +15,12 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -95,6 +97,38 @@ class LedgerProposalRepositoryTest : LedgerProposalRepositoryTestBase() {
             assertEquals(submitResult, result)
             coVerify(exactly = 1) { proposalDataSource.submitTransaction(proofsPczt, signed) }
         }
+
+    @Test
+    fun aSuccessfulSubmitEndsTheSignerCapabilitiesFlow() =
+        runTest(dispatcher) {
+            givenSubmittable(SubmitResult.Success(listOf("tx")))
+
+            repository.submit()
+
+            verify(exactly = 1) { signerCapabilitiesProvider.endFlow() }
+        }
+
+    @Test
+    fun aFailedSubmitKeepsTheSignerCapabilitiesFlow() =
+        runTest(dispatcher) {
+            givenSubmittable(SubmitResult.Partial(listOf("tx"), listOf("status")))
+
+            repository.submit()
+
+            verify(exactly = 0) { signerCapabilitiesProvider.endFlow() }
+        }
+
+    private suspend fun TestScope.givenSubmittable(result: SubmitResult) {
+        val proofsPczt = Pczt(byteArrayOf(7))
+        givenPczt(ledgerAccount(), proofsPczt = proofsPczt)
+        runCurrent()
+        every { ledgerSigningDataSource.isLinked } returns true
+        val signed = Pczt(byteArrayOf(5))
+        coEvery { ledgerSigningDataSource.sign(any(), any(), any()) } returns signed
+        coEvery { proposalDataSource.submitTransaction(proofsPczt, signed) } returns result
+        repository.startSigning()
+        runCurrent()
+    }
 
     @Test
     fun userRejectedFailsWithSameLinkAndRetrySignsOverTheSameLinkWithoutARescan() =

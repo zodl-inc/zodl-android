@@ -121,7 +121,7 @@ jobs:
         variant: ${{ fromJSON(needs.prepare_matrix.outputs.variants) }}
     steps:
       - name: Checkout
-        timeout-minutes: 1
+        timeout-minutes: 5
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0  # To fetch all commits for the git-commit-count version code
@@ -200,13 +200,14 @@ jobs:
           echo "apk_dir=${APK_DIR}" >> "$GITHUB_OUTPUT"
           echo "build_type=${BUILD_TYPE}" >> "$GITHUB_OUTPUT"
       - name: Export Google Services JSON
-        # Skipped for FOSS variants: these files belong to the Store Firebase project, and their
-        # presence applies the google-services plugin module-wide, which then fails for the FOSS
-        # applicationId. FOSS builds ship without Firebase, the same as in scripts/prepare-foss-build.sh.
+        # Skipped for FOSS and Internal variants: these files belong to the Store Firebase project, and
+        # their presence applies the google-services plugin module-wide, which then fails for the FOSS
+        # and Internal applicationIds (no matching client). Those builds ship without Firebase, the same
+        # as in scripts/prepare-foss-build.sh.
         env:
           FIREBASE_DEBUG_JSON_BASE64: ${{ secrets.FIREBASE_DEBUG_JSON_BASE64 }}
           FIREBASE_RELEASE_JSON_BASE64: ${{ secrets.FIREBASE_RELEASE_JSON_BASE64 }}
-        if: "${{ env.FIREBASE_DEBUG_JSON_BASE64 != '' && env.FIREBASE_RELEASE_JSON_BASE64 != '' && !contains(matrix.variant, 'Foss') }}"
+        if: "${{ env.FIREBASE_DEBUG_JSON_BASE64 != '' && env.FIREBASE_RELEASE_JSON_BASE64 != '' && !contains(matrix.variant, 'Foss') && !contains(matrix.variant, 'Internal') }}"
         shell: bash
         run: |
           mkdir -p app/src/debug/

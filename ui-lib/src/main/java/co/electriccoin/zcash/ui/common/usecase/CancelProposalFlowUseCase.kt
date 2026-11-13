@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
 import co.electriccoin.zcash.ui.common.model.ZodlAccount
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
@@ -28,6 +29,7 @@ class CancelProposalFlowUseCase(
     private val accountDataSource: AccountDataSource,
     private val swapRepository: SwapRepository,
     private val migrationNavigator: MigrationNavigator,
+    private val signerCapabilitiesProvider: SignerCapabilitiesProvider,
 ) {
     suspend operator fun invoke(clearSendForm: Boolean = true) {
         val proposal =
@@ -41,6 +43,7 @@ class CancelProposalFlowUseCase(
         zashiProposalRepository.clear()
         keystoneProposalRepository.clear()
         ledgerProposalPipeline.clear()
+        signerCapabilitiesProvider.endFlow()
 
         when (proposal) {
             is ExactInputSwapTransactionProposal -> {
