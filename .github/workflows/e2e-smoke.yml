@@ -33,7 +33,7 @@ jobs:
   # APK in each phase job, paying ~7 min twice.
   build:
     needs: validate_artifact_privacy
-    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
+    runs-on: ${{ vars.LINUX_RUNNER_LONG || vars.LINUX_RUNNER || 'ubuntu-latest' }}
     # 60 rather than the usual 20: when SDK_COMMIT_PIN is set (see setup-sdk-companion),
     # this compiles the companion SDK's Rust dependency graph with a cold cargo/target
     # cache on the first run — observed at 20-25 min alone in pull-request.yml's build job.
