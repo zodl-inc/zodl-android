@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.swap
 
 import cash.z.ecc.android.sdk.model.FiatCurrency
+import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.AddressBookContact
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
@@ -36,7 +37,9 @@ class SwapVMMapperGiftCardLinkTest {
     private val account =
         mockk<WalletAccount> {
             every { canSpend(any()) } returns true
-            every { loadedBalances } returns null
+            every { spendableShieldedBalance } returns Zatoshi(1_000_000_000)
+            every { pendingShieldedBalance } returns Zatoshi(0)
+            every { loadedBalances } returns loadedBalances(spendable = 1_000_000_000, pending = 0, transparent = 0)
             every { isSpendable } returns true
         }
 
@@ -129,7 +132,8 @@ class SwapVMMapperGiftCardLinkTest {
             onQrCodeScannerClick = {},
             onAddressBookClick = {},
             onDeleteSelectedContactClick = {},
-            onBalanceButtonClick = {},
+            onMaxClick = {},
+            onSpendableClick = {},
             onChangeButtonClick = {},
             onAddressClick = {},
         )

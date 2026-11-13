@@ -2,11 +2,24 @@ package co.electriccoin.zcash.ui.screen.send.model
 
 import androidx.compose.runtime.saveable.mapSaver
 import cash.z.ecc.android.sdk.model.Memo
+import cash.z.ecc.android.sdk.type.AddressType
+import co.electriccoin.zcash.ui.common.model.ProposalMemoPolicy
+import co.electriccoin.zcash.ui.common.model.isTransparentOrTex
 
 sealed class MemoState(
     open val text: String,
     open val byteSize: Int
 ) {
+    /**
+     * The memo text to send to a recipient of [recipientType]. A transparent or TEX recipient gets none, even when
+     * text was typed while the recipient was still a shielded one and the memo field is now hidden.
+     */
+    fun textToSend(recipientType: AddressType?): String =
+        ProposalMemoPolicy.memoFor(recipientType, text).orEmpty()
+
+    /** Whether this memo lets the form be sent: it matters only for a recipient that can receive one. */
+    fun allowsSendTo(recipientType: AddressType?): Boolean = recipientType.isTransparentOrTex || this is Correct
+
     data class Correct(
         override val text: String,
         override val byteSize: Int

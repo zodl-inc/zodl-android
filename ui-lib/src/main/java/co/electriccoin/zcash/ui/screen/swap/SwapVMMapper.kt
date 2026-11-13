@@ -5,11 +5,14 @@ import cash.z.ecc.android.sdk.ext.Conversions.ZEC_FORMATTER
 import cash.z.ecc.android.sdk.model.FiatCurrency
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.Spendability
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapDirection
 import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_FROM_ZEC
 import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_INTO_ZEC
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.maxChipState
+import co.electriccoin.zcash.ui.common.model.spendability
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.repository.GiftCardSecretDetector.mayContainGiftCardSecret
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
@@ -18,8 +21,10 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ChipButtonState
 import co.electriccoin.zcash.ui.design.component.IconButtonState
+import co.electriccoin.zcash.ui.design.component.MaxFeedback
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldInnerState
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldState
+import co.electriccoin.zcash.ui.design.component.SendMaxChipState
 import co.electriccoin.zcash.ui.design.component.TextFieldState
 import co.electriccoin.zcash.ui.design.component.listitem.SimpleListItemState
 import co.electriccoin.zcash.ui.design.util.TickerLocation
@@ -29,10 +34,13 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByDynamicCurrencyNumber
 import co.electriccoin.zcash.ui.design.util.stringResByDynamicNumber
 import co.electriccoin.zcash.ui.design.util.stringResByNumber
+import co.electriccoin.zcash.ui.screen.balances.BalanceButtonState
+import co.electriccoin.zcash.ui.screen.balances.spendablePillState
 import co.electriccoin.zcash.ui.screen.swap.CurrencyType.FIAT
 import co.electriccoin.zcash.ui.screen.swap.CurrencyType.TOKEN
 import co.electriccoin.zcash.ui.screen.swap.ui.SwapAmountTextFieldState
 import co.electriccoin.zcash.ui.screen.swap.ui.SwapAmountTextState
+import co.electriccoin.zcash.ui.screen.swap.ui.SwapSpendableState
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
 import co.electriccoin.zcash.ui.util.isServiceUnavailable
 import io.ktor.client.plugins.ResponseException
@@ -52,9 +60,11 @@ internal class SwapVMMapper {
                 state = state,
                 onSwapCurrencyTypeClick = callbacks.onSwapCurrencyTypeClick,
                 onTextFieldChange = callbacks.onTextFieldChange,
-                onBalanceButtonClick = callbacks.onBalanceButtonClick,
+                onMaxClick = callbacks.onMaxClick,
+                onSpendableClick = callbacks.onSpendableClick,
                 onSwapAssetPickerClick = callbacks.onSwapAssetPickerClick
             )
+        val errorFooter = createErrorFooterState(state)
         return SwapState(
             amountTextField = textFieldState,
             slippage =
@@ -98,7 +108,9 @@ internal class SwapVMMapper {
                     onClick = callbacks.onAddressBookClick,
                     isEnabled = !state.isRequestingQuote
                 ),
-            errorFooter = createErrorFooterState(state),
+            errorFooter = errorFooter,
+            // The error footer takes the slot above the button, so the Max feedback only shows without it
+            maxFeedback = MaxFeedback.of(state.maxHint, state.maxError).takeIf { errorFooter == null },
             primaryButton =
                 createPrimaryButtonState(
                     textField = textFieldState,
@@ -153,7 +165,8 @@ internal class SwapVMMapper {
         state: SwapInternalState,
         onSwapCurrencyTypeClick: (BigDecimal?) -> Unit,
         onTextFieldChange: (NumberTextFieldInnerState) -> Unit,
-        onBalanceButtonClick: () -> Unit,
+        onMaxClick: () -> Unit,
+        onSpendableClick: () -> Unit,
         onSwapAssetPickerClick: () -> Unit
     ): SwapAmountTextFieldState {
         val amountFiat = state.getOriginFiatAmount()
@@ -241,9 +254,23 @@ internal class SwapVMMapper {
                         )
                     }
                 },
+            spendable =
+                when (state.swapDirection) {
+                    SWAP_FROM_ZEC -> {
+                        swapSpendableState(
+                            pill = spendablePillState(state.account?.loadedBalances, onSpendableClick),
+                            currencyType = state.currencyType,
+                            fiatOf = state::getTotalSpendableFiatBalance
+                        )
+                    }
+
+                    SWAP_INTO_ZEC -> {
+                        null
+                    }
+                },
             max =
                 when (state.swapDirection) {
-                    SWAP_FROM_ZEC -> createMaxState(state, onBalanceButtonClick)
+                    SWAP_FROM_ZEC -> createMaxChipState(state, onMaxClick)
                     SWAP_INTO_ZEC -> null
                 },
             onSwapChange = {
@@ -273,59 +300,20 @@ internal class SwapVMMapper {
         )
     }
 
-    @Suppress("CyclomaticComplexMethod", "ReturnCount")
-    private fun createMaxState(
+    private fun createMaxChipState(
         state: SwapInternalState,
-        onBalanceButtonClick: () -> Unit
-    ): ButtonState {
-        val loadingState =
-            ButtonState(
-                text = stringRes(R.string.balance_availableTitle),
-                isLoading = true,
-                onClick = onBalanceButtonClick
-            )
-
-        val b = state.account?.loadedBalances ?: return loadingState
-
-        return when {
-            b.totalBalance > b.spendableShieldedBalance &&
-                b.isShieldedPending &&
-                b.totalShieldedBalance > Zatoshi(0) &&
-                b.spendableShieldedBalance == Zatoshi(0) -> {
-                loadingState
-            }
-
-            b.totalBalance > b.spendableShieldedBalance &&
-                !b.isShieldedPending &&
-                b.totalShieldedBalance > Zatoshi(0) &&
-                b.spendableShieldedBalance == Zatoshi(0) &&
-                b.totalTransparentBalance == Zatoshi(0) -> {
-                loadingState
-            }
-
-            else -> {
-                val amount =
-                    when (state.currencyType) {
-                        TOKEN -> {
-                            stringRes(b.spendableShieldedBalance, TickerLocation.HIDDEN)
-                        }
-
-                        FIAT -> {
-                            stringResByDynamicCurrencyNumber(
-                                state.getTotalSpendableFiatBalance(b.spendableShieldedBalance),
-                                FiatCurrency.USD.symbol
-                            )
-                        }
-                    }
-
-                ButtonState(
-                    text = stringRes(R.string.swapAndPay_max, amount.asPrivacySensitive()),
-                    isLoading = false,
-                    onClick = onBalanceButtonClick
-                )
-            }
-        }
-    }
+        onMaxClick: () -> Unit
+    ): SendMaxChipState =
+        maxChipState(
+            spendability = state.account?.spendability ?: Spendability.Determining,
+            isExtraEnabled =
+                SwapMaxAmountFormatter.isMaxUsable(
+                    isRequestingQuote = state.isRequestingQuote,
+                    currencyType = state.currencyType,
+                    zecUsdPrice = state.swapAssets.zecAsset?.usdPrice
+                ),
+            onClick = onMaxClick
+        )
 
     private fun createAmountTextState(
         state: SwapInternalState,
@@ -497,6 +485,7 @@ internal class SwapVMMapper {
                             !textField.isError &&
                             amount != null &&
                             amount > BigDecimal(0) &&
+                            isSpendabilityAllowing(state) &&
                             (state.addressText.isNotBlank() || state.selectedContact != null) &&
                             !mayContainGiftCardSecret(state.selectedContact?.address ?: state.addressText) &&
                             !state.isRequestingQuote
@@ -508,6 +497,14 @@ internal class SwapVMMapper {
                     isWaitingForPrices
         )
     }
+
+    /**
+     * Max-disabled-by-balance (syncing, confirming, transparent-only, no funds) also disables "Get a quote", for a
+     * ZEC origin only (the From-ZEC direction spends from the wallet; the other direction spends elsewhere).
+     */
+    private fun isSpendabilityAllowing(state: SwapInternalState): Boolean =
+        state.swapDirection != SWAP_FROM_ZEC ||
+            (state.account?.spendability ?: Spendability.Determining).allowsPrimaryAction
 
     private fun createAddressState(state: SwapInternalState, onAddressChange: (String) -> Unit): TextFieldState {
         val text = state.addressText
@@ -563,7 +560,9 @@ private data class SwapInternalState(
     override val isRequestingQuote: Boolean,
     override val selectedContact: EnhancedABContact?,
     override val swapDirection: SwapDirection,
-    override val isEphemeralAddressLocked: Boolean
+    override val isEphemeralAddressLocked: Boolean,
+    override val maxError: MaxFeedback.Error?,
+    override val maxHint: MaxFeedback.Hint?
 ) : InternalState {
     constructor(original: InternalState) : this(
         account = original.account,
@@ -576,7 +575,9 @@ private data class SwapInternalState(
         isRequestingQuote = original.isRequestingQuote,
         selectedContact = original.selectedContact,
         swapDirection = original.swapDirection,
-        isEphemeralAddressLocked = original.isEphemeralAddressLocked
+        isEphemeralAddressLocked = original.isEphemeralAddressLocked,
+        maxError = original.maxError,
+        maxHint = original.maxHint
     )
 
     val originAsset: SwapAsset? =
@@ -708,7 +709,35 @@ internal data class SwapStateCallbacks(
     val onQrCodeScannerClick: () -> Unit,
     val onAddressBookClick: () -> Unit,
     val onDeleteSelectedContactClick: () -> Unit,
-    val onBalanceButtonClick: () -> Unit,
+    val onMaxClick: () -> Unit,
+    val onSpendableClick: () -> Unit,
     val onChangeButtonClick: () -> Unit,
     val onAddressClick: () -> Unit,
 )
+
+/**
+ * The Swap From-card "Spendable: 5,456.78" / "Spendable: (spinner)" label (Figma 9162:1940, 2464), tappable to open the
+ * Spendable balance sheet. [pill] decides what is shown (the Send/Pay pill rules: nothing without funds, a spinner
+ * while syncing or confirming, zero when only transparent funds exist); this only renders it as the text label. In
+ * [CurrencyType.FIAT] mode the amount is the USD value of the ZEC amount, via [fiatOf].
+ */
+internal fun swapSpendableState(
+    pill: BalanceButtonState?,
+    currencyType: CurrencyType,
+    fiatOf: (Zatoshi) -> BigDecimal
+): SwapSpendableState? {
+    pill ?: return null
+    val spendable = pill.amount
+    val text =
+        if (spendable == null) {
+            stringRes(R.string.balance_availableTitle)
+        } else {
+            val amount =
+                when (currencyType) {
+                    TOKEN -> stringRes(spendable, TickerLocation.HIDDEN)
+                    FIAT -> stringResByDynamicCurrencyNumber(fiatOf(spendable), FiatCurrency.USD.symbol)
+                }
+            stringRes(R.string.swapAndPay_max, amount.asPrivacySensitive())
+        }
+    return SwapSpendableState(text = text, isLoading = spendable == null, onClick = pill.onClick)
+}

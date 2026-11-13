@@ -16,6 +16,7 @@ import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.migration.MigrationNavigator
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
@@ -23,6 +24,7 @@ import co.electriccoin.zcash.ui.screen.send.Send
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -33,6 +35,8 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CancelProposalFlowUseCaseTest {
+    private val signerCapabilitiesProvider = mockk<SignerCapabilitiesProvider>(relaxed = true)
+
     @Test
     fun migrationSweepProposalNavigatesBackToMigrationReviewInsteadOfSend() =
         runTest {
@@ -56,6 +60,7 @@ class CancelProposalFlowUseCaseTest {
                         },
                     swapRepository = mockk<SwapRepository>(relaxed = true),
                     migrationNavigator = migrationNavigator,
+                    signerCapabilitiesProvider = signerCapabilitiesProvider,
                 )
 
             useCase()
@@ -87,6 +92,7 @@ class CancelProposalFlowUseCaseTest {
                         },
                     swapRepository = mockk<SwapRepository>(relaxed = true),
                     migrationNavigator = FakeMigrationNavigator(),
+                    signerCapabilitiesProvider = signerCapabilitiesProvider,
                 )
 
             useCase()
@@ -124,11 +130,13 @@ class CancelProposalFlowUseCaseTest {
                         },
                     swapRepository = mockk<SwapRepository>(relaxed = true),
                     migrationNavigator = FakeMigrationNavigator(),
+                    signerCapabilitiesProvider = signerCapabilitiesProvider,
                 )
 
             useCase()
 
             coVerify(exactly = 1) { ledgerProposalPipeline.clear() }
+            verify(exactly = 1) { signerCapabilitiesProvider.endFlow() }
             assertEquals(1, router.backToCalls.size)
             assertEquals(Send::class, router.backToCalls.single())
             assertEquals(0, router.backCalls)

@@ -31,12 +31,13 @@ import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.AssetCardState
 import co.electriccoin.zcash.ui.design.component.BlankSurface
-import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.LottieProgress
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldState
+import co.electriccoin.zcash.ui.design.component.SendMaxChipState
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiAssetCard
 import co.electriccoin.zcash.ui.design.component.ZashiAutoSizeText
+import co.electriccoin.zcash.ui.design.component.ZashiMaxChip
 import co.electriccoin.zcash.ui.design.component.ZashiNumberTextField
 import co.electriccoin.zcash.ui.design.component.ZashiNumberTextFieldDefaults
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
@@ -107,7 +108,11 @@ private fun SwapTextFieldCard(
                     color = ZashiColors.Text.textPrimary
                 )
                 Spacer(1f)
-                SpendableBalanceButton(state)
+                SpendableBalanceLabel(state)
+                if (state.max != null) {
+                    Spacer(8.dp)
+                    ZashiMaxChip(state = state.max)
+                }
             }
 
             Spacer(8.dp)
@@ -222,26 +227,29 @@ private fun SwapTextFieldCard(
     }
 }
 
+/** The Spendable label of the From card: [text] is the whole label, [onClick] opens the Spendable balance sheet. */
+data class SwapSpendableState(
+    val text: StringResource,
+    val isLoading: Boolean,
+    val onClick: () -> Unit
+)
+
 @Composable
-private fun SpendableBalanceButton(state: SwapAmountTextFieldState) {
-    if (state.max == null) return
+private fun SpendableBalanceLabel(state: SwapAmountTextFieldState) {
+    val spendable = state.spendable ?: return
 
     Row(
-        modifier =
-            Modifier.clickable(
-                onClick = state.max.onClick,
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() }
-            )
+        modifier = Modifier.clickable(onClick = spendable.onClick),
+        verticalAlignment = CenterVertically
     ) {
         ZashiAutoSizeText(
-            text = state.max.text.getValue(),
+            text = spendable.text.getValue(),
             style = ZashiTypography.textSm,
             fontWeight = FontWeight.Medium,
             color = if (state.isError) ZashiColors.Inputs.ErrorDefault.hint else ZashiColors.Text.textTertiary,
             maxLines = 1
         )
-        if (state.max.isLoading) {
+        if (spendable.isLoading) {
             Spacer(2.dp)
             LottieProgress()
         }
@@ -250,7 +258,8 @@ private fun SpendableBalanceButton(state: SwapAmountTextFieldState) {
 
 data class SwapAmountTextFieldState(
     val title: StringResource,
-    val max: ButtonState?,
+    val spendable: SwapSpendableState?,
+    val max: SendMaxChipState?,
     val error: StringResource?,
     val token: AssetCardState,
     val textFieldPrefix: ImageResource?,
@@ -282,10 +291,13 @@ private fun Preview() =
                         textFieldPrefix = imageRes(R.drawable.ic_send_zashi),
                         textField = NumberTextFieldState {},
                         secondaryText = stringResByDynamicCurrencyNumber(100, "USDT"),
-                        max =
-                            ButtonState(
-                                stringResByDynamicCurrencyNumber(100, "$")
+                        spendable =
+                            SwapSpendableState(
+                                text = stringRes("Spendable: 5,456.78"),
+                                isLoading = false,
+                                onClick = {}
                             ),
+                        max = SendMaxChipState(isEnabled = true, onClick = {}),
                         onSwapChange = {},
                     )
             )
@@ -312,10 +324,13 @@ private fun ErrorPreview() =
                         textFieldPrefix = imageRes(R.drawable.ic_send_zashi),
                         textField = NumberTextFieldState {},
                         secondaryText = stringResByDynamicCurrencyNumber(100, "USDT"),
-                        max =
-                            ButtonState(
-                                stringResByDynamicCurrencyNumber(100, "$")
+                        spendable =
+                            SwapSpendableState(
+                                text = stringRes("Spendable: 5,456.78"),
+                                isLoading = false,
+                                onClick = {}
                             ),
+                        max = SendMaxChipState(isEnabled = true, onClick = {}),
                         onSwapChange = {},
                     )
             )

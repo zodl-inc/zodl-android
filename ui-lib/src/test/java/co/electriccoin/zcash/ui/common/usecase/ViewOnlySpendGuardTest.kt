@@ -166,6 +166,7 @@ class ViewOnlySpendGuardTest {
                     ledgerProposalPipeline = ledgerProposalPipeline,
                     accountDataSource = accountDataSource,
                     synchronizerProvider = mockk(),
+                    navigateToTooManyNotes = mockk(),
                 )
 
             useCase.requestExactInput(
@@ -365,12 +366,13 @@ class ViewOnlySpendGuardTest {
                 ProposalDataSourceImpl(
                     synchronizerProvider = synchronizerProvider,
                     persistableWalletProvider = mockk(),
+                    signerCapabilitiesProvider = mockk(),
                 )
 
             assertViewOnly(assertFailsWith { dataSource.createProposal(viewOnly, mockk(relaxed = true)) })
             assertViewOnly(assertFailsWith { dataSource.createShieldProposal(viewOnly) })
             assertViewOnly(assertFailsWith { dataSource.createZip321Proposal(viewOnly, "zcash:t1") })
-            assertViewOnly(assertFailsWith { dataSource.createPcztFromProposal(viewOnly, mockk()) })
+            assertViewOnly(assertFailsWith { dataSource.createPcztFromProposal(viewOnly, mockk(), mockk()) })
             coVerify(exactly = 0) { synchronizerProvider.getSynchronizer() }
         }
 
@@ -382,6 +384,7 @@ class ViewOnlySpendGuardTest {
                 ProposalDataSourceImpl(
                     synchronizerProvider = synchronizerProvider,
                     persistableWalletProvider = mockk(),
+                    signerCapabilitiesProvider = mockk(),
                 )
 
             assertViewOnly(

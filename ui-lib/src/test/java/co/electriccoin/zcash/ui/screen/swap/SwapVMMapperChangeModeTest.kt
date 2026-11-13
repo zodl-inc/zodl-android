@@ -96,7 +96,8 @@ class SwapVMMapperChangeModeTest {
             onQrCodeScannerClick = {},
             onAddressBookClick = {},
             onDeleteSelectedContactClick = {},
-            onBalanceButtonClick = {},
+            onMaxClick = {},
+            onSpendableClick = {},
             onChangeButtonClick = {},
             onAddressClick = {},
         )

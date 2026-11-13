@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.pay
 
 import cash.z.ecc.android.sdk.model.FiatCurrency
+import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.AddressBookContact
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
@@ -36,6 +37,8 @@ class ExactOutputVMMapperGiftCardLinkTest {
         mockk<WalletAccount> {
             every { canSpend(any()) } returns true
             every { loadedBalances } returns null
+            every { spendableShieldedBalance } returns Zatoshi(1)
+            every { pendingShieldedBalance } returns Zatoshi(0)
         }
 
     @BeforeTest
@@ -120,5 +123,6 @@ class ExactOutputVMMapperGiftCardLinkTest {
             onQrCodeScannerClick = {},
             onAddressBookClick = {},
             onDeleteSelectedContactClick = {},
+            onMaxClick = {},
         )
 }

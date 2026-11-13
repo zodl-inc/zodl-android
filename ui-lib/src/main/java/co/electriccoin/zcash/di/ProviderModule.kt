@@ -1,11 +1,14 @@
 package co.electriccoin.zcash.di
 
+import android.os.SystemClock
+import co.electriccoin.zcash.ui.common.provider.ActivityManagerAvailableMemorySource
 import co.electriccoin.zcash.ui.common.provider.AppAccessLockProvider
 import co.electriccoin.zcash.ui.common.provider.AppAccessLockProviderImpl
 import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProvider
 import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProviderImpl
+import co.electriccoin.zcash.ui.common.provider.AvailableMemorySource
 import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.common.provider.BlockchainProviderImpl
 import co.electriccoin.zcash.ui.common.provider.CMCApiProvider
@@ -14,6 +17,7 @@ import co.electriccoin.zcash.ui.common.provider.CrashReportingStorageProvider
 import co.electriccoin.zcash.ui.common.provider.CrashReportingStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.EphemeralAddressStorageProvider
 import co.electriccoin.zcash.ui.common.provider.EphemeralAddressStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.ExternalSignerBudgetSource
 import co.electriccoin.zcash.ui.common.provider.GetMonotonicTimeProvider
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.common.provider.GetZcashCurrencyProvider
@@ -65,11 +69,14 @@ import co.electriccoin.zcash.ui.common.provider.RestoreTimestampStorageProvider
 import co.electriccoin.zcash.ui.common.provider.RestoreTimestampStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProvider
 import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProviderImpl
+import co.electriccoin.zcash.ui.common.provider.SdkExternalSignerBudgetSource
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProvider
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProviderImpl
 import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProvider
 import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProviderImpl
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProviderImpl
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProviderImpl
 import co.electriccoin.zcash.ui.common.provider.SwapAssetCacheProvider
@@ -90,6 +97,7 @@ import co.electriccoin.zcash.ui.common.provider.WalletBackupRemindMeTimestampSto
 import co.electriccoin.zcash.ui.common.provider.WalletBackupRemindMeTimestampStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProvider
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProviderImpl
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
@@ -117,6 +125,15 @@ val providerModule =
             )
         } bind SynchronizerProvider::class
         singleOf(::ApplicationStateProviderImpl) bind ApplicationStateProvider::class
+        single<AvailableMemorySource> { ActivityManagerAvailableMemorySource(androidContext()) }
+        singleOf(::SdkExternalSignerBudgetSource) bind ExternalSignerBudgetSource::class
+        single<SignerCapabilitiesProvider> {
+            SignerCapabilitiesProviderImpl(
+                availableMemorySource = get(),
+                externalSignerBudgetSource = get(),
+                elapsedRealtimeMillis = SystemClock::elapsedRealtime
+            )
+        }
         singleOf(::AppAccessLockProviderImpl) bind AppAccessLockProvider::class
         singleOf(::NetworkConnectivityProviderImpl) bind NetworkConnectivityProvider::class
         singleOf(::ServerSelectionMutex)

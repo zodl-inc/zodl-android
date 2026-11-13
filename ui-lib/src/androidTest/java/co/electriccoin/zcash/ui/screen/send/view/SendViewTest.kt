@@ -1,11 +1,13 @@
 package co.electriccoin.zcash.ui.screen.send.view
 
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.filters.MediumTest
 import cash.z.ecc.android.sdk.ext.collectWith
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
@@ -19,6 +21,7 @@ import cash.z.ecc.sdk.fixture.ZecRequestFixture
 import cash.z.ecc.sdk.fixture.ZecSendFixture
 import co.electriccoin.zcash.test.UiTestPrerequisites
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.design.component.SendMaxChipState
 import co.electriccoin.zcash.ui.screen.send.SendTag
 import co.electriccoin.zcash.ui.screen.send.SendViewTestSetup
 import co.electriccoin.zcash.ui.screen.send.assertOnForm
@@ -54,12 +57,14 @@ class SendViewTest : UiTestPrerequisites() {
     private fun newTestSetup(
         sendStage: SendStage = SendStage.Form,
         zecSend: ZecSend? = null,
-        hasCameraFeature: Boolean = true
+        hasCameraFeature: Boolean = true,
+        maxChipState: SendMaxChipState = SendMaxChipState(isEnabled = true, onClick = {})
     ) = SendViewTestSetup(
         composeTestRule,
         sendStage,
         zecSend,
-        hasCameraFeature
+        hasCameraFeature,
+        maxChipState
     ).apply {
         setDefaultContent()
     }
@@ -414,5 +419,39 @@ class SendViewTest : UiTestPrerequisites() {
         composeTestRule.onNodeWithContentDescription(getStringResource(R.string.send_scan_content_description)).also {
             it.assertDoesNotExist()
         }
+    }
+
+    private val maxLabel
+        get() = getStringResource(co.electriccoin.zcash.ui.design.R.string.general_max)
+
+    // The Send form needs a selected account to render, and the harness cannot build one yet (SDK `Account` has an
+    // internal constructor); these are enabled together with the rest of the form tests in #1260.
+    @Test
+    @MediumTest
+    @Ignore("Currently disabled. Will be implemented as part of #1260")
+    fun max_chip_enabled_click_is_delivered() {
+        val testSetup = newTestSetup()
+
+        composeTestRule.onNodeWithText(maxLabel).also {
+            it.assertIsEnabled()
+            it.performClick()
+        }
+
+        assertEquals(1, testSetup.getOnMaxCount())
+    }
+
+    @Test
+    @MediumTest
+    @Ignore("Currently disabled. Will be implemented as part of #1260")
+    fun max_chip_disabled_click_is_not_delivered() {
+        val testSetup =
+            newTestSetup(maxChipState = SendMaxChipState(isEnabled = false, onClick = {}))
+
+        composeTestRule.onNodeWithText(maxLabel).also {
+            it.assertIsNotEnabled()
+            it.performClick()
+        }
+
+        assertEquals(0, testSetup.getOnMaxCount())
     }
 }
