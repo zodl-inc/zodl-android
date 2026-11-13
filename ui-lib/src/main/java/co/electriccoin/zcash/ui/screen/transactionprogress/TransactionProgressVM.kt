@@ -398,7 +398,9 @@ class TransactionProgressVM(
                     // Refused after it was broadcast: its notes stay locked until it expires, so there is nothing
                     // to change but to close.
                     result is SubmitResult.Failure -> {
-                        MaxTooManyNotesSheetState.createCloseOnly(onClose = { isTooLargeSheetDismissed.update { true }) }
+                        MaxTooManyNotesSheetState.createCloseOnly(
+                            onClose = { isTooLargeSheetDismissed.update { true } }
+                        )
                     }
 
                     // Refused before anything was created: a smaller amount can be sent right away.
