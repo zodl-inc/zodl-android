@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.painter.ColorPainter
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -111,7 +112,21 @@ fun WelcomeScreenView(
         modifier =
             modifier
                 .fillMaxSize()
-                .drawWithContent {
+                .then(
+                    if (revealProgress < 1f) {
+                        // While the splash/lock overlay covers the screen, it must swallow every pointer
+                        // event; otherwise taps that miss the key icon fall through to the content below.
+                        Modifier.pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    awaitPointerEvent().changes.forEach { it.consume() }
+                                }
+                            }
+                        }
+                    } else {
+                        Modifier
+                    }
+                ).drawWithContent {
                     if (revealProgress < 1f) {
                         val wavePath =
                             Path().apply {

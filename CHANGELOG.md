@@ -32,6 +32,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   stays unspent). It does not request a quote; it is unavailable while a quote is being requested or without both
   prices. A failed Max shows an inline banner instead of a toast. A wallet with too many notes for one transaction gets
   the "Too many notes to send at once" sheet. Without a USD price Max is disabled and the USD field shows a dash.
+- Bitcoin, Litecoin, EIP-681 and Solana payment URIs are parsed through the SDK and routed into asset selection,
+  Pay and Swap; unsupported schemes, Solana transaction requests and unknown assets are rejected (MOB-1751).
 
 ### Changed:
 

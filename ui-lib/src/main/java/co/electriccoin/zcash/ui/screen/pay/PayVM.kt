@@ -36,6 +36,7 @@ import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapQuoteIfAvailableUse
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapRefundWarningUseCase
 import co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.TooManyNotesOutcome
+import co.electriccoin.zcash.ui.common.usecase.resolve
 import co.electriccoin.zcash.ui.common.viewmodel.MaxAmountRequester
 import co.electriccoin.zcash.ui.common.viewmodel.MaxFeedbackController
 import co.electriccoin.zcash.ui.common.viewmodel.MaxFillPolicy
@@ -502,18 +503,47 @@ internal class PayVM(
             val result = navigateToScanAddress()
             if (result != null) {
                 navigationRouter.back()
+                // Computed once, outside the update {} CAS-retry loop: this re-runs the curated-
+                // assets filter (an O(n*m) scan) on every retry otherwise, duplicating a
+                // computation the VM already produces reactively elsewhere via
+                // getCuratedSwapAssetsUseCase.observe(). The `else -> it.amount` fallback below
+                // still has to read state inside the lambda, since it depends on whatever the
+                // latest retry's state actually is.
+                val resolved = result.resolve(getCuratedSwapAssetsUseCase().data.orEmpty(), internalState.value.asset)
                 maxFeedback.clearError()
-                if (result.amount != null) onFillEditedByUser()
+                if (resolved.amount != null || resolved.isResolvedPaymentRequest) onFillEditedByUser()
                 internalState.update {
-                    it.copy(
-                        selectedABContact = null,
-                        address = result.address,
-                        amount =
-                            if (result.amount != null) {
-                                NumberTextFieldInnerState.fromAmount(result.amount)
-                            } else {
+                    val amount =
+                        when {
+                            resolved.amount != null -> {
+                                NumberTextFieldInnerState.fromAmount(resolved.amount)
+                            }
+
+                            // Only clear a typed amount when the resolved asset is actually
+                            // different from what's already selected -- an amount-less rescan of
+                            // the same asset (e.g. a bare address-only EIP-681 URI) must not wipe
+                            // out an amount the user already typed for that same asset. Compared
+                            // by assetId, not full equality: see resolveAsset()'s comment in
+                            // CrossPayRequest.kt for why data-class equality isn't reliable here.
+                            resolved.isResolvedPaymentRequest && resolved.asset?.assetId != it.asset?.assetId -> {
+                                NumberTextFieldInnerState()
+                            }
+
+                            else -> {
                                 it.amount
                             }
+                        }
+                    it.copy(
+                        selectedABContact = null,
+                        address = resolved.address,
+                        asset = resolved.asset,
+                        amount = amount,
+                        fiatAmount =
+                            exactOutputVMMapper.createFiatAmountInnerState(
+                                amountInnerState = amount,
+                                fiatInnerState = it.fiatAmount,
+                                asset = resolved.asset
+                            )
                     )
                 }
             }

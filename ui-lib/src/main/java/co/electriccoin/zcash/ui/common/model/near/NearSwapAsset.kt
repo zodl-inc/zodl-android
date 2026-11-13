@@ -12,6 +12,7 @@ data class NearSwapAsset(
     override val tokenIcon: ImageResource,
     override val usdPrice: BigDecimal?,
     override val assetId: String,
+    override val contractAddress: String? = null,
     override val decimals: Int,
     override val blockchain: SwapBlockchain,
 ) : SwapAsset
