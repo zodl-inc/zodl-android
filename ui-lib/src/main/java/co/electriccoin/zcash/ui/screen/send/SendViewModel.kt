@@ -142,7 +142,7 @@ class SendViewModel(
             maxAmountRequester.isInFlight
         ) { recipient, account, isRequesting ->
             maxChipState(
-                spendability = account?.spendability ?: Spendability.Nothing(Spendability.Nothing.Reason.Empty),
+                spendability = account?.spendability ?: Spendability.Determining,
                 // Max also works before a recipient is entered (a preview, see MaxSendTarget.NoRecipientYet); it is
                 // only off while a typed address is not valid.
                 isExtraEnabled = recipient.address.isEmpty() || recipient.type?.isNotValid == false,
@@ -261,12 +261,15 @@ class SendViewModel(
     }
 
     fun onMemoChanged(text: String) {
-        memoText.value = text
+        memoText.update { text }
     }
 
     /** The user edited the amount field. */
     fun onAmountEdited() {
         maxFeedback.clearError()
+        // A request still in flight, or a result not applied yet, must not overwrite what the user just typed
+        maxAmountRequester.cancel()
+        dropUnappliedMaxAmounts()
         maxAmountRequester.clearIntent()
     }
 

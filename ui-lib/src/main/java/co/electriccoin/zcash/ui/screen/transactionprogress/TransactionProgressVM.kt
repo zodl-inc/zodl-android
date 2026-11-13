@@ -44,6 +44,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class TransactionProgressVM(
@@ -397,14 +398,14 @@ class TransactionProgressVM(
                     // Refused after it was broadcast: its notes stay locked until it expires, so there is nothing
                     // to change but to close.
                     result is SubmitResult.Failure -> {
-                        MaxTooManyNotesSheetState.createCloseOnly(onClose = { isTooLargeSheetDismissed.value = true })
+                        MaxTooManyNotesSheetState.createCloseOnly(onClose = { isTooLargeSheetDismissed.update { true }) }
                     }
 
                     // Refused before anything was created: a smaller amount can be sent right away.
                     else -> {
                         MaxTooManyNotesSheetState.create(
                             onOk = ::onCloseClick,
-                            onDismiss = { isTooLargeSheetDismissed.value = true }
+                            onDismiss = { isTooLargeSheetDismissed.update { true } }
                         )
                     }
                 },

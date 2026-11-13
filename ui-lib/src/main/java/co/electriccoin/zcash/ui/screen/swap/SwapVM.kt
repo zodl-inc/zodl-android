@@ -127,7 +127,7 @@ internal class SwapVM(
     /** The blocking too-many-notes sheet shown when Max cannot fit the wallet's notes into one transaction. */
     val maxSheetState: StateFlow<MaxTooManyNotesSheetState?> = maxFeedback.sheet
 
-    /** Emits when the screen should focus the From amount field ("Send a smaller amount"). */
+    /** Emits when the screen should focus the From amount field (the sheet's OK). */
     val amountFocusRequests: SharedFlow<Unit> = maxFeedback.focusRequests
 
     /**

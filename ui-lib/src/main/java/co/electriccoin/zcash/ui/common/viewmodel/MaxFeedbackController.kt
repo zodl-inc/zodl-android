@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * What Send, Swap and Pay tell the user when Max fails: the non-blocking one-line [error] or the blocking
@@ -50,18 +51,18 @@ class MaxFeedbackController(
     fun onFailed(failure: MaxSendAmountFailure) {
         when (failure.presentation) {
             MaxFailurePresentation.SHEET -> showSheet()
-            MaxFailurePresentation.INLINE -> errorFlow.value = unavailableError
+            MaxFailurePresentation.INLINE -> errorFlow.update { unavailableError }
         }
     }
 
     fun clearError() {
-        errorFlow.value = null
+        errorFlow.update { null }
     }
 
     /** Shows the too-many-notes sheet, which replaces the error line. */
     fun showSheet() {
         clearError()
-        sheetFlow.value = tooManyNotesSheet
+        sheetFlow.update { tooManyNotesSheet }
     }
 
     /**
@@ -73,7 +74,7 @@ class MaxFeedbackController(
     }
 
     private fun dismissSheet() {
-        sheetFlow.value = null
+        sheetFlow.update { null }
     }
 
     private fun onOk() {

@@ -388,6 +388,39 @@ class SendViewModelMaxTest {
         }
 
     @Test
+    fun editingTheAmountWhileMaxIsInFlightDropsItsResult() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            harness.gatedProposal(gate)
+            val vm = harness.newViewModel()
+            val resolved = mutableListOf<ResolvedMaxAmount>()
+            backgroundScope.launch(harness.mainDispatcher) { vm.maxAmountResolved.toList(resolved) }
+            vm.recipient()
+            vm.onMaxClick()
+
+            vm.onAmountEdited()
+            gate.complete(Unit)
+
+            // The typed amount is not replaced and the Max intent is gone
+            assertTrue(resolved.isEmpty())
+            assertNull(vm.maxFeedbackState.value)
+        }
+
+    @Test
+    fun aResultNotYetAppliedWhenTheAmountIsEditedIsDropped() =
+        runTest {
+            val vm = harness.newViewModel()
+            vm.recipient()
+            vm.onMaxClick()
+
+            vm.onAmountEdited()
+
+            val resolved = mutableListOf<ResolvedMaxAmount>()
+            backgroundScope.launch(harness.mainDispatcher) { vm.maxAmountResolved.toList(resolved) }
+            assertTrue(resolved.isEmpty())
+        }
+
+    @Test
     fun aResultResolvedBeforeAnyCollectorIsDeliveredToTheNextOne() =
         runTest {
             val vm = harness.newViewModel()

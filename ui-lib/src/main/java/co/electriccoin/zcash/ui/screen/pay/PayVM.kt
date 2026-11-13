@@ -138,7 +138,7 @@ internal class PayVM(
     /** The blocking too-many-notes sheet of a failed Max, null while hidden. */
     val maxSheetState: StateFlow<MaxTooManyNotesSheetState?> = maxFeedback.sheet
 
-    /** Emits when the screen should focus the amount field ("Send a smaller amount"). */
+    /** Emits when the screen should focus the amount field (the sheet's OK). */
     val amountFocusRequests: SharedFlow<Unit> = maxFeedback.focusRequests
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -503,7 +503,7 @@ internal class PayVM(
             if (result != null) {
                 navigationRouter.back()
                 maxFeedback.clearError()
-                if (result.amount != null) maxAmountRequester.clearIntent()
+                if (result.amount != null) onFillEditedByUser()
                 internalState.update {
                     it.copy(
                         selectedABContact = null,

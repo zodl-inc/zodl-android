@@ -15,6 +15,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -82,7 +83,7 @@ class MaxAmountRequester(
     ): Boolean {
         if (inFlight.value) return false
         val requestGeneration = ++generation
-        inFlight.value = true
+        inFlight.update { true }
         job =
             scope.launch {
                 try {
@@ -97,12 +98,12 @@ class MaxAmountRequester(
                             null
                         }
                     if (max != null) {
-                        baseline.value = max.amount
-                        reserve.value = spendableAtTap?.let { Zatoshi(maxOf(0L, it.value - max.amount.value)) }
+                        baseline.update { max.amount }
+                        reserve.update { spendableAtTap?.let { Zatoshi(maxOf(0L, it.value - max.amount.value)) } }
                         deliver(max, onFailure, onResolved)
                     }
                 } finally {
-                    if (requestGeneration == generation) inFlight.value = false
+                    if (requestGeneration == generation) inFlight.update { false }
                 }
             }
         return true
@@ -147,12 +148,12 @@ class MaxAmountRequester(
         generation++
         job?.cancel()
         job = null
-        inFlight.value = false
+        inFlight.update { false }
     }
 
     /** Ends the Max intent, because the user edited the amount by hand: no more refreshes follow. */
     fun clearIntent() {
-        baseline.value = null
-        reserve.value = null
+        baseline.update { null }
+        reserve.update { null }
     }
 }

@@ -318,7 +318,6 @@ internal fun WrapSend(
             }
 
             SendStage.TooManyNotes,
-            SendStage.TooManyNotes,
             is SendStage.SendFailure -> {
                 setSendStage(SendStage.Form)
             }

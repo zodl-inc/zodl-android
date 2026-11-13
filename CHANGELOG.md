@@ -16,7 +16,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   filled, a line above the Review button says "Max leaves room for a transaction fee."; editing the amount removes it.
   A failure is shown as an inline banner in the same place instead of a snackbar, until Max is tapped again or the
   amount or recipient is changed. A wallet with too many notes for one transaction gets a "Too many notes to send at
-  once" sheet, both when Max is tapped and at Review, instead of the raw error; "Send a smaller amount" clears and
+  once" sheet, both when Max is tapped and at Review, instead of the raw error; its OK button clears and
   focuses the amount.
 - [MOB-1989] Swap Max: a Max chip next to the From amount fills in everything the selected account can swap, net of
   the network fees (two marginal fees stay back for the deposit), in ZEC or, in USD mode, floored to the cent. The
@@ -45,6 +45,13 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   computed.
 - [MOB-1988] The USD amount on the Pay screen that is computed from the token amount (after Max, or when the asset
   changes) is now written without grouping separators, such as `1234.5` instead of `1,234.5`, as on iOS.
+
+### Fixed:
+
+- [MOB-2167] Sending to a TEX address now treats it like a transparent one: a memo typed before the recipient was
+  changed to a TEX address is no longer sent (the payment used to fail because a TEX address cannot receive a memo),
+  a memo that is too long no longer disables the Send button, and a zero amount is rejected whichever way the
+  amount was entered.
 
 ## [3.20.0 (3807)] - 2026-11-09
 
@@ -79,13 +86,6 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - The private connection's info and opt-in sheets say what it covers: the wallet servers' requests, not
   Flexa's pages and images, custom servers or opened links.
 - Choose a Server marks Private as "Not private" when this build reaches the gateway through a test relay.
-
-### Fixed:
-
-- [MOB-2167] Sending to a TEX address now treats it like a transparent one: a memo typed before the recipient was
-  changed to a TEX address is no longer sent (the payment used to fail because a TEX address cannot receive a memo),
-  a memo that is too long no longer disables the Send button, and a zero amount is rejected whichever way the
-  amount was entered.
 
 ## [3.19.0 (3234)] - 2026-10-29
 

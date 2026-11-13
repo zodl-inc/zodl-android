@@ -22,7 +22,7 @@ data class SignerCapabilities(
 
 /**
  * The one place that decides, per account, how large a transaction the wallet may build. Max, Review, Swap and Pay and
- * and the flows that sign on the device all ask it, and nothing else switches on the type of an account for this.
+ * the flows that sign on the device all ask it, and nothing else switches on the type of an account for this.
  *
  * Shielding and the Orchard to Ironwood migration never ask: they are not bounded.
  *
