@@ -344,4 +344,64 @@ class SendViewModelMaxFeedbackTest {
             vm.onMaxClick()
             assertSame(sheet, vm.tooManyNotesSheet.value)
         }
+
+    @Test
+    fun theReviewSheetOkEndsTheMaxIntentSoARecipientChangePricesNothing() =
+        runTest {
+            val vm = harness.newViewModel()
+            val cleared = mutableListOf<Unit>()
+            backgroundScope.launch(harness.mainDispatcher) { vm.amountClears.toList(cleared) }
+            vm.recipient()
+            vm.onMaxClick()
+            assertEquals(MaxFeedback.SendHint, vm.maxFeedbackState.value)
+
+            vm.onTooManyNotesOk()
+
+            assertEquals(1, cleared.size)
+            // the fee hint went with the Max intent
+            assertNull(vm.maxFeedbackState.value)
+            vm.recipient(address = OTHER)
+            coVerify(exactly = 1) { harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun theMaxSheetOkAfterAFailedRetapEndsTheMaxIntent() =
+        runTest {
+            val vm = harness.newViewModel()
+            vm.recipient()
+            vm.onMaxClick()
+            harness.failWith(MaxSendAmountFailure.TOO_MANY_NOTES)
+            vm.onMaxClick()
+            assertNotNull(vm.tooManyNotesSheet.value)
+
+            vm.tooManyNotesSheet.value
+                ?.ok
+                ?.onClick
+                ?.invoke()
+
+            assertNull(vm.tooManyNotesSheet.value)
+            assertNull(vm.maxFeedbackState.value)
+            vm.recipient(address = OTHER)
+            // the tap and the failed retap only: the amount is not priced again for the new recipient
+            coVerify(exactly = 2) { harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun theSheetOkWhileMaxRunsDropsItsResult() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            harness.gatedProposal(gate)
+            val vm = harness.newViewModel()
+            val resolved = mutableListOf<ResolvedMaxAmount>()
+            backgroundScope.launch(harness.mainDispatcher) { vm.maxAmountResolved.toList(resolved) }
+            vm.recipient()
+            vm.onMaxClick()
+
+            vm.onTooManyNotesOk()
+            gate.complete(Unit)
+
+            assertTrue(resolved.isEmpty())
+            assertFalse(vm.maxChipState.value.isRequesting)
+            assertNull(vm.maxFeedbackState.value)
+        }
 }

@@ -87,7 +87,7 @@ class SendViewModel(
     private val maxFeedback =
         MaxFeedbackController(
             variant = MaxVariant.SEND,
-            onClearAmount = { amountClearEvents.tryEmit(Unit) }
+            onClearAmount = ::endMaxAndClearAmount
         )
 
     private val maxAmountRequester =
@@ -122,12 +122,24 @@ class SendViewModel(
     private val onMaxClickAction: () -> Unit = ::onMaxClick
 
     /**
-     * OK on the proposal-time too-many-notes sheet ([SendStage.TooManyNotes]): clear the amount and focus its field,
-     * the same way the Max sheet's OK does.
+     * OK on the proposal-time too-many-notes sheet ([SendStage.TooManyNotes]): end Max, clear the amount and focus its
+     * field, the same way the Max sheet's OK does. Ending Max means a later recipient change does not fill the amount
+     * in again.
      */
     fun onTooManyNotesOk() {
-        amountClearEvents.tryEmit(Unit)
+        endMaxAndClearAmount()
         maxFeedback.requestAmountFocus()
+    }
+
+    /**
+     * OK on a too-many-notes sheet ends the Max intent and clears the amount. Ending it also drops a Max still being
+     * worked out, so its result cannot arrive after the sheet, and the fee hint goes with it.
+     */
+    private fun endMaxAndClearAmount() {
+        maxAmountRequester.cancel()
+        dropUnappliedMaxAmounts()
+        maxAmountRequester.clearIntent()
+        amountClearEvents.tryEmit(Unit)
     }
 
     /**

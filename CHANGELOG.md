@@ -18,7 +18,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   A failure is shown as an inline banner in the same place instead of a snackbar, until Max is tapped again or the
   amount or recipient is changed. A wallet with too many notes for one transaction gets a "Too many notes to send at
   once" sheet, both when Max is tapped and at Review, instead of the raw error; its OK button clears and
-  focuses the amount.
+  focuses the amount and ends Max, so a later recipient change does not fill it in again.
 - [MOB-1989] Swap Max: a Max chip next to the From amount fills in everything the selected account can swap, net of
   the network fees (two marginal fees stay back for the deposit), in ZEC or, in USD mode, floored to the cent. The
   amount follows each new quote down and back up, never above the amount at the tap, until the amount, the asset or the
