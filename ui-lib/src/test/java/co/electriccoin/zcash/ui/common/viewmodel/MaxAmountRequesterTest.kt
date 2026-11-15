@@ -381,6 +381,29 @@ class MaxAmountRequesterTest {
         }
 
     @Test
+    fun aCancelledRequestThatFailsLateReportsNothing() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            // A call that outlives its cancellation and then fails, as a non cancellable native call would
+            coEvery { getMaxSendAmount(any()) } coAnswers {
+                withContext(NonCancellable) { gate.await() }
+                throw MaxSendAmountUnavailableException(MaxSendAmountFailure.TOO_MANY_NOTES, RuntimeException())
+            }
+            val requester = requester()
+            var onFailureCalled = false
+
+            requester.request(MaxSendTarget.OwnTransparentReceiver, onFailure = { onFailureCalled = true }) { }
+            runCurrent()
+            requester.cancel()
+            gate.complete(Unit)
+            runCurrent()
+
+            assertTrue(failures.isEmpty())
+            assertFalse(onFailureCalled)
+            assertFalse(requester.isInFlight.value)
+        }
+
+    @Test
     fun clearIntentEndsTheBaselineSoRefreshesStop() =
         runTest {
             answers(CompletableDeferred(MAX))

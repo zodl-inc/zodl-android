@@ -224,6 +224,26 @@ class SendViewModelMaxTest {
         }
 
     @Test
+    fun aCancelledRepriceThatFailsLateLeavesATypedAmountAlone() =
+        runTest {
+            val vm = harness.newViewModel()
+            val cleared = mutableListOf<Unit>()
+            backgroundScope.launch(harness.mainDispatcher) { vm.amountClears.toList(cleared) }
+            vm.recipient()
+            vm.onMaxClick()
+            val gate = CompletableDeferred<Unit>()
+            harness.gatedFailure(gate, MaxSendAmountFailure.TOO_MANY_NOTES)
+            vm.recipient(address = OTHER)
+
+            vm.onAmountEdited()
+            gate.complete(Unit)
+
+            assertTrue(cleared.isEmpty())
+            assertNull(vm.tooManyNotesSheet.value)
+            assertNull(vm.maxFeedbackState.value)
+        }
+
+    @Test
     fun everyRecipientChangeAfterAMaxFillPricesMaxAgain() =
         runTest {
             val vm = harness.newViewModel()
