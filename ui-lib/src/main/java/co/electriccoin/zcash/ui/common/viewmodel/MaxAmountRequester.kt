@@ -97,7 +97,10 @@ class MaxAmountRequester(
                             fail(e.reason, onFailure)
                             null
                         }
-                    if (max != null) {
+                    // A request cancelled while its call was still running neither pins a baseline nor delivers
+                    // its result: the call cannot be stopped, but its amount was priced for a recipient or amount that
+                    // is gone
+                    if (max != null && requestGeneration == generation) {
                         baseline.update { max.amount }
                         reserve.update { spendableAtTap?.let { Zatoshi(maxOf(0L, it.value - max.amount.value)) } }
                         deliver(max, onFailure, onResolved)

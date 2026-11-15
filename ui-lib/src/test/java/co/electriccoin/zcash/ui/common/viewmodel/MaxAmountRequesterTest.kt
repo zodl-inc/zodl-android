@@ -13,9 +13,11 @@ import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -356,6 +358,26 @@ class MaxAmountRequesterTest {
             runCurrent()
 
             assertNull(requester.activeBaseline.value)
+        }
+
+    @Test
+    fun aCancelledRequestThatStillReturnsPinsNothing() =
+        runTest {
+            val first = CompletableDeferred<MaxSendAmount>()
+            // A call that outlives its cancellation, as a non cancellable native call would
+            coEvery { getMaxSendAmount(any()) } coAnswers { withContext(NonCancellable) { first.await() } }
+            val requester = requester()
+            var delivered = false
+
+            requester.request(MaxSendTarget.OwnTransparentReceiver) { delivered = true }
+            runCurrent()
+            requester.cancel()
+            first.complete(MAX)
+            runCurrent()
+
+            assertNull(requester.activeBaseline.value)
+            assertNull(requester.activeReserve.value)
+            assertFalse(delivered)
         }
 
     @Test

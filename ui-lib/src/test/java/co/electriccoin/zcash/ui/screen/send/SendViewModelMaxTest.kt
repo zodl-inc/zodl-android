@@ -148,7 +148,7 @@ class SendViewModelMaxTest {
         }
 
     @Test
-    fun recipientChangeCancelsTheInFlightRequest() =
+    fun aRecipientChangeCancelsARunningMaxWithoutStartingItAgain() =
         runTest {
             val gate = CompletableDeferred<Unit>()
             harness.gatedProposal(gate)
@@ -161,8 +161,29 @@ class SendViewModelMaxTest {
             vm.recipient(address = OTHER)
             gate.complete(Unit)
 
-            // Only the request for the current recipient delivers
-            assertEquals(listOf(OTHER), resolved.map { it.address })
+            // A change after the tap cancels a Max still being worked out, and nothing starts it again
+            assertTrue(resolved.isEmpty())
+            assertFalse(vm.maxChipState.value.isRequesting)
+            assertNull(vm.maxFeedbackState.value)
+            coVerify(exactly = 1) { harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun aTypoWhileTheFirstMaxRunsCancelsItAndAValidAddressPricesNothing() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            harness.gatedProposal(gate)
+            val vm = harness.newViewModel()
+            val resolved = mutableListOf<ResolvedMaxAmount>()
+            backgroundScope.launch(harness.mainDispatcher) { vm.maxAmountResolved.toList(resolved) }
+            vm.onMaxClick()
+
+            vm.recipient(address = "u1ha", type = AddressType.Invalid())
+            vm.recipient(address = UNIFIED)
+            gate.complete(Unit)
+
+            assertTrue(resolved.isEmpty())
+            coVerify(exactly = 1) { harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) }
         }
 
     @Test
@@ -467,7 +488,7 @@ class SendViewModelMaxTest {
         }
 
     @Test
-    fun resultForAStaleAddressIsDropped() =
+    fun aCancelledRequestThatStillReturnsLeavesNoMaxBehind() =
         runTest {
             val gate = CompletableDeferred<Unit>()
             // A request that outlives its cancellation, as a non cancellable native call would
@@ -481,7 +502,48 @@ class SendViewModelMaxTest {
             vm.recipient(address = OTHER)
             gate.complete(Unit)
 
-            assertEquals(listOf(OTHER), resolved.map { it.address })
+            assertTrue(resolved.isEmpty())
+            assertNull(vm.maxFeedbackState.value)
+            // and no Max intent was left behind: another change prices nothing
+            vm.recipient(address = UNIFIED)
+            coVerify(exactly = 1) { harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun aCancelledRequestThatStillReturnsAfterAnAmountEditDeliversNothing() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            harness.gatedProposal(gate, nonCancellable = true)
+            val vm = harness.newViewModel()
+            val resolved = mutableListOf<ResolvedMaxAmount>()
+            backgroundScope.launch(harness.mainDispatcher) { vm.maxAmountResolved.toList(resolved) }
+            vm.recipient()
+            vm.onMaxClick()
+
+            vm.onAmountEdited()
+            gate.complete(Unit)
+
+            assertTrue(resolved.isEmpty())
+            assertNull(vm.maxFeedbackState.value)
+        }
+
+    @Test
+    fun aCancelledRequestThatStillReturnsAfterTheAddressComesBackDeliversNothing() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            harness.gatedProposal(gate, nonCancellable = true)
+            val vm = harness.newViewModel()
+            val resolved = mutableListOf<ResolvedMaxAmount>()
+            backgroundScope.launch(harness.mainDispatcher) { vm.maxAmountResolved.toList(resolved) }
+            vm.recipient()
+            vm.onMaxClick()
+
+            vm.recipient(address = OTHER)
+            vm.recipient(address = UNIFIED)
+            gate.complete(Unit)
+
+            assertTrue(resolved.isEmpty())
+            coVerify(exactly = 1) { harness.maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) }
         }
 
     @Test
@@ -492,8 +554,9 @@ class SendViewModelMaxTest {
             val vm = harness.newViewModel()
             vm.recipient()
             vm.onMaxClick()
-            // The recipient change cancels the first request and starts its successor
+            // The recipient change cancels the first request; a new tap starts its successor
             vm.recipient(address = OTHER)
+            vm.onMaxClick()
 
             gate.complete(Unit)
             assertFalse(vm.maxChipState.value.isRequesting)

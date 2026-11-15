@@ -238,13 +238,16 @@ class SendViewModel(
     }
 
     /**
+     * A recipient change cancels a Max still being worked out, and that Max does not start again by itself. Only an
+     * amount Max has already filled is priced again for the new recipient.
+     *
      * @param repriceMax whether a Max amount filled earlier is priced again for the new recipient. The screen passes
      * false when it writes the address and the amount itself (a payment request, a cleared form): the Max intent
      * then ends and the amount that is written next is not replaced.
      */
     fun onRecipientAddressChanged(state: RecipientAddressState, repriceMax: Boolean = true) {
         val changed = recipientAddressState.value != state
-        val hadMaxIntent = maxAmountRequester.activeBaseline.value != null || maxAmountRequester.isInFlight.value
+        val hadMaxFill = maxAmountRequester.activeBaseline.value != null
         if (changed || !repriceMax) {
             maxAmountRequester.cancel()
             dropUnappliedMaxAmounts()
@@ -252,10 +255,11 @@ class SendViewModel(
         }
         if (!repriceMax) maxAmountRequester.clearIntent()
         recipientAddressState.update { state }
-        if (changed && hadMaxIntent && repriceMax) {
+        if (changed && hadMaxFill && repriceMax) {
             // The filled amount was priced for the previous recipient (the fee differs by recipient type, e.g. a TEX
-            // recipient needs two steps), so it is requested again for the new one. While a typed address is not
-            // valid yet the amount stays as it is: Review is off for it anyway.
+            // recipient needs two steps), so it is requested again for the new one. A Max still being worked out was
+            // cancelled above and is not started again. While a typed address is not valid yet the amount stays as it
+            // is: Review is off for it anyway.
             requestMax(isReprice = true)
         }
     }
