@@ -180,6 +180,21 @@ class SendViewModelMaxFeedbackTest {
         }
 
     @Test
+    fun theReviewSheetOkAlsoClearsAnEarlierMaxNote() =
+        runTest {
+            val vm = harness.newViewModel()
+            vm.recipient()
+            vm.onMaxClick()
+            harness.failWith(MaxSendAmountFailure.OTHER)
+            vm.onMaxClick()
+            assertNotNull(vm.maxFeedbackState.value)
+
+            vm.onTooManyNotesOk()
+
+            assertNull(vm.maxFeedbackState.value)
+        }
+
+    @Test
     fun sheetReplacesAnExistingError() =
         runTest {
             harness.failWith(MaxSendAmountFailure.OTHER)

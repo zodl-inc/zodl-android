@@ -53,6 +53,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 
+@Suppress("TooManyFunctions")
 class SendViewModel(
     exchangeRateRepository: ExchangeRateRepository,
     private val observeContactByAddress: ObserveContactByAddressUseCase,
@@ -132,13 +133,11 @@ class SendViewModel(
     }
 
     /**
-     * OK on a too-many-notes sheet ends the Max intent and clears the amount. Ending it also drops a Max still being
-     * worked out, so its result cannot arrive after the sheet, and the fee hint goes with it.
+     * OK on a too-many-notes sheet ends the Max intent the way a manual edit does (see [onAmountEdited]: a Max still
+     * being worked out is dropped, the fee hint and any earlier Max note go) and clears the amount.
      */
     private fun endMaxAndClearAmount() {
-        maxAmountRequester.cancel()
-        dropUnappliedMaxAmounts()
-        maxAmountRequester.clearIntent()
+        onAmountEdited()
         amountClearEvents.tryEmit(Unit)
     }
 
