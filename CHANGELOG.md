@@ -12,12 +12,13 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - [MOB-1987] Send Max: a Max chip next to the Send amount fills in everything the selected account can spend, net of
   the network fee. Before a recipient is entered the amount is a preview priced for the account's own address, and it
   is priced again for the recipient as soon as a valid address is entered or changed (the fee depends on the
-  recipient's pool) and for the typed memo. Review stays off while the amount is being computed. While a Max amount is
+  recipient's pool) and for the typed memo. Changing the address before Max has filled in the amount cancels it, and
+  it does not start again by itself. Review stays off while the amount is being computed. While a Max amount is
   filled, a line above the Review button says "Max leaves room for a transaction fee."; editing the amount removes it.
   A failure is shown as an inline banner in the same place instead of a snackbar, until Max is tapped again or the
   amount or recipient is changed. A wallet with too many notes for one transaction gets a "Too many notes to send at
   once" sheet, both when Max is tapped and at Review, instead of the raw error; its OK button clears and
-  focuses the amount.
+  focuses the amount and ends Max, so a later recipient change does not fill it in again.
 - [MOB-1989] Swap Max: a Max chip next to the From amount fills in everything the selected account can swap, net of
   the network fees (two marginal fees stay back for the deposit), in ZEC or, in USD mode, floored to the cent. The
   amount follows each new quote down and back up, never above the amount at the tap, until the amount, the asset or the

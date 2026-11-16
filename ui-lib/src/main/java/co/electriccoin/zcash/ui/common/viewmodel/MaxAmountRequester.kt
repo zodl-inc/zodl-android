@@ -25,8 +25,9 @@ import kotlinx.coroutines.launch
  * [MaxFeedbackController.onFailed], which picks the too-many-notes sheet or the generic banner (see
  * [MaxSendAmountFailure.presentation]). The use case has already logged why (class name only).
  *
- * A successful request also pins the Max intent's [activeBaseline] and [activeReserve] (see [MaxFillPolicy]). Only
- * Swap and Pay read them, to re-fill on quote refreshes; Send ignores them and keeps the amount fixed at tap.
+ * A successful request also pins the Max intent's [activeBaseline] and [activeReserve] (see [MaxFillPolicy]). Swap and
+ * Pay read them to re-fill on quote refreshes. Send reads [activeBaseline] for the fee hint and to know that a Max
+ * amount is filled, which is priced again when the recipient changes; its amount is otherwise fixed at tap.
  */
 class MaxAmountRequester(
     private val scope: CoroutineScope,
@@ -91,13 +92,16 @@ class MaxAmountRequester(
                         try {
                             getMaxSendAmount(target)
                         } catch (_: InsufficientFundsException) {
-                            fail(MaxSendAmountFailure.OTHER, onFailure)
+                            if (requestGeneration == generation) fail(MaxSendAmountFailure.OTHER, onFailure)
                             null
                         } catch (e: MaxSendAmountUnavailableException) {
-                            fail(e.reason, onFailure)
+                            if (requestGeneration == generation) fail(e.reason, onFailure)
                             null
                         }
-                    if (max != null) {
+                    // A request cancelled while its call was still running neither pins a baseline nor delivers
+                    // its result or its failure: the call cannot be stopped, but its answer was priced for a
+                    // recipient or amount that is gone
+                    if (max != null && requestGeneration == generation) {
                         baseline.update { max.amount }
                         reserve.update { spendableAtTap?.let { Zatoshi(maxOf(0L, it.value - max.amount.value)) } }
                         deliver(max, onFailure, onResolved)
@@ -143,7 +147,7 @@ class MaxAmountRequester(
         }
     }
 
-    /** Cancels the running request, if any; its result is never delivered. */
+    /** Cancels the running request, if any; neither its result nor its failure is delivered. */
     fun cancel() {
         generation++
         job?.cancel()
