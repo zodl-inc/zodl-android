@@ -123,22 +123,41 @@ class NearSwapQuoteValidationTest {
     }
 
     @Test
-    fun requireWithinSlippage_inputFloating_passesAtAndBelowCeiling() {
-        // 10% slippage, amountIn=100 -> ceiling=110. minAmountOut is the fixed side (== amountOut) and ignored here.
-        requireWithinSlippage(SwapType.EXACT_OUTPUT, HUNDRED, A_THOUSAND, BigDecimal("110"), A_THOUSAND, BPS_10_PCT)
-        requireWithinSlippage(SwapType.EXACT_OUTPUT, HUNDRED, A_THOUSAND, BigDecimal("105"), A_THOUSAND, BPS_10_PCT)
+    fun requireWithinSlippage_inputFloating_passesAtAndAboveFloor() {
+        // 10% slippage, amountIn=100 -> floor=90. minAmountIn is the least input that completes the swap and may
+        // sit anywhere from the floor up to amountIn. minAmountOut is the fixed side (== amountOut) and ignored.
+        requireWithinSlippage(SwapType.EXACT_OUTPUT, HUNDRED, A_THOUSAND, BigDecimal("90"), A_THOUSAND, BPS_10_PCT)
+        requireWithinSlippage(SwapType.EXACT_OUTPUT, HUNDRED, A_THOUSAND, BigDecimal("95"), A_THOUSAND, BPS_10_PCT)
+        requireWithinSlippage(SwapType.EXACT_OUTPUT, HUNDRED, A_THOUSAND, BigDecimal("100"), A_THOUSAND, BPS_10_PCT)
     }
 
     @Test
-    fun requireWithinSlippage_inputFloating_throwsAboveCeiling() {
+    fun requireWithinSlippage_inputFloating_throwsBelowFloor() {
         val e =
             assertFailsWith<SwapQuoteMismatchException> {
-                // ceiling=110, server demands at least 111
+                // floor=90, the server's minimum is 89: amountIn carries a wider buffer than the slippage asked for
                 requireWithinSlippage(
                     SwapType.EXACT_OUTPUT,
                     BigDecimal("100"),
                     A_THOUSAND,
-                    BigDecimal("111"),
+                    BigDecimal("89"),
+                    A_THOUSAND,
+                    BPS_10_PCT
+                )
+            }
+        assertEquals(SwapQuoteMismatchType.SLIPPAGE_EXCEEDED, e.type)
+    }
+
+    @Test
+    fun requireWithinSlippage_inputFloating_throwsWhenMinAmountInIsAboveAmountIn() {
+        // A deposit of amountIn=100 would be below the 101 the server needs and be refunded: an inconsistent quote.
+        val e =
+            assertFailsWith<SwapQuoteMismatchException> {
+                requireWithinSlippage(
+                    SwapType.EXACT_OUTPUT,
+                    BigDecimal("100"),
+                    A_THOUSAND,
+                    BigDecimal("101"),
                     A_THOUSAND,
                     BPS_10_PCT
                 )
@@ -182,32 +201,46 @@ class NearSwapQuoteValidationTest {
     }
 
     @Test
-    fun requireWithinSlippage_inputFloating_acceptsServerIntegerRoundedCeiling() {
-        // Symmetric case for EXACT_OUTPUT: amountIn=9897372 × 1.30 = 12866583.6; the server rounds
-        // UP to 12866584 to keep its guarantee conservative. The wallet's ceiling rounds UP too.
+    fun requireWithinSlippage_inputFloating_acceptsServerIntegerTruncatedFloor() {
+        // EXACT_OUTPUT: amountIn=9897372 × 0.70 = 6928160.4; the floor is rounded DOWN to 6928160, so a server
+        // minimum of 6928160 passes.
         requireWithinSlippage(
             swapType = SwapType.EXACT_OUTPUT,
             amountIn = BigDecimal("9897372"),
             amountOut = BigDecimal("2245828"),
-            minAmountIn = BigDecimal("12866584"),
+            minAmountIn = BigDecimal("6928160"),
             minAmountOut = BigDecimal("2245828"),
             slippageToleranceBps = 3000
         )
     }
 
     @Test
-    fun requireWithinSlippage_inputFloating_stillRejectsAboveIntegerCeiling() {
-        // One base unit above the rounded-up integer ceiling is genuinely out of tolerance.
+    fun requireWithinSlippage_inputFloating_stillRejectsBelowIntegerFloor() {
+        // One base unit below the rounded-down integer floor is genuinely out of tolerance.
         assertFailsWith<IllegalArgumentException> {
             requireWithinSlippage(
                 swapType = SwapType.EXACT_OUTPUT,
                 amountIn = BigDecimal("9897372"),
                 amountOut = BigDecimal("2245828"),
-                minAmountIn = BigDecimal("12866585"),
+                minAmountIn = BigDecimal("6928159"),
                 minAmountOut = BigDecimal("2245828"),
                 slippageToleranceBps = 3000
             )
         }
+    }
+
+    @Test
+    fun requireWithinSlippage_inputFloating_acceptsAPayQuoteSeenOnIos() {
+        // A Pay (EXACT_OUTPUT) quote seen on iOS at 2% slippage: amountIn=57557 zat, minAmountIn=56405.
+        // 57557 × 0.98 = 56405.86, rounded DOWN to 56405, so the server's minimum is exactly on the floor.
+        requireWithinSlippage(
+            swapType = SwapType.EXACT_OUTPUT,
+            amountIn = BigDecimal("57557"),
+            amountOut = BigDecimal("2245828"),
+            minAmountIn = BigDecimal("56405"),
+            minAmountOut = BigDecimal("2245828"),
+            slippageToleranceBps = 200
+        )
     }
 
     // endregion

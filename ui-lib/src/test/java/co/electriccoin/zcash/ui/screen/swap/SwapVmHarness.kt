@@ -102,9 +102,10 @@ internal fun swapVmHarness(
         }
     val quoteFlow = MutableStateFlow<SwapQuoteData?>(null)
     val mapper = mockk<SwapVMMapper>()
+    val repositoryAssets = MutableStateFlow(assets)
     val swapRepository =
         mockk<SwapRepository>(relaxed = true) {
-            every { this@mockk.assets } returns MutableStateFlow(assets)
+            every { this@mockk.assets } returns repositoryAssets
             every { quote } returns quoteFlow
         }
 
@@ -115,6 +116,7 @@ internal fun swapVmHarness(
             getMaxSendAmount = getMaxSendAmount,
             accountFlow = accountFlow,
             quoteFlow = quoteFlow,
+            repositoryAssets = repositoryAssets,
             assetsRef = assetsRef,
             navigateToSlippage = navigateToSlippage,
             navigateToSwapAssetPicker = navigateToSwapAssetPicker,
@@ -174,6 +176,7 @@ internal class SwapVmHarness(
     val getMaxSendAmount: GetMaxSendAmountUseCase,
     val accountFlow: MutableStateFlow<WalletAccount?>,
     val quoteFlow: MutableStateFlow<SwapQuoteData?>,
+    val repositoryAssets: MutableStateFlow<SwapAssetsData>,
     val assetsRef: Array<SwapAssetsData>,
     val navigateToSlippage: NavigateToSlippageUseCase,
     val navigateToSwapAssetPicker: NavigateToSwapAssetPickerUseCase,

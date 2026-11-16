@@ -12,8 +12,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - [MOB-1987] Send Max: a Max chip next to the Send amount fills in everything the selected account can spend, net of
   the network fee. Before a recipient is entered the amount is a preview priced for the account's own address, and it
   is priced again for the recipient as soon as a valid address is entered or changed (the fee depends on the
-  recipient's pool) and for the typed memo. Changing the address before Max has filled in the amount cancels it, and
-  it does not start again by itself. Review stays off while the amount is being computed. While a Max amount is
+  recipient's pool); a memo does not change the fee. Changing the address before Max has filled in the amount cancels
+  it, and it does not start again by itself. Review stays off while the amount is being computed. While a Max amount is
   filled, a line above the Review button says "Max leaves room for a transaction fee."; editing the amount removes it.
   A failure is shown as an inline banner in the same place instead of a snackbar, until Max is tapped again or the
   amount or recipient is changed. A wallet with too many notes for one transaction gets a "Too many notes to send at
@@ -56,6 +56,11 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   changed to a TEX address is no longer sent (the payment used to fail because a TEX address cannot receive a memo),
   a memo that is too long no longer disables the Send button, and a zero amount is rejected whichever way the
   amount was entered.
+- Pay: the check of a quote's minimum deposit against the amount the wallet deposits now works. It compared the minimum
+  with a ceiling above the deposit and could not fail. A minimum far below the deposit (more slippage buffer than
+  chosen) or above it (the deposit would be refunded) is now rejected.
+- Swap and Pay: when the selected asset drops out of the asset list, a Max in progress or following the quotes ends
+  with it instead of leaving its hint and a running request behind.
 
 ## [3.20.0 (3807)] - 2026-11-09
 
