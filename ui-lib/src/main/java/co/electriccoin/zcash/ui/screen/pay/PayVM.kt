@@ -232,17 +232,38 @@ internal class PayVM(
         viewModelScope.launch {
             swapRepository.assets.collect { assets ->
                 val catalog = assets.data ?: return@collect
+                var delisted = false
                 internalState.update { state ->
+                    // The update lambda may run again after a lost race: the flag is set afresh each time
+                    delisted = false
                     val selected = state.asset ?: return@update state
                     val refreshed = catalog.firstOrNull { it.assetId == selected.assetId }
                     when {
-                        refreshed == selected -> state
-                        refreshed != null && selected.usdPrice != null -> state.copy(asset = refreshed)
-                        refreshed != null -> state.withAsset(refreshed)
-                        !assets.isLoading -> state.withAsset(null)
-                        else -> state
+                        refreshed == selected -> {
+                            state
+                        }
+
+                        refreshed != null && selected.usdPrice != null -> {
+                            state.copy(asset = refreshed)
+                        }
+
+                        refreshed != null -> {
+                            state.withAsset(refreshed)
+                        }
+
+                        !assets.isLoading -> {
+                            delisted = true
+                            state.withAsset(null)
+                        }
+
+                        else -> {
+                            state
+                        }
                     }
                 }
+                // The asset dropped out of the catalog: a Max still running or following prices ends with it, as it
+                // does when the asset is changed in the picker
+                if (delisted) onFillEditedByUser()
             }
         }
     }

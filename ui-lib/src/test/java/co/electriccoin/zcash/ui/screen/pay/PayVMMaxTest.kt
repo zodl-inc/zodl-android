@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.near.NearSwapAsset
+import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.common.usecase.MaxSendTarget
 import co.electriccoin.zcash.ui.design.component.MaxFeedback
 import co.electriccoin.zcash.ui.design.component.MaxVariant
@@ -765,6 +766,32 @@ class PayVMMaxTest {
 
             assertEquals(amountAfterSwitch, harness.capturedState.amount)
             assertFalse(harness.isMaxHintVisible)
+        }
+
+    @Test
+    fun anAssetThatLeavesTheCatalogEndsTheIntentAndTheHint() =
+        runTest {
+            val harness = maxHarness()
+            harness.collectState(this)
+            harness.onMaxClick()
+            assertTrue(harness.isMaxHintVisible)
+
+            harness.repositoryAssets.value = SwapAssetsData(data = emptyList(), isLoading = false)
+
+            assertNull(harness.vmAsset)
+            assertFalse(harness.isMaxHintVisible)
+        }
+
+    @Test
+    fun anAssetCatalogThatIsStillLoadingKeepsTheIntent() =
+        runTest {
+            val harness = maxHarness()
+            harness.collectState(this)
+            harness.onMaxClick()
+
+            harness.repositoryAssets.value = SwapAssetsData(data = emptyList(), isLoading = true)
+
+            assertTrue(harness.isMaxHintVisible)
         }
 
     @Test
