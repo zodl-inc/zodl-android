@@ -38,6 +38,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Changed:
 
+- The Keystone shop offer opens the new Zodl discount link, https://shop.keyst.one/discount/Zodl.
 - [MOB-2296] How many notes a send can spend in one transaction now follows the memory available on the device when
   you send (and, for a hardware signer, what it signs at once), so a large send no longer runs a phone out of memory. A Max,
   a manual amount or a swap over that limit shows the "Too many notes to send at once" message.

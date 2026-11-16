@@ -147,6 +147,6 @@ class AccountListVM(
     private fun onBack() = navigationRouter.back()
 
     companion object {
-        const val KEYSTONE_PROMO_URL = "https://keyst.one/shop/products/keystone-3-pro?discount=Zodl"
+        const val KEYSTONE_PROMO_URL = "https://shop.keyst.one/discount/Zodl"
     }
 }
