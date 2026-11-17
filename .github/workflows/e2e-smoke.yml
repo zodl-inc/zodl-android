@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  QA_REVISION: ac4844ec9b5a57060d4a567dd5f4c9e6ee09b6a3
+  QA_REVISION: ef77c32b163a8a5117d07b8bd49b5f5fe65610ee
 
 jobs:
   validate_artifact_privacy:
@@ -234,7 +234,6 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
-      id-token: write
     strategy:
       # Run the two suite phases in parallel jobs to halve wall time.
       # Each job boots its own emulator; phase 1 uses fresh wallets,
@@ -261,8 +260,13 @@ jobs:
       - name: Record tested build and publication time
         run: |
           tested_commit=$(cat apk/app-revision.txt)
-          [[ "$tested_commit" =~ ^[0-9a-f]{40}$ ]]
+          if [[ ! "$tested_commit" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Invalid tested app revision"
+            exit 1
+          fi
           echo "E2E_TESTED_COMMIT=$tested_commit" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/speedrun-safe-results"
+          cp apk/app-revision.txt "$RUNNER_TEMP/speedrun-safe-results/app-revision.txt"
           echo "E2E_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
 
       - name: Enable KVM
@@ -431,30 +435,6 @@ jobs:
             chmod +x zodl-qa/scripts/run-smoke-android.sh
             ZODL_E2E_LOCALE="$(adb shell getprop persist.sys.locale | tr -d '\r')" bash "$RUNNER_TEMP/run-speedrun-private.sh"
 
-      - name: Configure E2E upload credentials
-        id: e2e-aws
-        if: ${{ always() && env.E2E_TESTED_COMMIT != '' && vars.E2E_ARTIFACTS_ROLE_ARN != '' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.E2E_ARTIFACTS_ROLE_ARN }}
-          aws-region: us-east-1
-          role-session-name: e2e-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.phase }}
-
-      - name: Publish E2E evidence to S3
-        id: e2e-s3
-        if: ${{ always() && steps.e2e-aws.outcome == 'success' }}
-        env:
-          E2E_PLATFORM: android
-          E2E_PHASE: ${{ matrix.phase }}
-          E2E_VARIANT: pixel-6-api-35
-          E2E_DEVICE: Pixel 6
-          E2E_OS_VERSION: '35'
-          E2E_CONCLUSION: ${{ steps.smoke.outcome == 'success' && 'success' || 'failure' }}
-        run: |
-          python3 zodl-qa/scripts/publish-e2e-s3.py \
-            --results-dir "$RUNNER_TEMP/speedrun-safe-results" \
-            --output-dir "$RUNNER_TEMP/e2e-publication-phase-${{ matrix.phase }}" --upload
-
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -463,12 +443,13 @@ jobs:
           # Metrics are generated from allowlisted events, never raw CLI output.
           path: |
             ${{ runner.temp }}/speedrun-safe-results/summary.txt
+            ${{ runner.temp }}/speedrun-safe-results/app-revision.txt
             ${{ runner.temp }}/speedrun-safe-results/metrics/report.json
             ${{ runner.temp }}/speedrun-safe-results/metrics/report.md
             ${{ runner.temp }}/speedrun-safe-results/metrics/report.html
             ${{ runner.temp }}/speedrun-safe-results/checkpoints
             ${{ runner.temp }}/speedrun-safe-results/failure-*
-          retention-days: ${{ steps.e2e-s3.outcome == 'success' && 1 || 30 }}
+          retention-days: 30
 
   # Phase K1 of KEYSTONE_E2E_CI_PLAN.md ("Android pairing canary"): drives
   # a real Keystone Cypherpunk simulator through pairing with the app via
