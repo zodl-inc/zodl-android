@@ -53,6 +53,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 
+@Suppress("TooManyFunctions")
 class SendViewModel(
     exchangeRateRepository: ExchangeRateRepository,
     private val observeContactByAddress: ObserveContactByAddressUseCase,
@@ -87,7 +88,7 @@ class SendViewModel(
     private val maxFeedback =
         MaxFeedbackController(
             variant = MaxVariant.SEND,
-            onClearAmount = { amountClearEvents.tryEmit(Unit) }
+            onClearAmount = ::endMaxAndClearAmount
         )
 
     private val maxAmountRequester =
@@ -122,12 +123,22 @@ class SendViewModel(
     private val onMaxClickAction: () -> Unit = ::onMaxClick
 
     /**
-     * OK on the proposal-time too-many-notes sheet ([SendStage.TooManyNotes]): clear the amount and focus its field,
-     * the same way the Max sheet's OK does.
+     * OK on the proposal-time too-many-notes sheet ([SendStage.TooManyNotes]): end Max, clear the amount and focus its
+     * field, the same way the Max sheet's OK does. Ending Max means a later recipient change does not fill the amount
+     * in again.
      */
     fun onTooManyNotesOk() {
-        amountClearEvents.tryEmit(Unit)
+        endMaxAndClearAmount()
         maxFeedback.requestAmountFocus()
+    }
+
+    /**
+     * OK on a too-many-notes sheet ends the Max intent the way a manual edit does (see [onAmountEdited]: a Max still
+     * being worked out is dropped, the fee hint and any earlier Max note go) and clears the amount.
+     */
+    private fun endMaxAndClearAmount() {
+        onAmountEdited()
+        amountClearEvents.tryEmit(Unit)
     }
 
     /**
@@ -238,13 +249,16 @@ class SendViewModel(
     }
 
     /**
+     * A recipient change cancels a Max still being worked out, and that Max does not start again by itself. Only an
+     * amount Max has already filled is priced again for the new recipient.
+     *
      * @param repriceMax whether a Max amount filled earlier is priced again for the new recipient. The screen passes
      * false when it writes the address and the amount itself (a payment request, a cleared form): the Max intent
      * then ends and the amount that is written next is not replaced.
      */
     fun onRecipientAddressChanged(state: RecipientAddressState, repriceMax: Boolean = true) {
         val changed = recipientAddressState.value != state
-        val hadMaxIntent = maxAmountRequester.activeBaseline.value != null || maxAmountRequester.isInFlight.value
+        val hadMaxFill = maxAmountRequester.activeBaseline.value != null
         if (changed || !repriceMax) {
             maxAmountRequester.cancel()
             dropUnappliedMaxAmounts()
@@ -252,10 +266,11 @@ class SendViewModel(
         }
         if (!repriceMax) maxAmountRequester.clearIntent()
         recipientAddressState.update { state }
-        if (changed && hadMaxIntent && repriceMax) {
+        if (changed && hadMaxFill && repriceMax) {
             // The filled amount was priced for the previous recipient (the fee differs by recipient type, e.g. a TEX
-            // recipient needs two steps), so it is requested again for the new one. While a typed address is not
-            // valid yet the amount stays as it is: Review is off for it anyway.
+            // recipient needs two steps), so it is requested again for the new one. A Max still being worked out was
+            // cancelled above and is not started again. While a typed address is not valid yet the amount stays as it
+            // is: Review is off for it anyway.
             requestMax(isReprice = true)
         }
     }

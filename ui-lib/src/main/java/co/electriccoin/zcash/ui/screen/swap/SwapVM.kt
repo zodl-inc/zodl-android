@@ -223,16 +223,34 @@ internal class SwapVM(
         viewModelScope.launch {
             swapRepository.assets.collect { assets ->
                 val catalog = assets.data ?: return@collect
+                var delisted = false
                 internalState.update { state ->
+                    // The update lambda may run again after a lost race: the flag is set afresh each time
+                    delisted = false
                     val selected = state.swapAsset ?: return@update state
                     val refreshed = catalog.firstOrNull { it.assetId == selected.assetId }
                     when {
-                        refreshed == selected -> state
-                        refreshed != null -> state.copy(swapAsset = refreshed)
-                        !assets.isLoading -> state.copy(swapAsset = null)
-                        else -> state
+                        refreshed == selected -> {
+                            state
+                        }
+
+                        refreshed != null -> {
+                            state.copy(swapAsset = refreshed)
+                        }
+
+                        !assets.isLoading -> {
+                            delisted = true
+                            state.copy(swapAsset = null)
+                        }
+
+                        else -> {
+                            state
+                        }
                     }
                 }
+                // The asset dropped out of the catalog: a Max still running or following quotes ends with it, as it
+                // does when the asset is changed in the picker
+                if (delisted) endMaxIntent()
             }
         }
     }
@@ -577,6 +595,8 @@ internal class SwapVM(
     /** Gates the quote request behind the refund warning, on the direction snapshotted at tap time. */
     private fun onRequestSwapQuoteClick(amount: BigDecimal, fiatAmount: BigDecimal?, address: String) =
         viewModelScope.launch {
+            // Leaving the form must not let a late Max rewrite the amount that is being quoted. A Max still running is
+            // dropped and the typed amount stays: the quote and the refund warning both use the amount of this tap.
             maxAmountRequester.cancel()
             val asset = internalState.value.swapAsset ?: return@launch
             val slippage = internalState.value.slippage

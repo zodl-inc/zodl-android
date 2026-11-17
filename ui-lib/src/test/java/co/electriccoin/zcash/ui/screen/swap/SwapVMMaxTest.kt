@@ -430,6 +430,30 @@ class SwapVMMaxTest {
         }
 
     @Test
+    fun anAssetThatLeavesTheCatalogEndsTheMaxIntent() =
+        runTest {
+            val harness = maxHarness(max = Zatoshi(100_000_000))
+            harness.onMaxClick()
+            assertEquals(MaxFeedback.Hint, harness.capturedState.maxHint)
+
+            harness.repositoryAssets.value = SwapAssetsData(data = emptyList(), isLoading = false)
+
+            assertNull(harness.capturedState.swapAsset)
+            assertNull(harness.capturedState.maxHint)
+        }
+
+    @Test
+    fun anAssetCatalogThatIsStillLoadingKeepsTheMaxIntent() =
+        runTest {
+            val harness = maxHarness(max = Zatoshi(100_000_000))
+            harness.onMaxClick()
+
+            harness.repositoryAssets.value = SwapAssetsData(data = emptyList(), isLoading = true)
+
+            assertEquals(MaxFeedback.Hint, harness.capturedState.maxHint)
+        }
+
+    @Test
     fun changingDirectionHidesTheHint() =
         runTest {
             val harness = maxHarness(max = Zatoshi(100_000_000))

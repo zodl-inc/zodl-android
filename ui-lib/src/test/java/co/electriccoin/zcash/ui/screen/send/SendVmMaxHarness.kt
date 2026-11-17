@@ -111,6 +111,14 @@ internal class SendVmMaxHarness {
         }
     }
 
+    /** The max proposal waits for [gate] like a native call that cannot be cancelled, then fails with [failure]. */
+    fun gatedFailure(gate: CompletableDeferred<Unit>, failure: MaxSendAmountFailure) {
+        coEvery { maxSendAmountDataSource.proposeMaxSendAmount(any(), any(), any(), any()) } coAnswers {
+            withContext(NonCancellable) { gate.await() }
+            throw MaxSendAmountUnavailableException(failure, RuntimeException())
+        }
+    }
+
     fun failWith(failure: MaxSendAmountFailure) =
         failWithUnexpected(MaxSendAmountUnavailableException(failure, RuntimeException()))
 

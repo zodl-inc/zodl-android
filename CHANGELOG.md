@@ -7,17 +7,20 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.21.0 (3881)] - 2026-11-16
+
 ### Added:
 
 - [MOB-1987] Send Max: a Max chip next to the Send amount fills in everything the selected account can spend, net of
   the network fee. Before a recipient is entered the amount is a preview priced for the account's own address, and it
   is priced again for the recipient as soon as a valid address is entered or changed (the fee depends on the
-  recipient's pool) and for the typed memo. Review stays off while the amount is being computed. While a Max amount is
+  recipient's pool); a memo does not change the fee. Changing the address before Max has filled in the amount cancels
+  it, and it does not start again by itself. Review stays off while the amount is being computed. While a Max amount is
   filled, a line above the Review button says "Max leaves room for a transaction fee."; editing the amount removes it.
   A failure is shown as an inline banner in the same place instead of a snackbar, until Max is tapped again or the
   amount or recipient is changed. A wallet with too many notes for one transaction gets a "Too many notes to send at
   once" sheet, both when Max is tapped and at Review, instead of the raw error; its OK button clears and
-  focuses the amount.
+  focuses the amount and ends Max, so a later recipient change does not fill it in again.
 - [MOB-1989] Swap Max: a Max chip next to the From amount fills in everything the selected account can swap, net of
   the network fees (two marginal fees stay back for the deposit), in ZEC or, in USD mode, floored to the cent. The
   amount follows each new quote down and back up, never above the amount at the tap, until the amount, the asset or the
@@ -37,6 +40,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Changed:
 
+- The Keystone shop offer opens the new Zodl discount link, https://shop.keyst.one/discount/Zodl.
 - [MOB-2296] How many notes a send can spend in one transaction now follows the memory available on the device when
   you send (and, for a hardware signer, what it signs at once), so a large send no longer runs a phone out of memory. A Max,
   a manual amount or a swap over that limit shows the "Too many notes to send at once" message.
@@ -54,6 +58,11 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   changed to a TEX address is no longer sent (the payment used to fail because a TEX address cannot receive a memo),
   a memo that is too long no longer disables the Send button, and a zero amount is rejected whichever way the
   amount was entered.
+- Pay: the check of a quote's minimum deposit against the amount the wallet deposits now works. It compared the minimum
+  with a ceiling above the deposit and could not fail. A minimum far below the deposit (more slippage buffer than
+  chosen) or above it (the deposit would be refunded) is now rejected.
+- Swap and Pay: when the selected asset drops out of the asset list, a Max in progress or following the quotes ends
+  with it instead of leaving its hint and a running request behind.
 
 ## [3.20.0 (3807)] - 2026-11-09
 

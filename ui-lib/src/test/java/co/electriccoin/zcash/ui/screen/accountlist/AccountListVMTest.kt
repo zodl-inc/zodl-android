@@ -464,7 +464,7 @@ class AccountListVMTest {
             promo.onClick()
 
             verify(exactly = 1) {
-                navigationRouter.forward(ExternalUrl("https://keyst.one/shop/products/keystone-3-pro?discount=Zodl"))
+                navigationRouter.forward(ExternalUrl("https://shop.keyst.one/discount/Zodl"))
             }
             verify(exactly = 0) { navigationRouter.replace(*anyVararg()) }
         }
