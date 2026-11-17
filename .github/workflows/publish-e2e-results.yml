@@ -44,7 +44,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: zodl-inc/zodl-qa
-          ref: f530c8ced981d26e18695ec45168d5737740d94f
+          ref: e891da084fe6b1829c4a003229319ecdc178e011
           token: ${{ secrets.ZODL_QA }}
           persist-credentials: false
 
