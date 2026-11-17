@@ -6,9 +6,9 @@ import cash.z.ecc.android.sdk.util.OhttpCodecFactory
 import cash.z.ecc.sdk.type.fromResources
 import co.electriccoin.lightwallet.client.LightWalletClient
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
-import co.electriccoin.lightwallet.client.usesIndependentRelay
 import co.electriccoin.zcash.spackle.Twig
 import java.net.URI
+import java.security.MessageDigest
 import kotlin.coroutines.cancellation.CancellationException
 
 // TODO [#1273]: Add ChooseServer Tests #1273
@@ -21,7 +21,7 @@ class LightWalletEndpointProvider(
 
     /**
      * Every built-in endpoint, default first: the OHTTP gateway (tier 0, the default and the
-     * preferred transport), when the SDK was built with one, followed by the clearnet lightwalletd
+     * preferred transport), when this build configured one, followed by the clearnet lightwalletd
      * tier. This is what the server picker lists and what the fastest-servers benchmark measures.
      * Automatic mode never chooses among these by speed — see
      * [co.electriccoin.zcash.ui.common.model.ServerFallbackPolicy]: it stays on OHTTP and, when the
@@ -30,17 +30,18 @@ class LightWalletEndpointProvider(
     fun getEndpoints(): List<LightWalletEndpoint> = listOfNotNull(getOhttpEndpoint()) + getFallbackEndpoints()
 
     /**
-     * The OHTTP (RFC 9458) gateway of this network, or null when the SDK was built without OHTTP for it. The
+     * The OHTTP (RFC 9458) gateway of this network, or null when this build has OHTTP off for it. The
      * SDK routes gRPC HPKE-encrypted through a relay to it: the relay sees the device IP but not the content,
-     * the gateway/lightwalletd see the content but not the IP. Its host is the one compiled into the SDK
-     * ([LightWalletClient.ohttpGatewayHost]); the app has none of its own.
+     * the gateway/lightwalletd see the content but not the IP. Its host is the one the app installed in the
+     * SDK at startup ([OhttpBuildConfiguration], read back with [LightWalletClient.ohttpGatewayHost]), so the
+     * list shows exactly what the SDK routes.
      */
     fun getOhttpEndpoint(): LightWalletEndpoint? =
         LightWalletClient.ohttpGatewayHost(isTestnet = !isMainnet)?.let {
             LightWalletEndpoint(host = it, port = GATEWAY_PORT, isSecure = true)
         }
 
-    /** Whether the SDK was built with an OHTTP gateway for this network. */
+    /** Whether this build has an OHTTP gateway for this network. */
     fun hasOhttpGateway(): Boolean = getOhttpEndpoint() != null
 
     /**
@@ -91,13 +92,15 @@ class LightWalletEndpointProvider(
         }
 
     /**
-     * False when this build reaches [gatewayHost] through a relay its operator also runs (a build-time relay
-     * override such as the relay simulator), or when that cannot be determined.
+     * False when this build reaches [gatewayHost] through a relay its operator also runs (a relay simulator
+     * configured for a QA build), or when that cannot be determined. The SDK leaves this to the app, which
+     * chose the relay: the relays operated independently of the gateway are listed in
+     * [INDEPENDENT_RELAY_URL_SHA256].
      */
     @Suppress("TooGenericExceptionCaught")
     suspend fun usesIndependentRelay(gatewayHost: String): Boolean =
         try {
-            OhttpCodecFactory.create().usesIndependentRelay(gatewayHost)
+            OhttpCodecFactory.create().relayUrlFor(gatewayHost)?.let(::isIndependentRelay) == true
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -119,12 +122,36 @@ class LightWalletEndpointProvider(
         fun isOhttpGatewayHost(host: String): Boolean =
             LightWalletClient.isOhttpGateway(LightWalletEndpoint(host = host, port = GATEWAY_PORT, isSecure = true))
 
-        /** Whether [host] is the testnet gateway compiled into the SDK. */
+        /** Whether [host] is the testnet gateway of this build's OHTTP configuration. */
         fun isTestnetGatewayHost(host: String): Boolean = host == LightWalletClient.ohttpGatewayHost(isTestnet = true)
 
         private const val GATEWAY_PORT = 443
 
-        /** The gateway hosts compiled into the SDK, mainnet then testnet; empty when it was built without OHTTP. */
+        /**
+         * True when [relayUrl] is one of the independently operated relays. They are listed as SHA-256 digests
+         * of their exact URL, not as URLs, so this source does not publish the addresses (the URL is still in
+         * the shipped app and visible in DNS and SNI). Any other value (a relay simulator, a trailing slash,
+         * another letter case) is reported as not private.
+         */
+        internal fun isIndependentRelay(
+            relayUrl: String,
+            independentRelayDigests: Set<String> = INDEPENDENT_RELAY_URL_SHA256,
+        ): Boolean = sha256Hex(relayUrl) in independentRelayDigests
+
+        internal fun sha256Hex(value: String): String =
+            MessageDigest
+                .getInstance("SHA-256")
+                .digest(value.toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it) }
+
+        /** Moved here from the SDK, which no longer knows which relay the app uses. */
+        private val INDEPENDENT_RELAY_URL_SHA256 =
+            setOf(
+                "c9b2717f9d990d386cab9d8166d0bd6136c5e8015a22933e76e683130cbf00a5",
+                "a26f45dd94fb561cb15eedc7dc2933f262cb48562727c5ad014027f4bff9a2e7",
+            )
+
+        /** The gateway hosts of this build, mainnet then testnet; empty when it has OHTTP off. */
         val gatewayHosts: List<String>
             get() = listOfNotNull(LightWalletClient.ohttpGatewayHost(false), LightWalletClient.ohttpGatewayHost(true))
     }

@@ -21,6 +21,7 @@ import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.spackle.process.ProcessNameCompat
 import co.electriccoin.zcash.ui.common.provider.CrashReportingStorageProvider
 import co.electriccoin.zcash.ui.common.provider.MigrationNotifier
+import co.electriccoin.zcash.ui.common.provider.OhttpBuildConfiguration
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepository
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
 import co.electriccoin.zcash.ui.common.repository.FlexaRepository
@@ -68,6 +69,8 @@ class ZcashApplication : CoroutineApplication() {
             return
         }
 
+        configureOhttp()
+
         preloadSdkNativeLibrary()
 
         configureStrictMode()
@@ -108,6 +111,39 @@ class ZcashApplication : CoroutineApplication() {
         applicationScope.launch { observeKeepScreenOnSyncSession() }
         applicationScope.launch { sweepOrphanedGiftCardWallets() }
         applicationScope.launch { observeOhttpUnavailablePrompt() }
+    }
+
+    /**
+     * Passes this build's OHTTP configuration to the SDK, before anything reads it: the server list, the
+     * wallet's endpoint migration and the Synchronizer all depend on which hosts are OHTTP gateways.
+     *
+     * When the native library is already loaded (via [preloadSdkNativeLibrary]), the SDK installs the configuration
+     * natively right away and throws [IllegalArgumentException] on a refused value; otherwise it installs in Kotlin
+     * now and natively when the library loads. A refusal at load turns OHTTP off and is logged inside the SDK.
+     * The SDK also throws [IllegalStateException] when it read the OHTTP state before the first configure, or when
+     * a different configuration is already installed.
+     *
+     * The app calls this before [preloadSdkNativeLibrary] and before Koin, so OHTTP is installed at cold start
+     * without blocking the main thread. A build without the `ZODL_OHTTP_*` values has OHTTP off and behaves as
+     * Public only.
+     */
+    private fun configureOhttp() {
+        OhttpBuildConfiguration.install(
+            mainnet =
+                OhttpBuildConfiguration.NetworkValues(
+                    gatewayHost = BuildConfig.OHTTP_GATEWAY_HOST_MAINNET,
+                    relayUrl = BuildConfig.OHTTP_RELAY_URL_MAINNET,
+                    keysDnsName = BuildConfig.OHTTP_KEYS_DNS_NAME_MAINNET,
+                    signingPublicKey = BuildConfig.OHTTP_SIGNING_PUBKEY_MAINNET,
+                ),
+            testnet =
+                OhttpBuildConfiguration.NetworkValues(
+                    gatewayHost = BuildConfig.OHTTP_GATEWAY_HOST_TESTNET,
+                    relayUrl = BuildConfig.OHTTP_RELAY_URL_TESTNET,
+                    keysDnsName = BuildConfig.OHTTP_KEYS_DNS_NAME_TESTNET,
+                    signingPublicKey = BuildConfig.OHTTP_SIGNING_PUBKEY_TESTNET,
+                ),
+        )
     }
 
     /**

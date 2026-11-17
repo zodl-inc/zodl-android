@@ -11,6 +11,7 @@ import co.electriccoin.zcash.ui.common.ledger.LedgerNavContributor
 import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
 import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.provider.LedgerAccountBindingProvider
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
@@ -74,6 +75,7 @@ class LedgerKoinGraphSmokeTest {
 
                 single<SynchronizerProvider> { mockk(relaxed = true) }
                 single<LedgerAccountBindingProvider> { mockk(relaxed = true) }
+                single<SignerCapabilitiesProvider> { mockk(relaxed = true) }
 
                 factory { LedgerOpenAppArgs() }
             }

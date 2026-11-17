@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.provider
 
 import android.app.Application
 import android.util.Log
+import cash.z.ecc.android.sdk.Ohttp
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.android.sdk.util.OhttpCodecFactory
 import cash.z.ecc.sdk.type.fromResources
@@ -73,6 +74,13 @@ interface HttpClientProvider {
     suspend fun isTorEnabled(): Boolean
 
     suspend fun supportsKtorTimeouts(): Boolean = true
+
+    /**
+     * Whether this build has OHTTP on for the wallet's network ([OhttpBuildConfiguration]). Without it the
+     * OHTTP client fails every call before sending, so callers that may go direct (voting with predefined
+     * servers) do; those that need the gateway (CMC, NEAR, Flexa) are unavailable.
+     */
+    fun isOhttpAvailable(): Boolean = true
 }
 
 @Suppress("TooManyFunctions")
@@ -107,6 +115,8 @@ class HttpClientProviderImpl(
     override suspend fun supportsKtorTimeouts(): Boolean = isTorEnabledStorageProvider.get() != true
 
     override suspend fun isTorEnabled(): Boolean = isTorEnabledStorageProvider.get() == true
+
+    override fun isOhttpAvailable(): Boolean = Ohttp.isOn(isTestnet = isTestnet())
 
     override suspend fun createOhttp(): OhttpHttpClient = cachedOhttp { isTorEnabled() }
 

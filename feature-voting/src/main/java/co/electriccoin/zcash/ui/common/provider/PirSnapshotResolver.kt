@@ -43,7 +43,7 @@ class HttpPirSnapshotResolver(
         // if the gateway cannot reach the host), direct for a user-selected custom config.
         val route =
             when {
-                decision.isTor || decision.isCustomServer -> PirProbeRoute.Direct(tor = decision.isTor)
+                !decision.usesOhttp -> PirProbeRoute.Direct(tor = decision.isTor)
                 else -> PirProbeRoute.Ohttp(httpClientProvider.createOhttp())
             }
 

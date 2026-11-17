@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -30,10 +31,13 @@ import androidx.compose.ui.Alignment.Companion.BottomEnd
 import androidx.compose.ui.Alignment.Companion.CenterHorizontally
 import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.key.NativeKeyEvent
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -61,9 +65,12 @@ import co.electriccoin.zcash.ui.design.component.ZashiChipButton
 import co.electriccoin.zcash.ui.design.component.ZashiIconButton
 import co.electriccoin.zcash.ui.design.component.ZashiImageButton
 import co.electriccoin.zcash.ui.design.component.ZashiInfoText
+import co.electriccoin.zcash.ui.design.component.ZashiMaxChip
+import co.electriccoin.zcash.ui.design.component.ZashiMaxFeedbackSlot
 import co.electriccoin.zcash.ui.design.component.ZashiNumberTextField
 import co.electriccoin.zcash.ui.design.component.ZashiNumberTextFieldDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
+import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
 import co.electriccoin.zcash.ui.design.component.zashiFrostSource
@@ -85,12 +92,18 @@ import co.electriccoin.zcash.ui.screen.send.view.SendAddressBookHint
 import co.electriccoin.zcash.ui.screen.swap.SlippageButton
 import co.electriccoin.zcash.ui.screen.swap.SwapErrorFooter
 import co.electriccoin.zcash.ui.screen.swap.SwapErrorFooterState
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+
+/** Shown in the USD field when no USD price is known (Figma 9043:520). */
+private const val NO_PRICE_PLACEHOLDER = "\u2014"
 
 @Composable
 internal fun PayView(
     state: PayState,
     balanceState: BalanceWidgetState,
-    appBarState: ZashiMainTopAppBarState
+    appBarState: ZashiMainTopAppBarState,
+    amountFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
@@ -143,14 +156,23 @@ internal fun PayView(
                     }
                 }
                 Spacer(22.dp)
-                Text(
-                    stringResource(R.string.send_amount),
-                    style = ZashiTypography.textSm,
-                    fontWeight = FontWeight.Medium,
-                    color = ZashiColors.Text.textPrimary
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = CenterVertically
+                ) {
+                    Text(
+                        stringResource(R.string.send_amount),
+                        modifier = Modifier.weight(1f),
+                        style = ZashiTypography.textSm,
+                        fontWeight = FontWeight.Medium,
+                        color = ZashiColors.Text.textPrimary
+                    )
+                    if (state.max != null) {
+                        ZashiMaxChip(state.max, modifier = Modifier.testTag(PayTag.PAY_MAX_CHIP))
+                    }
+                }
                 Spacer(10.dp)
-                AmountTextFields(state)
+                AmountTextFields(state, amountFocusRequester)
                 if (state.amountError != null && state.amountError.getValue().isNotEmpty()) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
@@ -174,6 +196,7 @@ internal fun PayView(
                 } else {
                     Spacer(4.dp)
                 }
+                ZashiMaxFeedbackSlot(feedback = state.maxFeedback)
                 if (state.primaryButton != null) {
                     ZashiButton(
                         modifier =
@@ -226,7 +249,10 @@ private fun ZecAmountText(state: PayState) {
 }
 
 @Composable
-private fun AmountTextFields(state: PayState) {
+private fun AmountTextFields(
+    state: PayState,
+    amountFocusRequester: FocusRequester
+) {
     Row(
         verticalAlignment = CenterVertically
     ) {
@@ -237,8 +263,10 @@ private fun AmountTextFields(state: PayState) {
             modifier =
                 Modifier
                     .weight(1f)
+                    .focusRequester(amountFocusRequester)
                     .testTag(PayTag.PAY_AMOUNT_TOKEN_FIELD),
             state = state.amount,
+            innerModifier = ZashiTextFieldDefaults.innerModifier.focusRequester(amountFocusRequester),
             interactionSource = amountInteractionSource,
             placeholder =
                 if (!isAmountFocused) {
@@ -282,7 +310,7 @@ private fun AmountTextFields(state: PayState) {
                             color = ZashiColors.Inputs.Default.text
                         ),
                     fontWeight = FontWeight.Normal,
-                    text = FiatCurrency.USD.code
+                    text = if (state.isFiatPriceUnavailable) NO_PRICE_PLACEHOLDER else FiatCurrency.USD.code
                 )
             },
             prefix = {

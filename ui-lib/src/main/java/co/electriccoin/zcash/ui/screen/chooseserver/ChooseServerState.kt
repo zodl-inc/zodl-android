@@ -27,6 +27,8 @@ data class ServerConnectionModeState(
     val manualBadge: ModeBadgeState? = null,
     val onPrivateInfoClick: () -> Unit = {},
     val privateInfoLabel: StringResource = stringRes(R.string.serverSetup_privateInfo),
+    /** False when this build has OHTTP off for the network: the Private mode is then not offered at all. */
+    val isPrivateAvailable: Boolean = true,
 ) {
     val isManualSelected = manual.isChecked
 }

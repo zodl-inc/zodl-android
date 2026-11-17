@@ -7,6 +7,7 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.model.LoadedAccountBalances
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.usecase.BalancePools
@@ -71,57 +72,41 @@ class BalanceWidgetVM(
             if (args.isBalanceBreakdownEnabled && account != null) ::onBalanceClick else null
     )
 
-    @Suppress("CyclomaticComplexMethod", "ReturnCount")
-    private fun createBalanceButtonState(account: WalletAccount): BalanceButtonState? {
-        val isAllShielded = account.isAllShielded ?: return null
-        if (isAllShielded) return null
-
-        val b = account.loadedBalances ?: return null
-
-        return when {
-            b.totalBalance > b.spendableShieldedBalance &&
-                b.isShieldedPending &&
-                b.totalShieldedBalance > Zatoshi(0) &&
-                b.spendableShieldedBalance == Zatoshi(0) -> {
-                BalanceButtonState(
-                    icon = R.drawable.ic_balances_expand,
-                    text = stringRes(R.string.widget_balances_button_spendable),
-                    amount = null,
-                    onClick = ::onBalanceButtonClick
-                )
-            }
-
-            b.totalBalance > b.spendableShieldedBalance &&
-                !b.isShieldedPending &&
-                b.totalShieldedBalance > Zatoshi(0) &&
-                b.spendableShieldedBalance == Zatoshi(0) &&
-                b.totalTransparentBalance == Zatoshi(0) -> {
-                BalanceButtonState(
-                    icon = R.drawable.ic_balances_expand,
-                    text = stringRes(R.string.widget_balances_button_spendable),
-                    amount = null,
-                    onClick = ::onBalanceButtonClick
-                )
-            }
-
-            b.totalBalance > b.spendableShieldedBalance -> {
-                BalanceButtonState(
-                    icon = R.drawable.ic_balances_expand,
-                    text = stringRes(R.string.widget_balances_button_spendable),
-                    amount = b.spendableShieldedBalance,
-                    onClick = ::onBalanceButtonClick
-                )
-            }
-
-            else -> {
-                null
-            }
-        }
-    }
+    private fun createBalanceButtonState(account: WalletAccount): BalanceButtonState? =
+        spendablePillState(account.loadedBalances, ::onBalanceButtonClick)
 
     private fun onBalanceButtonClick() = navigationRouter.forward(SpendableBalanceArgs)
 
     private fun onBalanceClick() = navigationRouter.forward(BalanceBreakdownArgs)
+}
+
+/**
+ * The Spendable pill under the total, shared by Send and Pay (Figma "Send Max: Round 2"):
+ * - balances not loaded yet (syncing): spinner;
+ * - total 0: no pill (a new wallet has none);
+ * - something spendable: the spendable amount, also when everything is spendable;
+ * - nothing spendable but shielded funds present or pending (confirming): spinner, waiting helps;
+ * - transparent funds only: 0, not the spinner, since waiting will not help; the sheet offers Shield.
+ *
+ * It works on the raw account figures on purpose: it answers what the user can spend now, which locked value is not.
+ */
+internal fun spendablePillState(balances: LoadedAccountBalances?, onClick: () -> Unit): BalanceButtonState? {
+    fun pill(amount: Zatoshi?) =
+        BalanceButtonState(
+            icon = R.drawable.ic_balances_expand,
+            text = stringRes(R.string.widget_balances_button_spendable),
+            amount = amount,
+            onClick = onClick
+        )
+
+    val b = balances ?: return pill(amount = null)
+    val zero = Zatoshi(0)
+    return when {
+        b.totalBalance == zero -> null
+        b.spendableShieldedBalance > zero -> pill(b.spendableShieldedBalance)
+        b.isShieldedPending || b.totalShieldedBalance > zero -> pill(amount = null)
+        else -> pill(zero)
+    }
 }
 
 data class BalanceWidgetArgs(

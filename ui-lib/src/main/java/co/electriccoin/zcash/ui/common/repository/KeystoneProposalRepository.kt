@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.common.datasource.TexUnsupportedOnKSException
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposalNotCreatedException
 import co.electriccoin.zcash.ui.common.datasource.Zip321TransactionProposal
+import co.electriccoin.zcash.ui.common.datasource.sizeBoundFor
 import co.electriccoin.zcash.ui.common.model.KeystoneFirmwarePolicy
 import co.electriccoin.zcash.ui.common.model.KeystoneFirmwareVersion
 import co.electriccoin.zcash.ui.common.model.SubmitResult
@@ -25,6 +26,7 @@ import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.readKeystoneFwStamp
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKException
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import com.sparrowwallet.hummingbird.UR
 import com.sparrowwallet.hummingbird.UREncoder
 import kotlinx.coroutines.CoroutineScope
@@ -133,6 +135,7 @@ class KeystoneProposalRepositoryImpl(
     private val accountDataSource: AccountDataSource,
     private val proposalDataSource: ProposalDataSource,
     private val keystoneSDKProvider: KeystoneSDKProvider,
+    private val signerCapabilitiesProvider: SignerCapabilitiesProvider,
 ) : KeystoneProposalRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -201,11 +204,13 @@ class KeystoneProposalRepositoryImpl(
 
     override suspend fun createPCZTFromProposal() {
         val transactionProposal = getTransactionProposal()
+        val account = accountDataSource.getSelectedAccount()
         val result =
             try {
                 proposalDataSource.createPcztFromProposal(
-                    account = accountDataSource.getSelectedAccount(),
-                    proposal = transactionProposal.proposal
+                    account = account,
+                    proposal = transactionProposal.proposal,
+                    sizeBound = signerCapabilitiesProvider.sizeBoundFor(account, transactionProposal)
                 )
             } catch (e: PcztException.MultiStepProposalUnsupportedException) {
                 if (transactionProposal.paysTexAddress()) throw TexUnsupportedOnKSException() else throw e
@@ -299,6 +304,7 @@ class KeystoneProposalRepositoryImpl(
                                     pcztWithSignatures = pcztWithSignatures
                                 )
                             submitState.update { SubmitProposalState.Result(result) }
+                            if (result is SubmitResult.Success) signerCapabilitiesProvider.endFlow()
                             result
                         } catch (e: Exception) {
                             val result = SubmitResult.Error(e)

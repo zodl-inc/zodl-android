@@ -11,6 +11,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
 import co.electriccoin.zcash.ui.common.repository.VotingCustomChainConfig
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -27,7 +28,7 @@ class VotingRouteProviderTest {
     private val sdkSynchronizer = mockk<Synchronizer>()
     private val synchronizerProvider =
         mockk<SynchronizerProvider> { coEvery { getSynchronizer() } returns sdkSynchronizer }
-    private val httpClientProvider = mockk<HttpClientProvider>()
+    private val httpClientProvider = mockk<HttpClientProvider> { every { isOhttpAvailable() } returns true }
     private val chainConfig = mockk<VotingChainConfigRepository>()
 
     private val provider = VotingRouteProviderImpl(synchronizerProvider, httpClientProvider, chainConfig)
@@ -53,6 +54,19 @@ class VotingRouteProviderTest {
             )
             assertNull(route.torLease)
             coVerify(exactly = 0) { sdkSynchronizer.acquireVotingTorLease() }
+        }
+
+    @Test
+    fun aBuildWithOhttpOffRoutesPredefinedServersLikeCustomOnes() =
+        runTest {
+            coEvery { httpClientProvider.isTorEnabled() } returns false
+            every { httpClientProvider.isOhttpAvailable() } returns false
+            coEvery { chainConfig.get() } returns defaultConfig
+
+            val decision = provider.acquire().decision
+
+            assertEquals(false, decision.isOhttpAvailable)
+            assertEquals(false, decision.usesOhttp)
         }
 
     @Test

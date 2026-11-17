@@ -588,7 +588,7 @@ class KtorVotingApiProvider(
         // user-selected custom config goes direct and never through the gateway (ZIP #10). With Tor on,
         // this client is already Tor-backed. Failures become StaticVotingConfigFetchFailedException so
         // the mirror walk retries the next source.
-        if (!decision.isTor && !decision.isCustomServer) {
+        if (decision.usesOhttp) {
             val ohttpClient = httpClientProvider.createOhttp()
             if (!ohttpClient.canHandle(url)) {
                 throw UnsupportedPrivateDestinationException(
@@ -733,7 +733,7 @@ class KtorVotingApiProvider(
         supportsKtorTimeouts: Boolean,
         decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision
     ): String {
-        if (!decision.isTor && !decision.isCustomServer) {
+        if (decision.usesOhttp) {
             val ohttpClient = httpClientProvider.createOhttp()
             if (!ohttpClient.canHandle(url)) {
                 throw UnsupportedPrivateDestinationException(
@@ -848,22 +848,25 @@ class KtorVotingApiProvider(
      * Resolves the routing strategy for a vote server request.
      * @throws IllegalStateException if the URL cannot be reached (predefined server with Tor off and no OHTTP support)
      */
+    private fun co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision.directReason() =
+        "tor=$isTor, ohttp=$isOhttpAvailable"
+
     private suspend fun resolveVoteRoute(
         url: String,
         decision: co.electriccoin.zcash.ui.common.model.voting.VotingRouteDecision,
         ohttpClient: OhttpHttpClient,
     ): VoteRoute {
-        if (!decision.isTor && !decision.isCustomServer && !ohttpClient.canHandle(url)) {
+        if (decision.usesOhttp && !ohttpClient.canHandle(url)) {
             error("Cannot reach predefined vote server at unsupported destination $url with Tor disabled")
         }
-        return if (!decision.isTor && !decision.isCustomServer) {
+        return if (decision.usesOhttp) {
             VoteRoute.Ohttp(ohttpClient)
         } else {
             val desc =
                 when {
                     decision.isCustomServer && decision.isTor -> "custom server via Tor"
                     decision.isCustomServer && !decision.isTor -> "custom server direct (clearnet)"
-                    else -> "predefined server via Tor/direct client (tor=${decision.isTor})"
+                    else -> "predefined server via Tor/direct client (${decision.directReason()})"
                 }
             VoteRoute.Direct(desc)
         }

@@ -225,6 +225,8 @@ import co.electriccoin.zcash.ui.screen.theme.darklook.ThemeDarkLookArgs
 import co.electriccoin.zcash.ui.screen.theme.darklook.ThemeDarkLookScreen
 import co.electriccoin.zcash.ui.screen.theme.settings.ThemeSettingsArgs
 import co.electriccoin.zcash.ui.screen.theme.settings.ThemeSettingsScreen
+import co.electriccoin.zcash.ui.screen.toomanynotes.TooManyNotesArgs
+import co.electriccoin.zcash.ui.screen.toomanynotes.TooManyNotesScreen
 import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInArgs
 import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInScreen
 import co.electriccoin.zcash.ui.screen.tor.settings.TorSettingsArgs
@@ -341,6 +343,7 @@ fun NavGraphBuilder.walletNavGraph(
         composable<Send> { WrapSend(it.toRoute()) }
         dialogComposable<TEXUnsupportedArgs> { AndroidTEXUnsupported(it.toRoute()) }
         dialogComposable<InsufficientFundsArgs> { InsufficientFundsScreen() }
+        dialogComposable<TooManyNotesArgs> { TooManyNotesScreen(it.toRoute()) }
         dialogComposable<SeedInfo> { AndroidSeedInfo() }
         composable<WalletBackupDetail> { AndroidWalletBackupDetail(it.toRoute()) }
         dialogComposable<SeedBackupInfo> { AndroidWalletBackupInfo() }

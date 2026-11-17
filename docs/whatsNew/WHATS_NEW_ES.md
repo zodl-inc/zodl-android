@@ -14,6 +14,13 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.21.0 (3881)] - 2026-11-16
+
+### Añadido:
+
+- Añadimos un botón Máx. en Enviar, Swap y CrossPay que completa todo tu saldo disponible, con las comisiones ya descontadas.
+- Añadimos el escaneo de solicitudes de pago en CrossPay. Escanea un código QR de pago de Bitcoin, Litecoin, Ethereum o Solana y completamos la dirección, el activo y el monto por ti.
+
 ## [3.20.0 (3807)] - 2026-11-09
 
 ### Añadido:

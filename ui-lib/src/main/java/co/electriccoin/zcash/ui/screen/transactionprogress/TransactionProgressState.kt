@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.transactionprogress
 
 import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.component.MaxTooManyNotesSheetState
 import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.StyledStringResource
@@ -16,6 +17,7 @@ data class TransactionProgressState(
     val onBack: () -> Unit,
     val transactionIds: List<StringResource>? = null,
     val showAppBar: Boolean = false,
+    val sheet: MaxTooManyNotesSheetState? = null,
 ) {
     enum class Background { SUCCESS, PENDING, ERROR }
 }
