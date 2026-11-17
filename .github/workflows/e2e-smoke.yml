@@ -449,7 +449,7 @@ jobs:
             ${{ runner.temp }}/speedrun-safe-results/metrics/report.html
             ${{ runner.temp }}/speedrun-safe-results/checkpoints
             ${{ runner.temp }}/speedrun-safe-results/failure-*
-          retention-days: 30
+          retention-days: 1
 
   # Phase K1 of KEYSTONE_E2E_CI_PLAN.md ("Android pairing canary"): drives
   # a real Keystone Cypherpunk simulator through pairing with the app via

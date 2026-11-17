@@ -3,7 +3,7 @@ name: Publish E2E results
 # Listen on the default branch, so existing PR branches publish too. The source
 # PR never needs to merge, and a failed test still publishes its evidence.
 on:
-  # Installing/updating the listener also fills the retained 30-day history.
+  # Installing/updating the listener backfills the one-day source artifact window.
   push:
     branches: [main]
     paths: [.github/workflows/publish-e2e-results.yml]
@@ -19,7 +19,7 @@ on:
         description: 'Source attempt, or latest when omitted'
         type: string
       backfill_since:
-        description: 'Publish all completed E2E runs since YYYY-MM-DD instead of one run'
+        description: 'Backfill from yesterday or today UTC (YYYY-MM-DD), instead of one run'
         type: string
 
 permissions:
@@ -44,7 +44,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: zodl-inc/zodl-qa
-          ref: ef77c32b163a8a5117d07b8bd49b5f5fe65610ee
+          ref: f530c8ced981d26e18695ec45168d5737740d94f
           token: ${{ secrets.ZODL_QA }}
           persist-credentials: false
 
@@ -58,7 +58,7 @@ jobs:
         run: |
           args=(--output-dir "$RUNNER_TEMP/e2e-publication")
           if [[ "$GITHUB_EVENT_NAME" == push ]]; then
-            BACKFILL_SINCE=$(date -u -d "30 days ago" +%F)
+            BACKFILL_SINCE=$(date -u -d "1 day ago" +%F)
           fi
           if [[ -n "$SOURCE_RUN_ID" && -z "$BACKFILL_SINCE" ]]; then
             args+=(--run-id "$SOURCE_RUN_ID")
