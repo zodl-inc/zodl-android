@@ -3,6 +3,10 @@ name: Publish E2E results
 # Listen on the default branch, so existing PR branches publish too. The source
 # PR never needs to merge, and a failed test still publishes its evidence.
 on:
+  # Installing/updating the listener also fills the retained 30-day history.
+  push:
+    branches: [main]
+    paths: [.github/workflows/publish-e2e-results.yml]
   workflow_run:
     workflows: [E2E Smoke Tests]
     types: [completed]
@@ -53,6 +57,9 @@ jobs:
         shell: bash
         run: |
           args=(--output-dir "$RUNNER_TEMP/e2e-publication")
+          if [[ "$GITHUB_EVENT_NAME" == push ]]; then
+            BACKFILL_SINCE=$(date -u -d "30 days ago" +%F)
+          fi
           if [[ -n "$SOURCE_RUN_ID" && -z "$BACKFILL_SINCE" ]]; then
             args+=(--run-id "$SOURCE_RUN_ID")
             if [[ -n "$SOURCE_RUN_ATTEMPT" ]]; then
