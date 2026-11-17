@@ -7,6 +7,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.21.0 (3881)] - 2026-11-16
+
 ### Added:
 
 - [MOB-1987] Send Max: a Max chip next to the Send amount fills in everything the selected account can spend, net of
