@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.datasource
 import cash.z.ecc.android.sdk.model.PersistableWallet
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import io.mockk.coEvery
 import io.mockk.every
@@ -31,6 +32,7 @@ class ProposalSubmissionEndpointTest {
         ProposalDataSourceImpl(
             synchronizerProvider = mockk<SynchronizerProvider>(),
             persistableWalletProvider = persistableWalletProvider,
+            signerCapabilitiesProvider = mockk<SignerCapabilitiesProvider>(),
         )
 
     @Test

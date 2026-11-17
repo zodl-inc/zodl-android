@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.screen.migration.complete
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.model.Proposal
+import cash.z.ecc.android.sdk.model.TransactionSizeBound
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
@@ -345,7 +346,7 @@ class MigrationCompleteVM(
         val usk = zashiSpendingKeyDataSource.getZashiSpendingKey()
         val result =
             withContext(NonCancellable) {
-                proposalDataSource.submitTransaction(proposal, usk)
+                proposalDataSource.submitTransaction(proposal, usk, TransactionSizeBound.CONSENSUS)
             }
         when (result) {
             is SubmitResult.Success -> navigationRouter.forward(MigrationSuccessArgs(result.txIds.lastOrNull()))

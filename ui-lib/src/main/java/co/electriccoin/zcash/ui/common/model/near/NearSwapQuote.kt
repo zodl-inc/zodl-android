@@ -221,7 +221,8 @@ internal fun requireMatchingAsset(
 /**
  * Fail-closed slippage check on the server-determined (floating) side of the quote. The user-fixed side
  * is already pinned by requireQuoteMatchesUserAmount in the use case; this asserts the server's own
- * worst-case guarantee (minAmountOut / minAmountIn) does not exceed the slippage the user requested.
+ * guarantee stays within the slippage the user requested: minAmountOut for an output that floats, and for an
+ * input that floats minAmountIn, the least input that completes the swap, against the amountIn the wallet deposits.
  *
  * Both bounds are required fields of the 1Click quote response (see QuoteDetails), so the check is always
  * enforced: a server that omits them fails deserialization rather than reaching this point with a null
@@ -261,26 +262,47 @@ internal fun requireWithinSlippage(
             }
         }
 
-        // Input floats: the guaranteed input must not exceed amountIn * (1 + slippage).
-        // Note: the server names this field `minAmountIn`, but for EXACT_OUTPUT it is the worst-case
-        // *maximum* input you may pay, hence `maxInputGuarantee`. Round UP — the server's worst-case
-        // maxInput is truncated UP for its own safety, so the wallet's ceiling must do the same.
+        // Input floats: the wallet deposits amountIn; see requireInputWithinSlippage.
         SwapType.EXACT_OUTPUT -> {
-            val maxInputGuarantee = minAmountIn
-            val ceiling =
-                amountIn
-                    .multiply(basisPointsDenominator.add(bps))
-                    .divide(basisPointsDenominator, 0, RoundingMode.UP)
-            if (maxInputGuarantee > ceiling) {
-                throw SwapQuoteMismatchException.Rejected(
-                    type = SwapQuoteMismatchType.SLIPPAGE_EXCEEDED,
-                    message =
-                        "Swap slippage exceeded: server-guaranteed minAmountIn=$maxInputGuarantee is above the " +
-                            "slippage ceiling=$ceiling (amountIn=$amountIn, slippageBps=$slippageToleranceBps)"
-                )
-            }
+            requireInputWithinSlippage(amountIn, minAmountIn, bps, basisPointsDenominator)
         }
 
         null -> {}
+    }
+}
+
+/**
+ * Input floats (EXACT_OUTPUT): the wallet deposits [amountIn], which 1Click builds as the least input that
+ * completes the swap ([minAmountIn]) plus the slippage buffer ("amountIn will appear higher than minAmountIn by
+ * approximately your slippageTolerance", request-a-swap-quote). A deposit below [minAmountIn] is refunded, so a
+ * [minAmountIn] above [amountIn] is an inconsistent quote. And a [minAmountIn] far below [amountIn] means the buffer
+ * is wider than the slippage the user asked for, so the wallet would overpay beyond tolerance. The floor is
+ * amountIn * (1 - slippage), rounded DOWN: the server's own integer minimum is at or above it.
+ */
+private fun requireInputWithinSlippage(
+    amountIn: BigDecimal,
+    minAmountIn: BigDecimal,
+    bps: BigDecimal,
+    basisPointsDenominator: BigDecimal
+) {
+    if (minAmountIn > amountIn) {
+        throw SwapQuoteMismatchException.Rejected(
+            type = SwapQuoteMismatchType.SLIPPAGE_EXCEEDED,
+            message =
+                "Swap quote inconsistent: minAmountIn=$minAmountIn is above the amountIn=$amountIn " +
+                    "the wallet would deposit (a deposit below minAmountIn is refunded)"
+        )
+    }
+    val floor =
+        amountIn
+            .multiply(basisPointsDenominator.subtract(bps))
+            .divide(basisPointsDenominator, 0, RoundingMode.DOWN)
+    if (minAmountIn < floor) {
+        throw SwapQuoteMismatchException.Rejected(
+            type = SwapQuoteMismatchType.SLIPPAGE_EXCEEDED,
+            message =
+                "Swap slippage exceeded: server minimum input minAmountIn=$minAmountIn is below the " +
+                    "slippage floor=$floor (amountIn=$amountIn, slippageBps=${bps.toInt()})"
+        )
     }
 }

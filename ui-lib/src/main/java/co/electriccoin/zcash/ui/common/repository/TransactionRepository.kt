@@ -96,27 +96,29 @@ class TransactionRepositoryImpl(
                                 val normalizedTransactions =
                                     combine(
                                         synchronizer.getTransactions(uuid),
-                                        synchronizer.status
-                                    ) { transactions, status ->
+                                        synchronizer.status,
+                                        synchronizer.rejectedTransactionIds
+                                    ) { transactions, status, rejected ->
                                         transactions.map {
                                             if (it.isSentTransaction) {
-                                                it.copy(
-                                                    transactionState =
-                                                        createTransactionState(
-                                                            minedHeight = it.minedHeight,
-                                                            transactionState = it.transactionState,
-                                                            isSyncing = status == Synchronizer.Status.SYNCING
-                                                        ) ?: it.transactionState
-                                                )
+                                                it
+                                                    .copy(
+                                                        transactionState =
+                                                            createTransactionState(
+                                                                minedHeight = it.minedHeight,
+                                                                transactionState = it.transactionState,
+                                                                isSyncing = status == Synchronizer.Status.SYNCING
+                                                            ) ?: it.transactionState
+                                                    ).asRejectedIfIn(rejected)
                                             } else {
                                                 it
                                             }
-                                        }
+                                        } to rejected
                                     }.distinctUntilChanged()
 
                                 normalizedTransactions
                                     .conflate()
-                                    .map { transactions ->
+                                    .map { (transactions, rejected) ->
                                         val now = Instant.now()
 
                                         // Refresh via batched queries whenever any tx is not yet cached,
@@ -180,7 +182,11 @@ class TransactionRepositoryImpl(
                                                     freshDetails[key]
                                                         ?: enhancedTxCache[key]
                                                         ?: TxDetails(outputs = emptyList(), recipient = null)
-                                                createTransaction(transaction, details)
+                                                createTransaction(
+                                                    transaction = transaction,
+                                                    details = details,
+                                                    isRejected = transaction.txId in rejected
+                                                )
                                             }.sortedByDescending { transaction ->
                                                 transaction.timestamp ?: now
                                             }
@@ -203,7 +209,11 @@ class TransactionRepositoryImpl(
                 initialValue = null
             )
 
-    private fun createTransaction(transaction: TransactionOverview, details: TxDetails): Transaction =
+    internal fun createTransaction(
+        transaction: TransactionOverview,
+        details: TxDetails,
+        isRejected: Boolean = false
+    ): Transaction =
         when (transaction.transactionState) {
             Expired -> {
                 when {
@@ -229,7 +239,8 @@ class TransactionRepositoryImpl(
                             memoCount = transaction.memoCount,
                             fee = transaction.feePaid,
                             overview = transaction,
-                            recipient = details.recipient
+                            recipient = details.recipient,
+                            isRejected = isRejected
                         )
                     }
 
@@ -409,6 +420,18 @@ class TransactionRepositoryImpl(
         }
 }
 
+/**
+ * A transaction the SDK recorded as rejected (see [Synchronizer.rejectedTransactionIds]: every endpoint it was
+ * submitted to answered, none accepted it and one refused it for good) is shown as failed, not pending, from that
+ * verdict rather than when its expiry height passes. A transaction that was mined anyway stays as it is.
+ */
+internal fun TransactionOverview.asRejectedIfIn(rejected: Set<TransactionId>): TransactionOverview =
+    if (minedHeight == null && transactionState != Confirmed && txId in rejected) {
+        copy(transactionState = Expired)
+    } else {
+        this
+    }
+
 sealed interface Transaction {
     val id: TransactionId
     val amount: Zatoshi
@@ -418,6 +441,10 @@ sealed interface Transaction {
     val overview: TransactionOverview
     val fee: Zatoshi?
     val recipient: String?
+
+    /** Whether a server refused the transaction for good: it is shown as failed before its expiry height passes. */
+    val isRejected: Boolean
+        get() = false
 }
 
 sealed interface SendTransaction : Transaction {
@@ -452,6 +479,7 @@ sealed interface SendTransaction : Transaction {
         override val transactionOutputs: List<TransactionOutput>,
         override val overview: TransactionOverview,
         override val recipient: String?,
+        override val isRejected: Boolean = false,
     ) : SendTransaction
 }
 
@@ -528,7 +556,7 @@ sealed interface ShieldTransaction : Transaction {
 val Transaction.isPending: Boolean
     get() = this is SendTransaction.Pending || this is ShieldTransaction.Pending || this is ReceiveTransaction.Pending
 
-private data class TxDetails(
+internal data class TxDetails(
     val outputs: List<TransactionOutput>,
     val recipient: String?,
 )

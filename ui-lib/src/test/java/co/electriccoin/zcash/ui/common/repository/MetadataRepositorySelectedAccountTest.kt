@@ -129,7 +129,9 @@ class MetadataRepositorySelectedAccountTest {
         return seen
     }
 
-    private fun asset(id: String): SimpleSwapAsset = assets.getOrPut(id) { mockk(name = id) }
+    // synchronizedMap protects individual calls; Kotlin's getOrPut is a get/put pair.
+    // Both the repository collector and the assertion can ask for the same mock concurrently.
+    private fun asset(id: String): SimpleSwapAsset = synchronized(assets) { assets.getOrPut(id) { mockk(name = id) } }
 
     private fun List<TransactionSwapMetadata>.depositAddresses() = map { it.depositAddress }
 

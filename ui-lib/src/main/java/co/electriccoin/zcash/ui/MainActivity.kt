@@ -10,13 +10,16 @@ import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.VisibleForTesting
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -221,7 +224,16 @@ class MainActivity : FragmentActivity() {
                             .semantics { testTagsAsResourceId = true }
                     ) {
                         BindCompLocalProvider {
-                            MainContent()
+                            val isAppAccessLocked by appAccessLockProvider.isLocked.collectAsStateWithLifecycle()
+                            // While the app-access lock overlay is shown, hide the wallet UI underneath from
+                            // accessibility services so it can't be focused or activated through the lock.
+                            Box(
+                                Modifier
+                                    .fillMaxSize()
+                                    .then(if (isAppAccessLocked) Modifier.clearAndSetSemantics {} else Modifier)
+                            ) {
+                                MainContent()
+                            }
                             AuthenticationForAppAccess()
                             ScreenTimeoutHandle()
                         }

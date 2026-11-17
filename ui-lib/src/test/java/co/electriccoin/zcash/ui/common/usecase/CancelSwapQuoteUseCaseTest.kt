@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
@@ -21,13 +22,15 @@ class CancelSwapQuoteUseCaseTest {
     private val keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true)
     private val ledgerProposalPipeline = mockk<LedgerProposalPipeline>(relaxed = true)
     private val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+    private val signerCapabilitiesProvider = mockk<SignerCapabilitiesProvider>(relaxed = true)
     private val useCase =
         CancelSwapQuoteUseCase(
             swapRepository = swapRepository,
             zashiProposalRepository = zashiProposalRepository,
             keystoneProposalRepository = keystoneProposalRepository,
             ledgerProposalPipeline = ledgerProposalPipeline,
-            navigationRouter = navigationRouter
+            navigationRouter = navigationRouter,
+            signerCapabilitiesProvider = signerCapabilitiesProvider
         )
 
     @Test
@@ -38,6 +41,7 @@ class CancelSwapQuoteUseCaseTest {
         verify(exactly = 1) { keystoneProposalRepository.clear() }
         verify(exactly = 1) { ledgerProposalPipeline.clear() }
         verify(exactly = 1) { swapRepository.clearQuote() }
+        verify(exactly = 1) { signerCapabilitiesProvider.endFlow() }
         verify(exactly = 1) { navigationRouter.back() }
 
         // State is torn down before the screen is popped.

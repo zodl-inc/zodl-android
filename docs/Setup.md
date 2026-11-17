@@ -48,6 +48,11 @@ Start by making sure the command line with Gradle works first, because **all the
     1. Create a new SSH key, following [GitHub's instructions](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent)
     1. Add the SSH key under [GitHub account settings](https://github.com/settings/keys)
     1. Clone repo in a terminal on your computer `git clone git@github.com:zodl-inc/zodl-android.git`
+1. (Optional) Configure OHTTP values for local builds
+    1. If you have AWS access with permission to read the OHTTP secrets (configured with profile `zodl-ohttp`), run `./scripts/ohttp-build-values.py refresh` to download and cache the OHTTP configuration values
+    1. This is a one-time setup — cached values are reused across builds until you run `./scripts/ohttp-build-values.py clear`
+    1. Without cached values, local builds have OHTTP off (Public connection only)
+    1. CI and release builds always use values from repository secrets
 1. Compile from the command line
     1. Navigate to the repo checkout in a terminal
     1. Compile the application with the gradle command `./gradlew assemble`
@@ -122,6 +127,21 @@ App module build variants:
 - `zcashtestnetDebug` - build variant is built upon testnet network and with debug build type. You usually use this variant for development
 - `zcashmainnetDebug` - same as previous, but is built upon mainnet network
 - `zcashmainnetRelease` and `zcashtestnetRelease` - are usually used by our CI jobs to prepare binaries for testing and releasing to the Google Play Store
+
+### OHTTP configuration
+This section is optional.
+
+The SDK carries no OHTTP endpoint or key: the app passes its OHTTP configuration to the SDK at startup
+(`Ohttp.configure`). A build takes the eight values (gateway host, relay URL, key DNS name and signing public key, for
+mainnet and testnet) from the Gradle properties or environment variables `ZODL_OHTTP_GATEWAY_HOST_MAINNET`,
+`ZODL_OHTTP_RELAY_URL_MAINNET`, `ZODL_OHTTP_KEYS_DNS_NAME_MAINNET`, `ZODL_OHTTP_SIGNING_PUBKEY_MAINNET` and the same
+four with `_TESTNET`. A network needs all four values or none. A build without them (the default) has OHTTP off: it
+offers only the Public connection, and the services that need the gateway (exchange rates, swaps, Flexa) are not
+available.
+
+CI injects the values from secrets in the release, Firebase distribution and E2E builds. Developers with access can read
+them from AWS Secrets Manager (`/github/zodl-android-private/ZODL_OHTTP_*`, one secret per value) and export them
+before a local build; never commit them or put them in `gradle.properties`.
 
 ### Included builds
 This section is optional.

@@ -14,25 +14,25 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# The OHTTP endpoint configuration the companion SDK's native library is compiled with
-# (zodl-ohttp-client reads it at build time; unset = OHTTP off in that build). Repository secrets, so
-# the log masks them; no step prints them. Only builds with SDK_COMMIT_PIN compile the SDK, so a
-# release (published SDK) never reads them.
 env:
-  ZODL_OHTTP_GATEWAY_HOST_MAINNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_MAINNET }}
-  ZODL_OHTTP_GATEWAY_HOST_TESTNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_TESTNET }}
-  ZODL_OHTTP_RELAY_URL_MAINNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_MAINNET }}
-  ZODL_OHTTP_RELAY_URL_TESTNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_TESTNET }}
-  ZODL_OHTTP_KEYS_DNS_NAME_MAINNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_MAINNET }}
-  ZODL_OHTTP_KEYS_DNS_NAME_TESTNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_TESTNET }}
-  ZODL_OHTTP_SIGNING_PUBKEY_MAINNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_MAINNET }}
-  ZODL_OHTTP_SIGNING_PUBKEY_TESTNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_TESTNET }}
+  QA_REVISION: 56f09f225d84660f3c1ae04d13130ffe390ebb04
 
 jobs:
+  validate_artifact_privacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check private artifact handling
+        run: python3 .github/tests/test_e2e_private_artifacts.py
+
   # Build the APK once and share it with both phase matrix jobs via
   # actions/upload-artifact. The previous matrix design rebuilt the
   # APK in each phase job, paying ~7 min twice.
   build:
+    needs: validate_artifact_privacy
     runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     # 60 rather than the usual 20: when SDK_COMMIT_PIN is set (see setup-sdk-companion),
     # this compiles the companion SDK's Rust dependency graph with a cold cargo/target
@@ -74,15 +74,84 @@ jobs:
           path: app/build/outputs/apk/zcashmainnetInternal/debug
           key: ${{ runner.os }}-android-apk-${{ hashFiles('app/src/**', 'ui-lib/src/**', 'sdk-ext-lib/src/**', 'ui-design-lib/src/**', 'buildSrc/src/**', 'build-conventions-secant/src/**', '**/*.gradle.kts', 'gradle.properties', 'gradle/libs.versions.toml') }}
 
+      # The app passes the OHTTP configuration to the SDK at startup; the build takes it from these
+      # repository secrets (masked; no step prints them). Only this step sees them.
       - name: Build debug APK
         if: steps.apk-cache.outputs.cache-hit != 'true'
-        run: ./gradlew assembleZcashmainnetInternalDebug
+        env:
+          ZODL_OHTTP_GATEWAY_HOST_MAINNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_MAINNET }}
+          ZODL_OHTTP_RELAY_URL_MAINNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_MAINNET }}
+          ZODL_OHTTP_KEYS_DNS_NAME_MAINNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_MAINNET }}
+          ZODL_OHTTP_SIGNING_PUBKEY_MAINNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_MAINNET }}
+          ZODL_OHTTP_GATEWAY_HOST_TESTNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_TESTNET }}
+          ZODL_OHTTP_RELAY_URL_TESTNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_TESTNET }}
+          ZODL_OHTTP_KEYS_DNS_NAME_TESTNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_TESTNET }}
+          ZODL_OHTTP_SIGNING_PUBKEY_TESTNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_TESTNET }}
+        # The root task also assembles screenshot-test APKs and can exhaust D8 heap.
+        run: ./gradlew :app:assembleZcashmainnetInternalDebug --max-workers=2 --no-parallel
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: zodl-android-debug-apk
           path: app/build/outputs/apk/zcashmainnetInternal/debug/*.apk
+          retention-days: 1
+
+  # Speedrun v0.4.5's text insertion checks only UiAutomation.findFocus(),
+  # which intermittently misses Zodl's focused Compose address field. Its
+  # existing inputFocus() fallback finds that field. Build the one-line fix
+  # once and share the binary with both E2E phases.
+  build-speedrun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout focus patch
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Restore patched Speedrun cache
+        id: speedrun-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/zodl-speedrun/speedrun
+          key: ${{ runner.os }}-speedrun-v0.4.5-odin-2026-11a-${{ hashFiles('.github/patches/speedrun-android-input-focus.patch') }}
+
+      - name: Build patched Speedrun
+        if: steps.speedrun-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL \
+            https://github.com/odin-lang/Odin/releases/download/dev-2026-11a/odin-linux-amd64-dev-2026-11a.tar.gz \
+            -o "$RUNNER_TEMP/odin.tar.gz"
+          echo "65c9f6e97d6f8a30930e151f270ce5aeaa98fe8b2ba49fe067394e2af04f7618  $RUNNER_TEMP/odin.tar.gz" \
+            | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/odin"
+          tar -xzf "$RUNNER_TEMP/odin.tar.gz" --strip-components=1 -C "$RUNNER_TEMP/odin"
+          export PATH="$RUNNER_TEMP/odin:$PATH"
+
+          git clone --depth 1 --branch v0.4.5 \
+            https://github.com/hubastard/speedrun.git "$RUNNER_TEMP/speedrun-src"
+          test "$(git -C "$RUNNER_TEMP/speedrun-src" rev-parse HEAD)" = \
+            dd494b6c1b490cfb7b6aca0c189b6e4f58cb7325
+          git -C "$RUNNER_TEMP/speedrun-src" apply \
+            "$GITHUB_WORKSPACE/.github/patches/speedrun-android-input-focus.patch"
+          SPEEDRUN_NO_IOS=1 SPEEDRUN_VERSION=v0.4.5-zodl-focus1 \
+            "$RUNNER_TEMP/speedrun-src/build.sh"
+          install -Dm755 "$RUNNER_TEMP/speedrun-src/speedrun" \
+            "$HOME/.cache/zodl-speedrun/speedrun"
+          "$HOME/.cache/zodl-speedrun/speedrun" --version
+
+      - name: Upload patched Speedrun
+        uses: actions/upload-artifact@v4
+        with:
+          name: zodl-speedrun-android
+          path: ~/.cache/zodl-speedrun/speedrun
           retention-days: 1
 
   # Separate from `build` on purpose: this is a native CMake+Rust cross of
@@ -112,6 +181,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: zodl-inc/zodl-qa
+          ref: ${{ env.QA_REVISION }}
           path: zodl-qa
           token: ${{ secrets.ZODL_QA }}
 
@@ -150,7 +220,7 @@ jobs:
           retention-days: 1
 
   e2e-android:
-    needs: build
+    needs: [build, build-speedrun]
     # The standard private-repo runner (2 vCPU / 7 GB) starves the API 35 emulator.
     runs-on: ubuntu-24.04-8cores
     # Cold-cache phase 2 runs (no cached SDK DB yet for the seed)
@@ -173,6 +243,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: zodl-inc/zodl-qa
+          ref: ${{ env.QA_REVISION }}
           path: zodl-qa
           token: ${{ secrets.ZODL_QA }}
 
@@ -188,10 +259,19 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Install Maestro
+      - name: Download patched Speedrun
+        uses: actions/download-artifact@v4
+        with:
+          name: zodl-speedrun-android
+          path: ${{ runner.temp }}/speedrun
+
+      - name: Install patched Speedrun
         run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
-          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+          chmod +x "$RUNNER_TEMP/speedrun/speedrun"
+          # android-emulator-runner executes each script line in a separate
+          # shell, so exports inside its script do not persist.
+          echo "$RUNNER_TEMP/speedrun" >> "$GITHUB_PATH"
+          echo "$GITHUB_WORKSPACE/zodl-qa/scripts/speedrun" >> "$GITHUB_PATH"
 
       # Foundry / cast — needed by Layer-2b for the on-chain USDC
       # transfer that funds the swap-receive-usdc-to-zec deposit
@@ -214,16 +294,64 @@ jobs:
       - name: Install zbar
         run: sudo apt-get install -y zbar-tools
 
+      - name: Set up metrics Python
+        if: ${{ matrix.phase == 2 }}
+        continue-on-error: true
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install metrics observer
+        if: ${{ matrix.phase == 2 }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          python3 -m venv "$RUNNER_TEMP/zodl-metrics-venv"
+          "$RUNNER_TEMP/zodl-metrics-venv/bin/python" -m pip install --only-binary=:all: \
+            -r zodl-qa/scripts/metrics-requirements.txt
+          echo "ZODL_METRICS_PYTHON=$RUNNER_TEMP/zodl-metrics-venv/bin/python" >> "$GITHUB_ENV"
+
+      # android-emulator-runner executes each script line in a separate sh.
+      # Keep the private directory, traps and exit status in one Bash process.
+      - name: Prepare private Speedrun runner
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/run-speedrun-private.sh" <<'BASH'
+          set -euo pipefail
+          # Speedrun logs, evaluated commands and screenshots can contain seed
+          # words (including newly generated wallets). Keep them private while
+          # QR funding hooks consume them; publish only structured reports.
+          umask 077
+          private_dir=$(mktemp -d "$RUNNER_TEMP/speedrun-private.XXXXXX")
+          trap 'rm -rf -- "$private_dir"' EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          export ZODL_SPEEDRUN_RESULTS_DIR="$private_dir/artifacts"
+          export TMPDIR="$private_dir"
+          started=$SECONDS
+          status=0
+          ./zodl-qa/scripts/run-smoke-android.sh > "$private_dir/run.log" 2>&1 || status=$?
+          mkdir -p "$ZODL_TEST_RESULTS_DIR"
+          printf 'Platform: Android\nPhase: %s\nExit code: %s\nSuite duration (s): %s\nRaw diagnostic output withheld.\n' \
+            "$ZODL_TEST_PHASE" "$status" "$((SECONDS - started))" \
+            > "$ZODL_TEST_RESULTS_DIR/summary.txt"
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Android smoke tests failed; see the safe summary and benchmark reports."
+          fi
+          exit "$status"
+          BASH
+
       - name: Run smoke tests
         uses: reactivecircus/android-emulator-runner@v2
         env:
+          ZODL_E2E_METRICS: "1"
           # Wallet config consumed by scripts/run-smoke-android.sh — the
           # wrapper sources .env locally, but on CI we read each value
           # from GitHub Secrets / repo variables instead. The wrapper
           # resolves ZODL_TEST_DIRECTION (AUTO_ALTERNATE flips a state
           # file each run so sender/receiver rotate), pre-splits the
-          # chosen seed into ZODL_WORD_1..24, and passes everything to
-          # Maestro via --env=KEY=VAL.
+          # chosen seed into ZODL_WORD_1..24, and passes the needed
+          # values to Speedrun via --env=KEY=VAL.
           ZODL_TEST_SEED_ANDROID: ${{ secrets.ZODL_TEST_SEED_ANDROID }}
           ZODL_TEST_BIRTHDAY_ANDROID: ${{ secrets.ZODL_TEST_BIRTHDAY_ANDROID }}
           ZODL_TEST_ADDRESS_ANDROID: ${{ secrets.ZODL_TEST_ADDRESS_ANDROID }}
@@ -234,6 +362,9 @@ jobs:
           ZODL_TEST_CONTACT_NAME_IOS: ${{ vars.ZODL_TEST_CONTACT_NAME_IOS || 'iOS Shield' }}
           ZODL_TEST_DIRECTION: ${{ vars.ZODL_TEST_DIRECTION || 'AUTO_ALTERNATE' }}
           ZODL_TEST_PHASE: ${{ matrix.phase }}
+          ZODL_SPEEDRUN_PLATFORM: android
+          ZODL_TEST_RESULTS_DIR: ${{ runner.temp }}/speedrun-safe-results
+          ZODL_E2E_METRICS_DIR: ${{ runner.temp }}/speedrun-safe-results/metrics
           ZODL_TEST_SEND_AMOUNT: ${{ vars.ZODL_TEST_SEND_AMOUNT || '0.001' }}
           ZODL_TEST_BALANCE_MIN: ${{ vars.ZODL_TEST_BALANCE_MIN || '1.3' }}
           ZODL_TEST_BALANCE_WARN: ${{ vars.ZODL_TEST_BALANCE_WARN || '1.36' }}
@@ -283,16 +414,20 @@ jobs:
           script: |
             adb install apk/*.apk
             chmod +x zodl-qa/scripts/run-smoke-android.sh
-            ./zodl-qa/scripts/run-smoke-android.sh
+            bash "$RUNNER_TEMP/run-speedrun-private.sh"
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: maestro-android-results-phase-${{ matrix.phase }}
+          name: speedrun-android-results-phase-${{ matrix.phase }}
+          # Metrics are generated from allowlisted events, never raw CLI output.
           path: |
-            ~/.maestro/tests/
-            ${{ runner.temp }}/zodl-enroll-fail/
+            ${{ runner.temp }}/speedrun-safe-results/summary.txt
+            ${{ runner.temp }}/speedrun-safe-results/metrics/report.json
+            ${{ runner.temp }}/speedrun-safe-results/metrics/report.md
+            ${{ runner.temp }}/speedrun-safe-results/metrics/report.html
+          retention-days: 30
 
   # Phase K1 of KEYSTONE_E2E_CI_PLAN.md ("Android pairing canary"): drives
   # a real Keystone Cypherpunk simulator through pairing with the app via
@@ -313,6 +448,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: zodl-inc/zodl-qa
+          ref: ${{ env.QA_REVISION }}
           path: zodl-qa
           token: ${{ secrets.ZODL_QA }}
 
@@ -357,9 +493,35 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb netcat-openbsd libsdl2-2.0-0 libxcb1
 
+      - name: Prepare private Keystone runner
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/run-keystone-private.sh" <<'BASH'
+          set -euo pipefail
+          umask 077
+          private_dir=$(mktemp -d "$RUNNER_TEMP/keystone-private.XXXXXX")
+          trap 'rm -rf -- "$private_dir"' EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          export TMPDIR="$private_dir"
+          export KEYSTONE_RUNTIME_DIR="$private_dir/simulator"
+          mkdir -p "$KEYSTONE_RUNTIME_DIR"
+          started=$SECONDS
+          status=0
+          xvfb-run -a ./zodl-qa/scripts/run-keystone-android.sh > "$private_dir/run.log" 2>&1 || status=$?
+          mkdir -p "$ZODL_TEST_RESULTS_DIR"
+          printf 'Platform: Android\nSuite: Keystone\nExit code: %s\nSuite duration (s): %s\nRaw simulator state and diagnostics withheld.\n' \
+            "$status" "$((SECONDS - started))" > "$ZODL_TEST_RESULTS_DIR/summary.txt"
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Keystone canary failed; see the safe status/timing summary."
+          fi
+          exit "$status"
+          BASH
+
       - name: Run smoke tests
         uses: reactivecircus/android-emulator-runner@v2
         env:
+          ZODL_TEST_RESULTS_DIR: ${{ runner.temp }}/keystone-safe-results
           ZODL_KEYSTONE_TEST_ENTROPY_HEX_ANDROID: ${{ secrets.ZODL_KEYSTONE_TEST_ENTROPY_HEX_ANDROID }}
           ZODL_KEYSTONE_TEST_PIN_ANDROID: ${{ secrets.ZODL_KEYSTONE_TEST_PIN_ANDROID }}
           ZODL_KEYSTONE_TEST_BIRTHDAY_ANDROID: ${{ secrets.ZODL_KEYSTONE_TEST_BIRTHDAY_ANDROID }}
@@ -375,13 +537,12 @@ jobs:
             adb install apk/*.apk
             chmod +x keystone-simulator/simulator
             chmod +x zodl-qa/scripts/run-keystone-android.sh
-            xvfb-run -a zodl-qa/scripts/run-keystone-android.sh
+            bash "$RUNNER_TEMP/run-keystone-private.sh"
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: maestro-keystone-results
-          path: |
-            ~/.maestro/tests/
-            /tmp/zodl-keystone-sim.*/
+          name: keystone-safe-results
+          path: ${{ runner.temp }}/keystone-safe-results/summary.txt
+          retention-days: 1

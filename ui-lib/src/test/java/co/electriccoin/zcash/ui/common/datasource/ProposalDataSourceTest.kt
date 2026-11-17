@@ -1,15 +1,23 @@
 package co.electriccoin.zcash.ui.common.datasource
 
+import cash.z.ecc.android.sdk.Broadcaster
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.exception.PcztException
 import cash.z.ecc.android.sdk.exception.TransactionEncoderException
 import cash.z.ecc.android.sdk.model.Memo
 import cash.z.ecc.android.sdk.model.Proposal
+import cash.z.ecc.android.sdk.model.TransactionSizeBound
 import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
+import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.ZodlAccount
+import co.electriccoin.zcash.ui.common.model.isProposalTooLarge
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilities
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
@@ -30,12 +38,18 @@ class ProposalDataSourceTest {
             every { isSpendable } returns true
         }
 
+    private val bound = TransactionSizeBound(maxShieldedActions = 42)
+    private val signerCapabilities =
+        mockk<SignerCapabilitiesProvider> {
+            coEvery { forAccount(any()) } returns SignerCapabilities(bound)
+        }
+
     @Test
     fun sdkInsufficientFundsBecomesTheAppInsufficientFundsException() =
         runBlocking {
             val synchronizer = mockk<Synchronizer>()
             val sdkException = TransactionEncoderException.InsufficientFundsException(RuntimeException("raw"))
-            coEvery { synchronizer.proposeTransfer(any(), any(), any(), any()) } throws sdkException
+            coEvery { synchronizer.proposeTransfer(any(), any(), any(), any(), any()) } throws sdkException
 
             val thrown =
                 assertFailsWith<InsufficientFundsException> {
@@ -50,7 +64,7 @@ class ProposalDataSourceTest {
         runBlocking {
             val synchronizer = mockk<Synchronizer>()
             val sdkException = TransactionEncoderException.ProposalFromParametersException(RuntimeException("raw"))
-            coEvery { synchronizer.proposeTransfer(any(), any(), any(), any()) } throws sdkException
+            coEvery { synchronizer.proposeTransfer(any(), any(), any(), any(), any()) } throws sdkException
 
             val thrown =
                 assertFailsWith<TransactionProposalNotCreatedException> {
@@ -65,7 +79,7 @@ class ProposalDataSourceTest {
         runBlocking {
             val synchronizer = mockk<Synchronizer>()
             val raw = RuntimeException("anything")
-            coEvery { synchronizer.proposeTransfer(any(), any(), any(), any()) } throws raw
+            coEvery { synchronizer.proposeTransfer(any(), any(), any(), any(), any()) } throws raw
 
             val thrown =
                 assertFailsWith<TransactionProposalNotCreatedException> {
@@ -80,7 +94,7 @@ class ProposalDataSourceTest {
         runBlocking {
             val synchronizer = mockk<Synchronizer>()
             val alreadyMapped = TransactionProposalNotCreatedException(IllegalArgumentException("Invalid ZIP321 URI"))
-            coEvery { synchronizer.proposeTransfer(any(), any(), any(), any()) } throws alreadyMapped
+            coEvery { synchronizer.proposeTransfer(any(), any(), any(), any(), any()) } throws alreadyMapped
 
             val thrown =
                 assertFailsWith<TransactionProposalNotCreatedException> {
@@ -88,6 +102,101 @@ class ProposalDataSourceTest {
                 }
 
             assertSame(alreadyMapped, thrown)
+        }
+
+    @Test
+    fun aRegularProposalIsProposedWithinTheSignersBound() =
+        runBlocking {
+            val synchronizer = mockk<Synchronizer>()
+            coEvery { synchronizer.proposeTransfer(any(), any(), any(), any(), bound) } returns mockk()
+
+            dataSource(synchronizer).createProposal(account, send())
+
+            coVerify(exactly = 1) { synchronizer.proposeTransfer(any(), any(), any(), any(), bound) }
+        }
+
+    @Test
+    fun aSwapProposalIsProposedWithinTheSignersBound() =
+        runBlocking {
+            val synchronizer = mockk<Synchronizer>()
+            coEvery { synchronizer.proposeTransfer(any(), any(), any(), any(), bound) } returns mockk()
+
+            dataSource(synchronizer).createExactInputProposal(account, send(), mockk())
+            dataSource(synchronizer).createExactOutputProposal(account, send(), mockk())
+
+            coVerify(exactly = 2) { synchronizer.proposeTransfer(any(), any(), any(), any(), bound) }
+        }
+
+    @Test
+    fun aProposalOverTheBoundSurfacesTheSdkTooLargeFailure() =
+        runBlocking {
+            val synchronizer = mockk<Synchronizer>()
+            val tooLarge = TransactionEncoderException.ProposalTooLargeException(RuntimeException("raw"))
+            coEvery { synchronizer.proposeTransfer(any(), any(), any(), any(), bound) } throws tooLarge
+
+            val thrown =
+                assertFailsWith<TransactionProposalNotCreatedException> {
+                    dataSource(synchronizer).createProposal(account, send())
+                }
+
+            assertTrue(thrown.isProposalTooLarge())
+        }
+
+    @Test
+    fun theBoundIsAskedForAtEveryProposal() =
+        runBlocking {
+            val synchronizer = mockk<Synchronizer>()
+            val scarce = TransactionSizeBound(maxShieldedActions = TransactionSizeBound.MIN_PROVING_ACTIONS)
+            coEvery { synchronizer.proposeTransfer(any(), any(), any(), any(), any()) } returns mockk()
+            coEvery { signerCapabilities.forAccount(any()) } returns SignerCapabilities(bound) andThen
+                SignerCapabilities(scarce)
+
+            dataSource(synchronizer).createProposal(account, send())
+            dataSource(synchronizer).createProposal(account, send())
+
+            coVerifyOrder {
+                synchronizer.proposeTransfer(any(), any(), any(), any(), bound)
+                synchronizer.proposeTransfer(any(), any(), any(), any(), scarce)
+            }
+        }
+
+    @Test
+    fun aPcztIsCreatedWithTheBoundTheCallerGives() =
+        runBlocking {
+            val synchronizer = mockk<Synchronizer>()
+            coEvery { synchronizer.createPcztFromProposal(any(), any(), bound) } returns mockk()
+
+            dataSource(synchronizer).createPcztFromProposal(account, mockk<Proposal>(), bound)
+
+            coVerify(exactly = 1) { synchronizer.createPcztFromProposal(any(), any(), bound) }
+        }
+
+    @Test
+    fun aPcztIsConsensusBoundedWhenTheCallerSaysSo() =
+        runBlocking {
+            val synchronizer = mockk<Synchronizer>()
+            coEvery {
+                synchronizer.createPcztFromProposal(any(), any(), TransactionSizeBound.CONSENSUS)
+            } returns mockk()
+
+            dataSource(synchronizer).createPcztFromProposal(account, mockk<Proposal>(), TransactionSizeBound.CONSENSUS)
+
+            coVerify(exactly = 1) {
+                synchronizer.createPcztFromProposal(any(), any(), TransactionSizeBound.CONSENSUS)
+            }
+        }
+
+    @Test
+    fun transactionsAreCreatedWithTheBoundTheCallerGives() =
+        runBlocking {
+            val broadcaster = mockk<Broadcaster>()
+            val synchronizer = mockk<Synchronizer> { every { this@mockk.broadcaster } returns broadcaster }
+            coEvery { broadcaster.createProposedTransactions(any(), any(), any(), bound) } returns emptyList()
+
+            val result = dataSource(synchronizer).submitTransaction(mockk<Proposal>(), mockk(), bound)
+
+            coVerify(exactly = 1) { broadcaster.createProposedTransactions(any(), any(), any(), bound) }
+            assertTrue(result is SubmitResult.Failure)
         }
 
     /**
@@ -100,11 +209,11 @@ class ProposalDataSourceTest {
         runBlocking {
             val synchronizer = mockk<Synchronizer>()
             val sdkException = PcztException.MultiStepProposalUnsupportedException()
-            coEvery { synchronizer.createPcztFromProposal(any(), any()) } throws sdkException
+            coEvery { synchronizer.createPcztFromProposal(any(), any(), any()) } throws sdkException
 
             val thrown =
                 assertFailsWith<PcztException.MultiStepProposalUnsupportedException> {
-                    dataSource(synchronizer).createPcztFromProposal(account, mockk<Proposal>())
+                    dataSource(synchronizer).createPcztFromProposal(account, mockk<Proposal>(), bound)
                 }
 
             assertTrue(thrown.causeChain().any { it === sdkException })
@@ -115,11 +224,11 @@ class ProposalDataSourceTest {
         runBlocking {
             val synchronizer = mockk<Synchronizer>()
             val raw = RuntimeException("PCZT creation failed")
-            coEvery { synchronizer.createPcztFromProposal(any(), any()) } throws raw
+            coEvery { synchronizer.createPcztFromProposal(any(), any(), any()) } throws raw
 
             val thrown =
                 assertFailsWith<RuntimeException> {
-                    dataSource(synchronizer).createPcztFromProposal(account, mockk<Proposal>())
+                    dataSource(synchronizer).createPcztFromProposal(account, mockk<Proposal>(), bound)
                 }
 
             assertTrue(thrown.causeChain().any { it === raw })
@@ -134,7 +243,8 @@ class ProposalDataSourceTest {
     private fun dataSource(synchronizer: Synchronizer): ProposalDataSource =
         ProposalDataSourceImpl(
             synchronizerProvider = mockk { coEvery { getSynchronizer() } returns synchronizer },
-            persistableWalletProvider = mockk()
+            persistableWalletProvider = mockk(),
+            signerCapabilitiesProvider = signerCapabilities
         )
 
     private suspend fun send(): ZecSend =

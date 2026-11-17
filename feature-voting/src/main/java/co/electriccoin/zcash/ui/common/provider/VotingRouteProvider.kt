@@ -45,7 +45,13 @@ class VotingRouteProviderImpl(
         val isTor = httpClientProvider.isTorEnabled()
         val chainConfig = votingChainConfigRepository.get()
 
-        val decision = VotingRouteDecision(isTor, !chainConfig.isOnDefaultConfig, chainConfig.sourceSnapshot())
+        val decision =
+            VotingRouteDecision(
+                isTor = isTor,
+                isCustomServer = !chainConfig.isOnDefaultConfig,
+                configSource = chainConfig.sourceSnapshot(),
+                isOhttpAvailable = httpClientProvider.isOhttpAvailable(),
+            )
         val torLease =
             if (isTor) {
                 synchronizerProvider.getSynchronizer().acquireVotingTorLease()
@@ -60,7 +66,12 @@ class VotingRouteProviderImpl(
         val isTor = httpClientProvider.isTorEnabled()
         val chainConfig = votingChainConfigRepository.get()
         val customFlag = isCustomServer ?: !chainConfig.isOnDefaultConfig
-        return VotingRouteDecision(isTor, customFlag, chainConfig.sourceSnapshot())
+        return VotingRouteDecision(
+            isTor = isTor,
+            isCustomServer = customFlag,
+            configSource = chainConfig.sourceSnapshot(),
+            isOhttpAvailable = httpClientProvider.isOhttpAvailable(),
+        )
     }
 }
 

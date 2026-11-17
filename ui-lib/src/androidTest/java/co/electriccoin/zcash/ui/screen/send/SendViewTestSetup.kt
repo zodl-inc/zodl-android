@@ -10,6 +10,7 @@ import cash.z.ecc.android.sdk.type.AddressType
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.IconButtonState
+import co.electriccoin.zcash.ui.design.component.SendMaxChipState
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.fixture.ZashiMainTopAppBarStateFixture
@@ -28,12 +29,15 @@ class SendViewTestSetup(
     private val composeTestRule: ComposeContentTestRule,
     private val initialState: SendStage,
     private val initialZecSend: ZecSend?,
-    private val hasCameraFeature: Boolean
+    private val hasCameraFeature: Boolean,
+    private val maxChipState: SendMaxChipState =
+        SendMaxChipState(isEnabled = true, onClick = {}),
 ) {
     private val onBackCount = AtomicInteger(0)
     private val onSettingsCount = AtomicInteger(0)
     private val onCreateCount = AtomicInteger(0)
     private val onScannerCount = AtomicInteger(0)
+    private val onMaxCount = AtomicInteger(0)
     val mutableActionExecuted = MutableStateFlow(false)
 
     @Volatile
@@ -62,6 +66,11 @@ class SendViewTestSetup(
         return onScannerCount.get()
     }
 
+    fun getOnMaxCount(): Int {
+        composeTestRule.waitForIdle()
+        return onMaxCount.get()
+    }
+
     fun getLastZecSend(): ZecSend? {
         composeTestRule.waitForIdle()
         return lastZecSend
@@ -82,6 +91,7 @@ class SendViewTestSetup(
 
                 SendStage.Proposing -> {}
 
+                SendStage.TooManyNotes,
                 is SendStage.SendFailure -> {
                     setSendStage(SendStage.Form)
                 }
@@ -142,7 +152,8 @@ class SendViewTestSetup(
                             ) {
                                 onSettingsCount.incrementAndGet()
                             }
-                    )
+                    ),
+                maxChipState = maxChipState.copy(onClick = { onMaxCount.incrementAndGet() })
             )
         }
     }
