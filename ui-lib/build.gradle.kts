@@ -223,6 +223,7 @@ dependencies {
     api(libs.keystone)
 
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.zodl.ohttp.values)
     testImplementation(libs.kotlin.reflect)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)

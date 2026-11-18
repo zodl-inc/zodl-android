@@ -18,10 +18,6 @@ on:
       - 'README.md'
       - 'docs/**'
 
-# No OHTTP value is needed here: the SDK carries none, and the app's unit tests use example values. An
-# APK built by this workflow has OHTTP off (Public only); the 8 ZODL_OHTTP_* values reach only the jobs
-# that build an APK for people to use (release.yaml, deploy.yml, firebase-app-distribution.yml) and the
-# E2E smoke build.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -41,21 +37,6 @@ jobs:
       - name: Gradle Wrapper Validation
         timeout-minutes: 1
         uses: gradle/actions/wrapper-validation@v6
-
-  test_scripts:
-    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        timeout-minutes: 1
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-      - name: Test OHTTP build values script
-        timeout-minutes: 1
-        run: python3 -m unittest scripts.test_ohttp_build_values
-      - name: Test OHTTP release values check script
-        timeout-minutes: 1
-        run: python3 -m unittest scripts.test_check_ohttp_release_values
 
   check_firebase_secrets:
     runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}

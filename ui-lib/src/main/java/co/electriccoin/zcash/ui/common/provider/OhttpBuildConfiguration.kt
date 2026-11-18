@@ -8,10 +8,9 @@ import co.electriccoin.zcash.spackle.Twig
 /**
  * The OHTTP configuration of this build, which the app passes to the SDK once at startup.
  *
- * The SDK carries no OHTTP endpoint or key. The app's build has them as `BuildConfig` fields that the Gradle
- * build fills from the `ZODL_OHTTP_*` Gradle properties or environment variables (CI injects them from
- * secrets for the Play and FOSS release builds). A build without them (a local or third-party build) has
- * OHTTP off: it offers only the Public connection, and CMC, NEAR, Flexa and the OHTTP voting route, which need
+ * The SDK carries no OHTTP endpoint or key. The app takes them from the `app-config` dependency
+ * (`ZodlOhttpValues`), which that repository's CI generates from secrets. An empty network (all four values empty)
+ * has OHTTP off: it offers only the Public connection, and CMC, NEAR, Flexa and the OHTTP voting route, which need
  * the gateway, are unavailable or go the Public way. The values are never logged.
  */
 object OhttpBuildConfiguration {
