@@ -40,6 +40,7 @@ class SendViewModelFlowEndTest {
             val store = ViewModelStore()
             val vm =
                 SendViewModel(
+                    args = Send(),
                     exchangeRateRepository = mockk(relaxed = true),
                     observeContactByAddress = mockk(relaxed = true),
                     observeContactPicked = mockk(relaxed = true),
