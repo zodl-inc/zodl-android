@@ -40,21 +40,17 @@ class ZodlOhttpValuesTest {
     private fun Network.values() = listOf(gatewayHost, relayUrl, keysDnsName, signingPublicKey)
 
     @Test
-    fun mainnet_is_complete() {
-        mainnet.values().forEachIndexed { index, value ->
-            assertTrue(value.isNotEmpty(), "mainnet value #$index is empty")
+    fun all_eight_values_are_set() {
+        listOf(mainnet, testnet).forEach { n ->
+            n.values().forEachIndexed { index, value ->
+                assertTrue(value.isNotEmpty(), "${n.name} value #$index is empty")
+            }
         }
     }
 
     @Test
-    fun testnet_has_all_four_values_or_none() {
-        val set = testnet.values().count { it.isNotEmpty() }
-        assertTrue(set == 0 || set == 4, "testnet has $set of 4 values")
-    }
-
-    @Test
     fun values_have_the_expected_format() {
-        listOf(mainnet, testnet).filter { it.gatewayHost.isNotEmpty() }.forEach { n ->
+        listOf(mainnet, testnet).forEach { n ->
             assertTrue(DNS_NAME.matches(n.gatewayHost), "${n.name} gateway host is not a lowercase DNS name")
             assertTrue(DNS_NAME.matches(n.keysDnsName), "${n.name} keys DNS name is not a lowercase DNS name")
             assertTrue(HTTPS_URL.matches(n.relayUrl), "${n.name} relay URL is not an https URL with a host")
@@ -64,7 +60,6 @@ class ZodlOhttpValuesTest {
 
     @Test
     fun mainnet_and_testnet_differ() {
-        if (testnet.gatewayHost.isEmpty()) return
         assertNotEquals(mainnet.gatewayHost, testnet.gatewayHost, "gateway host is shared")
         assertNotEquals(mainnet.relayUrl, testnet.relayUrl, "relay URL is shared")
         assertNotEquals(mainnet.keysDnsName, testnet.keysDnsName, "keys DNS name is shared")
@@ -73,7 +68,7 @@ class ZodlOhttpValuesTest {
 
     @Test
     fun relays_are_the_independent_ones() {
-        listOf(mainnet, testnet).filter { it.relayUrl.isNotEmpty() }.forEach { n ->
+        listOf(mainnet, testnet).forEach { n ->
             assertTrue(
                 LightWalletEndpointProvider.isIndependentRelay(n.relayUrl),
                 "${n.name} relay digest is not in INDEPENDENT_RELAY_URL_SHA256: the release would not be marked private"
