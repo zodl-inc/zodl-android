@@ -64,24 +64,6 @@ jobs:
             exit 1
           fi
 
-      # Release builds must carry the OHTTP configuration the app passes to the SDK: without it the
-      # APK has OHTTP off and offers only the Public connection. Checks presence, format (lowercase DNS names,
-      # https URLs, 64 hex pubkeys, mainnet != testnet), and that the relay URL digest is in
-      # INDEPENDENT_RELAY_URL_SHA256. Prints no value.
-      - name: Require the OHTTP configuration
-        timeout-minutes: 1
-        shell: bash
-        env:
-          ZODL_OHTTP_GATEWAY_HOST_MAINNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_MAINNET }}
-          ZODL_OHTTP_RELAY_URL_MAINNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_MAINNET }}
-          ZODL_OHTTP_KEYS_DNS_NAME_MAINNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_MAINNET }}
-          ZODL_OHTTP_SIGNING_PUBKEY_MAINNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_MAINNET }}
-          ZODL_OHTTP_GATEWAY_HOST_TESTNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_TESTNET }}
-          ZODL_OHTTP_RELAY_URL_TESTNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_TESTNET }}
-          ZODL_OHTTP_KEYS_DNS_NAME_TESTNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_TESTNET }}
-          ZODL_OHTTP_SIGNING_PUBKEY_TESTNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_TESTNET }}
-        run: python3 scripts/check_ohttp_release_values.py
-
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
         with:
@@ -102,6 +84,11 @@ jobs:
         uses: ./.github/actions/setup-gradle
         with:
           gradle-home-cache-cleanup: true
+      # Release builds must carry valid OHTTP values: the app-config artifact is checked for format,
+      # mainnet != testnet and a relay digest in INDEPENDENT_RELAY_URL_SHA256 (the former release-only script).
+      - name: Check the OHTTP values
+        timeout-minutes: 15
+        run: ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest --tests '*.AppConfigTest'
       - name: Export Google Services JSON
         env:
           FIREBASE_DEBUG_JSON_BASE64: ${{ secrets.FIREBASE_DEBUG_JSON_BASE64 }}
@@ -129,15 +116,6 @@ jobs:
 
       - name: Build Store (Google play) APK
         env:
-          # The OHTTP configuration the app passes to the SDK (masked; never printed).
-          ZODL_OHTTP_GATEWAY_HOST_MAINNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_MAINNET }}
-          ZODL_OHTTP_RELAY_URL_MAINNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_MAINNET }}
-          ZODL_OHTTP_KEYS_DNS_NAME_MAINNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_MAINNET }}
-          ZODL_OHTTP_SIGNING_PUBKEY_MAINNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_MAINNET }}
-          ZODL_OHTTP_GATEWAY_HOST_TESTNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_TESTNET }}
-          ZODL_OHTTP_RELAY_URL_TESTNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_TESTNET }}
-          ZODL_OHTTP_KEYS_DNS_NAME_TESTNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_TESTNET }}
-          ZODL_OHTTP_SIGNING_PUBKEY_TESTNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_TESTNET }}
           # TODO [#1033]: Use token-based authorization on Google Play for automated deployment
           # TODO [#1033]: https://github.com/Electric-Coin-Company/zashi-android/issues/1033
           # Note that these properties are not currently used due to #1033
@@ -164,15 +142,6 @@ jobs:
 
       - name: Build FOSS (externallibs) APK
         env:
-          # The OHTTP configuration the app passes to the SDK (masked; never printed).
-          ZODL_OHTTP_GATEWAY_HOST_MAINNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_MAINNET }}
-          ZODL_OHTTP_RELAY_URL_MAINNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_MAINNET }}
-          ZODL_OHTTP_KEYS_DNS_NAME_MAINNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_MAINNET }}
-          ZODL_OHTTP_SIGNING_PUBKEY_MAINNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_MAINNET }}
-          ZODL_OHTTP_GATEWAY_HOST_TESTNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_TESTNET }}
-          ZODL_OHTTP_RELAY_URL_TESTNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_TESTNET }}
-          ZODL_OHTTP_KEYS_DNS_NAME_TESTNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_TESTNET }}
-          ZODL_OHTTP_SIGNING_PUBKEY_TESTNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_TESTNET }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/release.jks
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
@@ -185,22 +154,12 @@ jobs:
           mv app/build/outputs/apk/zcashmainnetFoss/release/app-zcashmainnet-foss-release.apk artifacts/app-zcashmainnet-foss-release-full-externallibs.apk
 
       # Second FOSS build, the APK that foss.zodl.com redistributes: it gets the
-      # signing key and the OHTTP configuration, so it has the Private connection.
-      # (f-droid.org builds from public source without these values, so its
-      # listing is being deprecated in favour of foss.zodl.com.) Keep it in sync
+      # signing key. The OHTTP values come from the app-config dependency like in every
+      # other build. Keep it in sync
       # with the externallibs build above so fdroidserver metadata generation has
       # the artifact it expects under the un-suffixed filename.
       - name: Build FOSS (F-Droid) APK
         env:
-          # The OHTTP configuration the app passes to the SDK (masked; never printed).
-          ZODL_OHTTP_GATEWAY_HOST_MAINNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_MAINNET }}
-          ZODL_OHTTP_RELAY_URL_MAINNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_MAINNET }}
-          ZODL_OHTTP_KEYS_DNS_NAME_MAINNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_MAINNET }}
-          ZODL_OHTTP_SIGNING_PUBKEY_MAINNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_MAINNET }}
-          ZODL_OHTTP_GATEWAY_HOST_TESTNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_TESTNET }}
-          ZODL_OHTTP_RELAY_URL_TESTNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_TESTNET }}
-          ZODL_OHTTP_KEYS_DNS_NAME_TESTNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_TESTNET }}
-          ZODL_OHTTP_SIGNING_PUBKEY_TESTNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_TESTNET }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/release.jks
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}

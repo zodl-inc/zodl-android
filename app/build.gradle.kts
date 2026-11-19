@@ -34,54 +34,6 @@ if (hasFirebaseApiKeys) {
     apply(plugin = "com.google.firebase.crashlytics")
 }
 
-// The OHTTP configuration the app passes to the SDK at startup (cash.z.ecc.android.sdk.Ohttp.configure):
-// for mainnet and testnet the gateway host, relay URL, key DNS name and signing public key. The SDK carries
-// none. Each value is read from (1) the Gradle property, (2) the environment variable of the same name
-// (ZODL_OHTTP_GATEWAY_HOST_MAINNET and so on, which CI fills from secrets), or (3) the local cache file
-// ~/.gradle/zodl-ohttp-values.properties (managed by scripts/ohttp-build-values.py, never in the repo).
-// A network has all four values or none; none = OHTTP off for that network, and a build with none at all
-// behaves as Public only. Errors name the variable, never the value, and nothing here prints a value.
-val ohttpFields = listOf("GATEWAY_HOST", "RELAY_URL", "KEYS_DNS_NAME", "SIGNING_PUBKEY")
-val ohttpNetworks = listOf("MAINNET", "TESTNET")
-
-// Read cache file if it exists (for local development convenience)
-val ohttpCacheFile = File(System.getProperty("user.home"), ".gradle/zodl-ohttp-values.properties")
-val ohttpCache: Map<String, String> = if (ohttpCacheFile.exists()) {
-    ohttpCacheFile.readLines()
-        .filter { it.isNotBlank() && !it.trim().startsWith("#") && "=" in it }
-        .associate { line ->
-            val (key, value) = line.split("=", limit = 2)
-            key.trim() to value.trim()
-        }
-} else {
-    emptyMap()
-}
-
-val ohttpConfig: Map<String, String> =
-    ohttpNetworks
-        .flatMap { network -> ohttpFields.map { field -> "${field}_$network" } }
-        .associateWith { key ->
-            val name = "ZODL_OHTTP_$key"
-            (providers.gradleProperty(name).orNull
-                ?: providers.environmentVariable(name).orNull
-                ?: ohttpCache[name])
-                .orEmpty()
-                .trim()
-        }
-for (network in ohttpNetworks) {
-    val set = ohttpFields.filter { ohttpConfig.getValue("${it}_$network").isNotEmpty() }
-    require(set.isEmpty() || set.size == ohttpFields.size) {
-        "ZODL_OHTTP_*_$network: set all four values of the network or none; set now: " +
-            set.joinToString { "ZODL_OHTTP_${it}_$network" }
-    }
-}
-for ((key, value) in ohttpConfig) {
-    // The value goes into generated Java source: refuse anything that could break out of the string.
-    require(value.none { it == '"' || it == '\\' || it.isWhitespace() || it.isISOControl() }) {
-        "ZODL_OHTTP_$key contains a quote, a backslash, whitespace or a control character"
-    }
-}
-
 val packageName = project.property("ZCASH_RELEASE_PACKAGE_NAME").toString()
 
 val testnetNetworkName = "Testnet"
@@ -284,6 +236,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.zcash.sdk) // just to configure logging
+    implementation(libs.zodl.app.config) // OHTTP endpoint values, injected by that repo's CI
     implementation(projects.crashAndroidLib)
     implementation(projects.preferenceApiLib)
     implementation(projects.preferenceImplAndroidLib)
@@ -323,13 +276,6 @@ androidComponents {
                     comment = "Whether is the strict mode enabled"
                 )
             )
-
-            for ((key, value) in ohttpConfig) {
-                variant.buildConfigFields?.put(
-                    "OHTTP_$key",
-                    BuildConfigField(type = "String", value = "\"$value\"", comment = null)
-                )
-            }
 
             variant.resValues.put(
                 // Key matches the one in crash-android-lib/src/res/values/bools.xml
