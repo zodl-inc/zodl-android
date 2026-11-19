@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  QA_REVISION: ef77c32b163a8a5117d07b8bd49b5f5fe65610ee
+  QA_REVISION: af7290f3bf8ae46dfd5c8dd29861bb97f5ef3013
 
 jobs:
   validate_artifact_privacy:
@@ -460,7 +460,11 @@ jobs:
   # (shares this workflow's top-level `on:` trigger -- no per-job gate).
   e2e-keystone:
     needs: [build, build-keystone-simulator]
-    runs-on: ubuntu-latest
+    # Same larger runner as e2e-android: this job runs the API 35 emulator
+    # plus the Keystone simulator (SDL under xvfb) plus the Maestro JVM.
+    # On the standard 2 vCPU runner the emulator starves and the suite
+    # fails inside its first two minutes about two runs in three.
+    runs-on: ubuntu-24.04-8cores
     timeout-minutes: 30
     permissions:
       contents: read
@@ -534,8 +538,17 @@ jobs:
           mkdir -p "$ZODL_TEST_RESULTS_DIR"
           printf 'Platform: Android\nSuite: Keystone\nExit code: %s\nSuite duration (s): %s\nRaw simulator state and diagnostics withheld.\n' \
             "$status" "$((SECONDS - started))" > "$ZODL_TEST_RESULTS_DIR/summary.txt"
+          # Publish only the orchestrator's own step markers (lines it prints
+          # with a leading coloured glyph). They name the phase and the
+          # simulator screen, never wallet data, simulator state or Maestro
+          # output, so a failure is attributable from the safe summary alone.
+          {
+            printf '\nSteps:\n'
+            grep -aE $'^\e\\[[0-9;]*m[▶ℹ✗✓]' "$private_dir/run.log" | sed $'s/\e\\[[0-9;]*m//g' || true
+          } >> "$ZODL_TEST_RESULTS_DIR/summary.txt"
           if [ "$status" -ne 0 ]; then
             echo "::error::Keystone canary failed; see the safe status/timing summary."
+            grep -a 'failed during:' "$ZODL_TEST_RESULTS_DIR/summary.txt" || true
           fi
           exit "$status"
           BASH
