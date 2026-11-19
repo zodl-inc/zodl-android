@@ -7,6 +7,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.21.1 (3903)] - 2026-11-19
+
 ### Changed:
 
 - The OHTTP configuration now comes from the `com.zodl.android:app-config` dependency instead of `BuildConfig`
