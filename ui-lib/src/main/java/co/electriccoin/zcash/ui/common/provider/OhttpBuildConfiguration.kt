@@ -9,7 +9,7 @@ import co.electriccoin.zcash.spackle.Twig
  * The OHTTP configuration of this build, which the app passes to the SDK once at startup.
  *
  * The SDK carries no OHTTP endpoint or key. The app takes them from the `app-config` dependency
- * (`ZodlOhttpValues`), which that repository's CI generates from secrets. An empty network (all four values empty)
+ * (`AppConfig.Ohttp`), which that repository's CI generates from secrets. An empty network (all four values empty)
  * has OHTTP off: it offers only the Public connection, and CMC, NEAR, Flexa and the OHTTP voting route, which need
  * the gateway, are unavailable or go the Public way. The values are never logged.
  */

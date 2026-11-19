@@ -88,7 +88,7 @@ jobs:
       # mainnet != testnet and a relay digest in INDEPENDENT_RELAY_URL_SHA256 (the former release-only script).
       - name: Check the OHTTP values
         timeout-minutes: 15
-        run: ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest --tests '*.ZodlOhttpValuesTest'
+        run: ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest --tests '*.AppConfigTest'
       - name: Export Google Services JSON
         env:
           FIREBASE_DEBUG_JSON_BASE64: ${{ secrets.FIREBASE_DEBUG_JSON_BASE64 }}

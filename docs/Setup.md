@@ -128,7 +128,7 @@ Nothing to set up. The SDK carries no OHTTP endpoint or key: the app passes its 
 startup (`Ohttp.configure`). The eight values (gateway host, relay URL, key DNS name and signing public key, for mainnet
 and testnet) come from the `com.zodl.android:app-config` dependency, a tiny artifact published to Maven Central
 by the `app-config` repository, whose CI injects them from secrets. Every build, including local and
-F-Droid builds, uses it. To change a value, publish a new version of that artifact and bump `ZODL_OHTTP_VALUES_VERSION` in
+F-Droid builds, uses it. To change a value, publish a new version of that artifact and bump `ZODL_APP_CONFIG_VERSION` in
 `gradle.properties`.
 
 ### Included builds

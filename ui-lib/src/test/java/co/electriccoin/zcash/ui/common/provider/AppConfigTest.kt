@@ -1,6 +1,6 @@
 package co.electriccoin.zcash.ui.common.provider
 
-import com.zodl.ohttpvalues.ZodlOhttpValues
+import com.zodl.appconfig.AppConfig
 import kotlin.test.Test
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
@@ -10,7 +10,7 @@ import kotlin.test.assertTrue
  * CI script that checked the OHTTP secrets: the values now ship in a published artifact, so the check runs where
  * the artifact is consumed. A failure names the field and the rule, never the value.
  */
-class ZodlOhttpValuesTest {
+class AppConfigTest {
     private class Network(
         val name: String,
         val gatewayHost: String,
@@ -22,19 +22,19 @@ class ZodlOhttpValuesTest {
     private val mainnet =
         Network(
             name = "mainnet",
-            gatewayHost = ZodlOhttpValues.GATEWAY_HOST_MAINNET,
-            relayUrl = ZodlOhttpValues.RELAY_URL_MAINNET,
-            keysDnsName = ZodlOhttpValues.KEYS_DNS_NAME_MAINNET,
-            signingPublicKey = ZodlOhttpValues.SIGNING_PUBKEY_MAINNET,
+            gatewayHost = AppConfig.Ohttp.GATEWAY_HOST_MAINNET,
+            relayUrl = AppConfig.Ohttp.RELAY_URL_MAINNET,
+            keysDnsName = AppConfig.Ohttp.KEYS_DNS_NAME_MAINNET,
+            signingPublicKey = AppConfig.Ohttp.SIGNING_PUBKEY_MAINNET,
         )
 
     private val testnet =
         Network(
             name = "testnet",
-            gatewayHost = ZodlOhttpValues.GATEWAY_HOST_TESTNET,
-            relayUrl = ZodlOhttpValues.RELAY_URL_TESTNET,
-            keysDnsName = ZodlOhttpValues.KEYS_DNS_NAME_TESTNET,
-            signingPublicKey = ZodlOhttpValues.SIGNING_PUBKEY_TESTNET,
+            gatewayHost = AppConfig.Ohttp.GATEWAY_HOST_TESTNET,
+            relayUrl = AppConfig.Ohttp.RELAY_URL_TESTNET,
+            keysDnsName = AppConfig.Ohttp.KEYS_DNS_NAME_TESTNET,
+            signingPublicKey = AppConfig.Ohttp.SIGNING_PUBKEY_TESTNET,
         )
 
     private fun Network.values() = listOf(gatewayHost, relayUrl, keysDnsName, signingPublicKey)

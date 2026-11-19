@@ -34,7 +34,7 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveSeedMismatchUseCase
 import co.electriccoin.zcash.ui.common.usecase.SweepOrphanedGiftCardWalletsUseCase
 import co.electriccoin.zcash.viewingkey.di.featureViewingKeyModule
 import co.electriccoin.zcash.voting.di.featureVotingModule
-import com.zodl.ohttpvalues.ZodlOhttpValues
+import com.zodl.appconfig.AppConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
@@ -132,17 +132,17 @@ class ZcashApplication : CoroutineApplication() {
         OhttpBuildConfiguration.install(
             mainnet =
                 OhttpBuildConfiguration.NetworkValues(
-                    gatewayHost = ZodlOhttpValues.GATEWAY_HOST_MAINNET,
-                    relayUrl = ZodlOhttpValues.RELAY_URL_MAINNET,
-                    keysDnsName = ZodlOhttpValues.KEYS_DNS_NAME_MAINNET,
-                    signingPublicKey = ZodlOhttpValues.SIGNING_PUBKEY_MAINNET,
+                    gatewayHost = AppConfig.Ohttp.GATEWAY_HOST_MAINNET,
+                    relayUrl = AppConfig.Ohttp.RELAY_URL_MAINNET,
+                    keysDnsName = AppConfig.Ohttp.KEYS_DNS_NAME_MAINNET,
+                    signingPublicKey = AppConfig.Ohttp.SIGNING_PUBKEY_MAINNET,
                 ),
             testnet =
                 OhttpBuildConfiguration.NetworkValues(
-                    gatewayHost = ZodlOhttpValues.GATEWAY_HOST_TESTNET,
-                    relayUrl = ZodlOhttpValues.RELAY_URL_TESTNET,
-                    keysDnsName = ZodlOhttpValues.KEYS_DNS_NAME_TESTNET,
-                    signingPublicKey = ZodlOhttpValues.SIGNING_PUBKEY_TESTNET,
+                    gatewayHost = AppConfig.Ohttp.GATEWAY_HOST_TESTNET,
+                    relayUrl = AppConfig.Ohttp.RELAY_URL_TESTNET,
+                    keysDnsName = AppConfig.Ohttp.KEYS_DNS_NAME_TESTNET,
+                    signingPublicKey = AppConfig.Ohttp.SIGNING_PUBKEY_TESTNET,
                 ),
         )
     }
