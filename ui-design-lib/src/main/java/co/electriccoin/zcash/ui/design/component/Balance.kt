@@ -17,7 +17,9 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
+import co.electriccoin.zcash.ui.design.util.TickerLocation
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.isBelowThreeDecimalPrecision
 import co.electriccoin.zcash.ui.design.util.stringRes
 import java.text.DecimalFormatSymbols
 
@@ -53,7 +55,11 @@ fun StyledBalance(
                 }
             }
         } else {
-            val balanceSplit = splitBalance(balance)
+            val balanceSplit =
+                splitBalance(
+                    zatoshi = balance,
+                    tickerLocation = if (showDust) TickerLocation.AFTER else TickerLocation.HIDDEN
+                )
 
             buildAnnotatedString {
                 withStyle(
@@ -61,7 +67,7 @@ fun StyledBalance(
                 ) {
                     append(balanceSplit.first)
                 }
-                if (showDust) {
+                if (showDust || balance.isBelowThreeDecimalPrecision()) {
                     withStyle(
                         style = textStyle.leastSignificantPart.toSpanStyle()
                     ) {
@@ -89,8 +95,11 @@ fun StyledBalance(
 private const val CUT_POSITION_OFFSET = 4
 
 @Composable
-private fun splitBalance(zatoshi: Zatoshi): Pair<String, String> {
-    val balance = stringRes(zatoshi).getValue()
+private fun splitBalance(
+    zatoshi: Zatoshi,
+    tickerLocation: TickerLocation
+): Pair<String, String> {
+    val balance = stringRes(zatoshi, tickerLocation).getValue()
     val cutPosition =
         balance
             .indexOf(
@@ -143,6 +152,16 @@ private fun StyledBalancePreview() =
                 StyledBalance(
                     balance = Zatoshi(123456789),
                     isHideBalances = false,
+                    modifier = Modifier
+                )
+                StyledBalance(
+                    balance = Zatoshi(4000),
+                    showDust = false,
+                    modifier = Modifier
+                )
+                StyledBalance(
+                    balance = Zatoshi(1),
+                    showDust = false,
                     modifier = Modifier
                 )
             }
