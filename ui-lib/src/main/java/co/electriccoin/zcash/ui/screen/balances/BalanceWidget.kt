@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
@@ -105,12 +106,23 @@ fun BalanceWidgetHeader(
                 textStyle =
                     StyledBalanceDefaults.textStyles(
                         mostSignificantPart = ZashiTypography.header2.copy(fontWeight = FontWeight.SemiBold),
-                        leastSignificantPart = ZashiTypography.textXs.copy(fontWeight = FontWeight.SemiBold),
+                        leastSignificantPart =
+                            if (showDust) {
+                                ZashiTypography.textXs.copy(fontWeight = FontWeight.SemiBold)
+                            } else {
+                                ZashiTypography.header5.copy(
+                                    fontSize = DUST_SUFFIX_FONT_SIZE,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = ZashiColors.Text.textTertiary
+                                )
+                            },
                     )
             )
         }
     }
 }
+
+private val DUST_SUFFIX_FONT_SIZE = 26.sp
 
 @PreviewScreens
 @Composable
