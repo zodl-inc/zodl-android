@@ -14,6 +14,14 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.21.1 (3903)] - 2026-11-19
+
+### Added:
+
+- We added a Max button to Send, Swap and CrossPay that fills in your full spendable balance, with fees already taken into account.
+- We added payment request scanning to CrossPay. Scan a Bitcoin, Litecoin, Ethereum or Solana payment QR code and we fill in the address, asset and amount for you.
+
+
 ## [3.21.0 (3881)] - 2026-11-16
 
 ### Added:

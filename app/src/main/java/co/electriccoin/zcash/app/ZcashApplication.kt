@@ -34,6 +34,7 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveSeedMismatchUseCase
 import co.electriccoin.zcash.ui.common.usecase.SweepOrphanedGiftCardWalletsUseCase
 import co.electriccoin.zcash.viewingkey.di.featureViewingKeyModule
 import co.electriccoin.zcash.voting.di.featureVotingModule
+import com.zodl.appconfig.AppConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
@@ -124,24 +125,24 @@ class ZcashApplication : CoroutineApplication() {
      * a different configuration is already installed.
      *
      * The app calls this before [preloadSdkNativeLibrary] and before Koin, so OHTTP is installed at cold start
-     * without blocking the main thread. A build without the `ZODL_OHTTP_*` values has OHTTP off and behaves as
-     * Public only.
+     * without blocking the main thread. The values come from the `app-config` dependency; a network whose
+     * values are empty has OHTTP off and behaves as Public only.
      */
     private fun configureOhttp() {
         OhttpBuildConfiguration.install(
             mainnet =
                 OhttpBuildConfiguration.NetworkValues(
-                    gatewayHost = BuildConfig.OHTTP_GATEWAY_HOST_MAINNET,
-                    relayUrl = BuildConfig.OHTTP_RELAY_URL_MAINNET,
-                    keysDnsName = BuildConfig.OHTTP_KEYS_DNS_NAME_MAINNET,
-                    signingPublicKey = BuildConfig.OHTTP_SIGNING_PUBKEY_MAINNET,
+                    gatewayHost = AppConfig.Ohttp.GATEWAY_HOST_MAINNET,
+                    relayUrl = AppConfig.Ohttp.RELAY_URL_MAINNET,
+                    keysDnsName = AppConfig.Ohttp.KEYS_DNS_NAME_MAINNET,
+                    signingPublicKey = AppConfig.Ohttp.SIGNING_PUBKEY_MAINNET,
                 ),
             testnet =
                 OhttpBuildConfiguration.NetworkValues(
-                    gatewayHost = BuildConfig.OHTTP_GATEWAY_HOST_TESTNET,
-                    relayUrl = BuildConfig.OHTTP_RELAY_URL_TESTNET,
-                    keysDnsName = BuildConfig.OHTTP_KEYS_DNS_NAME_TESTNET,
-                    signingPublicKey = BuildConfig.OHTTP_SIGNING_PUBKEY_TESTNET,
+                    gatewayHost = AppConfig.Ohttp.GATEWAY_HOST_TESTNET,
+                    relayUrl = AppConfig.Ohttp.RELAY_URL_TESTNET,
+                    keysDnsName = AppConfig.Ohttp.KEYS_DNS_NAME_TESTNET,
+                    signingPublicKey = AppConfig.Ohttp.SIGNING_PUBKEY_TESTNET,
                 ),
         )
     }
