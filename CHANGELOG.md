@@ -7,6 +7,20 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.21.1 (3903)] - 2026-11-19
+
+### Changed:
+
+- The OHTTP configuration now comes from the `com.zodl.android:app-config` dependency instead of `BuildConfig`
+  fields that the build filled from CI secrets or a local AWS cache. Every build, including F-Droid, has the same
+  source of the values.
+
+### Removed:
+
+- The `ZODL_OHTTP_*` Gradle properties and environment variables, the 8 `BuildConfig.OHTTP_*` fields, the
+  `scripts/ohttp-build-values.py` local cache script, the `scripts/check_ohttp_release_values.py` release guard and
+  the OHTTP secrets in the release, deploy, Firebase and E2E workflows. The guard's checks now run as a unit test.
+
 ## [3.21.0 (3881)] - 2026-11-16
 
 ### Added:

@@ -87,23 +87,6 @@ jobs:
             exit 1
           fi
 
-      # Release builds must carry the OHTTP configuration the app passes to the SDK: without it the
-      # APK has OHTTP off and offers only the Public connection. Checks presence, format (lowercase DNS names,
-      # https URLs, 64 hex pubkeys, mainnet != testnet), and that the relay URL digest is in
-      # INDEPENDENT_RELAY_URL_SHA256. Prints no value.
-      - name: Require the OHTTP configuration
-        timeout-minutes: 1
-        shell: bash
-        env:
-          ZODL_OHTTP_GATEWAY_HOST_MAINNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_MAINNET }}
-          ZODL_OHTTP_RELAY_URL_MAINNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_MAINNET }}
-          ZODL_OHTTP_KEYS_DNS_NAME_MAINNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_MAINNET }}
-          ZODL_OHTTP_SIGNING_PUBKEY_MAINNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_MAINNET }}
-          ZODL_OHTTP_GATEWAY_HOST_TESTNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_TESTNET }}
-          ZODL_OHTTP_RELAY_URL_TESTNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_TESTNET }}
-          ZODL_OHTTP_KEYS_DNS_NAME_TESTNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_TESTNET }}
-          ZODL_OHTTP_SIGNING_PUBKEY_TESTNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_TESTNET }}
-        run: python3 scripts/check_ohttp_release_values.py
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -112,6 +95,11 @@ jobs:
         timeout-minutes: 10
         with:
           gradle-home-cache-cleanup: true
+      # Release builds must carry valid OHTTP values: the app-config artifact is checked for format,
+      # mainnet != testnet and a relay digest in INDEPENDENT_RELAY_URL_SHA256 (the former release-only script).
+      - name: Check the OHTTP values
+        timeout-minutes: 15
+        run: ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest --tests '*.AppConfigTest'
       - name: Export Google Services JSON
         env:
           FIREBASE_DEBUG_JSON_BASE64: ${{ secrets.FIREBASE_DEBUG_JSON_BASE64 }}
@@ -157,15 +145,6 @@ jobs:
       - name: Build release artifacts
         timeout-minutes: 25
         env:
-          # The OHTTP configuration the app passes to the SDK (masked; never printed).
-          ZODL_OHTTP_GATEWAY_HOST_MAINNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_MAINNET }}
-          ZODL_OHTTP_RELAY_URL_MAINNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_MAINNET }}
-          ZODL_OHTTP_KEYS_DNS_NAME_MAINNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_MAINNET }}
-          ZODL_OHTTP_SIGNING_PUBKEY_MAINNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_MAINNET }}
-          ZODL_OHTTP_GATEWAY_HOST_TESTNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_TESTNET }}
-          ZODL_OHTTP_RELAY_URL_TESTNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_TESTNET }}
-          ZODL_OHTTP_KEYS_DNS_NAME_TESTNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_TESTNET }}
-          ZODL_OHTTP_SIGNING_PUBKEY_TESTNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_TESTNET }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PATH: ${{ format('{0}/release.jks', env.home) }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
@@ -255,15 +234,6 @@ jobs:
       - name: Upload to Play Store
         timeout-minutes: 25
         env:
-          # The OHTTP configuration the app passes to the SDK (masked; never printed).
-          ZODL_OHTTP_GATEWAY_HOST_MAINNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_MAINNET }}
-          ZODL_OHTTP_RELAY_URL_MAINNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_MAINNET }}
-          ZODL_OHTTP_KEYS_DNS_NAME_MAINNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_MAINNET }}
-          ZODL_OHTTP_SIGNING_PUBKEY_MAINNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_MAINNET }}
-          ZODL_OHTTP_GATEWAY_HOST_TESTNET: ${{ secrets.ZODL_OHTTP_GATEWAY_HOST_TESTNET }}
-          ZODL_OHTTP_RELAY_URL_TESTNET: ${{ secrets.ZODL_OHTTP_RELAY_URL_TESTNET }}
-          ZODL_OHTTP_KEYS_DNS_NAME_TESTNET: ${{ secrets.ZODL_OHTTP_KEYS_DNS_NAME_TESTNET }}
-          ZODL_OHTTP_SIGNING_PUBKEY_TESTNET: ${{ secrets.ZODL_OHTTP_SIGNING_PUBKEY_TESTNET }}
           # TODO [#1033]: Use token-based authorization on Google Play for automated deployment
           # TODO [#1033]: https://github.com/Electric-Coin-Company/zashi-android/issues/1033
           ORG_GRADLE_PROJECT_ZCASH_GOOGLE_PLAY_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_KEY }}
