@@ -7,6 +7,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Fixed:
+
+- [MOB-1970] In Activity, failed and expired transactions show a red icon and their amounts are hidden.
+
 ## [3.21.1 (3903)] - 2026-11-19
 
 ### Changed:

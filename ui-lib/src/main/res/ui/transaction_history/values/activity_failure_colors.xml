@@ -1,0 +1,4 @@
+<resources>
+  <color name="activity_failure_icon_background">#FEE4E2</color>
+  <color name="activity_failure_icon_foreground">#F04438</color>
+</resources>
