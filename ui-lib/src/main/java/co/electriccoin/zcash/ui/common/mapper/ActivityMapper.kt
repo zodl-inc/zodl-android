@@ -325,31 +325,36 @@ class ActivityMapper {
 
     private fun getTransactionValue(data: ActivityData.ByTransaction): StyledStringResource? {
         val swapStatus = data.metadata.swapMetadata?.status
-        when (data.transaction) {
-            is ReceiveTransaction.Failed, is ShieldTransaction.Failed, is SendTransaction.Failed -> return null
-            is SendTransaction -> if (swapStatus == EXPIRED || swapStatus == FAILED) return null
-            else -> Unit
-        }
-
         val transaction = data.transaction
-        val stringRes =
-            if (transaction is SendTransaction &&
-                transaction.overview.zip318Kind != Zip318Kind.TRANSFER &&
-                transaction.overview.zip318Kind != Zip318Kind.PREPARATION
-            ) {
-                stringRes("- ") + stringRes(transaction.amount)
-            } else {
-                stringRes(transaction.amount)
+        val isAmountHidden =
+            when (transaction) {
+                is ReceiveTransaction.Failed, is ShieldTransaction.Failed, is SendTransaction.Failed -> true
+                is SendTransaction -> swapStatus == EXPIRED || swapStatus == FAILED
+                else -> false
             }
 
-        val color =
-            when {
-                transaction is ReceiveTransaction.Success -> StringResourceColor.POSITIVE
-                transaction is SendTransaction && swapStatus == REFUNDED -> StringResourceColor.NEGATIVE
-                else -> StringResourceColor.PRIMARY
-            }
+        return if (isAmountHidden) {
+            null
+        } else {
+            val stringRes =
+                if (transaction is SendTransaction &&
+                    transaction.overview.zip318Kind != Zip318Kind.TRANSFER &&
+                    transaction.overview.zip318Kind != Zip318Kind.PREPARATION
+                ) {
+                    stringRes("- ") + stringRes(transaction.amount)
+                } else {
+                    stringRes(transaction.amount)
+                }
 
-        return stringRes.withStyle(StyledStringStyle(color = color))
+            val color =
+                when {
+                    transaction is ReceiveTransaction.Success -> StringResourceColor.POSITIVE
+                    transaction is SendTransaction && swapStatus == REFUNDED -> StringResourceColor.NEGATIVE
+                    else -> StringResourceColor.PRIMARY
+                }
+
+            stringRes.withStyle(StyledStringStyle(color = color))
+        }
     }
 }
 

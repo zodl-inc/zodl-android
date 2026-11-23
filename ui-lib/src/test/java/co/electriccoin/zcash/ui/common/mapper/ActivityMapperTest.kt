@@ -61,7 +61,11 @@ class ActivityMapperTest {
                 val row = mapActivity(activity(successfulSend, swap(status, mode)))
                 assertNull(row.value)
                 val icon =
-                    if (mode == SwapMode.EXACT_OUTPUT) R.drawable.ic_activity_pay_failed else R.drawable.ic_activity_send_failed
+                    if (mode == SwapMode.EXACT_OUTPUT) {
+                        R.drawable.ic_activity_pay_failed
+                    } else {
+                        R.drawable.ic_activity_send_failed
+                    }
                 assertEquals(icon, row.bigIcon)
             }
         }
