@@ -7,6 +7,12 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Fixed:
+
+- A sent transaction no longer shows as "Sending failed" when it was mined while the app was in the background for
+  a long time. The row stays "Sending" until the wallet has scanned the block that mined it, and only turns failed
+  once the wallet has scanned past the transaction's expiry height without finding it.
+
 ## [3.21.1 (3903)] - 2026-11-19
 
 ### Changed:
