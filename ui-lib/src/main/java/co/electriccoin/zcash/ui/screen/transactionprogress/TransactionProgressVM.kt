@@ -58,39 +58,32 @@ class TransactionProgressVM(
 ) : ViewModel() {
     private val isTooLargeSheetDismissed = MutableStateFlow(false)
 
+    /**
+     * The last result state (success, error, pending...) shown on this screen. Check Status and Close clear the
+     * repositories synchronously, but the navigation command only runs on the next frame, so the cleared submit
+     * state (null) would otherwise reach the screen first and flash "Sending" while it animates out (PRO-500).
+     */
+    private var lastResultState: TransactionProgressState? = null
+
     val state: StateFlow<TransactionProgressState?> =
         combine(
             observeTransactionProposal(),
             observeTransactionSubmitState(),
             isTooLargeSheetDismissed
         ) { proposal, submitState, isSheetDismissed ->
-            when (submitState) {
-                null, SubmitProposalState.Submitting -> {
-                    createSendingState(proposal)
+            val frozenState = lastResultState
+            when {
+                frozenState != null && submitState == null -> {
+                    frozenState
                 }
 
-                is SubmitProposalState.Result -> {
-                    when (submitState.submitResult) {
-                        is SubmitResult.Success -> {
-                            createSuccessState(proposal, submitState.submitResult)
-                        }
+                submitState is SubmitProposalState.Result -> {
+                    createResultState(proposal, submitState.submitResult, isSheetDismissed)
+                        .also { lastResultState = it }
+                }
 
-                        is SubmitResult.NonResubmittableError -> {
-                            createNonResubmittableErrorState(
-                                proposal = proposal,
-                                result = submitState.submitResult,
-                                isSheetDismissed = isSheetDismissed
-                            )
-                        }
-
-                        is SubmitResult.GrpcFailure -> {
-                            createPendingState(proposal, submitState.submitResult)
-                        }
-
-                        is SubmitResult.Partial -> {
-                            createFundsStuckState(submitState.submitResult)
-                        }
-                    }
+                else -> {
+                    createSendingState(proposal)
                 }
             }
         }.stateIn(
@@ -98,6 +91,33 @@ class TransactionProgressVM(
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
             initialValue = null
         )
+
+    private suspend fun createResultState(
+        proposal: TransactionProposal,
+        result: SubmitResult,
+        isSheetDismissed: Boolean
+    ): TransactionProgressState =
+        when (result) {
+            is SubmitResult.Success -> {
+                createSuccessState(proposal, result)
+            }
+
+            is SubmitResult.NonResubmittableError -> {
+                createNonResubmittableErrorState(
+                    proposal = proposal,
+                    result = result,
+                    isSheetDismissed = isSheetDismissed
+                )
+            }
+
+            is SubmitResult.GrpcFailure -> {
+                createPendingState(proposal, result)
+            }
+
+            is SubmitResult.Partial -> {
+                createFundsStuckState(result)
+            }
+        }
 
     private fun createFundsStuckState(result: SubmitResult.Partial): TransactionProgressState =
         TransactionProgressState(

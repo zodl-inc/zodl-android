@@ -10,6 +10,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ### Fixed:
 
 - [MOB-2641] CrossPay now reads Bitcoin payment QR codes with uppercase addresses, including BTCPay Server invoices.
+- [MOB-2644] After a successful payment, tapping Check Status or Close no longer briefly shows the Sending screen again.
 
 ## [3.21.1 (3903)] - 2026-11-19
 
