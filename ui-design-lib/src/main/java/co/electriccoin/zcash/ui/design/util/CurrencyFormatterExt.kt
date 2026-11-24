@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.design.util
 
+import cash.z.ecc.android.sdk.model.Zatoshi
 import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -8,12 +9,15 @@ private const val ZEC_MAXIMUM_FRACTION_DIGITS = 6
 private const val ZEC_MINIMUM_FRACTION_DIGITS = 0
 private const val ZATOSHI_MAXIMUM_FRACTION_DIGITS = 8
 private const val ZATOSHI_MINIMUM_FRACTION_DIGITS = 3
+private const val THREE_DECIMAL_PRECISION_ZATOSHI = 100_000L
 
 fun zatoshiFormatter(): DecimalFormat =
     currencyFormatter(
         maximumFractionDigits = ZATOSHI_MAXIMUM_FRACTION_DIGITS,
         minimumFractionDigits = ZATOSHI_MINIMUM_FRACTION_DIGITS
     )
+
+fun Zatoshi.isBelowThreeDecimalPrecision(): Boolean = value in 1 until THREE_DECIMAL_PRECISION_ZATOSHI
 
 /**
  * Builds a [DecimalFormat] for monetary/number values. The locale is intentionally fixed to
