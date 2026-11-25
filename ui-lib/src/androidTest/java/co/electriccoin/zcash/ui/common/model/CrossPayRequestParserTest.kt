@@ -14,6 +14,8 @@ import kotlin.test.assertIs
  * as an instrumentation test rather than a JVM unit test.
  */
 class CrossPayRequestParserTest {
+    private val bitcoinSegwitAddress = "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4"
+
     @Test
     @SmallTest
     fun parsesBitcoinRequest() =
@@ -27,6 +29,46 @@ class CrossPayRequestParserTest {
             assertEquals("1FsSia9rv4NeEwvJ2GvXrX7LyxYspbN2mo", request.request.address)
             assertEquals(CrossPayRequest.AssetReference.Native("btc"), request.request.assetReference)
             assertEquals(BigDecimal("20.3"), request.request.amount?.value)
+        }
+
+    @Test
+    @SmallTest
+    fun parsesBothCasesOfBitcoinSegwitRequest() =
+        runTest {
+            val amount = BigDecimal("0.00044727")
+            val query = "?amount=$amount&label=InvoiceABC"
+            for (address in listOf(bitcoinSegwitAddress, bitcoinSegwitAddress.uppercase())) {
+                val result =
+                    assertIs<CrossPayParseResult.Request>(CrossPayRequestParser.parse("bitcoin:$address$query"))
+                assertEquals(bitcoinSegwitAddress, result.request.address)
+                assertEquals(CrossPayRequest.AssetReference.Native("btc"), result.request.assetReference)
+                assertEquals(CrossPayRequest.Amount(amount, isAtomic = false), result.request.amount)
+            }
+        }
+
+    @Test
+    @SmallTest
+    fun parsesUppercaseBitcoinSegwitRequestWithoutAmount() =
+        runTest {
+            val uri = "BITCOIN:${bitcoinSegwitAddress.uppercase()}"
+            val result = assertIs<CrossPayParseResult.Request>(CrossPayRequestParser.parse(uri))
+            assertEquals(bitcoinSegwitAddress, result.request.address)
+            assertEquals(CrossPayRequest.AssetReference.Native("btc"), result.request.assetReference)
+            assertEquals(null, result.request.amount)
+        }
+
+    @Test
+    @SmallTest
+    fun rejectsInvalidBitcoinSegwitRequests() =
+        runTest {
+            val mixedCase = "BC1${bitcoinSegwitAddress.drop(3)}"
+            val badChecksum = "${bitcoinSegwitAddress.uppercase().dropLast(1)}5"
+            assertEquals(CrossPayParseResult.Rejected, CrossPayRequestParser.parse("bitcoin:$mixedCase?amount=0.1"))
+            assertEquals(CrossPayParseResult.Rejected, CrossPayRequestParser.parse("bitcoin:$badChecksum?amount=0.1"))
+            assertEquals(
+                CrossPayParseResult.Rejected,
+                CrossPayRequestParser.parse("bitcoin:${bitcoinSegwitAddress.uppercase()}?amount=0.1&amount=0.1")
+            )
         }
 
     @Test
