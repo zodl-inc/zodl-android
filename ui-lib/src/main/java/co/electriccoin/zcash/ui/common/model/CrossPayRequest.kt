@@ -203,12 +203,25 @@ sealed interface CrossPayParseResult {
 }
 
 object CrossPayRequestParser {
-    suspend fun parse(value: String): CrossPayParseResult =
-        try {
-            PaymentUriParser.new().parse(value).toCrossPayParseResult()
+    suspend fun parse(value: String): CrossPayParseResult {
+        val bitcoinScheme = "bitcoin:"
+        val isBitcoinSegwitUri = value.startsWith("${bitcoinScheme}bc1", ignoreCase = true)
+        val input = if (isBitcoinSegwitUri) normalizeBitcoinRecipient(value, bitcoinScheme.length) else value
+
+        return try {
+            PaymentUriParser.new().parse(input).toCrossPayParseResult()
         } catch (_: InvalidPaymentUriException) {
-            CrossPayParseResult.NotAPaymentRequest
+            if (isBitcoinSegwitUri) CrossPayParseResult.Rejected else CrossPayParseResult.NotAPaymentRequest
         }
+    }
+
+    // The SDK's network check expects a lowercase Bech32 prefix. Normalize only uppercase
+    // recipients so the SDK still rejects mixed case and validates the checksum and query.
+    private fun normalizeBitcoinRecipient(value: String, recipientStart: Int): String {
+        val recipient = value.substring(recipientStart).substringBefore('?')
+        if (!recipient.all { it in 'A'..'Z' || it in '0'..'9' }) return value
+        return value.replaceRange(recipientStart, recipientStart + recipient.length, recipient.lowercase())
+    }
 
     private fun PaymentUriRequest.toCrossPayParseResult(): CrossPayParseResult =
         when (this) {

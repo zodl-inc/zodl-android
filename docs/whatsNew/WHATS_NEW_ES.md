@@ -14,6 +14,18 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.21.2 (3921)] - 2026-11-26
+
+### Cambiado:
+
+- Mostramos con más precisión los saldos menores a 0.001 ZEC en Inicio.
+- Ocultamos los montos de las transacciones fallidas en Actividad y facilitamos la identificación de sus íconos.
+
+### Corregido:
+
+- Corregimos el escaneo en CrossPay de códigos QR de pago de Bitcoin con direcciones en mayúsculas, incluidos los de las facturas de BTCPay Server.
+- Corregimos un error de sincronización de Slipstream que podía mostrar transacciones confirmadas como fallidas al volver a la app.
+
 ## [3.21.1 (3903)] - 2026-11-19
 
 ### Añadido:

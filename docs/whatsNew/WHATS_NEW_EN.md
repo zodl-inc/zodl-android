@@ -14,6 +14,18 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.21.2 (3921)] - 2026-11-26
+
+### Changed:
+
+- We made Home show more digits for balances below 0.001 ZEC.
+- We hid amounts for failed transactions in Activity and made their icons easier to recognize.
+
+### Fixed:
+
+- We fixed CrossPay scanning for Bitcoin payment QR codes with uppercase addresses, including BTCPay Server invoices.
+- We fixed a Slipstream sync issue that could show confirmed transactions as failed after you returned to the app.
+
 ## [3.21.1 (3903)] - 2026-11-19
 
 ### Added:
