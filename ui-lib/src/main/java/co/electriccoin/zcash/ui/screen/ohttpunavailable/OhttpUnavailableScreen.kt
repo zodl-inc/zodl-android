@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.screen.ohttpunavailable
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -70,9 +70,10 @@ fun OhttpUnavailableView(
                     .verticalScroll(rememberScrollState())
                     .padding(start = 24.dp, end = 24.dp, bottom = contentPadding.calculateBottomPadding()),
         ) {
-            Image(
+            Icon(
                 painter = painterResource(R.drawable.ic_ohttp_alert_circle),
                 contentDescription = null,
+                tint = ZashiColors.Text.textPrimary,
                 modifier =
                     Modifier
                         .background(ZashiColors.Surfaces.bgPrimary, CircleShape)

@@ -7,6 +7,11 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Fixed:
+
+- [MOB-2432] The alert icon in the "Private connection unavailable" sheet now follows the app theme, so it is
+  visible in dark themes.
+
 ## [3.21.1 (3903)] - 2026-11-19
 
 ### Changed:
