@@ -7,6 +7,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.21.2 (3921)] - 2026-11-26
+
 ### Fixed:
 
 - [MOB-2374] A sent transaction no longer shows as "Sending failed" when it was mined while the app was in the
