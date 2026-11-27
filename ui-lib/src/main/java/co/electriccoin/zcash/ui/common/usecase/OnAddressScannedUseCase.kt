@@ -8,6 +8,7 @@ import co.electriccoin.zcash.ui.screen.scan.ScanFlow.ADDRESS_BOOK
 import co.electriccoin.zcash.ui.screen.scan.ScanFlow.HOMEPAGE
 import co.electriccoin.zcash.ui.screen.scan.ScanFlow.SEND
 import co.electriccoin.zcash.ui.screen.send.Send
+import co.electriccoin.zcash.ui.screen.send.toRouteAddressType
 
 class OnAddressScannedUseCase(
     private val navigationRouter: NavigationRouter,
@@ -37,18 +38,7 @@ class OnAddressScannedUseCase(
 
             HOMEPAGE -> {
                 if (rejectIfSelectedAccountCannotSpend { replace(it) }) return
-                navigationRouter.replace(
-                    Send(
-                        address,
-                        when (addressType) {
-                            AddressType.Shielded -> cash.z.ecc.sdk.model.AddressType.UNIFIED
-                            AddressType.Tex -> cash.z.ecc.sdk.model.AddressType.TEX
-                            AddressType.Transparent -> cash.z.ecc.sdk.model.AddressType.TRANSPARENT
-                            AddressType.Unified -> cash.z.ecc.sdk.model.AddressType.UNIFIED
-                            else -> cash.z.ecc.sdk.model.AddressType.UNIFIED
-                        }
-                    )
-                )
+                navigationRouter.replace(Send(address, addressType.toRouteAddressType()))
             }
         }
     }
