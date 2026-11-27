@@ -73,16 +73,16 @@ class ActivityMapper {
             }
         }
 
-    private fun getSwapValue(data: ActivityData.BySwap): StyledStringResource =
-        stringResByCurrencyNumber(data.swap.amountOutFormatted, CURRENCY_TICKER).withStyle(
-            StyledStringStyle(
-                color =
-                    when (data.swap.status) {
-                        INCOMPLETE_DEPOSIT, PROCESSING, PENDING, SUCCESS -> StringResourceColor.PRIMARY
-                        EXPIRED, REFUNDED, FAILED -> StringResourceColor.NEGATIVE
-                    }
-            )
-        )
+    private fun getSwapValue(data: ActivityData.BySwap): StyledStringResource? {
+        val color =
+            when (data.swap.status) {
+                EXPIRED, FAILED -> return null
+                REFUNDED -> StringResourceColor.NEGATIVE
+                INCOMPLETE_DEPOSIT, PROCESSING, PENDING, SUCCESS -> StringResourceColor.PRIMARY
+            }
+        return stringResByCurrencyNumber(data.swap.amountOutFormatted, CURRENCY_TICKER)
+            .withStyle(StyledStringStyle(color = color))
+    }
 
     private fun getSwapTitle(data: ActivityData.BySwap): StringResource =
         stringRes(
@@ -99,7 +99,8 @@ class ActivityMapper {
         when (data.swap.status) {
             INCOMPLETE_DEPOSIT, PROCESSING, PENDING -> R.drawable.ic_transaction_receive_pending
             SUCCESS -> R.drawable.ic_transaction_received
-            EXPIRED, REFUNDED, FAILED -> R.drawable.ic_transaction_receive_failed
+            EXPIRED, FAILED -> R.drawable.ic_activity_receive_failed
+            REFUNDED -> R.drawable.ic_transaction_receive_failed
         }
 
     private fun isTransactionUnread(data: ActivityData.ByTransaction, restoreTimestamp: Instant): Boolean {
@@ -128,7 +129,7 @@ class ActivityMapper {
             }
 
             is ReceiveTransaction.Failed -> {
-                R.drawable.ic_transaction_receive_failed
+                R.drawable.ic_activity_receive_failed
             }
 
             is ShieldTransaction.Success -> {
@@ -158,15 +159,15 @@ class ActivityMapper {
                             when (transaction) {
                                 is SendTransaction.Success -> R.drawable.ic_transaction_sent
                                 is SendTransaction.Pending -> R.drawable.ic_transaction_send_pending
-                                is SendTransaction.Failed -> R.drawable.ic_transaction_send_failed
+                                is SendTransaction.Failed -> R.drawable.ic_activity_send_failed
                             }
                         }
                     }
                 } else {
                     if (transaction is SendTransaction.Failed) {
                         when (data.metadata.swapMetadata.mode) {
-                            EXACT_INPUT, FLEX_INPUT -> R.drawable.ic_transaction_send_failed
-                            EXACT_OUTPUT -> R.drawable.ic_transaction_pay_failed
+                            EXACT_INPUT, FLEX_INPUT -> R.drawable.ic_activity_send_failed
+                            EXACT_OUTPUT -> R.drawable.ic_activity_pay_failed
                         }
                     } else {
                         when (data.metadata.swapMetadata.mode) {
@@ -174,7 +175,8 @@ class ActivityMapper {
                                 when (data.metadata.swapMetadata.status) {
                                     INCOMPLETE_DEPOSIT, PROCESSING, PENDING -> R.drawable.ic_transaction_send_pending
                                     SUCCESS -> R.drawable.ic_transaction_sent
-                                    EXPIRED, REFUNDED, FAILED -> R.drawable.ic_transaction_send_failed
+                                    EXPIRED, FAILED -> R.drawable.ic_activity_send_failed
+                                    REFUNDED -> R.drawable.ic_transaction_send_failed
                                 }
                             }
 
@@ -182,7 +184,8 @@ class ActivityMapper {
                                 when (data.metadata.swapMetadata.status) {
                                     INCOMPLETE_DEPOSIT, PROCESSING, PENDING -> R.drawable.ic_transaction_paying
                                     SUCCESS -> R.drawable.ic_transaction_paid
-                                    EXPIRED, REFUNDED, FAILED -> R.drawable.ic_transaction_pay_failed
+                                    EXPIRED, FAILED -> R.drawable.ic_activity_pay_failed
+                                    REFUNDED -> R.drawable.ic_transaction_pay_failed
                                 }
                             }
                         }
@@ -320,90 +323,38 @@ class ActivityMapper {
             .none { output -> output.pool == TransactionPool.TRANSPARENT } &&
             data.transaction !is ShieldTransaction
 
-    @Suppress("CyclomaticComplexMethod")
-    private fun getTransactionValue(data: ActivityData.ByTransaction): StyledStringResource {
-        val stringRes =
-            when (data.transaction) {
-                is SendTransaction.Success,
-                is SendTransaction.Failed,
-                is SendTransaction.Pending -> {
-                    if (data.transaction.overview.zip318Kind == Zip318Kind.TRANSFER ||
-                        data.transaction.overview.zip318Kind == Zip318Kind.PREPARATION
-                    ) {
-                        stringRes(data.transaction.amount)
-                    } else {
-                        stringRes("- ") + stringRes(data.transaction.amount)
-                    }
-                }
-
-                is ShieldTransaction.Success,
-                is ShieldTransaction.Failed,
-                is ShieldTransaction.Pending,
-                is ReceiveTransaction.Success,
-                is ReceiveTransaction.Failed,
-                is ReceiveTransaction.Pending -> {
-                    stringRes(data.transaction.amount)
-                }
+    private fun getTransactionValue(data: ActivityData.ByTransaction): StyledStringResource? {
+        val swapStatus = data.metadata.swapMetadata?.status
+        val transaction = data.transaction
+        val isAmountHidden =
+            when (transaction) {
+                is ReceiveTransaction.Failed, is ShieldTransaction.Failed, is SendTransaction.Failed -> true
+                is SendTransaction -> swapStatus == EXPIRED || swapStatus == FAILED
+                else -> false
             }
 
-        val color =
-            when (data.transaction) {
-                is ReceiveTransaction.Success -> {
-                    StringResourceColor.POSITIVE
+        return if (isAmountHidden) {
+            null
+        } else {
+            val stringRes =
+                if (transaction is SendTransaction &&
+                    transaction.overview.zip318Kind != Zip318Kind.TRANSFER &&
+                    transaction.overview.zip318Kind != Zip318Kind.PREPARATION
+                ) {
+                    stringRes("- ") + stringRes(transaction.amount)
+                } else {
+                    stringRes(transaction.amount)
                 }
 
-                is ReceiveTransaction.Pending -> {
-                    StringResourceColor.PRIMARY
+            val color =
+                when {
+                    transaction is ReceiveTransaction.Success -> StringResourceColor.POSITIVE
+                    transaction is SendTransaction && swapStatus == REFUNDED -> StringResourceColor.NEGATIVE
+                    else -> StringResourceColor.PRIMARY
                 }
 
-                is ReceiveTransaction.Failed -> {
-                    StringResourceColor.NEGATIVE
-                }
-
-                is ShieldTransaction.Success -> {
-                    StringResourceColor.PRIMARY
-                }
-
-                is ShieldTransaction.Pending -> {
-                    StringResourceColor.PRIMARY
-                }
-
-                is ShieldTransaction.Failed -> {
-                    StringResourceColor.NEGATIVE
-                }
-
-                is SendTransaction -> {
-                    when {
-                        data.metadata.swapMetadata == null -> {
-                            when (data.transaction) {
-                                is SendTransaction.Success,
-                                is SendTransaction.Pending -> StringResourceColor.PRIMARY
-
-                                is SendTransaction.Failed -> StringResourceColor.NEGATIVE
-                            }
-                        }
-
-                        data.transaction is SendTransaction.Failed -> {
-                            StringResourceColor.NEGATIVE
-                        }
-
-                        else -> {
-                            when (data.metadata.swapMetadata.status) {
-                                INCOMPLETE_DEPOSIT,
-                                PENDING,
-                                SUCCESS,
-                                PROCESSING -> StringResourceColor.PRIMARY
-
-                                EXPIRED,
-                                REFUNDED,
-                                FAILED -> StringResourceColor.NEGATIVE
-                            }
-                        }
-                    }
-                }
-            }
-
-        return stringRes.withStyle(StyledStringStyle(color = color))
+            stringRes.withStyle(StyledStringStyle(color = color))
+        }
     }
 }
 
