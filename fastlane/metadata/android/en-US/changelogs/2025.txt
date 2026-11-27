@@ -1,0 +1,2 @@
+Fixed:
+- Corrected several issues affecting how balances and transaction details were displayed. Your funds are safe, this only fixes how the wallet shows the values.

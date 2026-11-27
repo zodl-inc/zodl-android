@@ -14,18 +14,44 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  QA_REVISION: af7290f3bf8ae46dfd5c8dd29861bb97f5ef3013
+
 jobs:
+  validate_artifact_privacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check private artifact handling
+        run: python3 .github/tests/test_e2e_private_artifacts.py
+
   # Build the APK once and share it with both phase matrix jobs via
   # actions/upload-artifact. The previous matrix design rebuilt the
   # APK in each phase job, paying ~7 min twice.
   build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    needs: validate_artifact_privacy
+    runs-on: ${{ vars.LINUX_RUNNER_LONG || vars.LINUX_RUNNER || 'ubuntu-latest' }}
+    # 60 rather than the usual 20: when SDK_COMMIT_PIN is set (see setup-sdk-companion),
+    # this compiles the companion SDK's Rust dependency graph with a cold cargo/target
+    # cache on the first run — observed at 20-25 min alone in pull-request.yml's build job.
+    timeout-minutes: 60
     permissions:
       contents: read
     steps:
       - name: Checkout app
         uses: actions/checkout@v4
+
+      - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
+        timeout-minutes: 30
+        uses: ./.github/actions/setup-sdk-companion
+        with:
+          sdk-repo: ${{ vars.SDK_COMPANION_REPO }}
+          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN }}
+          cargo-app-id: ${{ secrets.CARGO_PRIVATE_APP_ID }}
+          cargo-app-private-key: ${{ secrets.CARGO_PRIVATE_APP_KEY }}
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -46,22 +72,150 @@ jobs:
         uses: actions/cache@v5
         with:
           path: app/build/outputs/apk/zcashmainnetInternal/debug
-          key: ${{ runner.os }}-android-apk-${{ hashFiles('app/src/**', 'ui-lib/src/**', 'sdk-ext-lib/src/**', 'ui-design-lib/src/**', 'buildSrc/src/**', 'build-conventions-secant/src/**', '**/*.gradle.kts', 'gradle.properties', 'gradle/libs.versions.toml') }}
+          key: ${{ runner.os }}-android-apk-v2-${{ hashFiles('app/src/**', 'ui-lib/src/**', 'sdk-ext-lib/src/**', 'ui-design-lib/src/**', 'buildSrc/src/**', 'build-conventions-secant/src/**', '**/*.gradle.kts', 'gradle.properties', 'gradle/libs.versions.toml') }}
 
       - name: Build debug APK
         if: steps.apk-cache.outputs.cache-hit != 'true'
-        run: ./gradlew assembleZcashmainnetInternalDebug
+        # The root task also assembles screenshot-test APKs and can exhaust D8 heap.
+        run: |
+          ./gradlew :app:assembleZcashmainnetInternalDebug --max-workers=2 --no-parallel
+          git rev-parse HEAD > app/build/outputs/apk/zcashmainnetInternal/debug/app-revision.txt
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: zodl-android-debug-apk
-          path: app/build/outputs/apk/zcashmainnetInternal/debug/*.apk
+          path: |
+            app/build/outputs/apk/zcashmainnetInternal/debug/*.apk
+            app/build/outputs/apk/zcashmainnetInternal/debug/app-revision.txt
+          retention-days: 1
+
+  # Speedrun v0.4.5's text insertion checks only UiAutomation.findFocus(),
+  # which intermittently misses Zodl's focused Compose address field. Its
+  # existing inputFocus() fallback finds that field. Build the one-line fix
+  # once and share the binary with both E2E phases.
+  build-speedrun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout focus patch
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Restore patched Speedrun cache
+        id: speedrun-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/zodl-speedrun/speedrun
+          key: ${{ runner.os }}-speedrun-v0.4.5-odin-2026-11a-${{ hashFiles('.github/patches/speedrun-android-input-focus.patch') }}
+
+      - name: Build patched Speedrun
+        if: steps.speedrun-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL \
+            https://github.com/odin-lang/Odin/releases/download/dev-2026-11a/odin-linux-amd64-dev-2026-11a.tar.gz \
+            -o "$RUNNER_TEMP/odin.tar.gz"
+          echo "65c9f6e97d6f8a30930e151f270ce5aeaa98fe8b2ba49fe067394e2af04f7618  $RUNNER_TEMP/odin.tar.gz" \
+            | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/odin"
+          tar -xzf "$RUNNER_TEMP/odin.tar.gz" --strip-components=1 -C "$RUNNER_TEMP/odin"
+          export PATH="$RUNNER_TEMP/odin:$PATH"
+
+          git clone --depth 1 --branch v0.4.5 \
+            https://github.com/hubastard/speedrun.git "$RUNNER_TEMP/speedrun-src"
+          test "$(git -C "$RUNNER_TEMP/speedrun-src" rev-parse HEAD)" = \
+            dd494b6c1b490cfb7b6aca0c189b6e4f58cb7325
+          git -C "$RUNNER_TEMP/speedrun-src" apply \
+            "$GITHUB_WORKSPACE/.github/patches/speedrun-android-input-focus.patch"
+          SPEEDRUN_NO_IOS=1 SPEEDRUN_VERSION=v0.4.5-zodl-focus1 \
+            "$RUNNER_TEMP/speedrun-src/build.sh"
+          install -Dm755 "$RUNNER_TEMP/speedrun-src/speedrun" \
+            "$HOME/.cache/zodl-speedrun/speedrun"
+          "$HOME/.cache/zodl-speedrun/speedrun" --version
+
+      - name: Upload patched Speedrun
+        uses: actions/upload-artifact@v4
+        with:
+          name: zodl-speedrun-android
+          path: ~/.cache/zodl-speedrun/speedrun
+          retention-days: 1
+
+  # Separate from `build` on purpose: this is a native CMake+Rust cross of
+  # KeystoneHQ/keystone3-firmware (the Cypherpunk simulator), unrelated to
+  # the Gradle/APK build above. The Android debug APK already contains
+  # everything the Keystone flow needs (E2eKeystoneQrFrameSource.kt is
+  # ordinary DEBUG-gated source already covered by the `build` job's cache
+  # key), so it is reused as-is via `needs: build` in e2e-keystone below --
+  # only the simulator binary needs its own build.
+  #
+  # scripts/keystone/build-simulator.sh already has its own idempotent
+  # cache (keyed on the pinned firmware release/automation SHAs + patch
+  # hash, see keystone_build_cache_key() in env.sh) -- actions/cache below
+  # just persists that same directory across runs so a cache hit skips the
+  # native build entirely instead of only skipping within a single job.
+  build-keystone-simulator:
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
+    # Generous headroom for a cold cache: this is a real CMake+Rust build,
+    # not just an APK assemble. Should only actually run this long when the
+    # pinned firmware SHAs or patch change (rare and deliberate -- see
+    # env.sh's comment on KEYSTONE_FIRMWARE_AUTOMATION_SHA).
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout smoke tests
+        uses: actions/checkout@v4
+        with:
+          repository: zodl-inc/zodl-qa
+          ref: ${{ env.QA_REVISION }}
+          path: zodl-qa
+          token: ${{ secrets.ZODL_QA }}
+
+      - name: Restore cached simulator binary
+        id: keystone-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/zodl-keystone-simulator
+          key: ${{ runner.os }}-keystone-sim-${{ hashFiles('zodl-qa/scripts/keystone/env.sh', 'zodl-qa/scripts/keystone/patches/**') }}
+
+      # Only needed to actually build (cache miss). cmake and clang are
+      # already on the ubuntu-latest image; Rust itself is too, but not
+      # necessarily the exact nightly keystone3-firmware pins via its own
+      # rust-toolchain file -- rustup auto-installs that on first cargo
+      # invocation inside the cloned checkout, so no explicit toolchain
+      # step is needed here. bindgen-cli/cbindgen are not preinstalled.
+      - name: Install build tools (cache miss only)
+        if: steps.keystone-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake clang xvfb libsdl2-dev libxcb1-dev
+          cargo install bindgen-cli cbindgen
+
+      - name: Build (or reuse cached) simulator binary
+        run: |
+          chmod +x zodl-qa/scripts/keystone/build-simulator.sh
+          zodl-qa/scripts/keystone/build-simulator.sh \
+            "${{ runner.temp }}/keystone3-firmware" \
+            "${{ runner.temp }}/keystone-simulator/simulator"
+
+      - name: Upload simulator binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: keystone-simulator-binary
+          path: ${{ runner.temp }}/keystone-simulator/simulator
           retention-days: 1
 
   e2e-android:
-    needs: build
-    runs-on: ubuntu-latest
+    needs: [build, build-speedrun]
+    # The standard private-repo runner (2 vCPU / 7 GB) starves the API 35 emulator.
+    runs-on: ubuntu-24.04-8cores
     # Cold-cache phase 2 runs (no cached SDK DB yet for the seed)
     # spend most of the budget scanning blocks from birthday height.
     # 45 min leaves headroom for the first run; warm-cache runs
@@ -82,6 +236,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: zodl-inc/zodl-qa
+          ref: ${{ env.QA_REVISION }}
           path: zodl-qa
           token: ${{ secrets.ZODL_QA }}
 
@@ -91,16 +246,37 @@ jobs:
           name: zodl-android-debug-apk
           path: apk
 
+      - name: Record tested build and publication time
+        run: |
+          tested_commit=$(cat apk/app-revision.txt)
+          if [[ ! "$tested_commit" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Invalid tested app revision"
+            exit 1
+          fi
+          echo "E2E_TESTED_COMMIT=$tested_commit" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/speedrun-safe-results"
+          cp apk/app-revision.txt "$RUNNER_TEMP/speedrun-safe-results/app-revision.txt"
+          echo "E2E_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Install Maestro
+      - name: Download patched Speedrun
+        uses: actions/download-artifact@v4
+        with:
+          name: zodl-speedrun-android
+          path: ${{ runner.temp }}/speedrun
+
+      - name: Install patched Speedrun
         run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
-          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+          chmod +x "$RUNNER_TEMP/speedrun/speedrun"
+          # android-emulator-runner executes each script line in a separate
+          # shell, so exports inside its script do not persist.
+          echo "$RUNNER_TEMP/speedrun" >> "$GITHUB_PATH"
+          echo "$GITHUB_WORKSPACE/zodl-qa/scripts/speedrun" >> "$GITHUB_PATH"
 
       # Foundry / cast — needed by Layer-2b for the on-chain USDC
       # transfer that funds the swap-receive-usdc-to-zec deposit
@@ -123,16 +299,65 @@ jobs:
       - name: Install zbar
         run: sudo apt-get install -y zbar-tools
 
+      - name: Set up metrics Python
+        if: ${{ matrix.phase == 2 }}
+        continue-on-error: true
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install metrics observer
+        if: ${{ matrix.phase == 2 }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          python3 -m venv "$RUNNER_TEMP/zodl-metrics-venv"
+          "$RUNNER_TEMP/zodl-metrics-venv/bin/python" -m pip install --only-binary=:all: \
+            -r zodl-qa/scripts/metrics-requirements.txt
+          echo "ZODL_METRICS_PYTHON=$RUNNER_TEMP/zodl-metrics-venv/bin/python" >> "$GITHUB_ENV"
+
+      # android-emulator-runner executes each script line in a separate sh.
+      # Keep the private directory, traps and exit status in one Bash process.
+      - name: Prepare private Speedrun runner
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/run-speedrun-private.sh" <<'BASH'
+          set -euo pipefail
+          # Speedrun logs, evaluated commands and screenshots can contain seed
+          # words (including newly generated wallets). Keep them private while
+          # QR funding hooks consume them; publish only structured reports.
+          umask 077
+          private_dir=$(mktemp -d "$RUNNER_TEMP/speedrun-private.XXXXXX")
+          trap 'rm -rf -- "$private_dir"' EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          export ZODL_SPEEDRUN_RESULTS_DIR="$private_dir/artifacts"
+          export TMPDIR="$private_dir"
+          started=$SECONDS
+          status=0
+          ./zodl-qa/scripts/run-smoke-android.sh > "$private_dir/run.log" 2>&1 || status=$?
+          mkdir -p "$ZODL_TEST_RESULTS_DIR"
+          printf 'Platform: Android\nPhase: %s\nExit code: %s\nSuite duration (s): %s\nRaw diagnostic output withheld.\n' \
+            "$ZODL_TEST_PHASE" "$status" "$((SECONDS - started))" \
+            > "$ZODL_TEST_RESULTS_DIR/summary.txt"
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Android smoke tests failed; see the safe summary and benchmark reports."
+          fi
+          exit "$status"
+          BASH
+
       - name: Run smoke tests
+        id: smoke
         uses: reactivecircus/android-emulator-runner@v2
         env:
+          ZODL_E2E_METRICS: "1"
           # Wallet config consumed by scripts/run-smoke-android.sh — the
           # wrapper sources .env locally, but on CI we read each value
           # from GitHub Secrets / repo variables instead. The wrapper
           # resolves ZODL_TEST_DIRECTION (AUTO_ALTERNATE flips a state
           # file each run so sender/receiver rotate), pre-splits the
-          # chosen seed into ZODL_WORD_1..24, and passes everything to
-          # Maestro via --env=KEY=VAL.
+          # chosen seed into ZODL_WORD_1..24, and passes the needed
+          # values to Speedrun via --env=KEY=VAL.
           ZODL_TEST_SEED_ANDROID: ${{ secrets.ZODL_TEST_SEED_ANDROID }}
           ZODL_TEST_BIRTHDAY_ANDROID: ${{ secrets.ZODL_TEST_BIRTHDAY_ANDROID }}
           ZODL_TEST_ADDRESS_ANDROID: ${{ secrets.ZODL_TEST_ADDRESS_ANDROID }}
@@ -143,15 +368,19 @@ jobs:
           ZODL_TEST_CONTACT_NAME_IOS: ${{ vars.ZODL_TEST_CONTACT_NAME_IOS || 'iOS Shield' }}
           ZODL_TEST_DIRECTION: ${{ vars.ZODL_TEST_DIRECTION || 'AUTO_ALTERNATE' }}
           ZODL_TEST_PHASE: ${{ matrix.phase }}
+          ZODL_SPEEDRUN_PLATFORM: android
+          ZODL_TEST_RESULTS_DIR: ${{ runner.temp }}/speedrun-safe-results
+          ZODL_E2E_THEME: light
+          ZODL_E2E_METRICS_DIR: ${{ runner.temp }}/speedrun-safe-results/metrics
           ZODL_TEST_SEND_AMOUNT: ${{ vars.ZODL_TEST_SEND_AMOUNT || '0.001' }}
           ZODL_TEST_BALANCE_MIN: ${{ vars.ZODL_TEST_BALANCE_MIN || '1.3' }}
           ZODL_TEST_BALANCE_WARN: ${{ vars.ZODL_TEST_BALANCE_WARN || '1.36' }}
           ZODL_TEST_CROSSPAY_TARGET_ADDRESS: ${{ vars.ZODL_TEST_CROSSPAY_TARGET_ADDRESS || '0xf90bd7c30fd538efde8729ea61fdf20920ed3171' }}
           ZODL_TEST_CROSSPAY_TARGET_NAME: ${{ vars.ZODL_TEST_CROSSPAY_TARGET_NAME || 'USDC Base' }}
           ZODL_TEST_CROSSPAY_CHAIN: ${{ vars.ZODL_TEST_CROSSPAY_CHAIN || 'BASE' }}
-          ZODL_TEST_CROSSPAY_USDC_AMOUNT: ${{ vars.ZODL_TEST_CROSSPAY_USDC_AMOUNT || '0.5' }}
-          ZODL_TEST_SWAP_ZEC_AMOUNT: ${{ vars.ZODL_TEST_SWAP_ZEC_AMOUNT || '0.005' }}
-          ZODL_TEST_SWAP_RECV_USDC_AMOUNT: ${{ vars.ZODL_TEST_SWAP_RECV_USDC_AMOUNT || '2.3' }}
+          ZODL_TEST_CROSSPAY_USDC_AMOUNT: ${{ vars.ZODL_TEST_CROSSPAY_USDC_AMOUNT || '1.85' }}
+          ZODL_TEST_SWAP_ZEC_AMOUNT: ${{ vars.ZODL_TEST_SWAP_ZEC_AMOUNT || '0.002' }}
+          ZODL_TEST_SWAP_RECV_USDC_AMOUNT: ${{ vars.ZODL_TEST_SWAP_RECV_USDC_AMOUNT || '4.5' }}
           # Layer-2b: the wrapper auto-funds the reverse-swap deposit
           # address (USDC on Base) after swap-receive-usdc-to-zec.yaml
           # runs whenever ZODL_USDC_BASE_PRIVKEY is set. Same model
@@ -179,16 +408,165 @@ jobs:
           api-level: 35
           arch: x86_64
           profile: pixel_6
+          # Default emulator-options with `-gpu swiftshader_indirect`
+          # swapped for `swangle_indirect`. Since #2442 put Haze
+          # backdrop blur on most screens, SwiftShader's host renderer
+          # loses graphics buffers under the RenderEffect load and
+          # takes the whole emulator process down mid-suite ("Failed to
+          # find ColorBuffer: N", then every later flow fails with
+          # "0 devices connected"). SwANGLE is the more robust
+          # headless backend; if the crash recurs, gate Haze's blur off
+          # on emulators in ZashiFrost.kt instead.
+          emulator-options: -no-window -gpu swangle_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             adb install apk/*.apk
+            adb shell cmd uimode night no
             chmod +x zodl-qa/scripts/run-smoke-android.sh
-            ./zodl-qa/scripts/run-smoke-android.sh
+            ZODL_E2E_LOCALE="$(adb shell getprop persist.sys.locale | tr -d '\r')" bash "$RUNNER_TEMP/run-speedrun-private.sh"
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: maestro-android-results-phase-${{ matrix.phase }}
+          name: speedrun-android-results-phase-${{ matrix.phase }}
+          # Metrics are generated from allowlisted events, never raw CLI output.
           path: |
-            ~/.maestro/tests/
-            ${{ runner.temp }}/zodl-enroll-fail/
+            ${{ runner.temp }}/speedrun-safe-results/summary.txt
+            ${{ runner.temp }}/speedrun-safe-results/app-revision.txt
+            ${{ runner.temp }}/speedrun-safe-results/metrics/report.json
+            ${{ runner.temp }}/speedrun-safe-results/metrics/report.md
+            ${{ runner.temp }}/speedrun-safe-results/metrics/report.html
+            ${{ runner.temp }}/speedrun-safe-results/checkpoints
+            ${{ runner.temp }}/speedrun-safe-results/failure-*
+          retention-days: 1
+
+  # Phase K1 of KEYSTONE_E2E_CI_PLAN.md ("Android pairing canary"): drives
+  # a real Keystone Cypherpunk simulator through pairing with the app via
+  # scripts/run-keystone-android.sh, which orchestrates the non-Maestro
+  # half (simulator provisioning/navigation, real QR frame capture) and
+  # then hands off to maestro/keystone/onboarding/connect-keystone-wallet.yaml
+  # for the app-side half. Runs on every pull_request alongside e2e-android
+  # (shares this workflow's top-level `on:` trigger -- no per-job gate).
+  e2e-keystone:
+    needs: [build, build-keystone-simulator]
+    # Same larger runner as e2e-android: this job runs the API 35 emulator
+    # plus the Keystone simulator (SDL under xvfb) plus the Maestro JVM.
+    # On the standard 2 vCPU runner the emulator starves and the suite
+    # fails inside its first two minutes about two runs in three.
+    runs-on: ubuntu-24.04-8cores
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    name: Keystone
+    steps:
+      - name: Checkout smoke tests
+        uses: actions/checkout@v4
+        with:
+          repository: zodl-inc/zodl-qa
+          ref: ${{ env.QA_REVISION }}
+          path: zodl-qa
+          token: ${{ secrets.ZODL_QA }}
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: zodl-android-debug-apk
+          path: apk
+
+      - name: Download simulator binary
+        uses: actions/download-artifact@v4
+        with:
+          name: keystone-simulator-binary
+          path: keystone-simulator
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      # xvfb: the simulator is an SDL app and needs a display to open a
+      # window on even though nothing here screen-captures it -- readiness
+      # and control are entirely over its TCP command channel (see
+      # simulator.sh). netcat: that command channel is spoken over `nc`.
+      # libsdl2-2.0-0: the simulator binary is built (and gets SDL2's
+      # runtime lib for free) in the separate build-keystone-simulator
+      # job -- this job only downloads the compiled binary, on a
+      # different fresh VM that never installed SDL2 at all, so it fails
+      # instantly with "error while loading shared libraries:
+      # libSDL2-2.0.so.0" without the runtime package here too. libxcb1
+      # added preemptively for the same reason (build needed libxcb1-dev
+      # to link against) -- not yet confirmed needed at runtime, but
+      # cheap to install and this exact class of gap already bit us once.
+      - name: Install runtime deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb netcat-openbsd libsdl2-2.0-0 libxcb1
+
+      - name: Prepare private Keystone runner
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/run-keystone-private.sh" <<'BASH'
+          set -euo pipefail
+          umask 077
+          private_dir=$(mktemp -d "$RUNNER_TEMP/keystone-private.XXXXXX")
+          trap 'rm -rf -- "$private_dir"' EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          export TMPDIR="$private_dir"
+          export KEYSTONE_RUNTIME_DIR="$private_dir/simulator"
+          mkdir -p "$KEYSTONE_RUNTIME_DIR"
+          started=$SECONDS
+          status=0
+          xvfb-run -a ./zodl-qa/scripts/run-keystone-android.sh > "$private_dir/run.log" 2>&1 || status=$?
+          mkdir -p "$ZODL_TEST_RESULTS_DIR"
+          printf 'Platform: Android\nSuite: Keystone\nExit code: %s\nSuite duration (s): %s\nRaw simulator state and diagnostics withheld.\n' \
+            "$status" "$((SECONDS - started))" > "$ZODL_TEST_RESULTS_DIR/summary.txt"
+          # Publish only the orchestrator's own step markers (lines it prints
+          # with a leading coloured glyph). They name the phase and the
+          # simulator screen, never wallet data, simulator state or Maestro
+          # output, so a failure is attributable from the safe summary alone.
+          {
+            printf '\nSteps:\n'
+            grep -aE $'^\e\\[[0-9;]*m[▶ℹ✗✓]' "$private_dir/run.log" | sed $'s/\e\\[[0-9;]*m//g' || true
+          } >> "$ZODL_TEST_RESULTS_DIR/summary.txt"
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Keystone canary failed; see the safe status/timing summary."
+            grep -a 'failed during:' "$ZODL_TEST_RESULTS_DIR/summary.txt" || true
+          fi
+          exit "$status"
+          BASH
+
+      - name: Run smoke tests
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          ZODL_TEST_RESULTS_DIR: ${{ runner.temp }}/keystone-safe-results
+          ZODL_KEYSTONE_TEST_ENTROPY_HEX_ANDROID: ${{ secrets.ZODL_KEYSTONE_TEST_ENTROPY_HEX_ANDROID }}
+          ZODL_KEYSTONE_TEST_PIN_ANDROID: ${{ secrets.ZODL_KEYSTONE_TEST_PIN_ANDROID }}
+          ZODL_KEYSTONE_TEST_BIRTHDAY_ANDROID: ${{ secrets.ZODL_KEYSTONE_TEST_BIRTHDAY_ANDROID }}
+          KEYSTONE_SIMULATOR_BINARY: ${{ github.workspace }}/keystone-simulator/simulator
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          # See the e2e-android job above for why the GPU backend is
+          # pinned to SwANGLE rather than the default SwiftShader.
+          emulator-options: -no-window -gpu swangle_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            adb install apk/*.apk
+            chmod +x keystone-simulator/simulator
+            chmod +x zodl-qa/scripts/run-keystone-android.sh
+            bash "$RUNNER_TEMP/run-keystone-private.sh"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keystone-safe-results
+          path: ${{ runner.temp }}/keystone-safe-results/summary.txt
+          retention-days: 1

@@ -471,7 +471,8 @@ val DarkZashiColorsInternal =
                         utilityGray400 = Shark.`500`,
                         utilityGray300 = Shark.`600`,
                         utilityGray900 = Shark.`50`,
-                        utilityGray800 = Shark.`100`
+                        utilityGray800 = Shark.`100`,
+                        utilityGray950 = Shark.`25`
                     ),
                 SuccessGreen =
                     UtilitySuccessGreen(

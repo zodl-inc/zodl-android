@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.util.StringResource
@@ -25,7 +26,7 @@ import co.electriccoin.zcash.ui.design.util.getValue
 @Preview
 @Composable
 private fun LightAlertDialogComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         AppAlertDialog(
             title = "Light popup",
             text =
@@ -41,7 +42,7 @@ private fun LightAlertDialogComposablePreview() {
 @Preview
 @Composable
 private fun NoButtonAlertDialogComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         AppAlertDialog(
             title = "Light popup",
             text =
@@ -55,7 +56,7 @@ private fun NoButtonAlertDialogComposablePreview() {
 @Preview
 @Composable
 private fun DarkAlertDialogComposablePreview() {
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         AppAlertDialog(
             title = "Dark no button popup",
             text =
@@ -170,7 +171,7 @@ fun AppAlertDialog(
 @Preview
 @Composable
 private fun NavigationButtonPreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         NavigationButton(
             onClick = {},
             text = "Test button",
@@ -181,7 +182,7 @@ private fun NavigationButtonPreview() {
 @Preview
 @Composable
 private fun NavigationButtonDarkPreview() {
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         NavigationButton(
             onClick = {},
             text = "Dark button",

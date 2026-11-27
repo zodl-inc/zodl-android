@@ -1,5 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import co.electriccoin.lightwallet.client.OhttpHttpClient
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.model.near.ErrorDto
 import co.electriccoin.zcash.ui.common.model.near.NearTokenDto
 import co.electriccoin.zcash.ui.common.model.near.QuoteRequest
@@ -17,8 +19,11 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import io.ktor.serialization.kotlinx.json.DefaultJson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import java.net.URLEncoder
 
 typealias GetNearSupportedTokensResponse = List<NearTokenDto>
 
@@ -44,67 +49,131 @@ class ResponseWithNearErrorException(
         cachedResponseText = "Code: ${cause.response.status}, message: ${error.message}"
     )
 
+/**
+ * Thrown when the OHTTP path receives a non-2xx response with a parsable NEAR error body.
+ * Callers can catch this to inspect [error.message] for specific NEAR error conditions
+ * (e.g. "Amount is too low for bridge"). Analogous to [ResponseWithNearErrorException] but
+ * does not depend on Ktor HttpResponse types (OHTTP responses are just status + bytes).
+ */
+class OhttpNearErrorException(
+    val error: ErrorDto,
+    val status: Int,
+    val url: String
+) : RuntimeException("HTTP $status from $url: ${error.message}")
+
 class KtorNearApiProvider(
     private val httpClientProvider: HttpClientProvider
 ) : NearApiProvider {
+    // Privacy: always via the OHTTP gateway (over Tor when Tor is on); the gateway injects the API
+    // secret, the app never sends it (stripped with a warning in OhttpHttpClient.execute).
+
     override suspend fun getSupportedTokens(): GetNearSupportedTokensResponse =
-        execute {
-            get("https://1click.chaindefuser.com/v0/tokens").body()
-        }
+        execute(
+            ohttpUrl = "https://near.zodl.com/v0/tokens",
+            ohttpMethod = "GET"
+        )
 
     override suspend fun requestQuote(request: QuoteRequest): QuoteResponseDto =
-        execute {
-            post("https://1click.chaindefuser.com/v0/quote") {
-                contentType(ContentType.Application.Json)
-                header(HttpHeaders.Authorization, AUTH_TOKEN)
-                setBody(request)
-            }.body()
-        }
+        execute(
+            ohttpUrl = "https://near.zodl.com/v0/quote",
+            ohttpMethod = "POST",
+            ohttpHeaders = listOf("Content-Type" to "application/json"),
+            ohttpBodyJson = Json.encodeToString(QuoteRequest.serializer(), request)
+        )
 
     override suspend fun submitDepositTransaction(request: SubmitDepositTransactionRequest) {
-        execute {
-            post("https://1click.chaindefuser.com/v0/deposit/submit") {
-                contentType(ContentType.Application.Json)
-                header(HttpHeaders.Authorization, AUTH_TOKEN)
-                setBody(request)
-            }
-        }
+        execute<Unit>(
+            ohttpUrl = "https://near.zodl.com/v0/deposit/submit",
+            ohttpMethod = "POST",
+            ohttpHeaders = listOf("Content-Type" to "application/json"),
+            ohttpBodyJson = Json.encodeToString(SubmitDepositTransactionRequest.serializer(), request)
+        )
     }
 
     override suspend fun checkSwapStatus(depositAddress: String): SwapStatusResponseDto =
-        execute {
-            get("https://1click.chaindefuser.com/v0/status") {
-                contentType(ContentType.Application.Json)
-                header(HttpHeaders.Authorization, AUTH_TOKEN)
-                parameter("depositAddress", depositAddress)
-            }.body()
-        }
+        execute(
+            ohttpUrl = "https://near.zodl.com/v0/status?depositAddress=${depositAddress.urlEncoded()}",
+            ohttpMethod = "GET"
+        )
 
+    /**
+     * Executes a NEAR API request through OHTTP. The gateway injects the Authorization token
+     * server-side; the app no longer sends it (it's stripped if present). With Tor ON, the relay
+     * leg goes over Tor; with Tor OFF, the relay sees the app's clearnet IP.
+     */
     @Suppress("TooGenericExceptionCaught")
-    @Throws(ResponseException::class)
-    private suspend inline fun <T> execute(
-        crossinline block: suspend HttpClient.() -> T
+    private suspend inline fun <reified T> execute(
+        ohttpUrl: String,
+        ohttpMethod: String = "GET",
+        ohttpHeaders: List<Pair<String, String>> = emptyList(),
+        ohttpBodyJson: String? = null
     ): T =
         withContext(Dispatchers.IO) {
-            httpClientProvider.create().use {
-                try {
-                    block(it)
-                } catch (e: ResponseException) {
-                    val response = e.response
-                    val error: ErrorDto? = runCatching { response.body<ErrorDto?>() }.getOrNull()
-                    if (error != null) {
-                        throw ResponseWithNearErrorException(error = error, cause = e)
-                    } else {
+            // Query parameters (the deposit address) are kept out of logs and error messages.
+            val loggableUrl = ohttpUrl.substringBefore('?')
+            // Each call on a Tor circuit of its own: the requests carry wallet addresses.
+            val response =
+                httpClientProvider.withIsolatedOhttp { ohttpClient ->
+                    if (!ohttpClient.canHandle(ohttpUrl)) {
+                        error("No OHTTP proxy mapping for $loggableUrl")
+                    }
+                    try {
+                        ohttpClient.execute(
+                            OhttpHttpClient.Request(
+                                url = ohttpUrl,
+                                method = ohttpMethod,
+                                headers = ohttpHeaders,
+                                body = ohttpBodyJson?.toByteArray(Charsets.UTF_8) ?: ByteArray(0)
+                            )
+                        )
+                    } catch (e: Exception) {
+                        Twig.warn(e) { "OHTTP $ohttpMethod $loggableUrl failed" }
                         throw e
                     }
                 }
+            Twig.debug { "OHTTP $ohttpMethod $loggableUrl -> HTTP ${response.status} (${response.body.size} bytes)" }
+            if (response.status !in HTTP_SUCCESS) {
+                val bodyString = response.body.decodeToString()
+                val nearError =
+                    try {
+                        OHTTP_JSON.decodeFromString<ErrorDto>(bodyString)
+                    } catch (ignore: Exception) {
+                        null
+                    }
+                if (nearError != null) {
+                    throw OhttpNearErrorException(
+                        error = nearError,
+                        status = response.status,
+                        url = ohttpUrl
+                    )
+                } else {
+                    error("OHTTP $ohttpMethod $loggableUrl returned HTTP ${response.status}: $bodyString")
+                }
+            }
+            if (T::class == Unit::class) {
+                @Suppress("UNCHECKED_CAST")
+                return@withContext Unit as T
+            }
+            try {
+                OHTTP_JSON.decodeFromString<T>(response.body.decodeToString())
+            } catch (e: Exception) {
+                Twig.warn(e) { "OHTTP $ohttpMethod $loggableUrl decode failed" }
+                throw e
             }
         }
 }
 
-private const val AUTH_TOKEN =
-    "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjIwMjUtMDEtMTItdjEifQ.eyJ2IjoxLCJrZXlfdHlwZSI6ImRpc3RyaWJ1dG" +
-        "lvbl9jaGFubmVsIiwicGFydG5lcl9pZCI6InpvZGwiLCJpYXQiOjE3NzUwMjc5MzgsImV4cCI6MTgwNjU2MzkzOH0.TwBxHbVpCZWhvREfK0" +
-        "hvQMPn4eibIqBylc9AI-dy7xR5-k519lFoDxqTaIfv70E-Oa4aswOkWv_Rx2OQUkbL41RMHxWiOU6jnn6z6gXVGfylZ-sZK5bELnvPugyucD" +
-        "-BLSRw3ia-czvTO_LDYGBNDO78J0QbjOe0-CIbg06PxA59tui8SGXQ5paGi6bHUpdjnKXOOB1PAwkIZOaZjqrlh4YoATdFhAgEfbfu9zXdNq" +
-        "jtmYfmAzn8B3_hGI_ZoyIN1sR3ka-LWa5rIaIMfaqBTvDFn2zmCdCbUCUMKhkeBijfpVAf3UmrK4gQeLgo70AQqAFSHZeIk6X0loH_AwzBag"
+private const val HTTP_SUCCESS_MIN = 200
+private const val HTTP_SUCCESS_MAX = 299
+
+/** HTTP status range the OHTTP proxy path treats as success. */
+private val HTTP_SUCCESS = HTTP_SUCCESS_MIN..HTTP_SUCCESS_MAX
+
+/**
+ * Same lenient defaults as Ktor's `ContentNegotiation { json() }`. The NEAR DTOs decode numbers
+ * through [co.electriccoin.zcash.ui.common.serialization.BigDecimalSerializer] (`decodeString()`),
+ * which only works with `isLenient = true`; a strict `Json {}` fails on `"price":2.37`.
+ */
+private val OHTTP_JSON = Json(from = DefaultJson) { ignoreUnknownKeys = true }
+
+private fun String.urlEncoded(): String = URLEncoder.encode(this, Charsets.UTF_8.name())

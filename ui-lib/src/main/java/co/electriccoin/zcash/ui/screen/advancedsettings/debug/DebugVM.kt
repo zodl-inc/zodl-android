@@ -1,68 +1,203 @@
 package co.electriccoin.zcash.ui.screen.advancedsettings.debug
 
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.component.destructive
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
+import co.electriccoin.zcash.ui.common.migration.MigrationDebugActions
+import co.electriccoin.zcash.ui.common.migration.MigrationGate
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
+import co.electriccoin.zcash.ui.common.provider.DebugForceBackgroundExecutionUnavailable
+import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.repository.EphemeralAddressRepository
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.db.DebugDBArgs
+import co.electriccoin.zcash.ui.screen.advancedsettings.debug.orchardbalance.DebugOrchardBalanceArgs
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.text.DebugTextArgs
 import co.electriccoin.zcash.ui.screen.hotfix.ephemeral.EphemeralHotfixArgs
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.WhileSubscribed
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/**
+ * MOB-1397 added a debug action (Simulate SeedNotRelevant), pushing this debug-only menu's
+ * ViewModel past detekt's function-count threshold; it's a flat list of independent debug actions
+ * rather than genuinely complex, so suppressing here is preferable to splitting it.
+ */
+@Suppress("TooManyFunctions")
 class DebugVM(
     private val copyToClipboardUseCase: CopyToClipboardUseCase,
     private val ephemeralAddressRepository: EphemeralAddressRepository,
     private val accountDataSource: AccountDataSource,
+    private val migrationDebugActions: MigrationDebugActions,
+    private val migrationAppHooks: MigrationAppHooks,
+    private val migrationGate: MigrationGate,
+    private val context: Context,
     private val navigationRouter: NavigationRouter,
+    private val simulateSeedNotRelevant: SimulateSeedNotRelevantUseCase,
+    private val lightWalletEndpointProvider: LightWalletEndpointProvider,
 ) : ViewModel() {
+    private val confirmationDialog = MutableStateFlow<ZashiConfirmationState?>(null)
+    private val isGateBypassEnabled = MutableStateFlow(false)
+    private val blackholePrefs = context.getSharedPreferences(BLACKHOLE_PREFS, Context.MODE_PRIVATE)
+    private val isBlackholeOn = MutableStateFlow(blackholePrefs.getBoolean(BLACKHOLE_KEY_ON, false))
+    private val blackholeListener =
+        SharedPreferences.OnSharedPreferenceChangeListener { prefs, _ ->
+            isBlackholeOn.value = prefs.getBoolean(BLACKHOLE_KEY_ON, false)
+        }
+
+    /** Debug-internal builds only: the class lives in the app's internal-debug source set, so look it up by name. */
+    private val blackholeTrigger =
+        Intent().apply {
+            component = ComponentName(context.packageName, BLACKHOLE_TRIGGER_ACTIVITY)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+    init {
+        blackholePrefs.registerOnSharedPreferenceChangeListener(blackholeListener)
+        viewModelScope.launch { isGateBypassEnabled.value = migrationGate.isNetworkUpgradeGateBypassEnabled() }
+    }
+
+    private fun items(isBypassEnabled: Boolean, isBlackholeOn: Boolean) =
+        listOfNotNull(
+            ListItemState(
+                // bigIcon = imageRes(R.drawable.ic_zec_round_full),
+                // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
+                title = stringRes("Get Current Ephemeral Address"),
+                onClick = ::onGetEphemeralAddressClick
+            ),
+            ListItemState(
+                // bigIcon = imageRes(R.drawable.ic_zec_round_full),
+                // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
+                title = stringRes("Generate an Ephemeral Address"),
+                onClick = ::onGenerateEphemeralAddressClick
+            ),
+            ListItemState(
+                // bigIcon = imageRes(R.drawable.ic_zec_round_full),
+                // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
+                title = stringRes("Discover Funds"),
+                onClick = ::onDiscoverFundsClick
+            ),
+            ListItemState(
+                // bigIcon = imageRes(R.drawable.ic_zec_round_full),
+                // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
+                title = stringRes("Query Database"),
+                onClick = ::onQueryDatabaseClick
+            ),
+            ListItemState(
+                title = stringRes("Current Shield Addresses"),
+                onClick = ::onCurrentShieldAddressesClick
+            ),
+            ListItemState(
+                title = stringRes("Set Mock Orchard Balance (Migration)"),
+                onClick = ::onSetMockOrchardBalanceClick
+            ),
+            ListItemState(
+                title = stringRes("Migration restart"),
+                onClick = ::onMigrationRestartClick
+            ),
+            ListItemState(
+                title = stringRes("Migration: simulate Tor background failure"),
+                onClick = ::onSimulateMigrationTorFailureClick
+            ),
+            ListItemState(
+                title = stringRes("Migration: toggle 'no background execution' (Transfer Ready to Send)"),
+                onClick = ::onToggleBackgroundExecutionUnavailableClick
+            ),
+            ListItemState(
+                title =
+                    stringRes(
+                        if (isBypassEnabled) {
+                            "Migration: ignore the NU7 pause on scheduled migration: ON"
+                        } else {
+                            "Migration: ignore the NU7 pause on scheduled migration: OFF"
+                        }
+                    ),
+                onClick = ::onGateBypassClick
+            ),
+            ListItemState(
+                title = stringRes("Simulate SeedNotRelevant"),
+                onClick = ::onSimulateSeedNotRelevantClick
+            ),
+            ListItemState(
+                title = stringRes("OHTTP relay blackhole (VPN): ${if (isBlackholeOn) "ON" else "OFF"}"),
+                onClick = ::onBlackholeToggleClick
+            ).takeIf { isBlackholeAvailable() }
+        )
+
     val state: StateFlow<DebugState> =
-        MutableStateFlow(
+        combine(confirmationDialog, isGateBypassEnabled, isBlackholeOn) { dialog, isBypassEnabled, blackhole ->
             DebugState(
                 onBack = ::onBack,
-                items =
-                    listOf(
-                        ListItemState(
-                            // bigIcon = imageRes(R.drawable.ic_zec_round_full),
-                            // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
-                            title = stringRes("Get Current Ephemeral Address"),
-                            onClick = ::onGetEphemeralAddressClick
-                        ),
-                        ListItemState(
-                            // bigIcon = imageRes(R.drawable.ic_zec_round_full),
-                            // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
-                            title = stringRes("Generate an Ephemeral Address"),
-                            onClick = ::onGenerateEphemeralAddressClick
-                        ),
-                        ListItemState(
-                            // bigIcon = imageRes(R.drawable.ic_zec_round_full),
-                            // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
-                            title = stringRes("Discover Funds"),
-                            onClick = ::onDiscoverFundsClick
-                        ),
-                        ListItemState(
-                            // bigIcon = imageRes(R.drawable.ic_zec_round_full),
-                            // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
-                            title = stringRes("Query Database"),
-                            onClick = ::onQueryDatabaseClick
-                        ),
-                        ListItemState(
-                            title = stringRes("Current Shield Addresses"),
-                            onClick = ::onCurrentShieldAddressesClick
-                        )
-                    )
+                items = items(isBypassEnabled, blackhole),
+                confirmationDialog = dialog,
             )
-        ).asStateFlow()
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
+            initialValue = DebugState(onBack = ::onBack, items = items(false, false), confirmationDialog = null),
+        )
+
+    private fun isBlackholeAvailable() = context.packageManager.resolveActivity(blackholeTrigger, 0) != null
+
+    private fun onBlackholeToggleClick() {
+        val turnOn = !isBlackholeOn.value
+        viewModelScope.launch {
+            val relayHost =
+                if (turnOn) {
+                    relayHost() ?: return@launch Twig.info { "OHTTP relay blackhole: no relay is known, not started" }
+                } else {
+                    null
+                }
+            context.startActivity(
+                Intent(blackholeTrigger).apply {
+                    if (relayHost == null) putExtra("op", "stop") else putExtra("hosts", relayHost)
+                }
+            )
+        }
+    }
+
+    /** The host of the relay the wallet's OHTTP gateway is reached through, or null when OHTTP is not in use. */
+    private suspend fun relayHost(): String? =
+        lightWalletEndpointProvider
+            .getEndpoints()
+            .firstOrNull(lightWalletEndpointProvider::isOhttpGateway)
+            ?.let { lightWalletEndpointProvider.relayHostFor(it.host) }
+
+    override fun onCleared() {
+        blackholePrefs.unregisterOnSharedPreferenceChangeListener(blackholeListener)
+        super.onCleared()
+    }
 
     private fun onBack() = navigationRouter.back()
+
+    /**
+     * Lifts the SDK's pause on new scheduled migrations before NU7, so a scheduled run can be tried on mainnet.
+     * Remembered across restarts. Submission validity (branch, expiry) is never bypassed.
+     */
+    private fun onGateBypassClick() =
+        viewModelScope.launch {
+            migrationGate.setNetworkUpgradeGateBypass(!isGateBypassEnabled.value)
+            isGateBypassEnabled.value = migrationGate.isNetworkUpgradeGateBypassEnabled()
+        }
 
     private fun onGetEphemeralAddressClick() =
         viewModelScope.launch {
@@ -95,10 +230,12 @@ class DebugVM(
                 accounts.joinToString("\n\n") { account ->
                     val label =
                         when (account) {
-                            is ZashiAccount -> "Zashi"
+                            is ZodlAccount -> "Zodl"
                             is KeystoneAccount -> "Keystone"
+                            is LedgerAccount -> "Ledger"
+                            is ViewOnlyAccount -> "View only"
                         }
-                    "$label\n${account.unified.address.address}"
+                    "$label\n${account.unifiedAddress}"
                 }
             copyToClipboardUseCase(text)
             navigationRouter.forward(
@@ -112,4 +249,96 @@ class DebugVM(
     private fun onDiscoverFundsClick() = navigationRouter.forward(EphemeralHotfixArgs(null))
 
     private fun onQueryDatabaseClick() = navigationRouter.forward(DebugDBArgs)
+
+    private fun onSetMockOrchardBalanceClick() = navigationRouter.forward(DebugOrchardBalanceArgs)
+
+    /**
+     * Wipes the current account's in-progress migration entirely — the engine's own run (see
+     * [cash.z.ecc.android.sdk.OrchardMigrationSdk.clearMigration]'s kdoc) plus every app-side
+     * leftover — so a fresh propose/commit can be tested immediately, instead of waiting out or
+     * resuming whatever migration is already in progress. Delegates to
+     * [MigrationDebugActions.restartMigration], which promotes the same orchestration used by the
+     * production "Restart Migration" flow (`RestartMigrationUseCase`).
+     */
+    private fun onMigrationRestartClick() =
+        viewModelScope.launch {
+            val text = migrationDebugActions.restartMigration()
+            navigationRouter.forward(
+                DebugTextArgs(
+                    title = "Migration restart",
+                    text = text
+                )
+            )
+        }
+
+    // Reproduces spec §6.2's "background Tor failure" state (MigrationWorker's non-retryable
+    // NetworkError-while-useTor branch) without waiting for a real background run to fail — sets
+    // the same persisted flag and posts the same notification, then immediately re-runs the same
+    // on-launch reconciliation HomeVM's init{} triggers, so the Sending screen shows up right away
+    // instead of only on the next app relaunch/foreground.
+    private fun onSimulateMigrationTorFailureClick() =
+        viewModelScope.launch {
+            val text = migrationDebugActions.simulateTorFailure()
+            navigationRouter.forward(
+                DebugTextArgs(
+                    title = "Migration: simulate Tor background failure",
+                    text = text
+                )
+            )
+        }
+
+    // Spec §6.4 "Transfer Ready to Send" is otherwise only reachable by actually revoking the
+    // app's battery-optimization exemption from system Settings — this flips a debug-only override
+    // read by IsBackgroundExecutionAvailableProvider.isAvailable() instead, so QA can toggle the
+    // condition on demand. Toggling back "on" (available) doesn't undo an already-shown banner —
+    // that still needs a fresh reconciliation pass (e.g. reopening the app) to re-evaluate.
+    private fun onToggleBackgroundExecutionUnavailableClick() =
+        viewModelScope.launch {
+            val nowForced = !DebugForceBackgroundExecutionUnavailable.isForced(context)
+            DebugForceBackgroundExecutionUnavailable.set(context, nowForced)
+            migrationAppHooks.checkRecovery()
+            navigationRouter.forward(
+                DebugTextArgs(
+                    title = "Migration: toggle 'no background execution'",
+                    text =
+                        if (nowForced) {
+                            "Background execution now forced UNAVAILABLE. On testnet a committed " +
+                                "transfer becomes due within ~15 min (12-block anchor bucket); once " +
+                                "due, the Transfer Ready to Send banner/screen appears."
+                        } else {
+                            "Background execution restored to the device's real state."
+                        }
+                )
+            )
+        }
+
+    /**
+     * MOB-1397 review: this irreversibly overwrites the real stored seed with random entropy and
+     * then kills the process — a tester with a funded debug wallet loses it unless they backed it
+     * up first. Gate it behind an explicit confirmation so a stray tap can't destroy a funded
+     * debug wallet by accident. (Dismiss/confirm are inline lambdas rather than named private
+     * functions to stay under this class's function-count budget.)
+     */
+    private fun onSimulateSeedNotRelevantClick() {
+        confirmationDialog.value =
+            ZashiConfirmationState.destructive(
+                title = stringRes("Simulate SeedNotRelevant?"),
+                message =
+                    stringRes(
+                        "This overwrites the current wallet's stored seed with random entropy and " +
+                            "kills the app, irreversibly. Back up this wallet's seed first if it holds " +
+                            "real funds."
+                    ),
+                primaryText = stringRes("Overwrite seed"),
+                onPrimary = {
+                    confirmationDialog.value = null
+                    viewModelScope.launch { simulateSeedNotRelevant() }
+                },
+                onBack = { confirmationDialog.value = null },
+            )
+    }
 }
+
+private const val BLACKHOLE_TRIGGER_ACTIVITY = "co.electriccoin.zcash.spike.BlackholeTriggerActivity"
+private const val BLACKHOLE_PREFS = "ohttp_blackhole"
+private const val BLACKHOLE_KEY_ON = "on"

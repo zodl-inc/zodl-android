@@ -10,20 +10,26 @@ import co.electriccoin.zcash.ui.common.datasource.ExactOutputSwapTransactionProp
 import co.electriccoin.zcash.ui.common.datasource.SendTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.Zip321TransactionProposal
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.usecase.CancelProposalFlowUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetExchangeRateUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveAccountIconUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveContactByAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitProposalUseCase
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ChipButtonState
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.Ellipsize
+import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByAddress
 import co.electriccoin.zcash.ui.screen.contact.AddZashiABContactArgs
@@ -34,6 +40,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -47,12 +54,15 @@ class ReviewTransactionVM(
     observeContactByAddress: ObserveContactByAddressUseCase,
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
     observeProposal: ObserveProposalUseCase,
+    observeAccountIcon: ObserveAccountIconUseCase,
     private val cancelProposalFlow: CancelProposalFlowUseCase,
     private val getExchangeRate: GetExchangeRateUseCase,
     private val navigationRouter: NavigationRouter,
     private val submitProposal: SubmitProposalUseCase,
 ) : ViewModel() {
     private val isReceiverExpanded = MutableStateFlow(false)
+
+    private val orchardWarningSheet = MutableStateFlow<ZashiConfirmationState?>(null)
 
     private val exchangeRate =
         flow {
@@ -65,16 +75,19 @@ class ReviewTransactionVM(
 
     @Suppress("DestructuringDeclarationWithTooManyEntries")
     @OptIn(ExperimentalCoroutinesApi::class)
-    val state =
+    private val baseState =
         combine(
-            observeSelectedWalletAccount.require(),
+            combine(observeSelectedWalletAccount.require(), observeAccountIcon.observeAll()) { wallet, colors ->
+                wallet to observeAccountIcon.iconOf(colors, wallet)
+            },
             observeProposal.filterSend(),
             isReceiverExpanded,
             exchangeRate,
             getWalletAccounts.observe()
         ) { wallet, zecSend, isReceiverExpanded, exchangeRate, accounts ->
             Quintuple(wallet, zecSend, isReceiverExpanded, exchangeRate, accounts)
-        }.flatMapLatest { (selectedWallet, proposal, isReceiverExpanded, exchangeRate, accounts) ->
+        }.flatMapLatest { (selected, proposal, isReceiverExpanded, exchangeRate, accounts) ->
+            val (selectedWallet, selectedWalletIcon) = selected
             observeContactByAddress(
                 if (proposal is ExactOutputSwapTransactionProposal) {
                     proposal.quote.destinationAddress.address
@@ -88,6 +101,7 @@ class ReviewTransactionVM(
                             transactionProposal = proposal,
                             addressBookContact = addressBookContact,
                             selectedWallet = selectedWallet,
+                            selectedWalletIcon = selectedWalletIcon,
                             isReceiverExpanded = isReceiverExpanded,
                             exchangeRateState = exchangeRate
                         )
@@ -98,12 +112,18 @@ class ReviewTransactionVM(
                             transactionProposal = proposal,
                             addressBookContact = addressBookContact,
                             selectedWallet = selectedWallet,
+                            selectedWalletIcon = selectedWalletIcon,
                             exchangeRateState = exchangeRate,
                             accounts = accounts
                         )
                     }
                 }
             }
+        }
+
+    val state =
+        combine(baseState, orchardWarningSheet) { base, sheet ->
+            base.copy(orchardWarningSheet = sheet)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
@@ -112,8 +132,24 @@ class ReviewTransactionVM(
 
     private var onConfirmClickJob: Job? = null
 
+    init {
+        // Side effect kept in init{} rather than in the state combine to avoid re-triggering on
+        // resubscribe (see the LCE/side-effects convention). Suspends until the first send proposal
+        // that spends Orchard notes, then shows the warning sheet once for this screen entry.
+        viewModelScope.launch {
+            observeProposal.filterSend().first { it.proposal.usesOrchardInputs() }
+            orchardWarningSheet.value =
+                orchardWarningSheetState(
+                    usesOrchardInputs = true,
+                    onContinue = ::onOrchardWarningContinue,
+                    onCancel = ::onOrchardWarningCancel,
+                )
+        }
+    }
+
     private fun createState(
         selectedWallet: WalletAccount,
+        selectedWalletIcon: ImageResource,
         transactionProposal: SendTransactionProposal,
         addressBookContact: EnhancedABContact?,
         exchangeRateState: ExchangeRateState,
@@ -122,7 +158,9 @@ class ReviewTransactionVM(
         title =
             when (selectedWallet) {
                 is KeystoneAccount -> stringRes(R.string.send_review)
-                is ZashiAccount -> stringRes(R.string.send_confirmationTitle)
+                is LedgerAccount -> stringRes(R.string.send_review)
+                is ViewOnlyAccount -> stringRes(R.string.send_review)
+                is ZodlAccount -> stringRes(R.string.send_confirmationTitle)
             },
         items =
             listOfNotNull(
@@ -138,7 +176,7 @@ class ReviewTransactionVM(
                 ),
                 SenderState(
                     title = stringRes(R.string.accounts_sendingFrom),
-                    icon = selectedWallet.icon,
+                    icon = selectedWalletIcon,
                     name = selectedWallet.name
                 ).takeIf { (accounts?.size ?: 0) > 1 },
                 FinancialInfoState(
@@ -162,14 +200,18 @@ class ReviewTransactionVM(
                     message = stringRes(R.string.send_info_memo),
                     icon = R.drawable.ic_confirmation_message_info,
                 ).takeIf { transactionProposal.destination is WalletAddress.Transparent },
+                orchardPrivacyWarningState(transactionProposal.proposal.usesOrchardInputs()),
             ),
         primaryButton =
             ButtonState(
                 text =
                     when (selectedWallet) {
                         is KeystoneAccount -> stringRes(R.string.keystone_confirm)
-                        is ZashiAccount -> stringRes(R.string.tabs_send)
+                        is LedgerAccount -> stringRes(R.string.ledger_confirm)
+                        is ViewOnlyAccount -> stringRes(R.string.tabs_send)
+                        is ZodlAccount -> stringRes(R.string.tabs_send)
                     },
+                style = orchardPrivacyWarningButtonStyle(transactionProposal.proposal.usesOrchardInputs()),
                 onClick = ::onConfirmClick
             ),
         onBack = ::onBack,
@@ -179,6 +221,7 @@ class ReviewTransactionVM(
         transactionProposal: SendTransactionProposal,
         addressBookContact: EnhancedABContact?,
         selectedWallet: WalletAccount,
+        selectedWalletIcon: ImageResource,
         isReceiverExpanded: Boolean,
         exchangeRateState: ExchangeRateState
     ) = ReviewTransactionState(
@@ -192,7 +235,7 @@ class ReviewTransactionVM(
                 ),
                 SenderState(
                     title = stringRes(R.string.accounts_sendingFrom),
-                    icon = selectedWallet.icon,
+                    icon = selectedWalletIcon,
                     name = selectedWallet.name
                 ),
                 ReceiverExpandedState(
@@ -230,14 +273,18 @@ class ReviewTransactionVM(
                 FinancialInfoState(
                     title = stringRes(R.string.send_feeSummary),
                     amount = transactionProposal.proposal.totalFeeRequired()
-                )
+                ),
+                orchardPrivacyWarningState(transactionProposal.proposal.usesOrchardInputs()),
             ),
         primaryButton =
             ButtonState(
+                style = orchardPrivacyWarningButtonStyle(transactionProposal.proposal.usesOrchardInputs()),
                 text =
                     when (selectedWallet) {
                         is KeystoneAccount -> stringRes(R.string.keystone_confirm)
-                        is ZashiAccount -> stringRes(R.string.tabs_send)
+                        is LedgerAccount -> stringRes(R.string.ledger_confirm)
+                        is ViewOnlyAccount -> stringRes(R.string.tabs_send)
+                        is ZodlAccount -> stringRes(R.string.tabs_send)
                     },
                 onClick = ::onConfirmClick
             ),
@@ -248,6 +295,19 @@ class ReviewTransactionVM(
 
     private fun onBack() = viewModelScope.launch { cancelProposalFlow(clearSendForm = false) }
 
+    // "Continue anyway": dismiss the sheet and stay on the review screen; the user still has to tap
+    // the primary button to broadcast, exactly as without the warning.
+    private fun onOrchardWarningContinue() {
+        orchardWarningSheet.value = null
+    }
+
+    // "Cancel" (and back gesture / scrim tap): dismiss the sheet and leave the review screen back to
+    // Send, reusing the screen's existing cancel-proposal-flow action.
+    private fun onOrchardWarningCancel() {
+        orchardWarningSheet.value = null
+        onBack()
+    }
+
     private fun onConfirmClick() {
         if (onConfirmClickJob?.isActive == true) return
         onConfirmClickJob = viewModelScope.launch { submitProposal() }
@@ -255,3 +315,46 @@ class ReviewTransactionVM(
 
     private fun onAddContactClick(address: String) = navigationRouter.forward(AddZashiABContactArgs(address))
 }
+
+// Spec §8 "Orchard Privacy Warning on Regular Send": extracted as pure functions so they're
+// directly testable without mocking the whole VM (mirrors GetHomeMessageUseCase.migrationMessageFor).
+// Checked once the proposal already exists (rather than eagerly re-proposing on every keystroke in
+// the Send form itself) — this is still shown "before they proceed with the send" per the spec,
+// since the user still has to tap Confirm/Send on this screen to actually broadcast.
+internal fun orchardPrivacyWarningState(usesOrchardInputs: Boolean): OrchardPrivacyWarningState? =
+    OrchardPrivacyWarningState(
+        title = "This send requires spending Orchard funds",
+        body = "We recommend migrating your funds first to avoid leaking the transaction amount on-chain.",
+    ).takeIf { usesOrchardInputs }
+
+internal fun orchardPrivacyWarningButtonStyle(usesOrchardInputs: Boolean): ButtonStyle? =
+    ButtonStyle.DESTRUCTIVE1.takeIf { usesOrchardInputs }
+
+// Spec §8 bottom sheet shown on entry to Review when the proposal spends Orchard notes: warns the
+// user that sending now (pre-migration) leaks the amount at the turnstile. Extracted as a pure
+// builder so the copy, styles, and button wiring are testable without the whole VM (mirrors
+// orchardPrivacyWarningState above). "Continue anyway" is destructive-outline over the dark
+// "Cancel", matching the Figma order (primary rendered first/top by ZashiConfirmationBottomSheet).
+internal fun orchardWarningSheetState(
+    usesOrchardInputs: Boolean,
+    onContinue: () -> Unit,
+    onCancel: () -> Unit,
+): ZashiConfirmationState? =
+    ZashiConfirmationState(
+        icon = R.drawable.ic_reset_zashi_warning,
+        title = stringRes(R.string.send_orchardWarning_title),
+        message = stringRes(R.string.send_orchardWarning_message),
+        primaryAction =
+            ButtonState(
+                text = stringRes(R.string.send_orchardWarning_continue),
+                style = ButtonStyle.DESTRUCTIVE1,
+                onClick = onContinue,
+            ),
+        secondaryAction =
+            ButtonState(
+                text = stringRes(R.string.send_orchardWarning_cancel),
+                style = ButtonStyle.PRIMARY,
+                onClick = onCancel,
+            ),
+        onBack = onCancel,
+    ).takeIf { usesOrchardInputs }

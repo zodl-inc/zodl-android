@@ -13,6 +13,7 @@ name: Release
 # can publish the stores directly for an existing tag without the
 # create-release re-publish dance:
 #     gh workflow run release.yaml -f tag=3.7.0-1986
+# Alt-store scope: F-Droid only.
 on:
   release:
     types:
@@ -55,6 +56,14 @@ jobs:
           # manual workflow_dispatch recovery run, check out the requested tag.
           ref: ${{ inputs.tag || github.ref }}
 
+      - name: Refuse to deploy with a live SDK_COMMIT_PIN
+        shell: bash
+        run: |
+          if grep -qE '^SDK_COMMIT_PIN=.+' gradle.properties; then
+            echo '::error::SDK_COMMIT_PIN is set — releases must build against a published SDK.'
+            exit 1
+          fi
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
         with:
@@ -75,6 +84,11 @@ jobs:
         uses: ./.github/actions/setup-gradle
         with:
           gradle-home-cache-cleanup: true
+      # Release builds must carry valid OHTTP values: the app-config artifact is checked for format,
+      # mainnet != testnet and a relay digest in INDEPENDENT_RELAY_URL_SHA256 (the former release-only script).
+      - name: Check the OHTTP values
+        timeout-minutes: 15
+        run: ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest --tests '*.AppConfigTest'
       - name: Export Google Services JSON
         env:
           FIREBASE_DEBUG_JSON_BASE64: ${{ secrets.FIREBASE_DEBUG_JSON_BASE64 }}
@@ -115,8 +129,6 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew clean :app:bundleZcashmainnetStoreRelease :app:packageZcashmainnetStoreReleaseUniversalApk
 
@@ -134,8 +146,6 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew clean :app:assembleZcashmainnetFossRelease
 
@@ -143,10 +153,10 @@ jobs:
         run: |
           mv app/build/outputs/apk/zcashmainnetFoss/release/app-zcashmainnet-foss-release.apk artifacts/app-zcashmainnet-foss-release-full-externallibs.apk
 
-      # Second FOSS build with Flexa/CMC keys intentionally NOT injected:
-      # this is the build that f-droid.org's reproducible build farm needs to
-      # match (their builders cannot see those secrets). Keep it in sync with
-      # the externallibs build above so fdroidserver metadata generation has
+      # Second FOSS build, the APK that foss.zodl.com redistributes: it gets the
+      # signing key. The OHTTP values come from the app-config dependency like in every
+      # other build. Keep it in sync
+      # with the externallibs build above so fdroidserver metadata generation has
       # the artifact it expects under the un-suffixed filename.
       - name: Build FOSS (F-Droid) APK
         env:
@@ -154,10 +164,13 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
-          # ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          # ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew clean :app:assembleZcashmainnetFossRelease
+
+      - name: Check FOSS dependencies
+        run: |
+          ./scripts/check-foss-dependencies.sh --self-test
+          ./scripts/check-foss-dependencies.sh zcashmainnetFossReleaseRuntimeClasspath
 
       - name: Prepare FOSS (F-Droid) artifacts
         run: |
@@ -180,178 +193,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  publish_to_solana:
-    needs: [release]
-    environment: deployment
-    continue-on-error: true
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write  # Required for Workload Identity Federation
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-          # See the release job's checkout: target the requested tag on a manual
-          # recovery dispatch, otherwise the published tag.
-          ref: ${{ inputs.tag || github.ref }}
-
-      - name: Get release tag
-        id: release_info
-        run: |
-          TAG=$(git describe --tags --abbrev=0)
-          VERSION_NAME=$(echo "$TAG" | sed 's/^v//' | cut -d'-' -f1)
-          VERSION_CODE=$(echo "$TAG" | cut -d'-' -f2)
-
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
-          echo "version_name=${VERSION_NAME}" >> $GITHUB_OUTPUT
-          echo "version_code=${VERSION_CODE}" >> $GITHUB_OUTPUT
-
-          echo "Release Tag: ${TAG}"
-          echo "Version Name: ${VERSION_NAME}"
-          echo "Version Code: ${VERSION_CODE}"
-
-      - name: Download Release APK
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG="${{ steps.release_info.outputs.tag }}"
-
-          mkdir -p stores/solana
-
-          gh release download "${TAG}" \
-            -p "app-zcashmainnet-foss-release-full-externallibs.apk" \
-            -D stores/solana/
-
-          mv stores/solana/app-zcashmainnet-foss-release-full-externallibs.apk \
-             stores/solana/solana.apk
-
-          echo "APK downloaded and renamed to solana.apk"
-          ls -lh stores/solana/solana.apk
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v3
-        with:
-          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-
-      - name: Download encrypted files from GCS
-        run: |
-          gcloud auth login --cred-file="$GOOGLE_APPLICATION_CREDENTIALS"
-
-          echo "Downloading encrypted files from gs://${{ secrets.SOLANA_GCS_BUCKET }}/"
-
-          gsutil cp gs://${{ secrets.SOLANA_GCS_BUCKET }}/encrypted_solana_keypair.kms /tmp/encrypted_solana_keypair.kms
-          gsutil cp gs://${{ secrets.SOLANA_GCS_BUCKET }}/encrypted_config.yaml.kms /tmp/encrypted_config.yaml.kms
-
-          echo "Files downloaded"
-
-      - name: Decrypt files using Cloud KMS
-        run: |
-          echo "Decrypting Solana keypair..."
-          gcloud kms decrypt \
-            --key=gpg \
-            --keyring=gpg \
-            --location=global \
-            --plaintext-file=/tmp/solana-keypair.json \
-            --ciphertext-file=/tmp/encrypted_solana_keypair.kms \
-            --project=${{ secrets.GCP_PROJECT_ID_PROD }}
-
-          echo "Decrypting config.yaml..."
-          gcloud kms decrypt \
-            --key=gpg \
-            --keyring=gpg \
-            --location=global \
-            --plaintext-file=/tmp/config.yaml \
-            --ciphertext-file=/tmp/encrypted_config.yaml.kms \
-            --project=${{ secrets.GCP_PROJECT_ID_PROD }}
-
-          echo "Files decrypted"
-
-          # Validate JSON and YAML
-          jq empty /tmp/solana-keypair.json || { echo "Invalid JSON in keypair"; exit 1; }
-          yq eval '.' /tmp/config.yaml > /dev/null || { echo "Invalid YAML in config"; exit 1; }
-
-      - name: Prepare config in stores directory
-        run: |
-          cp /tmp/config.yaml stores/solana/config.yaml
-          echo "Config copied to stores/solana/config.yaml"
-
-      - name: Update config.yaml with release information
-        run: |
-          chmod +x .github/scripts/update-solana-config-from-gcs.sh
-
-          .github/scripts/update-solana-config-from-gcs.sh \
-            "${{ steps.release_info.outputs.version_name }}" \
-            "${{ steps.release_info.outputs.version_code }}" \
-            "stores/solana/config.yaml" \
-            "stores/solana/release-notes-template.yaml" \
-            "docs/whatsNew/WHATS_NEW_EN.md"
-
-      # ---------------------------------------------------------------------
-      # Solana dApp Store CLI 0.15.0 -> 1.0.0 migration (2026-06)
-      #
-      # The previous flow used `@solana-mobile/dapp-store-cli@latest` with the
-      # 0.15.x interface: `create release ... -k <keypair> --config config.yaml`
-      # followed by `publish update ... --config config.yaml`. Solana Mobile
-      # shipped dapp-store-cli@1.0.0, a portal-backed CLI that REMOVED
-      # `create release`, `publish update`, `-k`, and `--config`. The legacy
-      # 0.15.0 is now hard-gated server-side and refuses to run, so neither the
-      # old pinned version nor `@latest` works any more.
-      #
-      # The 1.0.0 interface is a single invocation:
-      #   dapp-store --apk-file <apk> --keypair <keypair> --whats-new "<text>"
-      # plus a portal API key supplied via the env var DAPP_STORE_API_KEY
-      # (or `--api-key-stdin`). The release/version metadata that config.yaml
-      # used to carry now lives in the publish.solanamobile.com portal, so the
-      # GCS-backed config.yaml decrypt/re-encrypt scaffolding above is largely
-      # vestigial in the 1.0.0 model. We keep the KMS key fix (--key=gpg) and
-      # the keypair decrypt (still required to sign the on-chain submission)
-      # rather than rip the scaffolding out in this same PR.
-      #
-      # HUMAN PREREQUISITE: the DAPP_STORE_API_KEY repo secret does NOT exist
-      # yet. Generate it at publish.solanamobile.com -> settings -> API keys,
-      # then `gh secret set DAPP_STORE_API_KEY`. Until it exists this job will
-      # fail at this step; `continue-on-error: true` on the job keeps that from
-      # failing the release.
-      # ---------------------------------------------------------------------
-      - name: Publish to Solana dApp Store
-        working-directory: stores/solana
-        env:
-          DAPP_STORE_API_KEY: ${{ secrets.DAPP_STORE_API_KEY }}
-        run: |
-          echo "Publishing to Solana dApp Store (dapp-store-cli 1.0.0)..."
-
-          npx @solana-mobile/dapp-store-cli@1.0.0 \
-            --apk-file solana.apk \
-            --keypair /tmp/solana-keypair.json \
-            --whats-new "New features and improvements in this release."
-
-          echo "Published successfully"
-
-      - name: Re-encrypt and upload config.yaml to GCS
-        run: |
-          echo "Creating backup of current config..."
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          gsutil cp gs://${{ secrets.SOLANA_GCS_BUCKET }}/encrypted_config.yaml.kms \
-            gs://${{ secrets.SOLANA_GCS_BUCKET }}/backups/encrypted_config.yaml.kms.${TIMESTAMP} || \
-            echo "Warning: Could not create backup"
-
-          echo "Re-encrypting config.yaml..."
-          gcloud kms encrypt \
-            --key=gpg \
-            --keyring=gpg \
-            --location=global \
-            --plaintext-file=stores/solana/config.yaml \
-            --ciphertext-file=/tmp/encrypted_config_new.yaml.kms \
-            --project=${{ secrets.GCP_PROJECT_ID_PROD }}
-
-          echo "Uploading to GCS..."
-          gsutil cp /tmp/encrypted_config_new.yaml.kms \
-            gs://${{ secrets.SOLANA_GCS_BUCKET }}/encrypted_config.yaml.kms
-
-          echo "Config updated in GCS"
-          echo "Backup: gs://${{ secrets.SOLANA_GCS_BUCKET }}/backups/encrypted_config.yaml.kms.${TIMESTAMP}"
+  # publish_to_solana removed — deploys are done manually.
 
   # Publishes the FOSS APK to the self-hosted F-Droid repo at foss.zodl.com.
   #
@@ -365,40 +207,128 @@ jobs:
   # release tag, so the right APK version gets published. All the AWS Secrets
   # Manager / keystore / fdroidserver / git-push work now lives in GitLab CI.
   #
-  # Best-effort: a failed trigger must not fail the release.
+  # Triggers the GitLab Pages F-Droid pipeline, waits for it to finish,
+  # and purges the Cloudflare cache on success so clients get fresh APK+index.
   publish_to_fdroid:
     needs: [release]
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write  # Required for AWS OIDC
+
     steps:
-      - name: Trigger GitLab Pages F-Droid publish
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+        with:
+          role-to-assume: ${{ secrets.AWS_RELEASE_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Trigger GitLab Pages F-Droid publish and wait
         env:
           GITLAB_FDROID_TRIGGER_TOKEN: ${{ secrets.GITLAB_FDROID_TRIGGER_TOKEN }}
-          # Project id + target ref live in repo variables so they can be updated
-          # in one place if the GitLab project is recreated or the pipeline moves
-          # to an environment branch (review: noop-sk). Default to the known
-          # values if the vars are unset, so the step still works pre-config.
+          # GITLAB_PAT is a project/personal access token with api read scope,
+          # used for polling pipeline status. Trigger tokens are scoped only to
+          # POST .../trigger/pipeline and cannot authenticate API reads.
+          GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
           GITLAB_FDROID_PROJECT_ID: ${{ vars.GITLAB_FDROID_PROJECT_ID || '83433564' }}
           GITLAB_FDROID_REF: ${{ vars.GITLAB_FDROID_REF || 'main' }}
-          # On `release: published` GITHUB_REF_NAME is the tag; on a manual
-          # recovery dispatch it is the workflow's branch (e.g. main), so prefer
-          # the explicit input tag when present.
           APK_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           echo "Triggering GitLab F-Droid pipeline for ${APK_TAG}"
-          # -m 30 bounds the wait: without it, an unreachable GitLab would block
-          # until the runner's job-level timeout (~6h) fires (review: noop-sk).
           HTTP_CODE=$(curl -s -m 30 -o /tmp/trigger.json -w '%{http_code}' \
             -X POST "https://gitlab.com/api/v4/projects/${GITLAB_FDROID_PROJECT_ID}/trigger/pipeline" \
             -F token="${GITLAB_FDROID_TRIGGER_TOKEN}" \
             -F "ref=${GITLAB_FDROID_REF}" \
             -F "variables[APK_TAG]=${APK_TAG}")
-          cat /tmp/trigger.json
-          echo
-          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-            echo "GitLab pipeline triggered: $(jq -r '.web_url // empty' /tmp/trigger.json)"
-          else
-            # Publishing is best-effort -- never fail the release on a trigger error.
-            echo "::warning::GitLab F-Droid trigger returned HTTP ${HTTP_CODE}; F-Droid publish skipped. Re-run manually if needed."
+          cat /tmp/trigger.json && echo
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "::error::GitLab F-Droid trigger returned HTTP ${HTTP_CODE}"
+            exit 1
+          fi
+
+          PIPELINE_ID=$(jq -r '.id' /tmp/trigger.json)
+          PIPELINE_URL=$(jq -r '.web_url' /tmp/trigger.json)
+          echo "GitLab pipeline ${PIPELINE_ID} triggered: ${PIPELINE_URL}"
+
+          # Poll until the pipeline finishes (max 15 min, 10s intervals).
+          # Uses GITLAB_PAT (read-scoped) — GITLAB_FDROID_TRIGGER_TOKEN is a
+          # pipeline trigger token, not valid as a PRIVATE-TOKEN API credential.
+          for i in $(seq 1 90); do
+            sleep 10
+            STATUS=$(curl -s -m 10 \
+              "https://gitlab.com/api/v4/projects/${GITLAB_FDROID_PROJECT_ID}/pipelines/${PIPELINE_ID}" \
+              -H "PRIVATE-TOKEN: ${GITLAB_PAT}" \
+              | jq -r '.status // "unknown"')
+            echo "  [${i}] pipeline status: ${STATUS}"
+            case "$STATUS" in
+              success)
+                echo "GitLab pipeline succeeded."
+                exit 0
+                ;;
+              failed|canceled|skipped)
+                echo "::error::GitLab F-Droid pipeline ${STATUS}: ${PIPELINE_URL}"
+                exit 1
+                ;;
+              created|waiting_for_resource|preparing|pending|running|scheduled)
+                ;;
+              *)
+                echo "::warning::Unknown pipeline status '${STATUS}', continuing to wait"
+                ;;
+            esac
+          done
+          echo "::error::GitLab F-Droid pipeline did not finish within 15 min: ${PIPELINE_URL}"
+          exit 1
+
+      - name: Purge Cloudflare cache for foss.zodl.com
+        continue-on-error: true
+        run: |
+          CF_API_TOKEN=$(aws secretsmanager get-secret-value \
+            --secret-id /infra/cloudflare/api_token \
+            --query SecretString --output text)
+          echo "::add-mask::${CF_API_TOKEN}"
+
+          ZONE_ID=$(aws secretsmanager get-secret-value \
+            --secret-id /infra/cloudflare/foss-fdroid-zone-id \
+            --query SecretString --output text)
+          echo "::add-mask::${ZONE_ID}"
+
+          PURGE_SUCCESS="false"
+          for attempt in 1 2 3; do
+            # No -f: keep response body even on 4xx/5xx so errors are diagnosable.
+            # -w appends the real HTTP status as a trailing line; the || fallback
+            # only fires on network-level failures (DNS, timeout) and yields 000.
+            RAW=$(curl -s -m 30 -w '\n%{http_code}' -X POST \
+              "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/purge_cache" \
+              -H "Authorization: Bearer ${CF_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data '{
+                "files": [
+                  "https://foss.zodl.com/fdroid/repo/app-zcashmainnet-foss-release-full-externallibs.apk",
+                  "https://foss.zodl.com/fdroid/repo/app-zcashmainnet-foss-release.apk",
+                  "https://foss.zodl.com/fdroid/repo/index-v2.json",
+                  "https://foss.zodl.com/fdroid/repo/entry.jar"
+                ]
+              }') || RAW=$'{"success":false,"error":"network_failure"}\n000'
+            HTTP_STATUS=$(printf '%s\n' "${RAW}" | tail -n1)
+            PURGE_RESULT=$(printf '%s\n' "${RAW}" | sed '$d')
+            PURGE_SUCCESS=$(printf '%s' "${PURGE_RESULT}" | jq -r '.success // false' 2>/dev/null || echo "false")
+            PURGE_SUCCESS="${PURGE_SUCCESS:-false}"
+            echo "CF purge attempt ${attempt}: http=${HTTP_STATUS} success=${PURGE_SUCCESS} response=${PURGE_RESULT}"
+            [ "${PURGE_SUCCESS}" = "true" ] && break
+            # Key off the HTTP status, not CF's errors[].code (those are in the
+            # thousands, e.g. 9109/10000). 4xx = permanent (auth/permission/bad
+            # zone) — never retry. 429 is the one transient 4xx; 5xx/000 retry.
+            case "${HTTP_STATUS}" in
+              429) ;;
+              4[0-9][0-9])
+                echo "::warning::CF purge permanent error (HTTP ${HTTP_STATUS}) — skipping retries"
+                break
+                ;;
+            esac
+            [ "${attempt}" -lt 3 ] && sleep 10
+          done
+
+          if [ "${PURGE_SUCCESS}" != "true" ]; then
+            echo "::warning::Cloudflare cache purge failed after retries (non-blocking)"
           fi

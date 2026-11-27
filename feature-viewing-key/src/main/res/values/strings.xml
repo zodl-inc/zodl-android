@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="view_only_account_default_name">View Only Account</string>
+    <string name="view_only_top_bar_subtitle">View Only</string>
+    <string name="view_only_add_account">Add Account</string>
+    <string name="view_only_account_list_section">View Only Account</string>
+    <string name="view_only_account_list_section_plural">View Only Accounts</string>
+    <string name="view_only_unsupported_title">Not available</string>
+    <string name="view_only_unsupported_message">This account was imported with a viewing key. It can see its balance and activity, but it cannot send, shield, swap, vote or migrate funds.</string>
+    <string name="view_only_receive_shielded_title">Zcash Shielded Address</string>
+    <string name="view_only_receive_transparent_title">Zcash Transparent Address</string>
+    <string name="view_only_integrations_disabled_info">Switch from a view-only account to Zodl to use Flexa.</string>
+
+    <string name="view_only_add_account_hardware_title">Connect hardware wallet</string>
+    <string name="view_only_add_account_hardware_subtitle">Pair your hardware wallet device</string>
+    <string name="view_only_add_account_import_title">Import full viewing key</string>
+    <string name="view_only_add_account_import_subtitle">See all account activity</string>
+    <string name="view_only_add_account_dismiss">Dismiss</string>
+
+    <string name="view_only_import_title">Import account</string>
+    <string name="view_only_import_subtitle">Full Viewing Key</string>
+    <string name="view_only_continue">Continue</string>
+
+    <string name="view_only_paste_heading">Add Viewing Key</string>
+    <string name="view_only_paste_message">Paste your Unified Full Viewing Key (UFVK)\nto add a view only account.</string>
+    <string name="view_only_paste_label">Viewing Key</string>
+    <string name="view_only_paste_placeholder">Paste viewing key...</string>
+    <string name="view_only_paste_scan">Scan QR code</string>
+    <string name="view_only_paste_disclaimer">This Account will be view and receive only. You can track its balance and activity, but can\'t use it to spend funds.</string>
+
+    <string name="view_only_invalid_key_title">This key doesn’t look right</string>
+    <string name="view_only_invalid_key_message">A Unified Full Viewing Key starts with “%1$s” and runs 300+ characters. Check for missing or extra characters, then paste it again.</string>
+    <string name="view_only_invalid_key_scan">Scan QR code instead</string>
+    <string name="view_only_invalid_key_edit">Edit key</string>
+
+    <string name="view_only_scan_info">Scan viewing key QR code</string>
+    <string name="view_only_invalid_qr_title">We couldn’t read that code</string>
+    <string name="view_only_invalid_qr_message">This QR code isn’t a valid Unified Full Viewing Key. Make sure you’re scanning the right code, hold steady, and try again in good light.</string>
+    <string name="view_only_invalid_qr_paste">Paste key instead</string>
+    <string name="view_only_invalid_qr_scan_again">Scan again</string>
+
+    <string name="view_only_already_imported_title">Account already added</string>
+    <string name="view_only_already_imported_message">This viewing key belongs to an account that is already in your wallet.</string>
+    <string name="view_only_already_imported_close">Close</string>
+
+    <string name="view_only_imported_heading">Account Imported</string>
+    <string name="view_only_imported_message">Your view only account has been added.\nTrack its balance and activity anytime.</string>
+    <string name="view_only_imported_done">Done</string>
+
+    <string name="view_only_birthday_title">First Account Transaction</string>
+    <string name="view_only_birthday_subtitle">Choose the approximate date of this account\'s first transaction. If you\'re not sure, choose an earlier date.</string>
+    <string name="view_only_birthday_enter_manually">Enter block height</string>
+
+    <string name="view_only_keep_open_description">Zodl is scanning the blockchain to retrieve this account’s transactions. Older wallets can take hours to complete syncing. Follow these steps to prevent interruption:</string>
+    <string name="view_only_keep_open_subtitle">Your account is being synced.</string>
+    <string name="view_only_keep_open_warning">This account’s balance and activity are complete once syncing finishes.</string>
+    <string name="view_only_keep_open_checkbox">Keep screen on while syncing</string>
+
+    <string name="view_only_edit_remove_info">Tapping Remove Account will ask you to confirm</string>
+    <string name="view_only_remove_account">Remove Account</string>
+
+    <string name="view_only_remove_title">Remove this account?</string>
+    <string name="view_only_remove_message">Removing this account clears its data from Zodl on this device, but your address book contacts and other account metadata are kept. Removing the account does not remove the on-chain history. You can bring it back anytime by re-adding the account.</string>
+    <string name="view_only_remove_cancel">Cancel</string>
+    <string name="view_only_remove_biometric_message">Confirm to remove this account</string>
+</resources>

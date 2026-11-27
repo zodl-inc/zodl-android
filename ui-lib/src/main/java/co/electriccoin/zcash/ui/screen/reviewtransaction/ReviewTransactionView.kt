@@ -3,6 +3,7 @@
 package co.electriccoin.zcash.ui.screen.reviewtransaction
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,26 +37,33 @@ import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ChipButtonState
-import co.electriccoin.zcash.ui.design.component.OldZashiBottomBar
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.StyledBalance
 import co.electriccoin.zcash.ui.design.component.StyledBalanceDefaults
 import co.electriccoin.zcash.ui.design.component.SwapQuoteHeaderState
 import co.electriccoin.zcash.ui.design.component.SwapTokenAmountState
 import co.electriccoin.zcash.ui.design.component.TextFieldState
+import co.electriccoin.zcash.ui.design.component.ZashiBottomBar
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiChipButton
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiSwapQuoteHeader
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.balances.LocalBalancesAvailable
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.Compose
+import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.StringResourceColor
 import co.electriccoin.zcash.ui.design.util.StyledStringStyle
 import co.electriccoin.zcash.ui.design.util.TickerLocation
@@ -67,15 +75,25 @@ import co.electriccoin.zcash.ui.design.util.stringResByDynamicCurrencyNumber
 import co.electriccoin.zcash.ui.design.util.styleAsAddress
 import co.electriccoin.zcash.ui.design.util.withStyle
 import co.electriccoin.zcash.ui.screen.balances.BalanceWidgetHeader
+import co.electriccoin.zcash.ui.screen.common.PrivacyDisclaimerCard
 import co.electriccoin.zcash.ui.screen.exchangerate.widget.StyledExchangeLabel
 import kotlin.time.Clock
 
 @Composable
 fun ReviewTransactionView(state: ReviewTransactionState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
                 title = state.title.getValue(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(
                         onBack = state.onBack,
@@ -83,17 +101,27 @@ fun ReviewTransactionView(state: ReviewTransactionState) {
                     )
                 }
             )
+        },
+        bottomBar = {
+            BottomBar(
+                state = state,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedFooter(hazeState)
+            )
         }
     ) {
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
+                    .zashiFrostSource(hazeState)
         ) {
             Column(
                 modifier =
                     Modifier
-                        .weight(1f)
+                        .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                         .scaffoldPadding(it)
             ) {
@@ -139,6 +167,11 @@ fun ReviewTransactionView(state: ReviewTransactionState) {
                             MessagePlaceholderWidget(item)
                         }
 
+                        is OrchardPrivacyWarningState -> {
+                            Spacer(16.dp)
+                            PrivacyDisclaimerCard(title = item.title, body = item.body)
+                        }
+
                         is SimpleListItemState -> {
                             Spacer(12.dp)
                             ListItemWidget(item)
@@ -155,8 +188,9 @@ fun ReviewTransactionView(state: ReviewTransactionState) {
 
                 Spacer(Modifier.height(32.dp))
             }
-            BottomBar(state)
         }
+
+        ZashiConfirmationBottomSheet(state.orchardWarningSheet)
     }
 }
 
@@ -220,11 +254,7 @@ private fun SenderWidget(state: SenderState) {
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                modifier = Modifier.size(32.dp),
-                painter = painterResource(id = state.icon),
-                contentDescription = null
-            )
+            state.icon.Compose(modifier = Modifier.size(32.dp))
             Spacer(Modifier.width(16.dp))
             Text(
                 text = state.name.getValue(),
@@ -434,8 +464,15 @@ private fun SimpleAmountWidget(state: ExactOutputQuoteState) {
 }
 
 @Composable
-private fun BottomBar(state: ReviewTransactionState) {
-    OldZashiBottomBar {
+private fun BottomBar(
+    state: ReviewTransactionState,
+    modifier: Modifier = Modifier
+) {
+    ZashiBottomBar(
+        modifier = modifier,
+        isElevated = false,
+        color = Color.Transparent
+    ) {
         ZashiButton(
             state = state.primaryButton,
             modifier =
@@ -480,7 +517,7 @@ private fun Preview() =
                             ),
                             SenderState(
                                 title = stringRes("Sending from"),
-                                icon = R.drawable.ic_item_keystone,
+                                icon = imageRes(R.drawable.ic_item_keystone),
                                 name = stringRes("Keystone wallet"),
                             ),
                             FinancialInfoState(
@@ -500,6 +537,36 @@ private fun Preview() =
                         ButtonState(
                             stringRes("Confirm with Keystone")
                         ),
+                    onBack = {},
+                )
+        )
+    }
+
+@PreviewScreens
+@Composable
+private fun ColoredSenderPreview() =
+    ZcashTheme {
+        ReviewTransactionView(
+            state =
+                ReviewTransactionState(
+                    title = stringRes("Review"),
+                    items =
+                        listOf(
+                            SenderState(
+                                title = stringRes("Sending from"),
+                                icon =
+                                    ImageResource.Layered(
+                                        background = Color(PREVIEW_COLOR),
+                                        foreground = ImageResource.ByDrawable(R.drawable.ic_item_zodl_glyph)
+                                    ),
+                                name = stringRes("Zodl"),
+                            ),
+                            FinancialInfoState(
+                                title = stringRes("Fee"),
+                                amount = ZatoshiFixture.new()
+                            ),
+                        ),
+                    primaryButton = ButtonState(stringRes("Send")),
                     onBack = {},
                 )
         )
@@ -538,7 +605,7 @@ private fun TransparentPreview() =
                             ),
                             SenderState(
                                 title = stringRes("Sending from"),
-                                icon = R.drawable.ic_item_keystone,
+                                icon = imageRes(R.drawable.ic_item_keystone),
                                 name = stringRes("Keystone wallet"),
                             ),
                             FinancialInfoState(
@@ -592,7 +659,7 @@ private fun Zip321Preview() =
                             ),
                             SenderState(
                                 title = stringRes(co.electriccoin.zcash.ui.R.string.accounts_sendingFrom),
-                                icon = R.drawable.ic_item_keystone,
+                                icon = imageRes(R.drawable.ic_item_keystone),
                                 name = stringRes("Keystone wallet"),
                             ),
                             ReceiverExpandedState(
@@ -683,7 +750,7 @@ private fun PayPreview() =
                             ),
                             SenderState(
                                 title = stringRes("Sending from"),
-                                icon = R.drawable.ic_item_keystone,
+                                icon = imageRes(R.drawable.ic_item_keystone),
                                 name = stringRes("Keystone wallet"),
                             ),
                             SimpleListItemState(
@@ -725,3 +792,5 @@ private fun PayPreview() =
                 )
         )
     }
+
+private const val PREVIEW_COLOR = 0xFFBE38F3

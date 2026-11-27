@@ -1,0 +1,9 @@
+Added:
+- We brought back Coinholder Polling, so you can take part in Zcash community polls from your wallet.
+
+Changed:
+- We rebuilt polling to work with your Ironwood-migrated funds.
+- We made poll loading more reliable during service outages.
+
+Fixed:
+- We fixed errors that interrupted signing, and made preparing a Keystone signature much faster.

@@ -12,7 +12,7 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 @Preview("Blank background")
 @Composable
 private fun BlankSurfacePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             Text(
                 text = "Test text on the blank app background",

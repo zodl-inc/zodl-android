@@ -1,54 +1,59 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
+import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
-import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import io.mockk.every
 import io.mockk.mockk
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Automatic-mode endpoint selection (MOB-1144): prefer the freshly benchmarked fastest server; else
- * keep the persisted endpoint only while it is still a bundled one; else fall back to the default.
- * A persisted custom server must never be reused in Automatic mode.
+ * Automatic-mode endpoint: the OHTTP gateway is the default, always. The benchmarked fastest
+ * clearnet server is never preferred over it. The only clearnet result is a bundled fallback that
+ * was manually selected while the gateway was unreachable (no automatic fallback since 2026-09-22).
  */
 class GetAutomaticEndpointUseCaseTest {
-    private val default = endpoint("zec.rocks")
-    private val known = listOf(default, endpoint("na.zec.rocks"))
+    private val gateway = endpoint("ohttp-gateway.example")
+    private val fallbacks = listOf(endpoint("zec.rocks"), endpoint("na.zec.rocks"))
 
     private val useCase =
         GetAutomaticEndpointUseCase(
-            walletRepository = mockk<WalletRepository>(relaxed = true),
             lightWalletEndpointProvider =
                 mockk<LightWalletEndpointProvider> {
-                    every { getEndpoints() } returns known
-                    every { getDefaultEndpoint() } returns default
+                    every { getEndpoints() } returns listOf(gateway) + fallbacks
+                    every { getDefaultEndpoint() } returns gateway
+                    every { getFallbackEndpoints() } returns fallbacks
                 },
+            isOhttpFallbackActiveProvider = mockk<IsOhttpFallbackActiveProvider>(relaxed = true),
             getSelectedEndpoint = mockk<GetSelectedEndpointUseCase>(relaxed = true)
         )
 
     @Test
-    fun prefersFastestWhenAvailable() {
-        assertEquals(
-            endpoint("eu.zec.rocks"),
-            useCase(fastest = endpoint("eu.zec.rocks"), persisted = endpoint("na.zec.rocks"))
-        )
+    fun defaultIsTheOhttpGatewayWhenNothingPersisted() {
+        assertEquals(gateway, useCase(isFallbackActive = false, persisted = null))
     }
 
     @Test
-    fun keepsPersistedWhenItIsABundledServer() {
-        assertEquals(endpoint("na.zec.rocks"), useCase(fastest = null, persisted = endpoint("na.zec.rocks")))
+    fun ohttpGatewayWinsOverAPersistedClearnetServerWhenNoFallbackIsActive() {
+        // A clearnet server left over from an earlier session is not the automatic pick while
+        // the gateway is available: OHTTP is the default.
+        assertEquals(gateway, useCase(isFallbackActive = false, persisted = endpoint("na.zec.rocks")))
     }
 
     @Test
-    fun dropsPersistedCustomServerToDefault() {
-        assertEquals(default, useCase(fastest = null, persisted = endpoint("custom.example.com")))
+    fun keepsTheActiveBundledFallbackWhileTheGatewayIsUnreachable() {
+        assertEquals(endpoint("na.zec.rocks"), useCase(isFallbackActive = true, persisted = endpoint("na.zec.rocks")))
     }
 
     @Test
-    fun fallsBackToDefaultWhenNothingPersisted() {
-        assertEquals(default, useCase(fastest = null, persisted = null))
+    fun neverResolvesToACustomServerEvenWhenFallbackIsActive() {
+        assertEquals(gateway, useCase(isFallbackActive = true, persisted = endpoint("custom.example.com")))
+    }
+
+    @Test
+    fun fallbackFlagWithoutAClearnetEndpointStillYieldsTheGateway() {
+        assertEquals(gateway, useCase(isFallbackActive = true, persisted = gateway))
     }
 
     private fun endpoint(host: String) =

@@ -1,4 +1,5 @@
 # Changelog
+
 All notable changes to this application will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -6,86 +7,632 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
-### Fixed:
-- When a send fails because the wallet's chain state changed between tapping review and confirm (due to syncing catching up, a reorg, or the app resuming from background), a clear actionable message is now shown instead of the generic error copy.
+## [3.21.1 (3903)] - 2026-11-19
+
+### Changed:
+
+- The OHTTP configuration now comes from the `com.zodl.android:app-config` dependency instead of `BuildConfig`
+  fields that the build filled from CI secrets or a local AWS cache. Every build, including F-Droid, has the same
+  source of the values.
+
+### Removed:
+
+- The `ZODL_OHTTP_*` Gradle properties and environment variables, the 8 `BuildConfig.OHTTP_*` fields, the
+  `scripts/ohttp-build-values.py` local cache script, the `scripts/check_ohttp_release_values.py` release guard and
+  the OHTTP secrets in the release, deploy, Firebase and E2E workflows. The guard's checks now run as a unit test.
+
+## [3.21.0 (3881)] - 2026-11-16
 
 ### Added:
-- Currency Conversion now supports multiple fiat currencies. You can pick which currency your balances and payment amounts are shown in from the Currency Conversion settings and opt-in screens.
-- When opening Send or Request while the selected currency's exchange rate can't be fetched, a bottom sheet now explains the issue and offers to switch to USD or continue entering amounts in ZEC.
+
+- [MOB-1987] Send Max: a Max chip next to the Send amount fills in everything the selected account can spend, net of
+  the network fee. Before a recipient is entered the amount is a preview priced for the account's own address, and it
+  is priced again for the recipient as soon as a valid address is entered or changed (the fee depends on the
+  recipient's pool); a memo does not change the fee. Changing the address before Max has filled in the amount cancels
+  it, and it does not start again by itself. Review stays off while the amount is being computed. While a Max amount is
+  filled, a line above the Review button says "Max leaves room for a transaction fee."; editing the amount removes it.
+  A failure is shown as an inline banner in the same place instead of a snackbar, until Max is tapped again or the
+  amount or recipient is changed. A wallet with too many notes for one transaction gets a "Too many notes to send at
+  once" sheet, both when Max is tapped and at Review, instead of the raw error; its OK button clears and
+  focuses the amount and ends Max, so a later recipient change does not fill it in again.
+- [MOB-1989] Swap Max: a Max chip next to the From amount fills in everything the selected account can swap, net of
+  the network fees (two marginal fees stay back for the deposit), in ZEC or, in USD mode, floored to the cent. The
+  amount follows each new quote down and back up, never above the amount at the tap, until the amount, the asset or the
+  direction is changed. It does not request a quote; it is unavailable while a quote is being requested and, in USD
+  mode, without a ZEC price. A line above "Get a quote" says that Max leaves room for fees and slippage and updates
+  with each quote. A failed Max shows an inline banner instead of a toast. A wallet with too many notes for one
+  transaction gets the "Too many notes to send at once" sheet.
+- [MOB-1988] Pay Max: a Max chip next to the Pay amount fills in the largest token amount the selected account can
+  pay, converted from its spendable ZEC (net of the network fees and the 0.67 percent app fee) through the USD prices
+  and floored to 8 decimals, with the USD amount following from it. At Review the amount is quoted again, up to twice,
+  aiming 0.3 percent below what is spendable, so a quote comes back far more often (about 0.3 percent of the balance
+  stays unspent). It does not request a quote; it is unavailable while a quote is being requested or without both
+  prices. A failed Max shows an inline banner instead of a toast. A wallet with too many notes for one transaction gets
+  the "Too many notes to send at once" sheet. Without a USD price Max is disabled and the USD field shows a dash.
+- Bitcoin, Litecoin, EIP-681 and Solana payment URIs are parsed through the SDK and routed into asset selection,
+  Pay and Swap; unsupported schemes, Solana transaction requests and unknown assets are rejected (MOB-1751).
+
+### Changed:
+
+- The Keystone shop offer opens the new Zodl discount link, https://shop.keyst.one/discount/Zodl.
+- [MOB-2296] How many notes a send can spend in one transaction now follows the memory available on the device when
+  you send (and, for a hardware signer, what it signs at once), so a large send no longer runs a phone out of memory. A Max,
+  a manual amount or a swap over that limit shows the "Too many notes to send at once" message.
+- [MOB-2296] A transaction the network refuses for good is shown as failed in the history instead of pending, and when
+  it is refused for having too many notes the send screen shows the "Too many notes to send at once" message.
+- [MOB-1987] The Send Review button is off while the wallet has nothing it can spend (only pending or transparent
+  funds, or a balance that is not known yet), the same condition that turns Max off, and while a Max amount is being
+  computed.
+- [MOB-1988] The USD amount on the Pay screen that is computed from the token amount (after Max, or when the asset
+  changes) is now written without grouping separators, such as `1234.5` instead of `1,234.5`, as on iOS.
 
 ### Fixed:
-- Modal bottom sheets again slide down when they close, including when navigating onward from them. The dismiss animation had stopped playing after a UI-toolkit update and sheets disappeared abruptly.
-- Amount fields now always use a period as the decimal separator and a comma for grouping, regardless of the device region, so amounts render and parse consistently everywhere. Typing an extra separator on an amount that already has a decimal point no longer resets the amount or drops its fraction digits.
-- Network request/response bodies and voting diagnostics are no longer written to logs in release builds, preventing sensitive data (recipient/refund addresses, amounts, transaction hashes) from leaking to logcat, bug reports, and crash dumps. Credential headers are also redacted from logs.
-- Crash reporting (Firebase Crashlytics) collection is now off by default and is only enabled after the user opts in, so no crash data can be sent before consent.
-- On the wallet-backup screen the recovery phrase is now masked until the biometric reveal, so the plaintext words can no longer be read from the accessibility/view tree behind the visual blur. While hidden, each word is announced to screen readers as a single descriptive label instead of spelling out the mask characters.
-- The cross-chain swap slippage guarantee is now always enforced: the swap provider's minimum-amount bounds are treated as required, so a malicious or tampered response can no longer skip the slippage check by omitting them.
-- Swap quotes rejected by the amount-consistency safety check are now reported to monitoring (without any amounts), so a future swap-provider format change surfaces as an observable signal instead of silently blocking swaps.
-- Exchange rates are no longer requested over a direct (non-Tor) connection. When Tor Protection is disabled the request to the rate provider is now blocked instead of falling back to clearnet, preventing the user's IP address and request timing from being exposed.
+
+- [MOB-2167] Sending to a TEX address now treats it like a transparent one: a memo typed before the recipient was
+  changed to a TEX address is no longer sent (the payment used to fail because a TEX address cannot receive a memo),
+  a memo that is too long no longer disables the Send button, and a zero amount is rejected whichever way the
+  amount was entered.
+- Pay: the check of a quote's minimum deposit against the amount the wallet deposits now works. It compared the minimum
+  with a ceiling above the deposit and could not fail. A minimum far below the deposit (more slippage buffer than
+  chosen) or above it (the deposit would be refunded) is now rejected.
+- Swap and Pay: when the selected asset drops out of the asset list, a Max in progress or following the quotes ends
+  with it instead of leaving its hint and a running request behind.
+
+## [3.20.0 (3807)] - 2026-11-09
+
+### Changed:
+
+- The OHTTP configuration is part of the app build instead of the SDK: release builds (Google Play and both FOSS
+  builds, so also foss.zodl.com) pass it to the SDK at startup. A build without it, such as a local or third-party
+  build, offers only the Public connection.
+
+- The app now connects to Zcash servers through OHTTP relays by default for private network
+  connections. Exchange rate updates also route through OHTTP without requiring a build-time API key.
+- Choose a Server now offers three connection modes: Private (Zodl servers over OHTTP, the default for
+  new wallets and for users who were on Automatic), Public (the fastest public server, switched
+  automatically) and Manual (a server of your choice, including a custom one). Private has an
+  info sheet explaining how it protects your IP address.
+- When the private connection is unavailable, a bottom sheet lets you keep waiting or switch to public
+  servers, with a Tor Protection toggle to hide your IP address on public servers. After a switch made
+  from that sheet, the wallet returns to Private on its own once the private connection works again.
+  A Public or Manual choice made on purpose is never changed automatically.
+- Users on Public or Manual see a Home message offering the private connection, with a screen that
+  explains it and a "Not now" option that hides the message for good.
+- Flexa's API calls go through OHTTP to the gateway, which holds the publishable key, so Flexa no
+  longer sees the user's IP address for them and the app no longer needs a build-time Flexa key. The
+  Flexa SDK is built from source (`third-party/flexa`). Its web pages and images load from Flexa
+  directly, so on the private connection or with Tor on its images are not downloaded (a placeholder
+  shows) and its pages (places to pay, locations, legal pages) open only after you agree to a notice that
+  Flexa can see your IP address.
+- The F-Droid build now behaves like the Google Play build: it offers Flexa (its API calls go through
+  OHTTP, so no publishable key is needed), and its release checks that the FOSS runtime classpath has
+  no non-free dependency. It still ships without Firebase Crashlytics and ML Kit (QR scanning uses
+  zxing-cpp).
+- The private connection's info and opt-in sheets say what it covers: the wallet servers' requests, not
+  Flexa's pages and images, custom servers or opened links.
+- Choose a Server marks Private as "Not private" when this build reaches the gateway through a test relay.
+
+## [3.19.0 (3234)] - 2026-10-29
+
+### Changed:
+
+- Migration time estimates, the plan's total duration and the Syncing banner follow NU7's 25-second target block
+  spacing. An estimate that reaches past the NU7 activation height counts each side at its own spacing, and the
+  Syncing banner still opens at three days behind.
+- The scheduled (private) Ironwood migration is not offered until the chain reaches the NU7 activation height, and
+  the Setup screen shows it as available after the upgrade with the estimated date. The one-transaction migration
+  stays available at every height, and a migration that is already running keeps sending its valid transfers until
+  the activation. After NU7 a run that still holds a transfer signed for the old consensus branch is cancelled and a
+  one-time Home notice offers to migrate what is left. Confirmed transfers are unaffected, and unconfirmed ones can
+  stay unavailable until they expire and the wallet syncs.
+- Restarting a migration that has a transfer needing attention, before NU7, ends the run and opens the Setup screen
+  (the scheduled migration is shown as available after the upgrade, the one-transaction one now) instead of failing.
+- The Keystone signing and scanning screens explain that a scheduled migration cannot start before NU7 instead of a
+  generic error. Spanish copy was added for the new migration messages. A wallet that has not synced yet is told to
+  finish syncing instead.
+
+## [3.18.0 (3206)] - 2026-10-23
+
+### Added:
+
+- You can now add a view-only account by importing a Unified Full Viewing Key: tap Add Account in
+  the Wallets & Hardware screen, choose Import full viewing key, paste the key or scan its QR code,
+  tell Zodl when the account was created, then name it and pick its colour. A view-only account
+  shows its balance, addresses and activity, receives funds, swaps into ZEC, exports its viewing
+  key and tax file, and is marked View Only under its name at the top of Home. It holds no spending
+  key, so Home offers only Receive and Swap for it, and sending, paying, shielding, swapping from
+  ZEC, voting and migration are refused. A key that is malformed, for another network, or missing
+  its Orchard or transparent part is rejected, a key that is already in the wallet is not added
+  twice, and a name another account already shows is refused.
+- A view-only account can now be edited and removed from the "..." of its row in the Wallets &
+  Hardware screen. Edit Account renames it, up to 12 characters, and changes its colour; Save
+  changes is enabled once the name or the colour is new and the name is not one another account
+  already shows. The new name shows everywhere the account appears, and the account's icon shows
+  in its colour. The name is kept on this device only. Remove Account asks for confirmation and
+  then for your device authentication, and removes the account from Zodl on this device while
+  keeping your address book contacts and the account's other metadata; if it was the selected
+  account, the Zodl account is selected again. The Zodl account's name and colour cannot be edited.
+
+### Changed:
+
+- The account picker opened from the account switch at the top of Home is now the full-screen
+  Wallets & Hardware screen instead of a sheet. It groups the wallets into Zodl, Keystone, Ledger and
+  view-only sections, shows each wallet's balance, which hides with Hide Balances, and marks the
+  selected wallet. Tapping a wallet selects it; the "..." of a Keystone or Ledger wallet opens
+  Wallet Options, from which Disconnect hardware wallet disconnects that wallet even while another
+  one is selected; disconnecting a hardware wallet moved there from Advanced Settings, which no
+  longer offers it. While no Keystone is connected the screen shows the Keystone shop offer again.
+- The Wallets & Hardware screen's Connect Hardware Wallet button is now Add Account, which offers
+  connecting a hardware wallet, while one can still be added, and importing a viewing key.
+
+## [3.17.2 (3157)] - 2026-10-20
+
+### Fixed:
+
+- Updated the Zcash SDK to 5.2.2, which refreshes the bundled Rust TLS root certificates (`rustls-webpki`, `webpki-roots`), so connections made from the Rust layer (including Tor) no longer trust the revoked eMudhra roots.
+
+## [3.17.1 (3155)] - 2026-10-14
+
+### Changed:
+
+- Updated the SDK to 5.2.1, which builds `pasta_curves` with its `asm` feature. Proving, syncing and
+  shielded transactions use the assembly field arithmetic on 64-bit devices (`arm64-v8a`, `x86_64`).
+
+## [3.17.0 (3149)] - 2026-10-10
+
+### Added:
+
+- We added support for Ledger hardware wallets. Connect your Ledger to receive ZEC and to send it with approval on your device. You can choose which Ledger account to connect; one account can be connected at a time.
+
+### Changed:
+
+- We updated our cryptography library for faster performance.
+
+### Added:
+
+- You can now connect a Ledger hardware wallet over Bluetooth: pair a Ledger account, then see it
+  in the new Wallets & Hardware picker, on Home and on Receive. Sending, shielding, swapping,
+  paying and ZIP-321 payments from a Ledger account now sign on the device over Bluetooth, and tax
+  export saves a Ledger account's history as `Ledger_Transaction_History_<year>.csv`; voting and
+  migration do not yet. The connect flow opens with an overview of what it will ask, then goes
+  through four numbered steps: turn on and unlock the Ledger, pick it and confirm the Bluetooth
+  pairing code, open the Zcash app, and approve the account export. It explains what to do when
+  Bluetooth is off, the Zcash app on the Ledger is out of date or needs a restart, or the
+  connection fails, and can turn Bluetooth on for you. It tells a failed pairing apart from a
+  Ledger that disconnected during setup, and stops waiting for the device after five minutes. A
+  Ledger account whose pairing is missing or unusable can be paired again from the signing sheet
+  with Pair Ledger; a different Ledger there shows Wrong Ledger instead of adding a second Ledger
+  account. After the wrong Ledger the signing sheet asks you to pick the device instead of
+  reconnecting to the same one.
+
+### Changed:
+
+- Disconnect Hardware Wallet in Advanced Settings now shows only while a Keystone or Ledger account
+  is selected, and disconnects that account; it used to show whenever the wallet held a Keystone
+  account, whichever account was selected.
+- The integrations sheet no longer lists Connect Keystone; hardware wallets, Keystone or Ledger, are
+  connected from the accounts sheet.
+
+### Fixed:
+
+- Choosing to keep the screen on while Zodl syncs now works after connecting a Ledger or a Keystone,
+  and the screen stays on until that sync has finished after a restore or a resync as well.
+- Notes, bookmarks and swap history of Keystone accounts no longer disappear after a re-import or
+  when stored data can't be read.
+
+## [3.16.0 (2958)] - 2026-10-07
+
+### Added:
+
+- We added gift cards. Go to More → Redeem Gift Card, scan the QR code or paste the link, and the ZEC goes straight into your wallet.
+- You can also redeem gift cards created in other wallets.
+
+### Added:
+
+- Redeem gift cards: scan a gift card QR code or paste its link from the new Redeem Gift Card item in the Home
+  menu or from any address scanner, and the card's funds are swept into the selected account. Opening a
+  `gift.zodl.com` link from another app only opens the in-app gift card scanner, which asks for the card to be
+  scanned with Zodl; the link itself is never redeemed. The redeem screen shows the amount the wallet will
+  receive, net of the network fee, and the sender's message, waits for pending funds, and reports cards that are
+  already redeemed, invalid or for another network; after a redemption it shows the amount received. The
+  redemption runs on its own and is not interrupted by leaving the screen; a card nobody is looking at any more
+  is closed and its temporary wallet erased, as are all cards when the wallet is reset. A card is checked and
+  redeemed over Tor when Tor is turned on for the wallet, and a card holding no more than the network fee is shown
+  as having nothing to redeem.
+  The pasted link and the card's QR code are kept out of screenshots and the recent apps list, a pasted link is
+  cleared from the clipboard (also below Android 9), and links are refused wherever an address is expected, in swaps
+  and contacts, also when disguised with invisible characters, encodings or compatibility forms.
+
+### Changed:
+
+- Buttons are now drawn 48 dp tall by default instead of 40 dp, matching the design system. This changes their
+  visible size, not just a minimum: the old 40 dp button already took a 48 dp slot in the layout. Compact buttons,
+  such as the ones on the home screen messages and the activity header, keep their smaller size and layout height,
+  and still grow for wrapped text. Stacked or adjacent buttons are 8 dp apart, and the space between a button and
+  any other content is 4 dp larger than before, so the visible gap stays as it was.
+- Swap and Pay now restore asset and network choices immediately while current prices load in the background (MOB-1923).
+
+### Fixed:
+
+- [MOB-1032] TEX payments remain pending while a retryable second transaction is still being broadcast instead of showing a failure after the first transaction succeeds.
+
+## [3.15.0 (2852)] - 2026-09-28
+
+### Added:
+
+- Export Viewing Key in Advanced Settings: share the selected account's Incoming or Full Viewing Key
+  as a QR code or key string, revealed behind biometrics and behind a consent sheet for the Full key.
+  The chooser carries the logo and name of the selected wallet, Zodl or Keystone.
+
+### Changed:
+
+- The background behind bottom sheets built on the Zashi screen and in-screen sheet wrappers now darkens
+  gradually as the sheet opens, closes or is dragged, instead of fading on a timer, and no longer flashes dark
+  for a moment when a sheet opens.
+- The currency, swap asset and slippage sheets no longer close when dragged down.
+
+## [3.14.0 (2738)] - 2026-09-16
+
+### Added:
+
+- We added support for coinholder polls with up to 50 questions.
+
+### Changed:
+
+- We made submitting your votes in coinholder polls faster.
+- Coinholder Polling accepts rounds with up to 50 questions and proposal ids up to 50, matching the
+  vote chain's circuit update for the 37-question Retroactive Grants round (zcash_voting 4.0.0-rc.2).
+- Coinholder Polling now votes with at most two note bundles instead of one per five notes, so a
+  wallet with many small notes no longer pays for dozens of proofs and confirmation waits. Bundles
+  are only dropped while the voting weight they carry stays under 1 % of your eligible balance
+  (never more than 1,000 ZEC), and the confirmation screen shows exactly how much weight was left
+  out.
+- Coinholder Polling now broadcasts every bundle of a question before it starts waiting for any of
+  them to be mined, instead of waiting out one bundle at a time.
+- Coinholder Polling now sends the encrypted vote shares to the helper servers in the background
+  while it moves on to the next question, instead of waiting for each delivery before continuing.
+  A delivery that no server accepts still fails the submission, only once every vote is on chain.
+- Coinholder Polling now keeps at most two of those background share deliveries running at once, so
+  their Tor traffic no longer competes with the votes still being submitted.
+- Coinholder Polling now runs one chain per note bundle instead of taking them strictly one after
+  another, so while one bundle waits for its transaction to be mined the other is already proving
+  its next vote. Up to two proofs now run at once, each bundle on its own connection.
+- Coinholder Polling now produces the delegation proof in the background while you are still
+  answering the questions, so submission no longer starts by making you wait for it. The proof is
+  discarded and redone if anything about the round changes, and leaving the poll cancels it.
+- Coinholder Polling now asks the other vote servers about a pending transaction on every eighth
+  confirmation poll, so a vote no longer waits out its whole confirmation budget when the server
+  that accepted it stops indexing.
+- The sub-$300 refund warning and the Swap explainer now name a wrong asset, rather than a wrong address, as
+  the mistake NEAR does not refund, matching the updated design (MOB-1890).
+
+### Fixed:
+
+- Retrying a Coinholder Polling submission that failed while sending the encrypted vote shares now
+  resends the shares that never reached a helper server, instead of skipping every question whose
+  vote was already on chain and failing the same way again.
+
+## [3.13.0 (2705)] - 2026-09-15
+
+### Added:
+
+- The support email now includes whether Tor is enabled.
+- Swap and CrossPay now warn you before requesting a quote when the amount you are sending is worth less than
+  $300, because NEAR does not refund a swap or payment under $300 that is lost to a wrong address or a wrong
+  network. The warning carries a "Don't show this message again" checkbox that silences it for that flow only
+  (MOB-1890).
+
+### Changed:
+
+- The Swap, CrossPay and refund-address explainers no longer describe NEAR refunds as unconditional; they now
+  state the $300 threshold. The Swap and CrossPay explainers also gained a "Learn more" button that opens the
+  matching support article, and all three explainers now close with a "Dismiss" button instead of "OK", matching
+  iOS (MOB-1890).
+- Currency Conversion now offers every fiat currency supported by the exchange-rate provider except CUP, IRR and RUB. The currency picker loads
+  the list on demand and shows a loading state, or an error with retry when the list cannot be fetched.
+- Currency Conversion now reaches the exchange-rate provider over Tor even when Tor is turned off in Settings
+  and Currency Conversion has not been enabled yet, so the currency picker loads its list on first use instead
+  of showing an error.
+
+### Fixed:
+
+- The seed backup prompt now always takes priority over the migration banner and any sync/connectivity error banner once your wallet has received a balance and you haven't backed up your recovery phrase yet, so it can no longer be hidden behind other home screen messages for days.
+- The loading placeholders on the currency and swap-asset picker sheets are visible again; they used the same
+  colour as the sheet background.
+
+### Removed:
+
+- The "Disable Tor?" dialog for a failed Tor start-up. Tor starts lazily, so the condition it reported could
+  never occur.
+
+## [3.11.0 (2653)] - 2026-09-08
+
+### Added:
+
+- App Theme setting in Settings, letting you choose System, Light, or Dark — with a bottom sheet to pick
+  Classic Dark or Pure Black (OLED) whenever a dark appearance applies.
+- The in-app browser now matches the app theme, including the Pure Black theme.
+
+### Changed:
+
+- Automatic server selection now switches only to a server that is meaningfully faster than the one you're on (at least 200 ms and 25 % faster), or when the current server fails its health check twice in a row, so the wallet no longer flips between near-equal or briefly slow servers. A switch is never followed by another within thirty minutes, and the servers are re-checked at most once every ten minutes instead of on every return to the app.
+
+### Fixed:
+
+- Support/error reports for a failed transaction no longer claim a fake `gRPC: false, code: -1` status when the failure actually happened before submission (e.g. a Sapling parameter download failure); such reports now correctly identify the real exception instead.
+- Opening Send immediately after a cold start no longer falls back to a loading screen while automatic server selection reconnects the wallet. The automatic winner waits for the local balance snapshot, which remains visible while the new server connection settles.
+- Fixed a crash loop some wallets hit at startup when the SDK reported the stored seed as no longer relevant to its database. The app now recovers automatically by clearing the mismatched local data and rescanning, instead of crashing repeatedly.
+- The app returns to onboarding so you can restore from your recovery phrase when its secret store is found empty while it still believes a
+  wallet was set up, instead of opening a home screen with no wallet behind it.
+- Opening the encrypted secret store is retried a few times before it is declared unreadable, and an unreadable store is set aside on the
+  device instead of being deleted.
+- Swap quotes that fail the request-vs-response validation now show a dedicated "Swap details didn't match" sheet with a Report button that pre-fills a support email (MOB-1340).
+
+## [3.10.2 (2569)] - 2026-08-27
+
+### Added:
+
+- Coinholder Polling now shows a pull-to-refresh indicator on the poll list, so you can manually refresh it on demand.
+
+### Changed:
+
+- Coinholder Polling's poll list no longer refreshes itself in the background while you're just browsing it; it now updates when you open the screen, return to it, or pull to refresh.
+- Vote submission is faster and more reliable over Tor: a slow or unresponsive vote-helper server no longer stalls the whole submission.
+- Coinholder Polling no longer becomes unavailable when the primary voting configuration service is unreachable or blocked: the app
+  verifies the same pinned configuration from a second independent mirror, walks the configuration's own mirror list, and config
+  requests now give up after 15 seconds instead of two minutes.
+
+### Fixed:
+
+- Coinholder Polling's poll list and proposal loading no longer hang indefinitely when a vote server is unreachable over Tor; a slow or dropped connection now fails over to the next server within a bounded time.
+
+## [3.10.1 (2512)] - 2026-08-25
+
+### Added:
+
+- We added a home screen banner and follow-up screen for a small amount of ZEC that can be left in Orchard after migrating to Ironwood, so you can choose whether to lock it or move it.
+
+### Fixed:
+
+- We fixed migrating with a Keystone wallet, so migrations are now split into signing rounds correctly.
+
+### Fixed:
+
+- A temporary Android Keystore failure at startup is no longer mistaken for corrupted encrypted storage: the encrypted secret store is now
+  recreated only when its data is provably undecryptable (for example after a device-to-device transfer, which cannot move hardware-bound
+  keys), and any other failure keeps the stored data intact.
+
+## [3.10.0 (2475)] - 2026-08-20
+
+### Added:
+
+- Buttons, rows, and other interactive elements now respond to touch with a subtle expressive press animation.
+- Screens and sheets across the app now use frosted-glass headers and footers, with content scrolling beneath them.
+- We brought back Coinholder Polling, so you can take part in Zcash community polls from your wallet.
+
+### Changed:
+
+- Bottom sheets across the app now share one background color.
+- We rebuilt polling to work with your Ironwood-migrated funds.
+- We made poll loading more reliable during service outages.
+
+### Fixed:
+
+- Requesting a swap quote you cannot afford now shows the Insufficient Funds sheet instead of the technical error screen. A shortfall
+  found while building the transaction is now reported by the SDK as an insufficient-funds failure rather than a raw error.
+- The app-lock re-authentication timeout is now measured with a monotonic clock instead of the system wall clock, so it can no longer be
+  bypassed by changing the device's date and time.
+- We polished several UI details: the swap quote review header now stands out from the sheet background, the Activity header turns frosted
+  sooner so it stays readable while you scroll, the Terms of Service icon matches the Privacy Policy one, and the Ironwood migration screens
+  scroll properly on small displays.
+- We fixed errors that interrupted signing, and made preparing a Keystone signature much faster.
+
+## [3.9.3 (2393)] - 2026-08-17
+
+### Changed:
+
+- We improved various UI elements around Ironwood migrations.
+- We no longer request biometric authentication before a wallet exists.
+
+### Fixed:
+
+- We fixed an issue that prevented some wallets from detecting spendable funds after migration.
+- We addressed issues affecting balances, transaction activity, migration, navigation, and stability on older Android devices.
+
+## [3.9.2 (2370)] - 2026-08-10
+
+### Fixed:
+
+- The refund address explainer no longer reads like "USDC on NEAR" is a fixed destination for every refund — it now says the refund returns in the source currency on the same network, since that's true for any swap, not just NEAR-based ones.
+- Closing the error sheet during Keystone migration signing no longer discards already-signed rounds.
+- Shielded coinholder-polling rounds with more than one vote bundle no longer fail to build or submit votes beyond the first bundle.
+- Delegated vote submissions in shielded coinholder-polling rounds are no longer rejected by the voting server.
+- Fixed a rare case where a shielded coinholder-polling vote could stall waiting for confirmation instead of completing.
+- Tapping Receive no longer hangs indefinitely when a transient address-derivation error occurs; the app falls back to the account's current address instead.
+- The device authentication prompt no longer appears on app launch before a wallet has been created or restored.
+
+## [3.9.1 (2361)] - 2026-08-08
+
+### Fixed:
+
+- Transferring to a new phone via device-to-device setup no longer copies the app's local data, including the undecryptable encrypted preferences
+  file, which previously forced a manual seed re-restore on the new device. Only the address book and metadata backups are carried over, matching
+  cloud backup.
+- Preference file creation no longer serializes behind one global lock: a slow or hung encrypted-preferences creation (e.g. blocked on the Keystore)
+  no longer delays every other preference file, including the ones startup flows like the wallet secret and home state depend on. Preference-provider
+  instances are now correctly cached instead of being rebuilt on every access, and steady-state preference reads/writes no longer take a lock at all.
+- Opening the automatic migration progress screen no longer shows a blank screen while it loads. The migration schedule now appears immediately and a
+  loading indicator is shown on screens that are still waiting for their content.
+- Automatic migration no longer gets stuck if a scheduled transfer step fails transiently. The background driver now retries instead of silently
+  stopping, which previously required backgrounding and re-foregrounding the app to recover.
+- Fixed a back-navigation bounce through the Battery/Notification permission screens when returning from Review - pressing Back could land you
+  several screens further back than expected.
+
+## [3.9.0 (2339)] - 2026-08-08
+
+### Added:
+
+- We added Move to Ironwood, a guided migration that moves your Orchard funds into the new Ironwood shielded pool.
+- We added two ways to migrate: a private option that splits your balance into smaller transfers sent automatically in the background over time, or an
+  immediate single transfer.
+- We added Tor protection, progress notifications, Keystone support, and a home screen banner for tracking your migration.
+
+## [3.9.0 (2329)] - 2026-08-07
+
+### Added:
+
+- We added Move to Ironwood, a guided migration that moves your Orchard funds into the new Ironwood shielded pool.
+- We added two ways to migrate: a private option that splits your balance into smaller transfers sent automatically in the background over time, or an
+  immediate single transfer.
+- We added Tor protection, progress notifications, Keystone support, and a home screen banner for tracking your migration.
+
+## [3.9.0 (2029)] - 2026-07-31
+
+### Fixed:
+
+- When a send fails because the wallet's chain state changed between tapping review and confirm (due to syncing catching up, a reorg, or the app
+  resuming from background), a clear actionable message is now shown instead of the generic error copy.
+
+## [3.8.1 (2027)] - 2026-07-30
+
+### Fixed:
+
+- Corrected several issues affecting how balances and transaction details were displayed. Your funds are safe, this only fixes how the wallet shows
+  the values.
+
+## [3.8.1 (2025)] - 2026-07-29
+
+### Fixed:
+
+- Corrected several issues affecting how balances and transaction details were displayed. Your funds are safe, this only fixes how the wallet shows
+  the values.
+
+## [3.8.0 (2023)] - 2026-07-27
+
+### Changed:
+
+- We lowered the minimum supported Keystone firmware for signing from 3.0.3 to 3.0.1.
+
+## [3.8.0 (2018)] - 2026-07-25
+
+### Added:
+
+- We added support for Zcash's Ironwood network upgrade (NU6.3), keeping your wallet fully compatible with the latest network changes. Support for
+  moving funds to the new Ironwood pool will arrive in a future update.
+
+### Fixed:
+
+- We fixed an issue where a Keystone hardware wallet signature could be accepted even though its firmware couldn't produce a transaction the app can
+  broadcast. Keystone signing now requires firmware 3.0.3 or later; older or version-less firmware is blocked before broadcast, and the prompt reports
+  the firmware version exactly as your device displays it.
 
 ## [3.7.2 (2009)] - 2026-07-11
 
 ### Changed:
+
 - We refined our list of supported Swap/Pay assets, focusing on the ones users actually use.
 
 ## [3.7.1 (1992)] - 2026-06-29
 
 ### Fixed:
+
 - We fixed an issue impacting BTC swaps and payments.
 
 ## [3.7.0 (1986)] - 2026-06-23
 
 ### Added:
-- When your server selection is set to Automatic, we now broadcast your transactions across several servers at once, so they're more likely to send reliably. You can change this in Advanced Settings.
+
+- When your server selection is set to Automatic, we now broadcast your transactions across several servers at once, so they're more likely to send
+  reliably. You can change this in Advanced Settings.
 
 ### Changed:
+
 - We made a range of security and privacy improvements.
 
 ### Fixed:
+
 - We fixed an issue with disconnecting a Keystone hardware wallet.
 - We fixed a couple of transaction status display issues.
+
+### Added:
+
+- Currency Conversion now supports multiple fiat currencies. You can pick which currency your balances and payment amounts are shown in from the
+  Currency Conversion settings and opt-in screens.
+- When opening Send or Request while the selected currency's exchange rate can't be fetched, a bottom sheet now explains the issue and offers to
+  switch to USD or continue entering amounts in ZEC.
+
+### Fixed:
+
+- Modal bottom sheets again slide down when they close, including when navigating onward from them. The dismiss animation had stopped playing after a
+  UI-toolkit update and sheets disappeared abruptly.
+- Amount fields now always use a period as the decimal separator and a comma for grouping, regardless of the device region, so amounts render and
+  parse consistently everywhere. Typing an extra separator on an amount that already has a decimal point no longer resets the amount or drops its
+  fraction digits.
+- Network request/response bodies and voting diagnostics are no longer written to logs in release builds, preventing sensitive data (recipient/refund
+  addresses, amounts, transaction hashes) from leaking to logcat, bug reports, and crash dumps. Credential headers are also redacted from logs.
+- Crash reporting (Firebase Crashlytics) collection is now off by default and is only enabled after the user opts in, so no crash data can be sent
+  before consent.
+- On the wallet-backup screen the recovery phrase is now masked until the biometric reveal, so the plaintext words can no longer be read from the
+  accessibility/view tree behind the visual blur. While hidden, each word is announced to screen readers as a single descriptive label instead of
+  spelling out the mask characters.
+- The cross-chain swap slippage guarantee is now always enforced: the swap provider's minimum-amount bounds are treated as required, so a malicious or
+  tampered response can no longer skip the slippage check by omitting them.
+- Swap quotes rejected by the amount-consistency safety check are now reported to monitoring (without any amounts), so a future swap-provider format
+  change surfaces as an observable signal instead of silently blocking swaps.
+- Exchange rates are no longer requested over a direct (non-Tor) connection. When Tor Protection is disabled the request to the rate provider is now
+  blocked instead of falling back to clearnet, preventing the user's IP address and request timing from being exposed.
 
 ## [3.6.0 (1914)] - 2026-06-16
 
 ### Added:
-- Until now, balances only displayed in US dollars. We added multi-currency support — pick your preferred fiat in Currency Conversion settings and on the Wallet Status Widget opt-in.
+
+- Until now, balances only displayed in US dollars. We added multi-currency support — pick your preferred fiat in Currency Conversion settings and on
+  the Wallet Status Widget opt-in.
 
 ### Changed:
+
 - New Automatic/Manual server selection improves reliability — Automatic keeps you on the best server. Users on custom servers stay on Manual.
 - New wallets now sync from the chain tip instead of a bundled checkpoint, skipping the first-launch scan.
 
 ## [3.5.3 (1745)] - 2026-06-05
 
 ### Changed:
+
 - Removed servers scheduled for decommissioning from the server list.
 
 ## [3.5.2 (1742)] - 2026-06-04
 
 ### Changed:
+
 - Updated compatibility with the latest Zcash network changes. This update is required to ensure continued wallet functionality.
 - We updated the default server.
 
 ### Changed:
+
 - Voting round responses now require explicit option indices from vote servers.
 - Automatic transaction submission may broadcast to multiple bundled servers. Use Manual mode to submit only through the selected server.
 
 ## [3.5.1 (1741)] - 2026-06-02
 
 ### Changed:
+
 - Updated compatibility with the latest Zcash network changes. This update is required to ensure continued wallet functionality.
 - We updated the default server.
 
 ## [3.5.0 (1736)] - 2026-05-28
 
 ### Added:
+
 - Coinholder Polling lets you vote on Zcash governance privately, right from your Zodl and Keystone wallets.
 
 ## [3.4.1 (1698)] - 2026-05-19
 
 ### Changed:
+
 - We updated the copy on the shielding status widget.
 
 ### Fixed:
+
 - We fixed a bug that prevented shielding when many small transparent inputs were involved.
 - We fixed 'Send Again' pre-filling some fields incorrectly.
 - We fixed the Currency Conversion prompt not appearing in the new-wallet and restore flows.
@@ -93,12 +640,15 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ## [3.4.0 (1691)] - 2026-05-12
 
 ### Added:
+
 - We added Wallet Birthday Height when connecting a Keystone.
 
 ### Changed:
+
 - We refreshed the Restore flow copy.
 
 ### Fixed:
+
 - Locale bugs that could truncate ZEC, block Send, or cause an oversend with a comma decimal separator.
 - A bug where a shielded address could be reused as a swap refund address.
 - A missing copy-confirmation toast on Receive.
@@ -107,230 +657,281 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ## [3.3.1 (1643)] - 2026-04-10
 
 ### Fixed:
+
 - We fixed ktor dependency clash.
 
 ## [3.3.1 (1641)] - 2026-04-10
 
 ### Added:
+
 - We added a feature for disconnecting a Keystone hardware wallet.
 
 ### Changed:
+
 - We updated all dependencies.
 
 ### Fixed:
+
 - We fixed a few UX/UI issues.
 
 ## [3.3.1 (1639)] - 2026-04-09
 
 ### Added:
+
 - We added a feature for disconnecting a Keystone hardware wallet.
 
 ### Changed:
+
 - We updated all dependencies.
 
 ### Fixed:
+
 - We fixed a few UX/UI issues.
 
 ## [3.3.0 (1637)] - 2026-04-08
 
 ### Added:
+
 - We added a feature for disconnecting a Keystone hardware wallet.
 
 ### Changed:
+
 - We updated all dependencies. (Android only)
 
 ### Fixed:
+
 - We fixed a few UX/UI issues.
 
 ## [3.3.0 (1635)] - 2026-04-08
 
 ### Added:
+
 - We added a feature for disconnecting a Keystone hardware wallet.
 
 ### Changed:
+
 - We updated all dependencies. (Android only)
 
 ### Fixed:
+
 - We fixed a few UX/UI issues.
 
 ## [3.3.0 (1631)] - 2026-04-07
 
 ### Added:
+
 - We added a feature for disconnecting a Keystone hardware wallet.
 
 ### Changed:
+
 - We updated all dependencies. (Android only)
 
 ### Fixed:
+
 - We fixed a few UX/UI issues.
 
 ## [3.3.0 (1629)] - 2025-04-07
 
 ### Added:
+
 - We added a feature for disconnecting a Keystone hardware wallet.
 
 ### Changed:
+
 - We updated all dependencies. (Android only)
 
 ### Fixed:
+
 - We fixed a few UX/UI issues.
 
 ## [3.3.0 (1627)] - 2025-04-03
 
 ### Added:
+
 - We added a feature for disconnecting a Keystone hardware wallet.
 
 ### Changed:
+
 - We updated all dependencies. (Android only)
 
 ### Fixed:
+
 - We fixed a few UX/UI issues.
 
 ## [3.2.1 (1605)] - 2025-03-28
 
 ### Added:
+
 - We fixed the Show/Hide feature and added it to Swap from ZEC.
 - We added Wallet Status Widget prompt for Tor protection.
 
 ### Changed:
+
 - We switched Swap from ZEC to use FLEX_INPUT to allow for undersent swaps to still be executed.
 - We updated and unified UX/UI elements and behaviour across both platforms.
 
 ### Fixed:
+
 - We fixed several issues with handling ZIP321 payment requests.
 
 ## [3.2.0 (1600)] - 2025-03-24
 
 ### Added:
+
 - We fixed the Show/Hide feature and added it to Swap from ZEC.
 - We added Wallet Status Widget prompt for Tor protection.
 
 ### Changed:
+
 - We switched Swap from ZEC to use FLEX_INPUT to allow for undersent swaps to still be executed.
 - We updated and unified UX/UI elements and behaviour across both platforms.
 
 ### Fixed:
+
 - We fixed several issues with handling ZIP321 payment requests.
 
 ## [3.2.0 (1594)] - 2026-03-20
 
 ### Added:
+
 - We fixed the Show/Hide feature and added it to Swap from ZEC.
 - We added Wallet Status Widget prompt for Tor protection.
 
 ### Changed:
+
 - We switched Swap from ZEC to use FLEX_INPUT to allow for undersent swaps to still be executed.
 - We updated and unified UX/UI elements and behaviour across both platforms.
 
 ### Fixed:
+
 - We fixed several issues with handling ZIP321 payment requests.
 
 ## [3.1.0 (1516)] - 2026-03-06
 
 ### Added:
+
 - We built in-app mechanism for contacting support in case of Swap/Pay issues.
 - We added a low slippage warning.
 - We implemented handling for incomplete deposits.
 - We also added more information to the Swap/Pay status flows.
 
 ### Changed:
+
 - We updated default slippage to 2% for faster execution of swaps.
 - We changed the default server.
 - We also improved UX of the Swap to ZEC deposit screen.
 - We made other UX/UI improvements.
 
 ### Fixed:
+
 - We fixed a note commitment tree error.
 
 ## [3.1.0 (1514)] - 2026-03-06
 
 ### Added:
+
 - We built in-app mechanism for contacting support in case of Swap/Pay issues.
 - We added a low slippage warning.
 - We implemented handling for incomplete deposits.
 - We also added more information to the Swap/Pay status flows.
 
 ### Changed:
+
 - We updated default slippage to 2% for faster execution of swaps.
 - We changed the default server.
 - We also improved UX of the Swap to ZEC deposit screen.
 - We made other UX/UI improvements.
 
 ### Fixed:
+
 - We fixed a note commitment tree error.
 
 ## [3.0.1 (1470)] - 2026-03-02
 
 ### Fixed:
+
 - Rebrand to Zodl
 - Bugfixes
 
 ## [3.0.1 (1469)] - 2026-02-27
 
 ### Fixed:
+
 - Rebrand to Zodl
 - Bugfixes
 
 ## [3.0.0 (1468)] - 2026-02-26
 
 ### Fixed:
+
 - Rebrand to Zodl
 - Bugfixes
 
 ## [3.0.0 (1467)] - 2026-02-25
 
 ### Fixed:
+
 - Rebrand to Zodl
 - Bugfixes
 
 ## [3.0.0 (1466)] - 2026-02-25
 
 ### Fixed:
+
 - Rebrand to Zodl
 - Bugfixes
 
 ## [2.4.11 (1426)] - 2026-01-28
 
 ### Fixed:
+
 - Fixed `release.yaml` GitHub Actions workflow
 
 ## [2.4.11 (1424)] - 2026-01-21
 
 ### Fixed:
+
 - Fixed `release.yaml` GitHub Actions workflow
 
 ## [2.4.11 (1419)] - 2025-12-18
 
 ### Added:
+
 - New servers added to `LightWalletEndpointProvider`
 
 ## [2.4.11 (1418)] - 2025-12-18
 
 ### Fixed:
+
 - 'View Transaction' & 'Check Status' buttons are now hidden if an error creating and sending a transaction occurred
 - Fixed a crash while navigating back after scanning zip321 with zero amount
 
 ### Changed:
+
 - ZEC now shows at least 3 decimal points globally within the app
 - Small design updates on transaction detail screen
 
 ## [2.4.10 (1413)] - 2025-12-16
 
 ### Changed:
+
 - Updated the solana store banner
 
 ## [2.4.10 (1412)] - 2025-12-16
 
 ### Added:
+
 - We updated icons for Swap/Pay assets and chains.
 
 ### Changed:
+
 - We introduced a new Pending state for transaction flows which replaced our Error states.
 - We made icon and copy updates.
 - We improved our error handling.
 - We moved Currency Conversion from Advanced Settings to More options.
 
 ### Fixed:
+
 - We improved our error handling UI/UX.
 - We improved Sapling parameters download experience.
 - We fixed some user reported issues and crashes.
@@ -338,10 +939,12 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ## [2.4.9 (1387)] - 2025-12-09
 
 ### Added:
+
 - We added error handling improvements for the most frequent Zashi errors to help you understand and troubleshoot.
 - We added an option to allow you to turn on Tor IP protection in the Restore flow.
 
 ### Changed:
+
 - We added a Swap button leading directly to swaps.
 - We improved Currency Conversion performance.
 - We moved Pay with Flexa feature to More options.
@@ -349,17 +952,19 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - We also improved Reset Zashi experience.
 
 ### Fixed:
+
 - We caught and fixed a number of user-reported issues.
 - We implemented a feature to allow you to fetch transaction data
-
 
 ## [2.4.9 (1386)] - 2025-12-04
 
 ### Added:
+
 - We added error handling improvements for the most frequent Zashi errors to help you understand and troubleshoot.
 - We added an option to allow you to turn on Tor IP protection in the Restore flow.
 
 ### Changed:
+
 - We added a Swap button leading directly to swaps.
 - We improved Currency Conversion performance.
 - We moved Pay with Flexa feature to More options.
@@ -367,89 +972,106 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - We also improved Reset Zashi experience.
 
 ### Fixed:
+
 - We caught and fixed a number of user-reported issues.
 - We implemented a feature to allow you to fetch transaction data
 
 ## [2.4.8 (1321)] - 2025-11-20
 
 ### Changed:
+
 - We updated Swap and Pay features to use shielded addresses instead of transparent ones. Shields up!
 
 ### Fixed:
-- We also fixed a few user reported issues.
 
+- We also fixed a few user reported issues.
 
 ## [2.4.8 (1319)] - 2025-11-14
 
 ### Changed:
+
 - We updated Swap and Pay features to use shielded addresses instead of transparent ones. Shields up!
 
 ### Fixed:
+
 - We also fixed a few user reported issues.
 
 ## [2.4.7 (1309)] - 2025-11-05
 
 ### Added:
+
 - We added haptic feedback for important user actions.
 
 ### Changed:
+
 - We added a new server to the Zashi server list.
 - We increased the swap deadline to prevent early refunds.
 
 ### Fixed:
+
 - We made a whole bunch of bug fixes, refactoring and UX/UI improvements.
 - We implemented a mechanism for discovering failed TEX transaction funds.
 
 ## [2.4.6 (1279)] - 2025-10-27
 
 ### Fixed:
+
 - We fixed an issue with swapping larger amounts that was resulting in an error. Swap away!
 
 ## [2.4.5 (1276)] - 2025-10-24
 
 ### Added:
+
 - Support for Solana app store
 
 ## [2.4.5 (1274)] - 2025-10-23
 
 ### Fixed:
+
 - Fixed a crash on invalid server url
-- FOSS build now displays More button on homepage if flexa is present 
+- FOSS build now displays More button on homepage if flexa is present
 - We fixed a balance and shielding issue impacting some user's wallets.
 
 ## [2.4.4 (1265)] - 2025-10-20
 
 ### Added:
-- Swap statuses now load from activity history screen in addition to swap detail screen 
+
+- Swap statuses now load from activity history screen in addition to swap detail screen
 
 ### Fixed:
+
 - All native libraries are now using 16KB memory page
 - TEX error handling improved in case one transaction fails
 - AB recipient selection screen now does not offer selected account on send screen
 - Crash when focusing restore BD height text field resolved
 
 ### Changed:
+
 - Improved transaction loading performance
 - Improved edge case error handling during proposal creation for both Zashi and Keystone
 
 ## [2.4.3 (1250)] - 2025-10-13
 
 ### Added:
+
 - Predictive back enabled
 - ConfigurationOverride added to override light and dark theme
 
 ### Changed:
+
 - Flexa version bumped
 - Copy button removed from taddr on receive screen
 - QR center icons are now colorful
 
 ### Fixed:
+
 - Screen lock now works correctly if user opts in and restore is in progress
 - Fixed an issue which caused app crash if break-lines were appended to seed (unknown reason how this could happen)
 
 ## [2.4.2 (1248)] - 2025-10-07
 
 ### Changed:
+
 - We removed lwd servers from the server list because they will stop being supported soon.
 - Referral parameter is now added when creating near swap quote
 - Receive QR and Request ZEC QR now show icons when sharing QR with other apps
@@ -458,11 +1080,13 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ## [2.4.1 (1240)] - 2025-10-03
 
 ### Fixed:
+
 - Copy update in swap quote bottom sheet footer
 
 ## [2.4.1 (1239)] - 2025-10-02
 
 ### Fixed:
+
 - Get some zec on transaction widget is now hidden
 - Zatoshi now shows all 8 decimals instead of rounding them to 6
 - Swap in integrations is now disabled while restoring is in progress
@@ -473,11 +1097,13 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ## [2.4.0 (1225)] - 2025-09-30
 
 ### Fixed:
+
 - Fixed an issue where storing empty string in AB resulted in data loss
 
 ## [2.4.0 (1223)] - 2025-09-30
 
 ### Added:
+
 - Swap to ZEC feature that you have been waiting for! Supported by Near Intents.
 - Use Zashi to swap any supported cryptocurrency to Zcash.
 - Deposit funds using any of your favorite wallets.
@@ -488,27 +1114,33 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ## [2.3.0 (1160)] - 2025-09-15
 
 ### Added
+
 - New CrossPay feature available from Pay button via Homepage
 
 ### Changed
+
 - Updated design of Homepage navigation buttons
 
 ## [2.3.0 (1159)] - 2025-09-15
 
 ### Added
-- New CrossPay feature available from Pay button via Homepage 
+
+- New CrossPay feature available from Pay button via Homepage
 
 ### Changed
+
 - Updated design of Homepage navigation buttons
 
 ## [2.2.1 (1121)] - 2025-08-29
 
 ### Fixed
+
 - Fixed concurrency between [WalletClient] and [Metadata] update at the same time
 
 ## [2.2.0 (1120)] - 2025-08-27
 
 ### Added
+
 - Swap ZEC with Zashi:
 - Swap shielded ZEC to any supported cryptocurrency with the Near Intents integration.
 - Zashi is a ZEC-only wallet, so you’ll need a valid wallet address for the asset you’re swapping to.
@@ -516,22 +1148,26 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ## [2.1.0 (999)] - 2025-08-06
 
 ### Changed
+
 - Tor opt-in is now decoupled from Exchange rate opt-in
 
 ## [2.1.0 (997)] - 2025-07-30
 
 ### Changed
+
 - Copies for Tor opt-in flow update
 
 ## [2.1.0 (996)] - 2025-07-29
 
 ### Added
+
 - Tor opt-in message is now shown on homepage to prompt the user to use tor
 - Tor opt-in is now possible from settings
 - Enabling Tor enables currency conversion and vice versa
 - Receive screen now contains info about shielded and transparent addresses
 
 ### Fixed
+
 - Scanning zip321 now properly prefills memo
 - Send again now correctly prefills amount based on previous amount and fee
 - Status and navigation bar now correctly show colors in both light and dark themes
@@ -539,22 +1175,26 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Fixed a bug where user could navigate to a screen twice if he tapped a button several times too fast
 
 ### Changed
+
 - Currency conversion now works only if Tor is enabled
 
 ## [2.0.5 (974)] - 2025-06-25
 
-- `TorClient` initialization within `Synchronizer` now does not crash the application in case it fails 
+- `TorClient` initialization within `Synchronizer` now does not crash the application in case it fails
 
 ## [2.0.4 (973)] - 2025-06-16
 
 ### Added
-- `Synchronizer.onForeground` and `Synchronizer.onBackground` is called when application goes into background or 
+
+- `Synchronizer.onForeground` and `Synchronizer.onBackground` is called when application goes into background or
   foreground
 
 ### Fixed
+
 - Receive screen now correctly displays colors for shielded addresses for both Zashi and Keystone
 
 ### Changed
+
 - Exchange rate is now always refreshed upon navigating to Send screen
 - Transaction progress screen has a new animation while sending/shielding a new transaction
 - Spendable balance button and bottom sheet now hide sensitive information for incognito mode as expected
@@ -562,17 +1202,21 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [2.0.3 (965)] - 2025-05-19
 
-### Fixed 
+### Fixed
+
 - Shared preferences object cached in-memory and locked with semaphore in order to improve stability of security-crypto library
 - Shielded address is now rotated by navigating to Receive and Request screens from homepage
 
 ## [2.0.2 (962)] - 2025-05-14
 
 ### Fixed
+
 - Fiat text field on Send screen is disabled if fetching exchange rate fails
 
 ### Changed
-- When entering amount in USD in the Send or Request ZEC flow, we floor the Zatoshi amount automatically to the nearest 5000 Zatoshi to prevent creating unspendable dust notes in your wallet.
+
+- When entering amount in USD in the Send or Request ZEC flow, we floor the Zatoshi amount automatically to the nearest 5000 Zatoshi to prevent
+  creating unspendable dust notes in your wallet.
 - Integrations dialog screen now displays a disclaimer
 - Primary & secondary button order now follows UX best practices
 - Receive screen design now aligns better with UX after home navigation changes
@@ -581,16 +1225,19 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ## [2.0.1 (941)] - 2025-04-29
 
 ### Fixed
+
 - Homepage buttons now display correctly on small screen devices
-- Scan navigates back to zip 321 when insufficient funds detected 
+- Scan navigates back to zip 321 when insufficient funds detected
 
 ## [2.0.0 (934)] - 2025-04-25
 
 ### Added:
+
 - Zashi 2.0 is here!
 - New Wallet Status Widget helps you navigate Zashi with ease and get more info upon tap.
 
 ### Changed:
+
 - Redesigned Home Screen and streamlined app navigation.
 - Balances redesigned into a new Spendable component on the Send screen.
 - Revamped Restore flow.
@@ -601,19 +1248,23 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ## [1.5.2 (932)] - 2025-04-23
 
 ### Added
-- The new Crash Reporting Opt In/Out screen has been added 
+
+- The new Crash Reporting Opt In/Out screen has been added
 
 ## [1.5.2 (929)] - 2025-04-09
 
 ### Changed
+
 - The Security Warning screen has been removed from onboarding of the FOSS app build type
 
 ## [1.5.2 (926)] - 2025-04-03
 
 ### Changed
+
 - Adopted Zcash SDK v2.2.11
 
 ### Fixed
+
 - Database migration bugs in SDK's `zcash_client_sqlite 0.16.0` and `0.16.1` have
   been fixed by updating to `zcash_client_sqlite 0.16.2`. These caused a few
   wallets to stop working after the Zcash SDK v2.2.9 upgrade due to failed database
@@ -622,35 +1273,42 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ## [1.5.1 (925)] - 2025-03-31
 
 ### Changed
+
 - Flexa v1.0.12
 
 ### Fixed
-- The Flexa issue of voucher signing timeouts has been fixed. 
+
+- The Flexa issue of voucher signing timeouts has been fixed.
 
 ## [1.5 (923)] - 2025-03-27
 
 ### Added
+
 - Support for `zcashtestnetFossRelease` has been added to the app resources package
 
 ### Changed
+
 - All internal dependencies have been updated
 - Bip39 v1.0.9
 - Zcash SDK v2.2.10-SNAPSHOT
 
 ### Fixed
-- We fixed the `zcashtestnetStoreDebug` app build variant file provider, so the export private data and export tax 
+
+- We fixed the `zcashtestnetStoreDebug` app build variant file provider, so the export private data and export tax
   file features work for this build variant as expected
 
 ## [1.4 (876)] - 2025-03-04
 
 ### Fixed
+
 - Export tax now works correctly for F-Droid build and other Testnet based build variants
 
 ## [1.4 (873)] - 2025-03-03
 
 ### Added
+
 - The new `Foss` build dimension has been added that suits for Zashi build that follows FOSS principles
-- The `release.yaml` has been added. It provides us with ability to build and deploy Zashi to GitHub Releases and 
+- The `release.yaml` has been added. It provides us with ability to build and deploy Zashi to GitHub Releases and
   F-Droid store.
 - Confirm the rejection of a Keystone transaction dialog added.
 - A new transaction history screen added with capability to use fulltext and predefined filters
@@ -661,6 +1319,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Keystone added to integrations
 
 ### Changed
+
 - `Flexa` version has been bumped to 1.0.11
 - Several non-FOSS dependencies has been removed for the new FOSS Zashi build type
 - Keystone flows swapped the buttons for the better UX, the main CTA is the closes button for a thumb.
@@ -670,72 +1329,84 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ## [1.3.3 (839)] - 2025-01-23
 
 ### Changed
-- The QR code image logic of the `QrCode`, `Request`, and `SignTransaction` screens has been refactored to work 
+
+- The QR code image logic of the `QrCode`, `Request`, and `SignTransaction` screens has been refactored to work
   with the newer `ZashiQr` component
-- The colors of the QR code image on the `SignTransaction` screen are now white and black for both color themes to 
+- The colors of the QR code image on the `SignTransaction` screen are now white and black for both color themes to
   improve the successful scanning chance by the Keystone device
 - The block synchronization progress logic has been changed to return an uncompleted percentage in case the
   `Synchronizer` is still in the `SYNCING` state
-- The Keystone SDK has been updated to version `0.7.10`, which brings a significant QR codes scanning improvement 
+- The Keystone SDK has been updated to version `0.7.10`, which brings a significant QR codes scanning improvement
 
 ### Fixed
+
 - The Disconnected popup trigger when the app is backgrounded has been fixed
-- The issue when the application does not clean navigation stack after clicking View Transactions after a successful 
+- The issue when the application does not clean navigation stack after clicking View Transactions after a successful
   transaction has been resolved
 
 ## [1.3.2 (829)] - 2025-01-10
 
 ### Changed
+
 - Send Confirmation & Send Progress screens have been refactored
-- ZXing QR codes scanning library has been replaced with a more recent MLkit Barcodes scanning library, which gives 
+- ZXing QR codes scanning library has been replaced with a more recent MLkit Barcodes scanning library, which gives
   us better results in testing
 - Zashi now displays dark version of QR code in the dark theme on the QR Code and Request screens
 
 ### Fixed
+
 - The way how Zashi treats ZIP 321 single address within URIs results has been fixed
 
 ## [1.3.1 (822)] - 2025-01-07
 
 ### Fixed
+
 - Coinbase now passes the correct transparent address into url
 
 ## [1.3 (812)] - 2024-12-19
 
 ### Added
+
 - New feature: Keystone integration with an ability to connect HW wallet to Zashi wallet, preview transactions, sign
   new transactions and shield transparent funds
-- Thus, several new screens for the Keystone account import and signing transactions using the Keystone device have 
+- Thus, several new screens for the Keystone account import and signing transactions using the Keystone device have
   been added
 
 ### Changed
+
 - App bar has been redesigned to give users ability to switch between wallet accounts
 - The Integrations screen is now enabled for the Zashi account only
 - The Address book screen now shows the wallet addresses if more than one Account is imported
 - Optimizations on the New wallet creation to prevent indeterministic chain of async actions
 - Optimizations on the Wallet restoration to prevent indeterministic chain of async actions
-- Optimizations on the Send screen to run actions on ViewModel scope to prevent actions from being interrupted by 
+- Optimizations on the Send screen to run actions on ViewModel scope to prevent actions from being interrupted by
   finalized UI scope
 - `SynchronizerProvider` is now the single source of truth when providing synchronizer
 - `SynchronizerProvider` provides synchronizer only when it is fully initialized
 
 ### Fixed
+
 - Wallet creation and restoration are now more stable for troublesome devices
 
 ## [1.2.3 (798)] - 2024-11-26
 
 ### Added
+
 - Disclaimer widget has been added to the Integrations screen
 
 ### Changed
+
 - The Flexa integration has been turned on
 - Both the Flexa Core and Spend libraries have been bumped to version 1.0.9
 
 ### Fixed
+
 - The Seed screen recovery phrase has been improved to properly display on small screens
 
 ## [1.2.2 (789)] - 2024-11-18
 
 ### Added
+
 - Address book encryption
 - Android auto backup support for address book encryption
 - The device authentication feature on the Zashi app launch has been added
@@ -745,6 +1416,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - New Copy Transaction IDs feature has been added to the MultipleTransactionFailure screen
 
 ### Changed
+
 - Shielded transactions are properly indicated in transaction history
 - The in-app update logic has been fixed and is now correctly requested with every app launch
 - The Not enough space and In-app udpate screens have been redesigned
@@ -753,14 +1425,16 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Adopted Zcash SDK version 2.2.6
 
 ### Fixed
+
 - Address book toast now correctly shows on send screen when adding both new and known addresses to text field
-- The application now correctly navigates to the homepage after deleting the current wallet and creating a new or 
+- The application now correctly navigates to the homepage after deleting the current wallet and creating a new or
   recovering an older one
 - The in-app update logic has been fixed and is now correctly requested with every app launch
 
 ## [1.2.1 (760)] - 2024-10-22
 
 ### Changed
+
 - Global design updates
 - Onboarding screen has been redesigned
 - Scan QR screen has been redesigned
@@ -772,68 +1446,81 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - The Scan QR code screen now supports scanning of ZIP 321 Uris
 
 ### Added
+
 - Address book local storage support
 - New Integrations screen in settings
 - New QR Code detail screen has been added
-- The new Request ZEC screens have been added. They provide a way to build ZIP 321 Uri consisting of the amount, 
-  message, and receiver address and then creates a QR code image of it. 
+- The new Request ZEC screens have been added. They provide a way to build ZIP 321 Uri consisting of the amount,
+  message, and receiver address and then creates a QR code image of it.
 
-## [1.2 (739)] - 2024-09-27 
+## [1.2 (739)] - 2024-09-27
 
 ### Changed
+
 - Adopted snapshot Zcash SDK version 2.2.5, which brings fix for the incorrect check inside the `BlockHeight` component
 
 ## [1.2 (735)] - 2024-09-20
 
 ### Added
+
 - All app's error dialogs now have a new Report error button that opens and prefills users' email clients
 
 ### Changed
-- The Message text field on the Send Form screen has been updated to provide the Return key on the software keyboard 
-  and make auto-capitalization on the beginning of every sentence or new line. 
+
+- The Message text field on the Send Form screen has been updated to provide the Return key on the software keyboard
+  and make auto-capitalization on the beginning of every sentence or new line.
 
 ### Fixed
+
 - `EmailUtils.newMailActivityIntent` has been updated to produce an `Intent` that more e-mail clients can understand
 
 ## [1.2 (731)] - 2024-09-16
 
 ### Changed
-- Adopted the latest snapshot Zcash SDK version 2.2.4 that brings improvements in the disposal logic of its 
+
+- Adopted the latest snapshot Zcash SDK version 2.2.4 that brings improvements in the disposal logic of its
   internal `TorClient` component
 
 ## [1.2 (729)] - 2024-09-13
 
 ### Added
-- Transaction resubmission feature has been added. It periodically searches for unmined sent transactions that 
+
+- Transaction resubmission feature has been added. It periodically searches for unmined sent transactions that
   are still within their expiry window and resubmits them if there are any.
 - The Choose server screen now provides a new search for the three fastest servers feature
 - Android 15 (Android SDK API level 35) support for 16 KB memory page size has been added
 - Coinbase Onramp integration button has been added to the Advanced Settings screen
 
 ### Changed
+
 - Choose server screen has been redesigned
 - Settings and Advanced Settings screens have been redesigned
 - Android `compileSdkVersion` and `targetSdkVersion` have been updated to version 35
 
 ### Fixed
+
 - The issue of printing the stacktrace of errors in dialogs has been resolved
 
 ## [1.1.7 (718)] - 2024-09-06
 
 ### Added
+
 - Dependency injection using Koin has been added to the project. This helps us keep the codebase organized while
   adding new app features.
 
 ### Changed
+
 - Zcash SDK version 2.2.3-SNAPSHOT has been adopted
 
 ### Fixed
-- The Zec to USD currency conversion logic on the Send screen, which caused issues on lower Android SDK versions 
- together with non-English device localizations, has been fixed. 
+
+- The Zec to USD currency conversion logic on the Send screen, which caused issues on lower Android SDK versions
+  together with non-English device localizations, has been fixed.
 
 ## [1.1.6 (712)] - 2024-09-04
 
 ### Added
+
 - Zcash SDK 2.2.2 has been adopted. It brings several new important features:
 - Currency exchange rates (currently just USD/ZEC) are now made available via the SDK.
   The exchange rate computed as the median of values provided by at least three separate
@@ -843,7 +1530,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   the wallet will first automatically de-shield the required funds to a fresh ephemeral
   transparent address, and then will make a second fully-transparent transaction sending
   the funds to the eventual recipient that is not linkable via on-chain information to any
-  other transaction in the  user's wallet.
+  other transaction in the user's wallet.
 - As part of adding ZIP 320 support, the SDK now also provides full support for recovering
   transparent transaction history. Prior to this release, only transactions belonging to the
   wallet that contained either some shielded component OR a member of the current
@@ -852,131 +1539,153 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - A new option to enter the USD amount in the Send screen has been added
 
 ### Changed
+
 - Android NDK version has been bumped to 26.1.10909125
 
 ### Fixed
-- The app screenshot testing has been re-enabled after we moved away from AppCompat components 
+
+- The app screenshot testing has been re-enabled after we moved away from AppCompat components
 
 ## [1.1.5 (706)] - 2024-08-09
 
 ### Changed
-- Adopted the latest Zcash SDK version 2.1.3, which brings a significant block synchronization speed-up and improved 
+
+- Adopted the latest Zcash SDK version 2.1.3, which brings a significant block synchronization speed-up and improved
   UTXOs fetching logic
 
 ## [1.1.4 (700)] - 2024-07-23
 
 ### Added
-- A new What's New screen has been added, accessible from the About screen. It contains the release notes parsed 
+
+- A new What's New screen has been added, accessible from the About screen. It contains the release notes parsed
   from the new [docs/whatsNew/WHATS_NEW_EN.md] file
 - These release notes and release priority are both propagated to every new Google Play release using CI logic
-- Copying sensitive information like addresses, transaction IDs, or wallet secrets into the device clipboard is now 
+- Copying sensitive information like addresses, transaction IDs, or wallet secrets into the device clipboard is now
   masked out from the system visual confirmation, but it's still copied as expected. `ClipDescription.EXTRA_IS_SENSITIVE`
-flag is used on Android SDK level 33 and higher, masking out the `Toast` text on levels below it.
+  flag is used on Android SDK level 33 and higher, masking out the `Toast` text on levels below it.
 - `androidx.fragment:fragment-compose` dependency has been added
 
 ### Changed
+
 - The About screen has been redesigned to align with the new design guidelines
-- `StyledBalance` text styles have been refactored from `Pair` into `BalanceTextStyle` 
+- `StyledBalance` text styles have been refactored from `Pair` into `BalanceTextStyle`
 - The Restore Success dialog has been reworked into a separate screen, allowing users to opt out of the Keep screen
   on while restoring option
 - `targetSdk` property value changed from 33 to 34
 - The Zcash SDK dependency has been switched from `2.1.2-SNAPSHOT` to `2.1.2`
 
 ### Fixed
-- Support Screen now shows the Send button above keyboard instead of overlaying it. This was achieved by setting 
+
+- Support Screen now shows the Send button above keyboard instead of overlaying it. This was achieved by setting
   `adjustResize` to `MainActivity` and adding `imePadding` to top level composable
-- QR code scanning speed and reliability have been improved to address the latest reported scan issue. The obtained 
+- QR code scanning speed and reliability have been improved to address the latest reported scan issue. The obtained
   image cropping and image reader hints have been changed as part of these improvements.
-- The handling of Android configuration changes has been improved. 
+- The handling of Android configuration changes has been improved.
   `android:configChanges="orientation|locale|layoutDirection|screenLayout|uiMode|colorMode|keyboard|screenSize"`
-  option has been added to the app's `AndroidManifest.xml`, leaving the configuration changes handling entirely to 
+  option has been added to the app's `AndroidManifest.xml`, leaving the configuration changes handling entirely to
   the Jetpack Compose layer.
 
 ### Removed
+
 - `androidx.appcompat:appcompat` dependency has been removed
 
 ## [1.1.3 (682)] - 2024-07-03
 
 ### Added
+
 - Proper ZEC amount abbreviation has been added across the entire app as described by the design document
 - The new Hide Balances feature has been added to the Account, Send, and Balances screen.
 
 ### Fixed
-- The app navigation has been improved to always behave the same for system, gesture, or top app bar back navigation 
+
+- The app navigation has been improved to always behave the same for system, gesture, or top app bar back navigation
   actions
-- The app authentication now correctly handles authentication success after a previous failed state 
+- The app authentication now correctly handles authentication success after a previous failed state
 
 ## [1.1.2 (676)] - 2024-06-24
 
 ### Fixed
-- Disabled Tertiary button container color has been changed to distinguish between the button's disabled container 
+
+- Disabled Tertiary button container color has been changed to distinguish between the button's disabled container
   color and the circular loading bar
 
 ## [1.1.2 (673)] - 2024-06-21
 
 ### Fixed
+
 - Conditional developer Dark mode switcher has been removed
 
 ## [1.1.2 (671)] - 2024-06-21
 
 ### Added
+
 - New bubble message style for the Send and Transaction history item text components
 - Display all messages within the transaction history record when it is expanded
 - The Dark mode is now officially supported by the entire app UI
 - The Scan screen now allows users to pick and scan a QR code of an address from a photo saved in the device library
 
 ### Changed
+
 - The Not Enough Free Space screen UI has been slightly refactored to align with the latest design guidelines
 
 ## [1.1.1 (660)] - 2024-06-05
 
 ### Added
+
 - Grid pattern background has been added to several screens
 - A new disconnected dialog reminder has been added to inform users about possible server issues
-- When the app is experiencing such server connection issues, a new DISCONNECTED label will be displayed below the 
+- When the app is experiencing such server connection issues, a new DISCONNECTED label will be displayed below the
   screen title
-- The transaction history list will be displayed when the app has server connection issues. Such a list might have a 
+- The transaction history list will be displayed when the app has server connection issues. Such a list might have a
   slightly different order.
 
 ### Changed
+
 - The color palette used across the app has been reworked to align with the updated design document
 
 ### Fixed
+
 - An updated snapshot Zcash SDK version has been adopted to improve unstable lightwalletd communication
 - Transaction submission has been slightly refactored to improve its stability
 
 ## [1.1 (655)] - 2024-05-24
 
 ### Added
-- Zashi now provides system biometric or device credential (pattern, pin, or password) authentication for these use 
-  cases: Send funds, Recovery Phrase, Export Private Data, and Delete Wallet. 
-- The app entry animation has been reworked to apply on every app access point, i.e. it will be displayed when 
+
+- Zashi now provides system biometric or device credential (pattern, pin, or password) authentication for these use
+  cases: Send funds, Recovery Phrase, Export Private Data, and Delete Wallet.
+- The app entry animation has been reworked to apply on every app access point, i.e. it will be displayed when
   users return to an already set up app as well.
 - Synchronizer status details are now available to users by pressing the simple status view placed above the
   synchronization progress bar. The details are displayed within a dialog window on the Balances and Account screens.
-  This view also occasionally presents information about a possible Zashi app update available on Google Play. The 
+  This view also occasionally presents information about a possible Zashi app update available on Google Play. The
   app redirects users to the Google Play Zashi page by pressing the view.
 
 ### Changed
+
 - The app dialog window has now a bit more rounded corners
 - A few more minor UI improvements
 
 ## [1.0 (650)] - 2024-05-07
 
 ### Added
-- Delete Zashi feature has been added. It's accessible from the Advanced settings screen. It removes the wallet 
+
+- Delete Zashi feature has been added. It's accessible from the Advanced settings screen. It removes the wallet
   secrets from Zashi and resets its state.
-- Transaction messages are now checked and removed in case of duplicity  
+- Transaction messages are now checked and removed in case of duplicity
 
 ### Changed
+
 - We've improved the visibility logic of the little loader that is part of the Balances widget
 - The App-Update screen UI has been reworked to align with the latest design guidelines
 
 ### Removed
-- Concatenation of the messages on a multi-messages transaction has been removed and will be addressed using a new 
+
+- Concatenation of the messages on a multi-messages transaction has been removed and will be addressed using a new
   design
 
 ### Fixed
+
 - Transparent funds shielding action has been improved to address the latest user feedback
 - Onboarding screen dynamic height calculation has been improved
 - A few more minor UI improvements
@@ -984,139 +1693,162 @@ flag is used on Android SDK level 33 and higher, masking out the `Toast` text on
 ## [1.0 (638)] - 2024-04-26
 
 ### Fixed
+
 - Default server selection option
 
 ## [1.0 (636)] - 2024-04-26
 
 ### Changed
+
 - We have added one more group of server options (zec.rocks) for increased coverage and reliability
 - zec.rocks:443 is now default wallet option
 
 ## [1.0 (630)] - 2024-04-24
 
 ### Changed
+
 - We have added more server options for increased coverage and reliability
-- If you experience issues with the Zcash Lightwalletd Mainnet server selected by default, please switch to one of 
+- If you experience issues with the Zcash Lightwalletd Mainnet server selected by default, please switch to one of
   the Ywallet servers: https://status.zcash-infra.com/
 
 ## [1.0 (628)] - 2024-04-23
 
 ### Changed
+
 - The Scan QR code screen has been reworked to align with the rest of the screens
 - The Send Form screen scrolls to the Send button on very small devices after the memo is typed
 
 ### Fixed
+
 - Sending zero funds is allowed only for shielded recipient address type
 - The Balances widget loader has been improved to better handle cases, like a wallet with only transparent funds
 
 ## [0.2.0 (609)] - 2024-04-18
 
 ### Added
-- Advanced Settings screen that provides more technical options like Export private data, Recovery phrase, or 
+
+- Advanced Settings screen that provides more technical options like Export private data, Recovery phrase, or
   Choose server has been added
-- A new Server switching screen has been added. Its purpose is to enable switching between predefined and custom 
+- A new Server switching screen has been added. Its purpose is to enable switching between predefined and custom
   lightwalletd servers in runtime.
 - The About screen now contains a link to the new Zashi Privacy Policy website
 - The Send Confirmation screen has been reworked according to the new design
 - Transitions between screens are now animated with a simple slide animation
-- Proposal API from the Zcash SDK has been integrated together with handling error states for multi-transaction 
+- Proposal API from the Zcash SDK has been integrated together with handling error states for multi-transaction
   submission
-- New Restoring Your Wallet label and Synchronization widget have been added to all post-onboarding screens to notify 
+- New Restoring Your Wallet label and Synchronization widget have been added to all post-onboarding screens to notify
   users about the current state of the wallet-restoring process
 
 ### Changed
-- The Transaction History UI has been incorporated into the Account screen and completely reworked according to the 
+
+- The Transaction History UI has been incorporated into the Account screen and completely reworked according to the
   design guidelines
-- Reworked Send screens flow and their look (e.g., Send Failure screen is now a modal dialog instead of a separate 
+- Reworked Send screens flow and their look (e.g., Send Failure screen is now a modal dialog instead of a separate
   screen)
 - The sending and shielding funds logic has been connected to the new Proposal API from the Zcash SDK
 - The error dialog contains an error description now. It's useful for tracking down the failure cause.
-- A small circular progress indicator is displayed when the app runs block synchronization, and the available balance 
+- A small circular progress indicator is displayed when the app runs block synchronization, and the available balance
   is zero instead of reflecting a result value.
 - Block synchronization statuses have been simplified to Syncing, Synced, and Error states only
 - All internal dependencies have been updated
 
 ### Fixed
+
 - Button sizing has been updated to align with the design guidelines and preserve stretching if necessary
 
 ### Removed
+
 - The seed copy feature from the New wallet recovery and Seed recovery screens has been removed for security reasons
 
 ## [0.2.0 (560)] - 2024-02-27
 
 ### Added
-- A periodic background block synchronization has been added. When the device is connected to the internet using an 
- unmetered connection and is plugged into the power, the background task will start to synchronize blocks randomly 
+
+- A periodic background block synchronization has been added. When the device is connected to the internet using an
+  unmetered connection and is plugged into the power, the background task will start to synchronize blocks randomly
   between 3 and 4 a.m.
 
 ### Changed
-- The Send screen form has changed its UI to align with the Figma design. All the form fields provide validations 
+
+- The Send screen form has changed its UI to align with the Figma design. All the form fields provide validations
   and proper UI response.
 
 ## [0.2.0 (554)] - 2024-02-13
 
 ### Changed
+
 - Update the Zcash SDK dependency to version 2.0.6, which adds more details on current balances
 
 ### Added
+
 - The Balances screen now provides details on current balances like Change pending and Pending transactions
-- The Balances screen adds a new Block synchronization progress bar and status, which were initially part of the 
+- The Balances screen adds a new Block synchronization progress bar and status, which were initially part of the
   Account screen and redesigned
 - The Balances screen supports transparent funds shielding within its new shielding panel
 
 ### Fixed
-- Fixed character replacement in Zcash addresses on the Receive screen caused by ligatures in the app's primary font 
- using the secondary font. This will be revisited once a proper font is added.
-- Improved spacing of titles of bottom navigation tabs, so they work better on smaller screens 
+
+- Fixed character replacement in Zcash addresses on the Receive screen caused by ligatures in the app's primary font
+  using the secondary font. This will be revisited once a proper font is added.
+- Improved spacing of titles of bottom navigation tabs, so they work better on smaller screens
 
 ## [0.2.0 (541)] - 2024-01-30
+
 - Update the Zcash SDK dependency to version 2.0.5, which improves the performance of block synchronization
 
 ## [0.2.0 (540)] - 2024-01-27
 
 ### Added
-- The current balance UI on top of the Account screen has been reworked. It now displays the currently available 
+
+- The current balance UI on top of the Account screen has been reworked. It now displays the currently available
   balance as well.
-- The same current balance UI was incorporated into the Send and Balances screens. 
-- The Send Error screen now contains a simple text with the reason for failure. The Send screen UI refactoring is 
+- The same current balance UI was incorporated into the Send and Balances screens.
+- The Send Error screen now contains a simple text with the reason for failure. The Send screen UI refactoring is
   still in progress.
 
 ### Fixed
+
 - Properly clearing focus from the Send text fields when moved to another screen
 
 ## [0.2.0 (530)] - 2024-01-16
 
 ### Changed
-- The Not Enough Space screen used for notifying about insufficient free device disk space now provides the light 
-theme by default
-- The App Update screen UI was improved to align with the other implemented screens according to the new design. Its 
-final design is still in progress.
+
+- The Not Enough Space screen used for notifying about insufficient free device disk space now provides the light
+  theme by default
+- The App Update screen UI was improved to align with the other implemented screens according to the new design. Its
+  final design is still in progress.
 - The Receive screen provides a new UI and features. The Unified and Transparent Zcash addresses are displayed on
-this screen, together with buttons for copying the address and sharing the address's QR code.
+  this screen, together with buttons for copying the address and sharing the address's QR code.
 
 ### Removed
+
 - Address Detail screen in favor of the Receive screen
 
 ## [0.2.0 (523)] - 2024-01-09
 
 ### Added
+
 - Transaction history items now display Memos within the Android Toast, triggered by clicking the item
 - Transaction history items add displaying transaction IDs; the ID element is also clickable
 
 ### Changed
+
 - All project dependencies have been updated, including the Zcash SDK dependency
 
 ## [0.2.0 (517)] - 2023-12-21
 
 ### Changed
+
 - Home screen navigation switched from the Side menu to the Bottom Navigation Tabs menu
-- Re-enabled the possibility of installing different Zashi application build types on the same device simultaneously 
-  (i.e., Mainnet, Testnet, Production, Debug)  
+- Re-enabled the possibility of installing different Zashi application build types on the same device simultaneously
+  (i.e., Mainnet, Testnet, Production, Debug)
 - Send screen form now validates a maximum amount for sending with respect to the available balance
-- Send form now supports software keyboard confirm actions 
+- Send form now supports software keyboard confirm actions
 - And a few more miner UI improvements
 
 ### Fixed
+
 - Resizing Send screen Form TextFields when focused
 - Hidden Send screen Form TextFields behind the software keyboard when focused
 - Monetary separators issues on the Send screen Form
@@ -1124,20 +1856,24 @@ this screen, together with buttons for copying the address and sharing the addre
 ## [0.2.0 (505)] - 2023-12-11
 
 ### Added
-- Unfinished features show a "Not implemented yet" message after accessing in the app UI 
+
+- Unfinished features show a "Not implemented yet" message after accessing in the app UI
 
 ### Changed
+
 - Home and Receive screens have their Top app bar UI changed
-- Automatic brightness adjustment switched to an on-demand feature after a new button is clicked on the Receive screen 
+- Automatic brightness adjustment switched to an on-demand feature after a new button is clicked on the Receive screen
 
 ### Removed
+
 - Home screen side menu navigation was removed in favor of the Settings screen
 
 ## [0.2.0 (491)] - 2023-12-01
 
 ### Changed
+
 - Updated user interface of these screens:
-   - New Wallet Recovery Seed screen (accessible from onboarding) 
-   - Seed Recovery screen (accessible from Settings)
-   - Restore Seed screen for an existing wallet (accessible from onboarding)
-   - Restore Seed Birthday Height screen for an existing wallet (accessible from onboarding)
+    - New Wallet Recovery Seed screen (accessible from onboarding)
+    - Seed Recovery screen (accessible from Settings)
+    - Restore Seed screen for an existing wallet (accessible from onboarding)
+    - Restore Seed Birthday Height screen for an existing wallet (accessible from onboarding)

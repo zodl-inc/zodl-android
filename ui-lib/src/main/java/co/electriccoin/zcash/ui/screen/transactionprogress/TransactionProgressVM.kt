@@ -3,10 +3,12 @@ package co.electriccoin.zcash.ui.screen.transactionprogress
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.exception.TransactionEncoderException
+import cash.z.ecc.android.sdk.model.SubmitRejection
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.ExactInputSwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.ExactOutputSwapTransactionProposal
+import co.electriccoin.zcash.ui.common.datasource.MigrationSweepTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.RegularTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.SendTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.ShieldTransactionProposal
@@ -14,6 +16,7 @@ import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.Zip321TransactionProposal
 import co.electriccoin.zcash.ui.common.model.SubmitResult
+import co.electriccoin.zcash.ui.common.model.isProposalTooLarge
 import co.electriccoin.zcash.ui.common.repository.SubmitProposalState
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetProposalUseCase
@@ -24,6 +27,7 @@ import co.electriccoin.zcash.ui.common.usecase.ViewTransactionDetailAfterSuccess
 import co.electriccoin.zcash.ui.common.usecase.ViewTransactionsAfterSuccessfulProposalUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
+import co.electriccoin.zcash.ui.design.component.MaxTooManyNotesSheetState
 import co.electriccoin.zcash.ui.design.util.StyledStringResource
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.loadingImageRes
@@ -34,11 +38,13 @@ import co.electriccoin.zcash.ui.design.util.withStyle
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.ERROR
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.PENDING
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.SUCCESS
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class TransactionProgressVM(
@@ -50,8 +56,14 @@ class TransactionProgressVM(
     private val sendEmail: SendEmailUseCase,
     private val copyToClipboard: CopyToClipboardUseCase
 ) : ViewModel() {
+    private val isTooLargeSheetDismissed = MutableStateFlow(false)
+
     val state: StateFlow<TransactionProgressState?> =
-        combine(observeTransactionProposal(), observeTransactionSubmitState()) { proposal, submitState ->
+        combine(
+            observeTransactionProposal(),
+            observeTransactionSubmitState(),
+            isTooLargeSheetDismissed
+        ) { proposal, submitState, isSheetDismissed ->
             when (submitState) {
                 null, SubmitProposalState.Submitting -> {
                     createSendingState(proposal)
@@ -64,7 +76,11 @@ class TransactionProgressVM(
                         }
 
                         is SubmitResult.NonResubmittableError -> {
-                            createNonResubmittableErrorState(proposal, submitState.submitResult)
+                            createNonResubmittableErrorState(
+                                proposal = proposal,
+                                result = submitState.submitResult,
+                                isSheetDismissed = isSheetDismissed
+                            )
                         }
 
                         is SubmitResult.GrpcFailure -> {
@@ -123,6 +139,10 @@ class TransactionProgressVM(
                         stringRes(R.string.swapAndPay_sendingInfo).withStyle()
                     }
 
+                    is MigrationSweepTransactionProposal -> {
+                        stringRes("Your ZEC is being migrated to\nIronwood...").withStyle()
+                    }
+
                     else -> {
                         styledStringResource(
                             R.string.send_sendingInfo,
@@ -169,6 +189,10 @@ class TransactionProgressVM(
 
                     is ExactOutputSwapTransactionProposal -> {
                         stringRes(R.string.swapAndPay_successPayInfo).withStyle()
+                    }
+
+                    is MigrationSweepTransactionProposal -> {
+                        stringRes("Your ZEC was successfully\nmigrated to Ironwood.").withStyle()
                     }
 
                     else -> {
@@ -226,6 +250,14 @@ class TransactionProgressVM(
                         }
                     }
 
+                    is MigrationSweepTransactionProposal -> {
+                        ButtonState(
+                            text = stringRes(R.string.general_close),
+                            onClick = ::onCloseClick,
+                            style = ButtonStyle.PRIMARY
+                        )
+                    }
+
                     else -> {
                         ButtonState(
                             text = stringRes(R.string.general_close),
@@ -249,8 +281,11 @@ class TransactionProgressVM(
             background = PENDING,
             title =
                 when (proposal) {
+                    // Same shape as this block's RegularTransactionProposal/default arm — a
+                    // send-max sweep has no destination/memo of its own to show.
                     is Zip321TransactionProposal,
-                    is RegularTransactionProposal -> {
+                    is RegularTransactionProposal,
+                    is MigrationSweepTransactionProposal -> {
                         stringRes(R.string.send_pendingTitle)
                     }
 
@@ -269,8 +304,11 @@ class TransactionProgressVM(
             subtitle =
                 result.pendingDescription()
                     ?: when (proposal) {
+                        // Same shape as this block's RegularTransactionProposal/default arm — a
+                        // send-max sweep has no destination/memo of its own to show.
                         is Zip321TransactionProposal,
-                        is RegularTransactionProposal -> {
+                        is RegularTransactionProposal,
+                        is MigrationSweepTransactionProposal -> {
                             stringRes(R.string.send_pendingInfo)
                         }
 
@@ -345,11 +383,34 @@ class TransactionProgressVM(
 
     private fun createNonResubmittableErrorState(
         proposal: TransactionProposal,
-        result: SubmitResult.NonResubmittableError
+        result: SubmitResult.NonResubmittableError,
+        isSheetDismissed: Boolean
     ): TransactionProgressState =
         TransactionProgressState(
             onBack = ::onCloseClick,
             background = ERROR,
+            sheet =
+                when {
+                    !result.isTooLarge() || isSheetDismissed -> {
+                        null
+                    }
+
+                    // Refused after it was broadcast: its notes stay locked until it expires, so there is nothing
+                    // to change but to close.
+                    result is SubmitResult.Failure -> {
+                        MaxTooManyNotesSheetState.createCloseOnly(
+                            onClose = { isTooLargeSheetDismissed.update { true } }
+                        )
+                    }
+
+                    // Refused before anything was created: a smaller amount can be sent right away.
+                    else -> {
+                        MaxTooManyNotesSheetState.create(
+                            onOk = ::onCloseClick,
+                            onDismiss = { isTooLargeSheetDismissed.update { true } }
+                        )
+                    }
+                },
             title =
                 if (proposal is ShieldTransactionProposal) {
                     stringRes(R.string.send_failureShielding)
@@ -439,15 +500,24 @@ internal fun SubmitResult.GrpcFailure.pendingDescription(): StyledStringResource
         }
     }
 
-// MOB-385: TransactionNotCreatedException is the typed SDK wrapper for Rust creation failures.
-// The anchor string comes from Rust (zcash_client_sqlite) — no typed sub-code exists yet.
-// If the SDK ever adds one, replace the string check with it and drop the comment.
+/**
+ * Whether the transaction was too large: the server refused it as such after it was created, or the SDK refused to
+ * create it within the size bound ([isProposalTooLarge]). Either way, the notes it needs do not fit in one transaction.
+ */
+internal fun SubmitResult.NonResubmittableError.isTooLarge(): Boolean =
+    when (this) {
+        is SubmitResult.Failure -> rejection == SubmitRejection.TOO_LARGE
+        is SubmitResult.Error -> cause.isProposalTooLarge()
+    }
+
+// MOB-385 / MOB-1616: TransactionEncoderException.AnchorNotFoundException is the SDK's typed
+// signal for this failure (zodl-inc/zodl-android-wallet-sdk#26) — thrown directly from
+// createProposedTransactions, and nested as the cause of PcztException.CreatePcztFromProposalException
+// from createPcztFromProposal, hence the cause-chain walk.
 private fun SubmitResult.NonResubmittableError.isAnchorError(): Boolean {
     var throwable: Throwable? = (this as? SubmitResult.Error)?.cause
     while (throwable != null) {
-        if (throwable is TransactionEncoderException.TransactionNotCreatedException &&
-            throwable.rootCause.message?.contains("Unable to compute anchor", ignoreCase = true) == true
-        ) {
+        if (throwable is TransactionEncoderException.AnchorNotFoundException) {
             return true
         }
         throwable = throwable.cause

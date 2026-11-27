@@ -81,13 +81,13 @@ class SignKeystoneTransactionVM(
                 subtitle = stringRes(R.string.keystone_signWith_desc),
                 accountInfo =
                     ZashiAccountInfoListItemState(
-                        icon = R.drawable.ic_settings_info,
+                        icon = wallet.icon,
                         title = wallet.name,
                         subtitle =
                             if (proposal is ShieldTransactionProposal) {
-                                stringRes("${wallet.transparent.address.address.take(ADDRESS_MAX_LENGTH)}...")
+                                stringRes("${wallet.transparentAddress.take(ADDRESS_MAX_LENGTH)}...")
                             } else {
-                                stringRes("${wallet.unified.address.address.take(ADDRESS_MAX_LENGTH)}...")
+                                stringRes("${wallet.unifiedAddress.take(ADDRESS_MAX_LENGTH)}...")
                             }
                     ),
                 badgeText = stringRes(R.string.keystone_signWith_hardware),

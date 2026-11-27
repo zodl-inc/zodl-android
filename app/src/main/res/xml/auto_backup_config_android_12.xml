@@ -8,4 +8,12 @@
             domain="file"
             path="metadata/." />
     </cloud-backup>
+    <device-transfer>
+        <include
+            domain="file"
+            path="address_book/." />
+        <include
+            domain="file"
+            path="metadata/." />
+    </device-transfer>
 </data-extraction-rules>

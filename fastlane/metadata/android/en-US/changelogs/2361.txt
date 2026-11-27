@@ -1,0 +1,2 @@
+Fixed:
+- We fixed a migration edge case and transaction history display issue.

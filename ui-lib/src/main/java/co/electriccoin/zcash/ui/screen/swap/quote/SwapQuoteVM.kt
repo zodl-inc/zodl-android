@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.datasource.GiftCardAddressNotAllowedException
 import co.electriccoin.zcash.ui.common.datasource.QuoteLowAmountException
 import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
@@ -13,13 +14,16 @@ import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapQuote
+import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
+import co.electriccoin.zcash.ui.common.provider.OhttpNearErrorException
 import co.electriccoin.zcash.ui.common.provider.ResponseWithNearErrorException
 import co.electriccoin.zcash.ui.common.repository.SwapQuoteData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.usecase.CancelSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.CancelSwapUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitProposalUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.imageRes
@@ -41,6 +45,7 @@ import kotlin.time.Duration.Companion.minutes
 
 internal class SwapQuoteVM(
     observeProposal: ObserveProposalUseCase,
+    observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
     applicationStateProvider: ApplicationStateProvider,
     private val swapRepository: SwapRepository,
     private val cancelSwapQuote: CancelSwapQuoteUseCase,
@@ -53,11 +58,12 @@ internal class SwapQuoteVM(
         combine(
             swapRepository.quote.filterNotNull(),
             observeProposal.observeNullable(),
-        ) { quote, proposal ->
+            observeSelectedWalletAccount.require(),
+        ) { quote, proposal, account ->
             when (quote) {
                 SwapQuoteData.Loading -> null
                 is SwapQuoteData.Error -> createErrorState(quote)
-                is SwapQuoteData.Success -> createState(proposal, quote)
+                is SwapQuoteData.Success -> createState(proposal, quote, account)
             }
         }.stateIn(
             scope = viewModelScope,
@@ -79,10 +85,11 @@ internal class SwapQuoteVM(
 
     private fun createState(
         proposal: TransactionProposal?,
-        quote: SwapQuoteData.Success
+        quote: SwapQuoteData.Success,
+        account: WalletAccount
     ): SwapQuoteState.Success =
         swapQuoteSuccessMapper.createState(
-            state = SwapQuoteInternalState(proposal as? SwapTransactionProposal, quote.quote),
+            state = SwapQuoteInternalState(proposal as? SwapTransactionProposal, quote.quote, account),
             onBack = ::onBack,
             onSubmitQuoteClick = ::onSubmitQuoteClick,
             onNavigateToOnRampSwap = ::onNavigateToOnRampSwap
@@ -93,6 +100,10 @@ internal class SwapQuoteVM(
     private fun createErrorState(quote: SwapQuoteData.Error): SwapQuoteState.Error {
         val message =
             when (quote.exception) {
+                is GiftCardAddressNotAllowedException -> {
+                    stringRes(R.string.swap_error_giftCardLink)
+                }
+
                 is QuoteLowAmountException if quote.exception.amountFormatted != null -> {
                     stringRes(
                         R.string.swap_quote_error_too_low_try_at_least,
@@ -112,6 +123,11 @@ internal class SwapQuoteVM(
                     stringRes(quote.exception.error.message)
                 }
 
+                is OhttpNearErrorException if !quote.exception.error.message
+                    .contains("failed to get quote", ignoreCase = true) -> {
+                    stringRes(quote.exception.error.message)
+                }
+
                 else -> {
                     when (quote.mode) {
                         EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swap_quoteUnavailableSwap)
@@ -121,7 +137,7 @@ internal class SwapQuoteVM(
             }
 
         return SwapQuoteState.Error(
-            icon = imageRes(R.drawable.ic_swap_quote_error),
+            icon = imageRes(R.drawable.ic_error_circle),
             title = stringRes(R.string.swapAndPay_quoteUnavailable),
             subtitle = message,
             negativeButton =
@@ -160,6 +176,7 @@ internal class SwapQuoteVM(
 internal data class SwapQuoteInternalState(
     val proposal: SwapTransactionProposal?,
     val quote: SwapQuote,
+    val account: WalletAccount,
 ) {
     val total: BigDecimal = quote.getTotal(proposal?.proposal)
     val totalUsd: BigDecimal = quote.getTotalUsd(proposal?.proposal)

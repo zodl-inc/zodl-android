@@ -1,0 +1,101 @@
+package co.electriccoin.zcash.ui.screen.voting.howtovote
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LceState
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteKeystoneStorageProvider
+import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteStorageProvider
+import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
+import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.component.ButtonStyle
+import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.common.WalletHeaderIconsState
+import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+class VoteHowToVoteVM(
+    private val navigationRouter: NavigationRouter,
+    private val hasSeenHowToVote: HasSeenHowToVoteStorageProvider,
+    private val hasSeenHowToVoteKeystone: HasSeenHowToVoteKeystoneStorageProvider,
+    private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
+) : ViewModel() {
+    private val mutableState =
+        MutableStateFlow<LceState<VoteHowToVoteState>>(
+            LceState(content = null, isLoading = true)
+        )
+
+    val state: StateFlow<LceState<VoteHowToVoteState>> = mutableState
+
+    init {
+        viewModelScope.launch {
+            val account = getSelectedWalletAccount()
+            if (!account.isSpendable) {
+                navigationRouter.back()
+                return@launch
+            }
+            val isKeystone = account is KeystoneAccount
+            val walletName =
+                when (account) {
+                    is KeystoneAccount -> "Keystone"
+                    is LedgerAccount -> "Ledger"
+                    else -> "Zodl"
+                }
+
+            mutableState.value =
+                LceState(
+                    content =
+                        VoteHowToVoteState(
+                            title = stringRes(R.string.coinVote_howToVote_titleZodl, walletName),
+                            subtitle = stringRes(R.string.coinVote_howToVote_subtitle),
+                            steps =
+                                listOf(
+                                    VoteStep(
+                                        number = "1",
+                                        title = stringRes(R.string.coinVote_howToVote_stepVotingTitle),
+                                        description = stringRes(R.string.coinVote_howToVote_stepVotingBody)
+                                    ),
+                                    VoteStep(
+                                        number = "2",
+                                        title = stringRes(R.string.coinVote_howToVote_stepAuthorizeTitle),
+                                        description = stringRes(R.string.coinVote_howToVote_stepAuthorizeBody)
+                                    ),
+                                ),
+                            infoText = stringRes(R.string.coinVote_howToVote_infoCard),
+                            walletHeaderIcons =
+                                WalletHeaderIconsState(
+                                    isKeystone = isKeystone,
+                                    badgeIcon = R.drawable.ic_vote_thumbs_up,
+                                ),
+                            continueButton =
+                                ButtonState(
+                                    text = stringRes(R.string.coinVote_common_continue),
+                                    style = ButtonStyle.PRIMARY,
+                                    onClick = ::onContinue
+                                ),
+                            onBack = ::onBack
+                        ),
+                    isLoading = false
+                )
+        }
+    }
+
+    private fun onContinue() {
+        viewModelScope.launch {
+            val isKeystone = getSelectedWalletAccount() is KeystoneAccount
+            if (isKeystone) {
+                hasSeenHowToVoteKeystone.store(true)
+            } else {
+                hasSeenHowToVote.store(true)
+            }
+            navigationRouter.replace(VoteCoinholderPollingArgs)
+        }
+    }
+
+    private fun onBack() = navigationRouter.back()
+}

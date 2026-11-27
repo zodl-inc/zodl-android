@@ -59,7 +59,7 @@ class QrCodeAnalyzerImpl(
                 .addOnSuccessListener { barcodes ->
                     for (barcode in barcodes) {
                         barcode.rawValue?.let { value ->
-                            Twig.debug { "Mlkit barcode value: $value" }
+                            Twig.debug { "Mlkit barcode scanned (contents not logged), length: ${value.length}" }
                             onQrCodeScanned(value)
                             // Note that we only take the first code from the list of discovered codes
                             return@addOnSuccessListener

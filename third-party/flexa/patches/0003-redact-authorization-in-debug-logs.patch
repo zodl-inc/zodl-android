@@ -1,0 +1,76 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: y4ssi <11613913+y4ssi@users.noreply.github.com>
+Date: Wed, 04 Nov 2026 01:26:45 +0000
+Subject: [PATCH] Redact the Authorization header in the SDK's debug HTTP logs
+
+The HttpLoggingInterceptor of every SDK client (BODY or HEADERS level in debug builds) logged the
+Authorization header, which carries the Flexa token. It is redacted now.
+---
+ core/src/main/java/com/flexa/core/data/data/TokenProvider.kt  | 1 +
+ core/src/main/java/com/flexa/core/data/rest/OkHttpProvider.kt | 3 +++
+ core/src/main/java/com/flexa/core/data/rest/RestRepository.kt | 2 ++
+ 3 files changed, 6 insertions(+)
+
+diff --git a/core/src/main/java/com/flexa/core/data/data/TokenProvider.kt b/core/src/main/java/com/flexa/core/data/data/TokenProvider.kt
+index 8c0af71ab..9f3ce5356 100644
+--- a/core/src/main/java/com/flexa/core/data/data/TokenProvider.kt
++++ b/core/src/main/java/com/flexa/core/data/data/TokenProvider.kt
+@@ -41,6 +41,7 @@ internal class TokenProvider(
+     private val client
+         get() = OkHttpClient().newBuilder()
+             .addInterceptor(HttpLoggingInterceptor().apply {
++                redactHeader("Authorization")
+                 level = when (BuildConfig.DEBUG) {
+                     true -> HttpLoggingInterceptor.Level.BODY
+                     else -> HttpLoggingInterceptor.Level.NONE
+diff --git a/core/src/main/java/com/flexa/core/data/rest/OkHttpProvider.kt b/core/src/main/java/com/flexa/core/data/rest/OkHttpProvider.kt
+index f88399aef..848fb72c0 100644
+--- a/core/src/main/java/com/flexa/core/data/rest/OkHttpProvider.kt
++++ b/core/src/main/java/com/flexa/core/data/rest/OkHttpProvider.kt
+@@ -20,6 +20,7 @@ internal class OkHttpProvider(
+             return OkHttpClient().newBuilder()
+                 .addInterceptor(LoginInterceptor(tokenProvider))
+                 .addInterceptor(HttpLoggingInterceptor().apply {
++                    redactHeader("Authorization")
+                     level = when (BuildConfig.DEBUG) {
+                         true -> HttpLoggingInterceptor.Level.BODY
+                         else -> HttpLoggingInterceptor.Level.NONE
+@@ -39,6 +40,7 @@ internal class OkHttpProvider(
+             )
+             .addInterceptor(HeadersInterceptor(tokenProvider))
+             .addInterceptor(HttpLoggingInterceptor().apply {
++                redactHeader("Authorization")
+                 level = when (BuildConfig.DEBUG) {
+                     true -> HttpLoggingInterceptor.Level.BODY
+                     else -> HttpLoggingInterceptor.Level.NONE
+@@ -52,6 +54,7 @@ internal class OkHttpProvider(
+         OkHttpClient().newBuilder()
+             .addInterceptor(HeadersInterceptor(tokenProvider, true))
+             .addInterceptor(HttpLoggingInterceptor().apply {
++                redactHeader("Authorization")
+                 level = when (BuildConfig.DEBUG) {
+                     true -> HttpLoggingInterceptor.Level.HEADERS
+                     else -> HttpLoggingInterceptor.Level.NONE
+diff --git a/core/src/main/java/com/flexa/core/data/rest/RestRepository.kt b/core/src/main/java/com/flexa/core/data/rest/RestRepository.kt
+index 83718718a..c3704b6eb 100644
+--- a/core/src/main/java/com/flexa/core/data/rest/RestRepository.kt
++++ b/core/src/main/java/com/flexa/core/data/rest/RestRepository.kt
+@@ -254,6 +254,7 @@ internal class RestRepository(
+             val client = OkHttpClient().newBuilder()
+                 .addInterceptor(HeadersInterceptor(okHttpProvider.tokenProvider))
+                 .addInterceptor(HttpLoggingInterceptor().apply {
++                    redactHeader("Authorization")
+                     level = when (BuildConfig.DEBUG) {
+                         true -> HttpLoggingInterceptor.Level.HEADERS
+                         else -> HttpLoggingInterceptor.Level.NONE
+@@ -513,6 +514,7 @@ internal class RestRepository(
+             val client = OkHttpClient().newBuilder()
+                 .addInterceptor(HeadersInterceptor(okHttpProvider.tokenProvider))
+                 .addInterceptor(HttpLoggingInterceptor().apply {
++                    redactHeader("Authorization")
+                     level = when (BuildConfig.DEBUG) {
+                         true -> HttpLoggingInterceptor.Level.HEADERS
+                         else -> HttpLoggingInterceptor.Level.NONE
+-- 
+2.43.0
+

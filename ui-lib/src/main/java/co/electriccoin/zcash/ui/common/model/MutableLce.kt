@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.model
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
+import co.electriccoin.zcash.spackle.Twig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -44,6 +45,7 @@ class MutableLce<T>(
                     _state.update { it.copy(loading = false) }
                     throw e
                 } catch (e: Throwable) {
+                    Twig.error(e) { "MutableLce: caught error executing block" }
                     _state.update {
                         it.copy(
                             loading = false,

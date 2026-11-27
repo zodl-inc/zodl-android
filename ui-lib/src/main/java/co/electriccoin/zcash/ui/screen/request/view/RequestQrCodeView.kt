@@ -38,9 +38,10 @@ internal fun RequestQrCodeView(
     Column(
         horizontalAlignment = CenterHorizontally,
         modifier =
-            modifier
+            Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .then(modifier)
                 .padding(horizontal = ZcashTheme.dimens.spacingLarge),
     ) {
         Spacer(Modifier.height(ZcashTheme.dimens.spacingDefault))

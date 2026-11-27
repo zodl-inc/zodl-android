@@ -41,18 +41,24 @@ import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiImageButton
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.Compose
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.scaffoldScrollPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.styledStringResource
 import co.electriccoin.zcash.ui.fixture.ZashiMainTopAppBarStateFixture
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.DEFAULT
-import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.KEYSTONE
+import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.HW_WALLET
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.ZASHI
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
 
@@ -67,24 +73,43 @@ internal fun ReceiveView(
         }
 
         else -> {
+            val hazeState = rememberZashiFrostState()
             BlankBgScaffold(
                 topBar = {
-                    ZashiTopAppbar(
-                        title = stringRes(R.string.receive_title, CURRENCY_TICKER),
-                        state = appBarState,
-                        showHideBalances = false,
-                        onBack = state.onBack
-                    )
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .zashiFrostedHeader(hazeState)
+                    ) {
+                        ZashiTopAppbar(
+                            title = stringRes(R.string.receive_title, CURRENCY_TICKER),
+                            state = appBarState,
+                            showHideBalances = false,
+                            colors =
+                                ZcashTheme.colors.topAppBarColors.copyColors(
+                                    containerColor = Color.Transparent
+                                ),
+                            onBack = state.onBack
+                        )
+                    }
                 },
             ) { paddingValues ->
-                ReceiveContents(
-                    items = state.items.orEmpty(),
+                Box(
                     modifier =
-                        Modifier.scaffoldScrollPadding(
-                            paddingValues = paddingValues,
-                            top = paddingValues.calculateTopPadding()
-                        ),
-                )
+                        Modifier
+                            .fillMaxSize()
+                            .zashiFrostSource(hazeState)
+                ) {
+                    ReceiveContents(
+                        items = state.items.orEmpty(),
+                        modifier =
+                            Modifier.scaffoldScrollPadding(
+                                paddingValues = paddingValues,
+                                top = paddingValues.calculateTopPadding()
+                            ),
+                    )
+                }
             }
         }
     }
@@ -98,9 +123,10 @@ private fun ReceiveContents(
 ) {
     Column(
         modifier =
-            modifier
+            Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .then(modifier)
                 .padding(all = ZcashTheme.dimens.spacingSmall),
     ) {
         items.forEachIndexed { index, state ->
@@ -143,21 +169,21 @@ private fun AddressPanel(
     val containerColor =
         when (state.colorMode) {
             ZASHI -> ZashiColors.Utility.Purple.utilityPurple50
-            KEYSTONE -> ZashiColors.Utility.Indigo.utilityIndigo50
+            HW_WALLET -> ZashiColors.Utility.Indigo.utilityIndigo50
             DEFAULT -> ZashiColors.Surfaces.bgSecondary
         }
 
     val buttonColor =
         when (state.colorMode) {
             ZASHI -> ZashiColors.Utility.Purple.utilityPurple100
-            KEYSTONE -> ZashiColors.Utility.Indigo.utilityIndigo100
+            HW_WALLET -> ZashiColors.Utility.Indigo.utilityIndigo100
             DEFAULT -> ZashiColors.Surfaces.bgTertiary
         }
 
     val buttonTextColor =
         when (state.colorMode) {
             ZASHI -> ZashiColors.Utility.Purple.utilityPurple800
-            KEYSTONE -> ZashiColors.Utility.Indigo.utilityIndigo800
+            HW_WALLET -> ZashiColors.Utility.Indigo.utilityIndigo800
             DEFAULT -> ZashiColors.Text.textPrimary
         }
 
@@ -173,11 +199,7 @@ private fun AddressPanel(
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
             Box {
-                Image(
-                    modifier = Modifier.size(40.dp),
-                    painter = painterResource(id = state.icon),
-                    contentDescription = null
-                )
+                state.icon.Compose(modifier = Modifier.size(40.dp))
                 if (state.isShielded) {
                     Image(
                         modifier =
@@ -300,7 +322,7 @@ private fun ReceiveIconButton(
 @Composable
 @PreviewScreens
 private fun LoadingPreview() =
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         ReceiveView(
             state =
                 ReceiveState(
@@ -322,7 +344,7 @@ private fun ZashiPreview() =
                     items =
                         listOf(
                             ReceiveAddressState(
-                                icon = R.drawable.ic_zec_round_full,
+                                icon = imageRes(R.drawable.ic_zec_round_full),
                                 title = stringRes("Zodl"),
                                 subtitle = styledStringResource("subtitle"),
                                 isShielded = true,
@@ -339,7 +361,7 @@ private fun ZashiPreview() =
                                     )
                             ),
                             ReceiveAddressState(
-                                icon = R.drawable.ic_zec_round_full,
+                                icon = imageRes(R.drawable.ic_zec_round_full),
                                 title = stringRes("Zodl"),
                                 subtitle = styledStringResource("subtitle"),
                                 isShielded = false,
@@ -373,7 +395,7 @@ private fun KeystonePreview() =
                     items =
                         listOf(
                             ReceiveAddressState(
-                                icon = co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone,
+                                icon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone),
                                 title = stringRes("Zodl"),
                                 subtitle = styledStringResource("subtitle"),
                                 isShielded = true,
@@ -382,7 +404,7 @@ private fun KeystonePreview() =
                                 onRequestClicked = {},
                                 isExpanded = true,
                                 onClick = {},
-                                colorMode = KEYSTONE,
+                                colorMode = HW_WALLET,
                                 infoIconButton =
                                     IconButtonState(
                                         R.drawable.ic_receive_zashi_shielded_info,
@@ -390,7 +412,7 @@ private fun KeystonePreview() =
                                     )
                             ),
                             ReceiveAddressState(
-                                icon = co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone,
+                                icon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone),
                                 title = stringRes("Zodl"),
                                 subtitle = styledStringResource("subtitle"),
                                 isShielded = false,

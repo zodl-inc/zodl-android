@@ -6,7 +6,11 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
 import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProvider
+import co.electriccoin.zcash.ui.common.provider.KeepScreenOnSyncSessionProvider
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyContent
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyNavigator
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiDisclaimerState
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -24,7 +28,11 @@ class KeepOpenVM(
     application: Application,
     private val flow: KeepOpenFlow,
     private val isKeepScreenOnDuringRestoreProvider: IsKeepScreenOnDuringRestoreProvider,
+    private val keepScreenOnSyncSessionProvider: KeepScreenOnSyncSessionProvider,
     private val navigationRouter: NavigationRouter,
+    private val ledgerNavigator: LedgerNavigator,
+    private val viewOnlyNavigator: ViewOnlyNavigator,
+    private val viewOnlyContent: ViewOnlyContent,
 ) : AndroidViewModel(application) {
     private val isChecked = MutableStateFlow(true)
 
@@ -71,11 +79,19 @@ class KeepOpenVM(
                 )
             }
 
-            KeepOpenFlow.KEYSTONE -> {
+            KeepOpenFlow.KEYSTONE,
+            KeepOpenFlow.LEDGER -> {
                 KeepOpenState(
                     description = stringRes(R.string.keepZodlOpenInstructionsHWWallet),
                     subtitle = stringRes(R.string.keepZodlOpenSubtitleHWWallet),
-                    disclaimer = getDisclaimer(R.string.keep_open_keystone_warning),
+                    disclaimer =
+                        getDisclaimer(
+                            if (flow == KeepOpenFlow.LEDGER) {
+                                R.string.keep_open_hw_wallet_warning
+                            } else {
+                                R.string.keep_open_keystone_warning
+                            }
+                        ),
                     checkboxLabel = stringRes(R.string.keepScreenOnSyncing),
                     isChecked = isChecked,
                     onCheckedChange = { onChecked() },
@@ -84,6 +100,24 @@ class KeepOpenVM(
                             text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok),
                             onClick = ::onButtonClick,
                         ),
+                    buttonTestTag = KeepOpenTag.OK_BTN,
+                )
+            }
+
+            KeepOpenFlow.VIEW_ONLY -> {
+                KeepOpenState(
+                    description = viewOnlyContent.keepOpenDescription,
+                    subtitle = viewOnlyContent.keepOpenSubtitle,
+                    disclaimer = ZashiDisclaimerState.warning(viewOnlyContent.keepOpenDisclaimer),
+                    checkboxLabel = viewOnlyContent.keepOpenCheckboxLabel,
+                    isChecked = isChecked,
+                    onCheckedChange = { onChecked() },
+                    button =
+                        ButtonState(
+                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok),
+                            onClick = ::onButtonClick,
+                        ),
+                    buttonTestTag = KeepOpenTag.OK_BTN,
                 )
             }
         }
@@ -96,10 +130,16 @@ class KeepOpenVM(
     }
 
     private fun onButtonClick() {
-        viewModelScope.launch { isKeepScreenOnDuringRestoreProvider.store(isChecked.value) }
+        val keepScreenOn = isChecked.value
+        viewModelScope.launch {
+            isKeepScreenOnDuringRestoreProvider.store(keepScreenOn)
+            keepScreenOnSyncSessionProvider.store(keepScreenOn)
+        }
         when (flow) {
             KeepOpenFlow.RESTORE, KeepOpenFlow.RESYNC -> navigationRouter.backToRoot()
             KeepOpenFlow.KEYSTONE -> navigationRouter.forward(KeystoneConnectedArgs)
+            KeepOpenFlow.LEDGER -> ledgerNavigator.forwardToConnected()
+            KeepOpenFlow.VIEW_ONLY -> viewOnlyNavigator.forwardToImported()
         }
     }
 }

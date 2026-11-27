@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="balance_breakdown_title">Total Balance Across Pools</string>
+    <string name="balance_breakdown_subtitle">Your ZEC balance is now broken down by Zcash pool, so you can see exactly where your funds sit.</string>
+    <string name="balance_breakdown_total">Total Balance</string>
+    <string name="balance_breakdown_pool_orchard">Orchard</string>
+    <string name="balance_breakdown_pool_sapling">Sapling</string>
+    <string name="balance_breakdown_pool_transparent">Transparent</string>
+    <string name="balance_breakdown_pool_ironwood">Ironwood</string>
+    <string name="balance_breakdown_got_it">Got it</string>
+</resources>

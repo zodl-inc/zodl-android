@@ -33,6 +33,7 @@ import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Suppress("MagicNumber")
@@ -63,7 +64,7 @@ fun ZashiBigIconButton(
             Modifier.background(darkBgGradient)
 
     Surface(
-        modifier = modifier,
+        modifier = modifier.pressMorph(interactionSource),
         onClick = state.onClick,
         color = ZashiColors.Surfaces.bgPrimary,
         shape = RoundedCornerShape(22.dp),

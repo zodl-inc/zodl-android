@@ -39,8 +39,10 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.PressMorphDefaults
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Suppress("LongParameterList", "LongMethod")
@@ -52,18 +54,22 @@ fun ZashiRadioButton(
     checkedContent: @Composable () -> Unit = { RadioButtonCheckedContent(state) },
     uncheckedContent: @Composable () -> Unit = { RadioButtonUncheckedContent(state) },
     trailingContent: @Composable (RowScope.() -> Unit)? = null,
+    titleTrailingContent: (@Composable () -> Unit)? = null,
     testTag: String? = null,
 ) {
     val haptic = LocalHapticFeedback.current
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     Row(
         modifier =
             modifier
+                .pressMorph(interactionSource, PressMorphDefaults.PRESSED_SCALE_SUBTLE)
                 .clip(RoundedCornerShape(12.dp))
                 .clickable(
                     enabled = state.isEnabled,
                     indication = if (isRippleEnabled) ripple() else null,
-                    interactionSource = remember { MutableInteractionSource() },
+                    interactionSource = interactionSource,
                     onClick =
                         if (state.hapticFeedbackType != null) {
                             {
@@ -93,23 +99,26 @@ fun ZashiRadioButton(
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Text(
-                    text = state.text.getValue(),
-                    style = ZashiTypography.textSm,
-                    color =
-                        if (state.isEnabled) {
-                            ZashiColors.Text.textPrimary
-                        } else {
-                            ZashiColors.Text.textDisabled
-                        },
-                    modifier =
-                        Modifier.padding(
-                            top = if (state.subtitle == null) 14.dp else 6.dp,
-                            bottom = if (state.subtitle == null) 14.dp else 0.dp,
-                            start = 0.dp,
-                            end = ZcashTheme.dimens.spacingDefault
-                        )
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = state.text.getValue(),
+                        style = ZashiTypography.textSm,
+                        color =
+                            if (state.isEnabled) {
+                                ZashiColors.Text.textPrimary
+                            } else {
+                                ZashiColors.Text.textDisabled
+                            },
+                        modifier =
+                            Modifier.padding(
+                                top = if (state.subtitle == null) 14.dp else 6.dp,
+                                bottom = if (state.subtitle == null) 14.dp else 0.dp,
+                                start = 0.dp,
+                                end = if (titleTrailingContent == null) ZcashTheme.dimens.spacingDefault else 0.dp
+                            )
+                    )
+                    titleTrailingContent?.invoke()
+                }
 
                 if (state.subtitle != null) {
                     Text(
@@ -162,10 +171,30 @@ private fun RadioButtonIndicator(
     checkedContent: @Composable () -> Unit,
     uncheckedContent: @Composable () -> Unit
 ) {
+    ZashiRadioIndicator(
+        isChecked = state.isChecked,
+        checkedContent = checkedContent,
+        uncheckedContent = uncheckedContent
+    )
+}
+
+/**
+ * The animated checked/unchecked layering shared by every radio-style indicator in the design system:
+ * [uncheckedContent] is always drawn, with [checkedContent] scaling in/out on top of it as [isChecked]
+ * flips. Both are laid out at the same origin and stay stacked, so [checkedContent] must match
+ * [uncheckedContent]'s size and geometry - a filled circle covering it, or a stroked ring drawn at the very
+ * same radius. Opacity is not required; a transparent [checkedContent] only has to line up.
+ */
+@Composable
+fun ZashiRadioIndicator(
+    isChecked: Boolean,
+    checkedContent: @Composable () -> Unit,
+    uncheckedContent: @Composable () -> Unit
+) {
     Box {
         uncheckedContent()
         AnimatedVisibility(
-            visible = state.isChecked,
+            visible = isChecked,
             enter = scaleIn(spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioMediumBouncy)),
             exit = scaleOut(spring(stiffness = Spring.StiffnessHigh, dampingRatio = Spring.DampingRatioMediumBouncy))
         ) {

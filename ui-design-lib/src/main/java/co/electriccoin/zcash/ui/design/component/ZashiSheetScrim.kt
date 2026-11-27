@@ -1,0 +1,82 @@
+package co.electriccoin.zcash.ui.design.component
+
+import android.view.View
+import android.view.Window
+import android.view.WindowManager
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
+import kotlin.math.abs
+
+/**
+ * The dialog window hosting the calling composable, or null outside a dialog.
+ */
+@Composable
+internal fun currentDialogWindow(): Window? = LocalView.current.findDialogWindow()
+
+private fun View.findDialogWindow(): Window? =
+    generateSequence(parent) { (it as? View)?.parent }
+        .filterIsInstance<DialogWindowProvider>()
+        .firstOrNull()
+        ?.window
+
+/**
+ * Lets the window dim whatever lies behind it, in proportion to [fraction], the share of the sheet on screen.
+ * Every attribute write relayouts the window, so writes that would change nothing are skipped.
+ */
+internal fun Window.setSheetScrim(fraction: Float) {
+    if (attributes.flags and WindowManager.LayoutParams.FLAG_DIM_BEHIND == 0) {
+        addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+    }
+    val dimAmount = SCRIM_DIM_AMOUNT * fraction
+    if (abs(attributes.dimAmount - dimAmount) >= DIM_AMOUNT_TOLERANCE) {
+        setDimAmount(dimAmount)
+    }
+}
+
+/**
+ * Reports how much of the sheet is on screen, from 0 (hidden) to 1 (fully open), whenever the sheet moves:
+ * while it animates open or closed and while it is dragged. It must be a direct child of the sheet's content
+ * column, whose size and position (drag handle included) it measures; it takes no space itself.
+ */
+@Composable
+internal fun SheetOpenFractionTracker(onFraction: (Float) -> Unit) {
+    Spacer(
+        Modifier.onGloballyPositioned { coordinates ->
+            val sheet = coordinates.parentLayoutCoordinates ?: return@onGloballyPositioned
+            sheetOpenFraction(
+                rootHeight = coordinates.findRootCoordinates().size.height,
+                sheetTop = sheet.positionInRoot().y,
+                sheetHeight = sheet.size.height,
+            )?.let(onFraction)
+        }
+    )
+}
+
+/**
+ * The share of a sheet of [sheetHeight] whose top edge sits at [sheetTop] that shows above the bottom of a root
+ * [rootHeight] tall, from 0 to 1; a sheet taller than the root counts as open once it fills the root. Null for a
+ * sheet with no height yet.
+ */
+internal fun sheetOpenFraction(
+    rootHeight: Int,
+    sheetTop: Float,
+    sheetHeight: Int,
+): Float? {
+    val visibleHeight = minOf(sheetHeight, rootHeight)
+    if (visibleHeight <= 0) return null
+    return ((rootHeight - sheetTop) / visibleHeight).coerceIn(0f, 1f)
+}
+
+/**
+ * Matches Material3's BottomSheetDefaults.ScrimColor (scrim at 0.32 opacity); FLAG_DIM_BEHIND draws black, so
+ * the dim amount alone reproduces the default scrim.
+ */
+private const val SCRIM_DIM_AMOUNT = 0.32f
+
+private const val DIM_AMOUNT_TOLERANCE = 0.001f

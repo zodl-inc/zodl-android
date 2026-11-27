@@ -4,13 +4,18 @@ import android.content.Context
 import cash.z.ecc.android.sdk.CloseableSynchronizer
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.block.processor.CompactBlockProcessor
+import cash.z.ecc.android.sdk.ledger.LedgerAccountBinding
+import cash.z.ecc.android.sdk.ledger.LedgerApduTransport
+import cash.z.ecc.android.sdk.ledger.LedgerSigningProgress
 import cash.z.ecc.android.sdk.model.Account
 import cash.z.ecc.android.sdk.model.AccountBalance
 import cash.z.ecc.android.sdk.model.AccountImportSetup
+import cash.z.ecc.android.sdk.model.AccountKeyOverlap
 import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.FastestServersResult
 import cash.z.ecc.android.sdk.model.ObserveFiatCurrencyResult
+import cash.z.ecc.android.sdk.model.OvkPolicy
 import cash.z.ecc.android.sdk.model.Pczt
 import cash.z.ecc.android.sdk.model.PercentDecimal
 import cash.z.ecc.android.sdk.model.Proposal
@@ -21,9 +26,11 @@ import cash.z.ecc.android.sdk.model.TransactionOverview
 import cash.z.ecc.android.sdk.model.TransactionRecipient
 import cash.z.ecc.android.sdk.model.TransactionSubmitResult
 import cash.z.ecc.android.sdk.model.UnifiedAddressRequest
+import cash.z.ecc.android.sdk.model.UnifiedFullViewingKey
 import cash.z.ecc.android.sdk.model.UnifiedSpendingKey
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
+import cash.z.ecc.android.sdk.model.voting.VotingTorLease
 import cash.z.ecc.android.sdk.type.AddressType
 import cash.z.ecc.android.sdk.type.ConsensusMatchType
 import cash.z.ecc.android.sdk.type.ServerValidation
@@ -32,7 +39,9 @@ import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngineConfig
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.time.Duration
 
 /**
  * Mocked Synchronizer that can be used instead of the production SdkSynchronizer e.g. for tests.
@@ -65,6 +74,10 @@ internal class MockSynchronizer(
         get() = error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
 
     override suspend fun importAccountByUfvk(setup: AccountImportSetup): Account {
+        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+    }
+
+    override suspend fun findAccountSharingKeyComponents(ufvk: UnifiedFullViewingKey): AccountKeyOverlap? {
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }
 
@@ -114,7 +127,8 @@ internal class MockSynchronizer(
 
     override suspend fun createProposedTransactions(
         proposal: Proposal,
-        usk: UnifiedSpendingKey
+        usk: UnifiedSpendingKey,
+        ovkPolicy: OvkPolicy
     ): Flow<TransactionSubmitResult> {
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} yet.")
     }
@@ -144,6 +158,8 @@ internal class MockSynchronizer(
     override fun getRecipients(transactionOverview: TransactionOverview): Flow<TransactionRecipient> {
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }
+
+    override suspend fun getRecipients(): Map<TransactionId, List<TransactionRecipient>> = emptyMap()
 
     override suspend fun getSaplingAddress(account: Account): String {
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
@@ -251,6 +267,8 @@ internal class MockSynchronizer(
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }
 
+    override suspend fun getTransactionOutputs(): Map<TransactionId, List<TransactionOutput>> = emptyMap()
+
     override suspend fun getTransactions(accountUuid: AccountUuid): Flow<List<TransactionOverview>> {
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }
@@ -267,14 +285,24 @@ internal class MockSynchronizer(
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }
 
-    override val initializationError: Synchronizer.InitializationError?
-        get() = error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
-
     override var onProcessorErrorResolved: (() -> Unit)?
         get() = error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
         set(value) {}
 
     override suspend fun getFastestServers(servers: List<LightWalletEndpoint>): Flow<FastestServersResult> {
+        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+    }
+
+    override suspend fun evaluateServerSwitch(
+        current: LightWalletEndpoint,
+        candidates: List<LightWalletEndpoint>,
+        fetchThreshold: Duration,
+        blocksToFetch: Int
+    ): LightWalletEndpoint? {
+        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+    }
+
+    override suspend fun confirmServerSwitch(endpoint: LightWalletEndpoint) {
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }
 
@@ -315,6 +343,38 @@ internal class MockSynchronizer(
     }
 
     override suspend fun deleteAccount(accountUuid: AccountUuid): Boolean {
+        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+    }
+
+    override suspend fun renameAccount(accountUuid: AccountUuid, name: String) {
+        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+    }
+
+    override val setupError: StateFlow<Throwable?> = MutableStateFlow(null)
+
+    override suspend fun proposeOrchardToIronwoodMigration(account: Account): Proposal {
+        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+    }
+
+    override suspend fun signPcztWithLedger(
+        pczt: Pczt,
+        accountUuid: AccountUuid,
+        binding: LedgerAccountBinding,
+        transport: LedgerApduTransport,
+        onProgress: ((LedgerSigningProgress) -> Unit)?
+    ): Pczt {
+        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+    }
+
+    override suspend fun acquireVotingTorLease(): VotingTorLease {
+        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+    }
+
+    override fun pause() {
+        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+    }
+
+    override fun resume() {
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }
 

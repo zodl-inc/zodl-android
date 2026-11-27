@@ -7,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import cash.z.ecc.android.sdk.SdkSynchronizer
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.sdk.type.fromResources
@@ -94,7 +93,7 @@ fun shareData(
                 // Example of the expected db file absolute path:
                 // /data/user/0/co.electriccoin.zcash/no_backup/co.electricoin.zcash/zcash_sdk_mainnet_data.sqlite3
                 dataFilePath =
-                    (synchronizer as SdkSynchronizer).getExistingDataDbFilePath(
+                    synchronizer.getExistingDataDbFilePath(
                         context = context,
                         network = ZcashNetwork.fromResources(context)
                     ),

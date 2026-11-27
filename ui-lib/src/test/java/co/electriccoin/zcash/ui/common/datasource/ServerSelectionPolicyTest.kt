@@ -78,6 +78,19 @@ class ServerSelectionPolicyTest {
         )
     }
 
+    @Test
+    fun bundledEndpointIsNotCustom() {
+        assertEquals(false, resolveIsEndpointCustom(endpoint = bundled.first(), knownEndpoints = bundled))
+    }
+
+    @Test
+    fun nonBundledEndpointIsCustom() {
+        assertEquals(
+            true,
+            resolveIsEndpointCustom(endpoint = endpoint("custom.example.com"), knownEndpoints = bundled)
+        )
+    }
+
     private fun endpoint(host: String) =
         LightWalletEndpoint(
             host = host,

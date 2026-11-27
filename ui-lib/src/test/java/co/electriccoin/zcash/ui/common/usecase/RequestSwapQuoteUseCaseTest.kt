@@ -1,20 +1,25 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import cash.z.ecc.android.sdk.Synchronizer
-import cash.z.ecc.android.sdk.model.WalletAddress
+import cash.z.ecc.android.sdk.exception.TransactionEncoderException
 import cash.z.ecc.android.sdk.type.AddressType
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
 import co.electriccoin.zcash.ui.common.datasource.TexUnsupportedOnKSException
+import co.electriccoin.zcash.ui.common.datasource.TransactionProposalNotCreatedException
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.FakeSwapQuote
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapQuote
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
@@ -23,6 +28,7 @@ import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.insufficientfunds.InsufficientFundsArgs
+import co.electriccoin.zcash.ui.screen.swap.mismatch.SwapQuoteMismatchArgs
 import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteArgs
 import co.electriccoin.zcash.ui.screen.texunsupported.TEXUnsupportedArgs
 import io.mockk.coEvery
@@ -35,13 +41,14 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.Test
 import java.math.BigDecimal
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /**
  * Coverage of [RequestSwapQuoteUseCase]'s orchestration: for each public request method, both account
@@ -63,6 +70,11 @@ class RequestSwapQuoteUseCaseTest {
     private val navigateToError = mockk<NavigateToErrorUseCase>(relaxed = true)
     private val zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true)
     private val keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true)
+    private val ledgerProposalPipeline = mockk<LedgerProposalPipeline>(relaxed = true)
+    private val swapRepository = mockk<SwapRepository>(relaxed = true)
+    private val accountDataSource = mockk<AccountDataSource>()
+    private val navigateToTooManyNotes =
+        mockk<NavigateToTooManyNotesUseCase> { coEvery { this@mockk.invoke() } returns TooManyNotesOutcome.DISMISSED }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val dispatcher = StandardTestDispatcher()
@@ -80,7 +92,7 @@ class RequestSwapQuoteUseCaseTest {
     @Test
     fun exactInputZashiCreatesProposalAndForwards() =
         runBlocking {
-            useCase(swapQuote(originAsset = zec, destinationAsset = btc), zashi()).exactInput()
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc), zodl()).exactInput()
             coVerify { zashiProposalRepository.createExactInputSwapProposal(any(), any()) }
             assertForwardedToQuote()
         }
@@ -95,11 +107,56 @@ class RequestSwapQuoteUseCaseTest {
         }
 
     @Test
+    fun exactInputLedgerCreatesProposalAndPcztAndForwards() =
+        runBlocking {
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc), ledger()).exactInput()
+            coVerify { ledgerProposalPipeline.createExactInputSwapProposal(any(), any()) }
+            coVerify { ledgerProposalPipeline.createPCZTFromProposal() }
+            assertForwardedToQuote()
+        }
+
+    @Test
+    fun exactInputProposalOverTheBoundShowsTheTooManyNotesSheet() =
+        runBlocking {
+            coEvery { zashiProposalRepository.createExactInputSwapProposal(any(), any()) } throws
+                TransactionProposalNotCreatedException(
+                    TransactionEncoderException.ProposalTooLargeException(RuntimeException("raw"))
+                )
+            val outcome = useCase(swapQuote(originAsset = zec, destinationAsset = btc), zodl()).exactInput()
+            assertEquals(TooManyNotesOutcome.DISMISSED, outcome)
+            coVerify(exactly = 1) { navigateToTooManyNotes() }
+            verify(exactly = 0) { navigateToError(any(), any()) }
+            verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
+        }
+
+    @Test
+    fun exactOutputProposalOverTheBoundShowsTheTooManyNotesSheet() =
+        runBlocking {
+            coEvery { keystoneProposalRepository.createExactOutputSwapProposal(any(), any()) } throws
+                TransactionProposalNotCreatedException(
+                    TransactionEncoderException.ProposalTooLargeException(RuntimeException("raw"))
+                )
+            coEvery { navigateToTooManyNotes() } returns TooManyNotesOutcome.OK
+            val outcome = useCase(exactOutputQuote(), keystone()).exactOutput()
+            assertEquals(TooManyNotesOutcome.OK, outcome)
+            coVerify(exactly = 1) { navigateToTooManyNotes() }
+            verify(exactly = 0) { navigateToError(any(), any()) }
+        }
+
+    @Test
+    fun aQuoteThatReachesTheQuoteScreenReportsNoTooManyNotesOutcome() =
+        runBlocking {
+            val outcome = useCase(swapQuote(originAsset = zec, destinationAsset = btc), zodl()).exactInput()
+            assertNull(outcome)
+            coVerify(exactly = 0) { navigateToTooManyNotes() }
+        }
+
+    @Test
     fun exactInputZashiInsufficientFunds() =
         runBlocking {
             coEvery { zashiProposalRepository.createExactInputSwapProposal(any(), any()) } throws
                 InsufficientFundsException()
-            useCase(swapQuote(originAsset = zec, destinationAsset = btc), zashi()).exactInput()
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc), zodl()).exactInput()
             assertNavigatedToInsufficientFunds()
         }
 
@@ -113,6 +170,18 @@ class RequestSwapQuoteUseCaseTest {
         }
 
     @Test
+    fun exactInputLedgerInsufficientFundsClearsEveryRepository() =
+        runBlocking {
+            coEvery { ledgerProposalPipeline.createExactInputSwapProposal(any(), any()) } throws
+                InsufficientFundsException()
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc), ledger()).exactInput()
+            assertNavigatedToInsufficientFunds()
+            coVerify(exactly = 1) { ledgerProposalPipeline.clear() }
+            coVerify(exactly = 1) { keystoneProposalRepository.clear() }
+            coVerify(exactly = 1) { zashiProposalRepository.clear() }
+        }
+
+    @Test
     fun exactInputKeystoneTexUnsupported() =
         runBlocking {
             coEvery { keystoneProposalRepository.createExactInputSwapProposal(any(), any()) } throws
@@ -122,10 +191,20 @@ class RequestSwapQuoteUseCaseTest {
         }
 
     @Test
+    fun exactInputLedgerTexUnsupportedNamesTheLedgerInTheCopy() =
+        runBlocking {
+            coEvery { ledgerProposalPipeline.createExactInputSwapProposal(any(), any()) } throws
+                TexUnsupportedOnKSException()
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc), ledger()).exactInput()
+            assertNavigatedToTexUnsupported(isLedger = true)
+            coVerify(exactly = 1) { ledgerProposalPipeline.clear() }
+        }
+
+    @Test
     fun exactInputZashiGenericError() =
         runBlocking {
             coEvery { zashiProposalRepository.createExactInputSwapProposal(any(), any()) } throws TestException()
-            useCase(swapQuote(originAsset = zec, destinationAsset = btc), zashi()).exactInput()
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc), zodl()).exactInput()
             assertNavigatedToError()
         }
 
@@ -138,10 +217,19 @@ class RequestSwapQuoteUseCaseTest {
         }
 
     @Test
+    fun exactInputLedgerGenericErrorClearsEveryRepository() =
+        runBlocking {
+            coEvery { ledgerProposalPipeline.createExactInputSwapProposal(any(), any()) } throws TestException()
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc), ledger()).exactInput()
+            assertNavigatedToError()
+            coVerify(exactly = 1) { ledgerProposalPipeline.clear() }
+        }
+
+    @Test
     fun exactInputRejectsNonIntegralProposalAmount() =
         runBlocking {
             // The zatoshi conversion happens before the account branch, so it is account-independent.
-            useCase(swapQuote(originAsset = zec, destinationAsset = btc, amountIn = BigDecimal("100.5")), zashi())
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc, amountIn = BigDecimal("100.5")), zodl())
                 .exactInput()
             assertNavigatedToError()
         }
@@ -152,9 +240,175 @@ class RequestSwapQuoteUseCaseTest {
     @Test
     fun exactOutputZashiCreatesProposalAndForwards() =
         runBlocking {
-            useCase(exactOutputQuote(), zashi()).exactOutput()
+            useCase(exactOutputQuote(), zodl()).exactOutput()
             coVerify { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) }
             assertForwardedToQuote()
+        }
+
+    @Test
+    fun exactOutputRevisedAmountIsQuotedOnceMoreAndThatQuoteProceeds() =
+        runBlocking {
+            val revisions = mutableListOf<SwapQuote>()
+            useCase(exactOutputQuote(), zodl())
+                .requestExactOutput(
+                    amount = BigDecimal("1"),
+                    address = "destination",
+                    selectedAsset = btc,
+                    slippage = BigDecimal("2"),
+                    canNavigateToSwapQuote = { true },
+                    reviseAmount = {
+                        revisions += it
+                        BigDecimal("0.9")
+                    }
+                )
+
+            assertEquals(1, revisions.size)
+            verify(exactly = 1) { swapRepository.clearQuote() }
+            verify(exactly = 1) {
+                swapRepository.requestExactOutputQuote(BigDecimal("1"), any(), any(), any(), any())
+            }
+            verify(exactly = 1) {
+                swapRepository.requestExactOutputQuote(BigDecimal("0.9"), any(), any(), any(), any())
+            }
+            coVerify(exactly = 1) { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) }
+            assertForwardedToQuote()
+        }
+
+    @Test
+    fun exactOutputRevisedQuoteThatIsNotAcceptableStopsWithoutAProposalOrNavigation() =
+        runBlocking {
+            val checked = mutableListOf<SwapQuote>()
+            useCase(exactOutputQuote(), zodl())
+                .requestExactOutput(
+                    amount = BigDecimal("1"),
+                    address = "destination",
+                    selectedAsset = btc,
+                    slippage = BigDecimal("2"),
+                    canNavigateToSwapQuote = { true },
+                    reviseAmount = { BigDecimal("0.9") },
+                    isRevisedQuoteAcceptable = {
+                        checked += it
+                        false
+                    }
+                )
+
+            assertEquals(1, checked.size)
+            // Once for the revision, once more to drop the rejected re-quote
+            verify(exactly = 2) { swapRepository.clearQuote() }
+            coVerify(exactly = 0) { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) }
+            verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
+            verify(exactly = 0) { navigationRouter.forward(InsufficientFundsArgs) }
+        }
+
+    @Test
+    fun exactOutputRevisedQuoteThatIsAcceptableProceeds() =
+        runBlocking {
+            useCase(exactOutputQuote(), zodl())
+                .requestExactOutput(
+                    amount = BigDecimal("1"),
+                    address = "destination",
+                    selectedAsset = btc,
+                    slippage = BigDecimal("2"),
+                    canNavigateToSwapQuote = { true },
+                    reviseAmount = { BigDecimal("0.9") },
+                    isRevisedQuoteAcceptable = { true }
+                )
+
+            coVerify(exactly = 1) { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) }
+            assertForwardedToQuote()
+        }
+
+    @Test
+    fun exactOutputIsRevisedAgainUntilTheQuoteIsKeptOrTheLimitIsReached() =
+        runBlocking {
+            val amounts = ArrayDeque(listOf(BigDecimal("0.9"), BigDecimal("0.8"), null))
+            val checked = mutableListOf<SwapQuote>()
+            useCase(exactOutputQuote(), zodl())
+                .requestExactOutput(
+                    amount = BigDecimal("1"),
+                    address = "destination",
+                    selectedAsset = btc,
+                    slippage = BigDecimal("2"),
+                    canNavigateToSwapQuote = { true },
+                    reviseAmount = { amounts.removeFirst() },
+                    isRevisedQuoteAcceptable = {
+                        checked += it
+                        true
+                    },
+                    maxRevisions = 3
+                )
+
+            // 1.0 -> revised to 0.9 -> revised to 0.8 -> kept: three requests, the kept quote proceeds
+            verify(exactly = 1) { swapRepository.requestExactOutputQuote(BigDecimal("1"), any(), any(), any(), any()) }
+            verify(exactly = 1) {
+                swapRepository.requestExactOutputQuote(BigDecimal("0.9"), any(), any(), any(), any())
+            }
+            verify(exactly = 1) {
+                swapRepository.requestExactOutputQuote(BigDecimal("0.8"), any(), any(), any(), any())
+            }
+            assertEquals(1, checked.size)
+            // the quote is dropped before each of the two re-requests
+            verify(exactly = 2) { swapRepository.clearQuote() }
+            coVerify(exactly = 1) { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) }
+            assertForwardedToQuote()
+        }
+
+    @Test
+    fun exactOutputNeverRevisesMoreOftenThanAllowedAndChecksTheLastQuote() =
+        runBlocking {
+            var revisions = 0
+            val checked = mutableListOf<SwapQuote>()
+            useCase(exactOutputQuote(), zodl())
+                .requestExactOutput(
+                    amount = BigDecimal("1"),
+                    address = "destination",
+                    selectedAsset = btc,
+                    slippage = BigDecimal("2"),
+                    canNavigateToSwapQuote = { true },
+                    reviseAmount = { BigDecimal("0.9").subtract(BigDecimal(revisions++).movePointLeft(1)) },
+                    isRevisedQuoteAcceptable = {
+                        checked += it
+                        false
+                    },
+                    maxRevisions = 2
+                )
+
+            assertEquals(2, revisions)
+            assertEquals(1, checked.size)
+            // two re-requests, plus once more to drop the quote that was not acceptable
+            verify(exactly = 3) { swapRepository.clearQuote() }
+            coVerify(exactly = 0) { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) }
+            verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
+        }
+
+    @Test
+    fun exactOutputKeptAmountNeverChecksTheRevisionAcceptance() =
+        runBlocking {
+            var checks = 0
+            useCase(exactOutputQuote(), zodl())
+                .requestExactOutput(
+                    amount = BigDecimal("1"),
+                    address = "destination",
+                    selectedAsset = btc,
+                    slippage = BigDecimal("2"),
+                    canNavigateToSwapQuote = { true },
+                    isRevisedQuoteAcceptable = {
+                        checks++
+                        false
+                    }
+                )
+
+            assertEquals(0, checks)
+            assertForwardedToQuote()
+        }
+
+    @Test
+    fun exactOutputKeptAmountIsQuotedOnce() =
+        runBlocking {
+            useCase(exactOutputQuote(), zodl()).exactOutput()
+
+            verify(exactly = 1) { swapRepository.requestExactOutputQuote(any(), any(), any(), any(), any()) }
+            verify(exactly = 0) { swapRepository.clearQuote() }
         }
 
     @Test
@@ -167,11 +421,20 @@ class RequestSwapQuoteUseCaseTest {
         }
 
     @Test
+    fun exactOutputLedgerCreatesProposalAndPcztAndForwards() =
+        runBlocking {
+            useCase(exactOutputQuote(), ledger()).exactOutput()
+            coVerify { ledgerProposalPipeline.createExactOutputSwapProposal(any(), any()) }
+            coVerify { ledgerProposalPipeline.createPCZTFromProposal() }
+            assertForwardedToQuote()
+        }
+
+    @Test
     fun exactOutputZashiInsufficientFunds() =
         runBlocking {
             coEvery { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) } throws
                 InsufficientFundsException()
-            useCase(exactOutputQuote(), zashi()).exactOutput()
+            useCase(exactOutputQuote(), zodl()).exactOutput()
             assertNavigatedToInsufficientFunds()
         }
 
@@ -197,7 +460,7 @@ class RequestSwapQuoteUseCaseTest {
     fun exactOutputZashiGenericError() =
         runBlocking {
             coEvery { zashiProposalRepository.createExactOutputSwapProposal(any(), any()) } throws TestException()
-            useCase(exactOutputQuote(), zashi()).exactOutput()
+            useCase(exactOutputQuote(), zodl()).exactOutput()
             assertNavigatedToError()
         }
 
@@ -212,7 +475,7 @@ class RequestSwapQuoteUseCaseTest {
     @Test
     fun exactOutputRejectsNonIntegralProposalAmount() =
         runBlocking {
-            useCase(exactOutputQuote(amountIn = BigDecimal("100.5")), zashi()).exactOutput()
+            useCase(exactOutputQuote(amountIn = BigDecimal("100.5")), zodl()).exactOutput()
             assertNavigatedToError()
         }
 
@@ -228,8 +491,144 @@ class RequestSwapQuoteUseCaseTest {
             assertForwardedToQuote()
         }
 
+    /**
+     * Flex-input quotes never reach [RequestSwapQuoteUseCase.createProposal] through the public
+     * flex entry point (it never asks for one), but a Ledger account's branch still guards against
+     * one arriving with `createProposal = true` by throwing - the same defensive arm proposal
+     * creation has always had for Keystone and Zashi.
+     */
+    @Test
+    fun aFlexModeQuoteOnLedgerWithProposalCreationRequestedThrowsAndClearsEveryRepository() =
+        runBlocking {
+            useCase(flexQuote(), ledger()).exactInput()
+            assertNavigatedToError()
+            coVerify(exactly = 0) { ledgerProposalPipeline.createExactInputSwapProposal(any(), any()) }
+            coVerify(exactly = 1) { ledgerProposalPipeline.clear() }
+            coVerify(exactly = 1) { keystoneProposalRepository.clear() }
+            coVerify(exactly = 1) { zashiProposalRepository.clear() }
+        }
+
+    @Test
+    fun exactInputMismatchOpensTheMismatchSheetInsteadOfTheQuote() =
+        runBlocking {
+            useCase(mismatchError(SwapMode.EXACT_INPUT, SwapQuoteMismatchType.REQUESTED_AMOUNT)).exactInput()
+
+            verify(exactly = 1) { swapRepository.clearQuote() }
+            verify {
+                navigationRouter.forward(
+                    match<SwapQuoteMismatchArgs> {
+                        it.mismatchType == SwapQuoteMismatchType.REQUESTED_AMOUNT &&
+                            it.mode == SwapMode.EXACT_INPUT &&
+                            it.provider == "near" &&
+                            it.originTokenTicker == zec.tokenTicker &&
+                            it.originChainTicker == zec.chainTicker &&
+                            it.destinationTokenTicker == btc.tokenTicker &&
+                            it.destinationChainTicker == btc.chainTicker &&
+                            it.depositAddress == "deposit-address"
+                    }
+                )
+            }
+            verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
+            verify(exactly = 0) { navigateToError(any(), any()) }
+        }
+
+    @Test
+    fun flexInputMismatchReportsTheSelectedAssetAsTheOrigin() =
+        runBlocking {
+            useCase(
+                mismatchError(
+                    mode = SwapMode.FLEX_INPUT,
+                    type = SwapQuoteMismatchType.REFUND_ADDRESS,
+                    origin = btc,
+                    destination = zec
+                )
+            ).flex()
+
+            verify {
+                navigationRouter.forward(
+                    match<SwapQuoteMismatchArgs> {
+                        it.mismatchType == SwapQuoteMismatchType.REFUND_ADDRESS &&
+                            it.originTokenTicker == btc.tokenTicker &&
+                            it.destinationTokenTicker == zec.tokenTicker
+                    }
+                )
+            }
+            verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
+        }
+
+    /**
+     * With the cancel sheet up there is nowhere to navigate, so the rejection stays in the repository's
+     * quote — exactly like every other quote error — and surfaces once the sheet is dismissed.
+     */
+    @Test
+    fun mismatchErrorIsKeptWhenTheSwapScreenIsGone() =
+        runBlocking {
+            useCase(mismatchError(SwapMode.EXACT_INPUT, SwapQuoteMismatchType.SWAP_TYPE))
+                .requestExactInput(
+                    amount = BigDecimal("1"),
+                    address = "destination",
+                    selectedAsset = btc,
+                    slippage = BigDecimal("2"),
+                    canNavigateToSwapQuote = { false }
+                )
+
+            verify(exactly = 0) { swapRepository.clearQuote() }
+            verify(exactly = 0) { navigationRouter.forward(ofType<SwapQuoteMismatchArgs>()) }
+        }
+
+    /**
+     * Only a rejection carrying the report context opens the mismatch sheet. One without it cannot be
+     * built by the repository, so reaching this would be a routing bug: the request falls back to the
+     * generic quote-error path instead of the sheet, and the rejection is reported to crash monitoring.
+     */
+    @Test
+    fun mismatchWithoutReportContextFallsBackToTheGenericQuoteError() =
+        runBlocking {
+            useCase(
+                SwapQuoteData.Error(
+                    mode = SwapMode.EXACT_INPUT,
+                    exception =
+                        SwapQuoteMismatchException.Rejected(
+                            type = SwapQuoteMismatchType.SWAP_TYPE,
+                            message = "mismatch"
+                        )
+                )
+            ).exactInput()
+
+            verify(exactly = 0) { navigationRouter.forward(ofType<SwapQuoteMismatchArgs>()) }
+            verify { navigationRouter.forward(SwapQuoteArgs) }
+        }
+
+    /** A plain quote failure is surfaced by the swap screen itself, not by the mismatch sheet. */
+    @Test
+    fun nonMismatchQuoteErrorsStillFollowTheOldPath() =
+        runBlocking {
+            useCase(SwapQuoteData.Error(SwapMode.EXACT_INPUT, TestException())).exactInput()
+
+            verify(exactly = 0) { navigationRouter.forward(ofType<SwapQuoteMismatchArgs>()) }
+            verify { navigationRouter.forward(SwapQuoteArgs) }
+        }
+
     // endregion
     // region helpers
+
+    private fun mismatchError(
+        mode: SwapMode,
+        type: SwapQuoteMismatchType,
+        origin: SwapAsset = zec,
+        destination: SwapAsset = btc
+    ) = SwapQuoteData.Error(
+        mode = mode,
+        exception =
+            SwapQuoteMismatchException.Reported(
+                type = type,
+                message = "mismatch",
+                depositAddress = "deposit-address",
+                provider = "near",
+                originAsset = origin,
+                destinationAsset = destination
+            )
+    )
 
     private fun assertForwardedToQuote() {
         verify { navigationRouter.forward(SwapQuoteArgs) }
@@ -246,13 +645,16 @@ class RequestSwapQuoteUseCaseTest {
         verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
     }
 
-    private fun assertNavigatedToTexUnsupported() {
-        verify { navigationRouter.forward(TEXUnsupportedArgs) }
+    private fun assertNavigatedToTexUnsupported(isLedger: Boolean = false) {
+        verify { navigationRouter.forward(TEXUnsupportedArgs(isLedger = isLedger)) }
+        verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
     }
 
-    private fun zashi(): WalletAccount = mockk<ZashiAccount>()
+    private fun zodl(): WalletAccount = mockk<ZodlAccount> { every { isSpendable } returns true }
 
-    private fun keystone(): WalletAccount = mockk<KeystoneAccount>()
+    private fun keystone(): WalletAccount = mockk<KeystoneAccount> { every { isSpendable } returns true }
+
+    private fun ledger(): WalletAccount = mockk<LedgerAccount> { every { isSpendable } returns true }
 
     private suspend fun RequestSwapQuoteUseCase.exactInput(selectedAsset: SwapAsset = btc) =
         requestExactInput(
@@ -283,29 +685,32 @@ class RequestSwapQuoteUseCaseTest {
 
     private suspend fun useCase(
         swapQuote: SwapQuote,
-        selectedAccount: WalletAccount = mockk<ZashiAccount>(),
-        supportedData: List<SwapAsset> = listOf(btc)
-    ): RequestSwapQuoteUseCase {
-        val swapRepository = mockk<SwapRepository>(relaxed = true)
-        every { swapRepository.assets } returns MutableStateFlow(SwapAssetsData(data = supportedData, zecAsset = zec))
-        every { swapRepository.quote } returns MutableStateFlow(SwapQuoteData.Success(swapQuote))
+        selectedAccount: WalletAccount = zodl()
+    ): RequestSwapQuoteUseCase = useCase(SwapQuoteData.Success(swapQuote), selectedAccount)
 
-        val shieldedAddress = WalletAddress.Unified.new("deposit")
+    private suspend fun useCase(
+        quoteData: SwapQuoteData,
+        selectedAccount: WalletAccount = zodl()
+    ): RequestSwapQuoteUseCase {
+        every { swapRepository.quote } returns MutableStateFlow(quoteData)
+        every { swapRepository.assets } returns
+            MutableStateFlow(SwapAssetsData(data = listOf(btc), zecAsset = zec))
+
+        val shieldedAddress = "deposit"
         val synchronizer = mockk<Synchronizer> { coEvery { validateAddress(any()) } returns AddressType.Unified }
         val synchronizerProvider = mockk<SynchronizerProvider> { coEvery { getSynchronizer() } returns synchronizer }
-        val accountDataSource =
-            mockk<AccountDataSource> {
-                coEvery { requestNextShieldedAddress() } returns shieldedAddress
-                coEvery { getSelectedAccount() } returns selectedAccount
-            }
+        coEvery { accountDataSource.requestNextShieldedAddress() } returns shieldedAddress
+        coEvery { accountDataSource.getSelectedAccount() } returns selectedAccount
         return RequestSwapQuoteUseCase(
             navigationRouter = navigationRouter,
             navigateToErrorUseCase = navigateToError,
             swapRepository = swapRepository,
             zashiProposalRepository = zashiProposalRepository,
             keystoneProposalRepository = keystoneProposalRepository,
+            ledgerProposalPipeline = ledgerProposalPipeline,
             accountDataSource = accountDataSource,
-            synchronizerProvider = synchronizerProvider
+            synchronizerProvider = synchronizerProvider,
+            navigateToTooManyNotes = navigateToTooManyNotes
         )
     }
 

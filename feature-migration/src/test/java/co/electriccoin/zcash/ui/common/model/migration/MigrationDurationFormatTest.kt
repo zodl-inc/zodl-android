@@ -1,0 +1,301 @@
+package co.electriccoin.zcash.ui.common.model.migration
+
+import cash.z.ecc.android.sdk.model.BlockSpacing
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class MigrationDurationFormatTest {
+    // Regression coverage for a real bug: TransferProposal's anchorHeight/nextExecutableAfterHeight
+    // are block heights, not epoch seconds. Using them directly as (or against) a timestamp made
+    // every scheduled transfer appear ~56 years overdue on a live device, since a raw block height
+    // (~4.18M) measured back to the Unix epoch is decades in the past relative to any real 2026
+    // Instant.
+
+    @Test
+    fun estimatedSecondsBetweenHeights_converts_block_delta_using_the_network_block_time() {
+        val blocksApart = 288L // one ZIP-318-style transfer-scheduling step
+        val expectedSeconds = blocksApart * (BlockSpacing.POST_BLOSSOM_SECONDS)
+
+        val actual = estimatedSecondsBetweenHeights(fromHeight = 4_180_000L, toHeight = 4_180_000L + blocksApart)
+
+        assertEquals(expectedSeconds, actual)
+    }
+
+    @Test
+    fun estimatedSecondsBetweenHeights_is_zero_for_equal_heights() {
+        assertEquals(0L, estimatedSecondsBetweenHeights(fromHeight = 4_180_000L, toHeight = 4_180_000L))
+    }
+
+    @Test
+    fun estimatedSecondsBetweenHeights_is_negative_when_the_target_height_is_in_the_past() {
+        // A transfer's own anchorHeight can be behind the height it's compared against (e.g. an
+        // overdue transfer's nextExecutableAfterHeight is now below the current tip) — the caller
+        // is responsible for clamping to zero/"overdue", this function must not do so itself.
+        val actual = estimatedSecondsBetweenHeights(fromHeight = 4_180_100L, toHeight = 4_180_000L)
+
+        assertEquals(-100L * (BlockSpacing.POST_BLOSSOM_SECONDS), actual)
+    }
+
+    @Test
+    fun estimatedSecondsBetweenHeights_never_conflates_a_bare_height_with_epoch_seconds() {
+        // The historical bug this guards against: passing a raw height straight through as if it
+        // were already a duration/timestamp. A single real-world height (millions) must not survive
+        // unconverted — it must always be scaled by the block interval.
+        val height = 4_180_824L
+
+        val secondsFromGenesis = estimatedSecondsBetweenHeights(fromHeight = 0L, toHeight = height)
+
+        assertEquals(height * (BlockSpacing.POST_BLOSSOM_SECONDS), secondsFromGenesis)
+        assertEquals(height * 75L, secondsFromGenesis)
+    }
+
+    @Test
+    fun formatMigrationDuration_keeps_minute_resolution_above_an_hour_when_fine_grained() {
+        assertEquals("~1 h 15 min", formatMigrationDuration(totalSeconds = 4_500L, fineGrained = true))
+        assertEquals("~2 h", formatMigrationDuration(totalSeconds = 7_200L, fineGrained = true))
+    }
+
+    @Test
+    fun formatMigrationDuration_uses_coarse_hours_when_not_fine_grained() {
+        assertEquals("~1 hour", formatMigrationDuration(totalSeconds = 4_500L, fineGrained = false))
+        assertEquals("~2 hours", formatMigrationDuration(totalSeconds = 8_000L, fineGrained = false))
+    }
+
+    @Test
+    fun formatMigrationDuration_shows_minutes_below_an_hour_only_when_fine_grained() {
+        assertEquals("~15 min", formatMigrationDuration(totalSeconds = 900L, fineGrained = true))
+        // Not fine-grained (mainnet): floored at 1 hour, so a 15-minute span never surfaces as minutes.
+        assertEquals("~1 hour", formatMigrationDuration(totalSeconds = 900L, fineGrained = false))
+    }
+
+    @Test
+    fun formatMigrationDuration_never_reveals_a_duration_below_the_networks_privacy_floor() {
+        // Never show anything more precise than 10 min on testnet / 1 hour on mainnet for an
+        // UPCOMING estimate — 2026-08-03 privacy requirement, still the default (applyPrivacyFloor
+        // defaults to true).
+        assertEquals("~10 min", formatMigrationDuration(totalSeconds = 1L, fineGrained = true))
+        assertEquals("~10 min", formatMigrationDuration(totalSeconds = 599L, fineGrained = true))
+        assertEquals("~10 min", formatMigrationDuration(totalSeconds = 600L, fineGrained = true))
+        assertEquals("~1 hour", formatMigrationDuration(totalSeconds = 1L, fineGrained = false))
+        assertEquals("~1 hour", formatMigrationDuration(totalSeconds = 3_599L, fineGrained = false))
+        assertEquals("~1 hour", formatMigrationDuration(totalSeconds = 3_600L, fineGrained = false))
+    }
+
+    @Test
+    fun formatMigrationDuration_applyPrivacyFloor_false_reveals_the_exact_duration() {
+        // 2026-08-06 revised decision — an already-mined transfer's "ago" label opts out: its exact
+        // timing is already public on-chain, so there is no remaining privacy benefit to flooring it.
+        assertEquals(
+            "~1 min",
+            formatMigrationDuration(totalSeconds = 60L, fineGrained = true, applyPrivacyFloor = false),
+        )
+        assertEquals(
+            "~2 min",
+            formatMigrationDuration(totalSeconds = 130L, fineGrained = false, applyPrivacyFloor = false),
+        )
+        assertEquals(
+            "~0 min",
+            formatMigrationDuration(totalSeconds = 0L, fineGrained = true, applyPrivacyFloor = false),
+        )
+    }
+
+    @Test
+    fun formatMigrationDuration_distinguishes_75min_from_119min_when_fine_grained() {
+        // Issue 2: the progress screen's old inline branch bucketed to coarse integer hours and
+        // dropped the minutes, so 75 min and 119 min both rendered "~1 hours". The shared formatter
+        // the progress screen now calls keeps them distinct (and matches the Review screen).
+        assertEquals("~1 h 15 min", formatMigrationDuration(totalSeconds = 75L * 60L, fineGrained = true))
+        assertEquals("~1 h 59 min", formatMigrationDuration(totalSeconds = 119L * 60L, fineGrained = true))
+    }
+
+    // ── NU7 characterization pins (MOB-2287): pre-NU7 behaviour at the 75 s/block rate. These pass
+    //    today and document what must stay true for pre-activation heights once the helper becomes
+    //    height-aware (25 s post-NU7). Explicit secondsPerBlock = 75 so they survive the default change. ──
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - default rate is 75 seconds per block`() {
+        assertEquals(75L, BlockSpacing.POST_BLOSSOM_SECONDS)
+        assertEquals(75L, estimatedSecondsBetweenHeights(fromHeight = 1_000L, toHeight = 1_001L))
+    }
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - estimatedSecondsBetweenHeights scales linearly with explicit 75`() {
+        // NU7: revisit - spans activation once helper is height-aware
+        assertEquals(
+            288L * 75L,
+            estimatedSecondsBetweenHeights(fromHeight = 4_180_000L, toHeight = 4_180_288L, secondsPerBlock = 75L),
+        )
+        // NU7: revisit - spans activation once helper is height-aware
+        assertEquals(
+            0L,
+            estimatedSecondsBetweenHeights(fromHeight = 4_180_000L, toHeight = 4_180_000L, secondsPerBlock = 75L),
+        )
+        // NU7: revisit - spans activation once helper is height-aware
+        assertEquals(
+            -100L * 75L,
+            estimatedSecondsBetweenHeights(fromHeight = 4_180_100L, toHeight = 4_180_000L, secondsPerBlock = 75L),
+        )
+    }
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - 1152 blocks is exactly 24 hours`() {
+        // NU7: revisit - spans activation once helper is height-aware
+        val seconds =
+            estimatedSecondsBetweenHeights(
+                fromHeight = 5_000_000L,
+                toHeight = 5_001_152L,
+                secondsPerBlock = 75L,
+            )
+        assertEquals(24L * 3600L, seconds)
+        assertEquals("~24 hours", formatMigrationDuration(seconds, fineGrained = false))
+        assertEquals("~24 h", formatMigrationDuration(seconds, fineGrained = true))
+    }
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - 3456 blocks is exactly 3 days`() {
+        // NU7: revisit - spans activation once helper is height-aware
+        val seconds = estimatedSecondsBetweenHeights(fromHeight = 0L, toHeight = 3_456L, secondsPerBlock = 75L)
+        assertEquals(3L * 24L * 3600L, seconds)
+        assertEquals("~72 hours", formatMigrationDuration(seconds, fineGrained = false))
+    }
+
+    @Test
+    fun `characterization pin of pre-NU7 75s - sub-floor block spans surface as the privacy floor`() {
+        // NU7: revisit - spans activation once helper is height-aware
+        val fiveBlocks = estimatedSecondsBetweenHeights(fromHeight = 100L, toHeight = 105L, secondsPerBlock = 75L)
+        assertEquals(375L, fiveBlocks)
+        assertEquals("~10 min", formatMigrationDuration(fiveBlocks, fineGrained = true))
+        assertEquals("~1 hour", formatMigrationDuration(fiveBlocks, fineGrained = false))
+        // 48 blocks = 3600 s = exactly the mainnet floor boundary.
+        val fortyEightBlocks = estimatedSecondsBetweenHeights(fromHeight = 100L, toHeight = 148L, secondsPerBlock = 75L)
+        assertEquals(3_600L, fortyEightBlocks)
+        assertEquals("~1 hour", formatMigrationDuration(fortyEightBlocks, fineGrained = false))
+    }
+
+    // ── NU7 (MOB-2287): height ranges that span the activation height are converted in two segments. ──
+
+    private val nu7 = 3_543_405L
+
+    @Test
+    fun `NU7 - a range entirely before activation keeps the measured rate`() {
+        val s =
+            estimatedSecondsBetweenHeights(
+                nu7 - 2_000,
+                nu7 - 1_000,
+                secondsPerBlock = 75L,
+                nu7ActivationHeight = nu7,
+            )
+        assertEquals(1_000 * 75L, s)
+    }
+
+    @Test
+    fun `NU7 - a range entirely after activation is three times faster than the pre-NU7 rate`() {
+        // The rate was measured post-NU7 (rateHeight defaults to fromHeight, which is after activation).
+        val s = estimatedSecondsBetweenHeights(nu7 + 100, nu7 + 1_100, secondsPerBlock = 25L, nu7ActivationHeight = nu7)
+        assertEquals(1_000 * 25L, s)
+    }
+
+    @Test
+    fun `NU7 - a range that spans activation uses 75s before it and 25s from it`() {
+        // (nu7-40, nu7+60]: 39 heights below activation at 75 s and 61 heights from it at 25 s.
+        val s = estimatedSecondsBetweenHeights(nu7 - 40, nu7 + 60, secondsPerBlock = 75L, nu7ActivationHeight = nu7)
+        assertEquals(39 * 75L + 61 * 25L, s)
+    }
+
+    @Test
+    fun `NU7 - a pre-NU7 rate measured at a post-NU7 tip is scaled back up for earlier heights`() {
+        // Tip is after activation (rate 25 s), the range starts before it: the early part runs at 75 s.
+        val s =
+            estimatedSecondsBetweenHeights(
+                nu7 - 40,
+                nu7 + 60,
+                secondsPerBlock = 25L,
+                nu7ActivationHeight = nu7,
+                rateHeight = nu7 + 60
+            )
+        assertEquals(39 * 75L + 61 * 25L, s)
+    }
+
+    @Test
+    fun `NU7 - a plan anchored before activation is priced at the rate of the tip past it`() {
+        // The anchor is up to 287 blocks below the tip. The SDK's rate (25 s) was read at the tip, past activation,
+        // so it must not be attributed to the anchor: that would price the blocks after activation at 25 / 3 s each.
+        val anchor = nu7 - 100
+        val tip = nu7 + 50
+        val rateHeight = rateReferenceHeight(estimatedTip = tip, fallbackHeight = anchor)
+        assertEquals(tip, rateHeight)
+        val priced =
+            estimatedSecondsBetweenHeights(
+                fromHeight = anchor,
+                toHeight = nu7 + 200,
+                secondsPerBlock = 25L,
+                nu7ActivationHeight = nu7,
+                rateHeight = rateHeight
+            )
+        assertEquals(99 * 75L + 201 * 25L, priced)
+        val misattributed =
+            estimatedSecondsBetweenHeights(
+                fromHeight = anchor,
+                toHeight = nu7 + 200,
+                secondsPerBlock = 25L,
+                nu7ActivationHeight = nu7,
+                rateHeight = anchor
+            )
+        // The 25 s rate taken as a pre-NU7 one: 99 blocks at 25 s, then 201 at 25 / 3 s, less than half of 9,033 s.
+        assertEquals(99 * 25L + 201 * 8L, misattributed)
+    }
+
+    @Test
+    fun `NU7 - the rate reference falls back to the plan only when the tip is unknown`() {
+        assertEquals(500L, rateReferenceHeight(estimatedTip = -1L, fallbackHeight = 500L))
+        assertEquals(null, rateReferenceHeight(estimatedTip = -1L, fallbackHeight = null))
+        assertEquals(900L, rateReferenceHeight(estimatedTip = 900L, fallbackHeight = 500L))
+    }
+
+    @Test
+    fun `NU7 - a range ending exactly below activation is all pre-NU7`() {
+        val s = estimatedSecondsBetweenHeights(nu7 - 10, nu7 - 1, secondsPerBlock = 75L, nu7ActivationHeight = nu7)
+        assertEquals(9 * 75L, s)
+    }
+
+    @Test
+    fun `NU7 - past heights are the negation of the forward range`() {
+        val forward =
+            estimatedSecondsBetweenHeights(
+                nu7 - 40,
+                nu7 + 60,
+                secondsPerBlock = 75L,
+                nu7ActivationHeight = nu7,
+            )
+        val past =
+            estimatedSecondsBetweenHeights(
+                fromHeight = nu7 + 60,
+                toHeight = nu7 - 40,
+                secondsPerBlock = 75L,
+                nu7ActivationHeight = nu7,
+                rateHeight = nu7 - 40
+            )
+        assertEquals(-forward, past)
+    }
+
+    @Test
+    fun `NU7 - an unknown activation height keeps the single-rate math`() {
+        assertEquals(
+            100 * 75L,
+            estimatedSecondsBetweenHeights(0L, 100L, secondsPerBlock = 75L, nu7ActivationHeight = null)
+        )
+    }
+
+    @Test
+    fun `NU7 - a 24 hour plan after activation reads as 8 hours`() {
+        // 1152 blocks pre-NU7 is 24 h; the same 1152 blocks from activation are 8 h.
+        val s =
+            estimatedSecondsBetweenHeights(
+                nu7 + 10,
+                nu7 + 10 + 1_152,
+                secondsPerBlock = 25L,
+                nu7ActivationHeight = nu7,
+            )
+        assertEquals(8L * 3600L, s)
+    }
+}

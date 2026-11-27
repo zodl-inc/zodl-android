@@ -5,6 +5,7 @@ import cash.z.ecc.android.sdk.model.ObserveFiatCurrencyResult
 import co.electriccoin.zcash.ui.common.datasource.ExchangeRateDataSource
 import co.electriccoin.zcash.ui.common.datasource.ExchangeRateUnavailable
 import co.electriccoin.zcash.ui.common.model.VersionInfo
+import co.electriccoin.zcash.ui.common.provider.CmcHttpStatusException
 import co.electriccoin.zcash.ui.common.provider.IsExchangeRateEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.PreferredFiatProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -15,17 +16,21 @@ import co.electriccoin.zcash.ui.common.wallet.StaleLock
 import io.ktor.client.call.NoTransformationFoundException
 import io.ktor.client.plugins.ResponseException
 import io.ktor.serialization.ContentConvertException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
@@ -36,7 +41,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.serialization.SerializationException
 import java.net.UnknownHostException
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -83,6 +90,28 @@ class ExchangeRateRepositoryImpl(
                 if (optedIn == true) {
                     channelFlow {
                         var cache = ExchangeRateResult(ObserveFiatCurrencyResult(isLoading = true))
+                        val hasExchangeRate = MutableStateFlow(false)
+                        val isFetching = MutableStateFlow(true)
+                        val isLastFailureTransient = MutableStateFlow(true)
+                        launch {
+                            // The short retries cover a blip. An outage that outlasts them would leave "unavailable" on
+                            // screen until the app restarts, so while there is no rate at all keep asking, slowly: the
+                            // wait doubles up to a cap, and it stops for a failure that would repeat identically
+                            // (a currency CMC has no quote for, a 4xx answer such as a rejected key, an unreadable
+                            // answer).
+                            combine(hasExchangeRate, isLastFailureTransient) { hasRate, isTransient ->
+                                shouldKeepAskingForExchangeRate(hasRate, isTransient)
+                            }.distinctUntilChanged()
+                                .collectLatest { keepAsking ->
+                                    var wait = EXCHANGE_RATE_RETRY_WHILE_MISSING
+                                    while (keepAsking) {
+                                        delay(wait)
+                                        // A lookup that is still running is not cut short by the next tick.
+                                        if (!isFetching.value) refreshPipeline.emit(Unit)
+                                        wait = nextExchangeRateRetryWait(wait)
+                                    }
+                                }
+                        }
                         launch {
                             refreshPipeline
                                 .onStart { emit(Unit) }
@@ -95,13 +124,15 @@ class ExchangeRateRepositoryImpl(
                                                     cache.observed.copy(
                                                         isLoading = false,
                                                         currencyConversion =
-                                                            exchangeRateDataSource
-                                                                .getExchangeRate(fiat)
+                                                            retryTransientExchangeRateFailure {
+                                                                exchangeRateDataSource.getExchangeRate(fiat)
+                                                            }
                                                     )
                                             )
                                         )
                                     }.catch { error ->
-                                        if (shouldFallBackToSynchronizerRoute(VersionInfo.IS_CMC_AVAILABLE, fiat)) {
+                                        isLastFailureTransient.value = isTransientExchangeRateFailure(error)
+                                        if (shouldFallBackToSynchronizerRoute(VersionInfo.IS_CMC_AVAILABLE)) {
                                             synchronizerProvider.getSynchronizer().refreshExchangeRateUsd()
                                             emitAll(
                                                 exchangeRateDataSource
@@ -119,6 +150,9 @@ class ExchangeRateRepositoryImpl(
                                     }
                                 }.collect {
                                     cache = it
+                                    hasExchangeRate.value = it.observed.currencyConversion != null
+                                    isFetching.value = it.observed.isLoading
+                                    if (hasExchangeRate.value) isLastFailureTransient.value = true
                                     send(cache)
                                 }
                         }
@@ -187,7 +221,11 @@ class ExchangeRateRepositoryImpl(
                 ExchangeRateState.Data(
                     isLoading = exchangeRate.observed.isLoading,
                     isStale = isStale,
-                    isRefreshEnabled = isRefreshEnabled,
+                    isRefreshEnabled =
+                        isRefreshAllowed(
+                            isRefreshEnabled = isRefreshEnabled,
+                            hasExchangeRate = exchangeRate.observed.currencyConversion != null
+                        ),
                     currencyConversion = exchangeRate.observed.currencyConversion,
                     expectedCurrency = expectedCurrency,
                     error = exchangeRate.error,
@@ -218,17 +256,13 @@ class ExchangeRateRepositoryImpl(
 }
 
 /**
- * Decides whether to fall back to the SDK synchronizer route when the CMC exchange-rate lookup
- * fails or is unavailable. The synchronizer route only provides a USD rate.
+ * Decides whether to use the SDK synchronizer route (its own USD fetch, over Tor straight to public
+ * exchanges) instead of the CMC lookup through the OHTTP gateway.
  *
- * - When CMC is not available it is the only rate source, so always fall back regardless of [fiat].
- * - When CMC is available, only fall back for USD; for any other fiat the synchronizer route
- *   cannot provide a matching rate.
+ * Only when CMC is not available at all, as it is then the only rate source. A failed CMC lookup
+ * never falls back around the gateway (ZIP #10): the failure is shown instead.
  */
-internal fun shouldFallBackToSynchronizerRoute(
-    isCmcAvailable: Boolean,
-    fiat: FiatCurrency,
-): Boolean = !isCmcAvailable || fiat == FiatCurrency.USD
+internal fun shouldFallBackToSynchronizerRoute(isCmcAvailable: Boolean): Boolean = !isCmcAvailable
 
 /**
  * Maps a CMC exchange-rate failure to the user-facing [ExchangeRateError], or `null` when the
@@ -255,6 +289,65 @@ internal fun classifyExchangeRateError(error: Throwable): ExchangeRateError? =
     }
 
 /**
+ * Whether a refresh may start. The time lock only guards a rate that was already loaded (its timestamp starts
+ * the lock); with no rate at all there is no timestamp, so the lock reports "disabled" and, if the first lookup
+ * failed, nothing could ever start another one. A missing rate must therefore always allow a refresh.
+ */
+internal fun isRefreshAllowed(
+    isRefreshEnabled: Boolean,
+    hasExchangeRate: Boolean
+): Boolean = isRefreshEnabled || !hasExchangeRate
+
+/**
+ * Whether a failed CMC lookup is worth repeating. A missing quote ([ExchangeRateUnavailable]), an unreadable answer
+ * and an HTTP answer that says the request itself is wrong ([CmcHttpStatusException] with a 4xx other than 408 and
+ * 429, such as a rejected key) repeat identically. Everything else (the OHTTP gateway answering with a 5xx, 429 or
+ * 408, a dropped relay connection, a timeout) is the kind of failure a second attempt often survives.
+ */
+internal fun isTransientExchangeRateFailure(error: Throwable): Boolean =
+    when (error) {
+        is CancellationException -> false
+        is ExchangeRateUnavailable -> false
+        is ContentConvertException -> false
+        is NoTransformationFoundException -> false
+        is SerializationException -> false
+        is CmcHttpStatusException -> isTransientHttpStatus(error.status)
+        else -> true
+    }
+
+private fun isTransientHttpStatus(status: Int): Boolean =
+    status >= HTTP_SERVER_ERROR_MIN || status == HTTP_REQUEST_TIMEOUT || status == HTTP_TOO_MANY_REQUESTS
+
+/**
+ * Runs [block] and repeats it after each of [retryDelays] when it fails with a transient failure
+ * ([isTransientExchangeRateFailure]). The last failure is rethrown, so the caller still classifies it as before.
+ */
+internal suspend fun <T> retryTransientExchangeRateFailure(
+    retryDelays: List<Duration> = EXCHANGE_RATE_RETRY_DELAYS,
+    block: suspend () -> T
+): T {
+    var attempt = 0
+    while (true) {
+        val result = runCatching { block() }
+        val error = result.exceptionOrNull() ?: return result.getOrThrow()
+        // Cancellation is not transient, so it is rethrown here like every other failure that is not retried.
+        if (attempt >= retryDelays.size || !isTransientExchangeRateFailure(error)) throw error
+        delay(retryDelays[attempt])
+        attempt++
+    }
+}
+
+/** Whether the background loop keeps asking: only while there is no rate and the last failure may pass. */
+internal fun shouldKeepAskingForExchangeRate(
+    hasExchangeRate: Boolean,
+    isLastFailureTransient: Boolean
+): Boolean = !hasExchangeRate && isLastFailureTransient
+
+/** The wait before the next background lookup: double the last one, up to [EXCHANGE_RATE_RETRY_WHILE_MISSING_MAX]. */
+internal fun nextExchangeRateRetryWait(current: Duration): Duration =
+    (current * 2).coerceAtMost(EXCHANGE_RATE_RETRY_WHILE_MISSING_MAX)
+
+/**
  * App-side wrapper pairing the SDK's [ObserveFiatCurrencyResult] with an app-level
  * [ExchangeRateError], since the SDK type cannot carry our error classification.
  */
@@ -262,6 +355,13 @@ private data class ExchangeRateResult(
     val observed: ObserveFiatCurrencyResult = ObserveFiatCurrencyResult(),
     val error: ExchangeRateError? = null,
 )
+
+private val EXCHANGE_RATE_RETRY_DELAYS = listOf(2.seconds, 6.seconds)
+private const val HTTP_SERVER_ERROR_MIN = 500
+private const val HTTP_REQUEST_TIMEOUT = 408
+private const val HTTP_TOO_MANY_REQUESTS = 429
+private val EXCHANGE_RATE_RETRY_WHILE_MISSING = 30.seconds
+private val EXCHANGE_RATE_RETRY_WHILE_MISSING_MAX = 5.minutes
 
 private val USD_EXCHANGE_REFRESH_LOCK_THRESHOLD = 2.minutes
 private val USD_EXCHANGE_STALE_LOCK_THRESHOLD = 15.minutes

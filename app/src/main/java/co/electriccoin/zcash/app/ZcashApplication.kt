@@ -14,19 +14,28 @@ import co.electriccoin.zcash.di.providerModule
 import co.electriccoin.zcash.di.repositoryModule
 import co.electriccoin.zcash.di.useCaseModule
 import co.electriccoin.zcash.di.viewModelModule
+import co.electriccoin.zcash.ledger.di.featureLedgerModule
+import co.electriccoin.zcash.migration.di.featureMigrationModule
 import co.electriccoin.zcash.spackle.StrictModeCompat
 import co.electriccoin.zcash.spackle.Twig
+import co.electriccoin.zcash.spackle.process.ProcessNameCompat
 import co.electriccoin.zcash.ui.common.provider.CrashReportingStorageProvider
-import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.provider.MigrationNotifier
+import co.electriccoin.zcash.ui.common.provider.OhttpBuildConfiguration
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepository
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
 import co.electriccoin.zcash.ui.common.repository.FlexaRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import co.electriccoin.zcash.ui.common.repository.WalletSnapshotRepository
-import co.electriccoin.zcash.ui.screen.error.ErrorArgs
-import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
-import kotlinx.coroutines.flow.map
+import co.electriccoin.zcash.ui.common.usecase.ObserveKeepScreenOnSyncSessionUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveOhttpUnavailablePromptUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveSeedMismatchUseCase
+import co.electriccoin.zcash.ui.common.usecase.SweepOrphanedGiftCardWalletsUseCase
+import co.electriccoin.zcash.viewingkey.di.featureViewingKeyModule
+import co.electriccoin.zcash.voting.di.featureVotingModule
+import com.zodl.appconfig.AppConfig
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
@@ -45,13 +54,25 @@ class ZcashApplication : CoroutineApplication() {
     }
     private val walletRepository: WalletRepository by inject()
     private val automaticServerRepository: AutomaticServerRepository by inject()
-    private val synchronizerProvider: SynchronizerProvider by inject()
-    private val navigateToError: NavigateToErrorUseCase by inject()
+    private val migrationNotifier: MigrationNotifier by inject()
+    private val observeSeedMismatch: ObserveSeedMismatchUseCase by inject()
+    private val observeKeepScreenOnSyncSession: ObserveKeepScreenOnSyncSessionUseCase by inject()
+    private val sweepOrphanedGiftCardWallets: SweepOrphanedGiftCardWalletsUseCase by inject()
+    private val observeOhttpUnavailablePrompt: ObserveOhttpUnavailablePromptUseCase by inject()
 
     override fun onCreate() {
         super.onCreate()
 
         configureLogging()
+
+        if (isCrashProcess()) {
+            Twig.info { "Skipping app initialization in the crash-reporting process" }
+            return
+        }
+
+        configureOhttp()
+
+        preloadSdkNativeLibrary()
 
         configureStrictMode()
 
@@ -68,7 +89,11 @@ class ZcashApplication : CoroutineApplication() {
                 metadataModule,
                 useCaseModule,
                 mapperModule,
-                viewModelModule
+                viewModelModule,
+                featureMigrationModule,
+                featureVotingModule,
+                featureLedgerModule,
+                featureViewingKeyModule
             )
         }
 
@@ -76,24 +101,62 @@ class ZcashApplication : CoroutineApplication() {
         // mode is configured to ensure none of that IO happens on the main thread
         configureAnalytics()
 
+        migrationNotifier.createChannel()
         flexaRepository.init()
         homeMessageCacheRepository.init()
         walletSnapshotRepository.init()
         applicationStateRepository.init()
         automaticServerRepository.init()
         walletRepository.init()
-        observeSynchronizerError()
+        applicationScope.launch { observeSeedMismatch() }
+        applicationScope.launch { observeKeepScreenOnSyncSession() }
+        applicationScope.launch { sweepOrphanedGiftCardWallets() }
+        applicationScope.launch { observeOhttpUnavailablePrompt() }
     }
 
-    private fun observeSynchronizerError() {
-        applicationScope.launch {
-            synchronizerProvider.synchronizer
-                .map { it?.initializationError }
-                .collect {
-                    if (it == Synchronizer.InitializationError.TOR_NOT_AVAILABLE) {
-                        navigateToError(ErrorArgs.SynchronizerTorInitError)
-                    }
-                }
+    /**
+     * Passes this build's OHTTP configuration to the SDK, before anything reads it: the server list, the
+     * wallet's endpoint migration and the Synchronizer all depend on which hosts are OHTTP gateways.
+     *
+     * When the native library is already loaded (via [preloadSdkNativeLibrary]), the SDK installs the configuration
+     * natively right away and throws [IllegalArgumentException] on a refused value; otherwise it installs in Kotlin
+     * now and natively when the library loads. A refusal at load turns OHTTP off and is logged inside the SDK.
+     * The SDK also throws [IllegalStateException] when it read the OHTTP state before the first configure, or when
+     * a different configuration is already installed.
+     *
+     * The app calls this before [preloadSdkNativeLibrary] and before Koin, so OHTTP is installed at cold start
+     * without blocking the main thread. The values come from the `app-config` dependency; a network whose
+     * values are empty has OHTTP off and behaves as Public only.
+     */
+    private fun configureOhttp() {
+        OhttpBuildConfiguration.install(
+            mainnet =
+                OhttpBuildConfiguration.NetworkValues(
+                    gatewayHost = AppConfig.Ohttp.GATEWAY_HOST_MAINNET,
+                    relayUrl = AppConfig.Ohttp.RELAY_URL_MAINNET,
+                    keysDnsName = AppConfig.Ohttp.KEYS_DNS_NAME_MAINNET,
+                    signingPublicKey = AppConfig.Ohttp.SIGNING_PUBKEY_MAINNET,
+                ),
+            testnet =
+                OhttpBuildConfiguration.NetworkValues(
+                    gatewayHost = AppConfig.Ohttp.GATEWAY_HOST_TESTNET,
+                    relayUrl = AppConfig.Ohttp.RELAY_URL_TESTNET,
+                    keysDnsName = AppConfig.Ohttp.KEYS_DNS_NAME_TESTNET,
+                    signingPublicKey = AppConfig.Ohttp.SIGNING_PUBKEY_TESTNET,
+                ),
+        )
+    }
+
+    /**
+     * Kicks off the SDK's native-library load off the main thread during app startup, so the
+     * one-time [System.loadLibrary] cost is already paid (overlapping the splash/authentication
+     * screens) before the Synchronizer is constructed, shortening its cold-start critical path.
+     * Best-effort: if it fails, [Synchronizer.new] will simply load the library lazily as before.
+     */
+    private fun preloadSdkNativeLibrary() {
+        applicationScope.launch(Dispatchers.Default) {
+            runCatching { Synchronizer.preloadNativeLibrary() }
+                .onFailure { Twig.info { "SDK native library preload failed; will load lazily: $it" } }
         }
     }
 
@@ -106,6 +169,15 @@ class ZcashApplication : CoroutineApplication() {
             Twig.assertLoggingStripped()
         }
     }
+
+    /**
+     * The `:crash` secondary process only hosts `ExceptionReceiver` and the crash content
+     * provider, which are Koin-free — everything below this check assumes Koin is started.
+     * [co.electriccoin.zcash.crash.android.GlobalCrashReporter.register] has its own copy of the
+     * same `:crash` suffix check, using a constant `internal` to crash-android-lib, so the literal
+     * is deliberately repeated here rather than shared.
+     */
+    private fun isCrashProcess() = ProcessNameCompat.getProcessName(this).endsWith(CRASH_PROCESS_NAME_SUFFIX)
 
     private fun configureStrictMode() {
         if (BuildConfig.DEBUG) {
@@ -128,3 +200,8 @@ class ZcashApplication : CoroutineApplication() {
         }
     }
 }
+
+/**
+ * Kept in sync with `GlobalCrashReporter`'s own copy of this suffix — see [isCrashProcess].
+ */
+private const val CRASH_PROCESS_NAME_SUFFIX = ":crash"

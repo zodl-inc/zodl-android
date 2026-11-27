@@ -31,7 +31,7 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.styledStringResource
 import co.electriccoin.zcash.ui.design.util.withStyle
-import co.electriccoin.zcash.ui.screen.common.InfoBottomSheetView
+import co.electriccoin.zcash.ui.screen.common.ZodlInfoBottomSheetView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,17 +39,16 @@ fun TEXUnsupportedView(
     state: TEXUnsupportedState?,
     sheetState: SheetState = rememberScreenModalBottomSheetState(),
 ) {
-    state ?: return
-    InfoBottomSheetView(
-        onBack = state.onBack,
+    ZodlInfoBottomSheetView(
+        state = state,
         primaryButton =
             ButtonState(
                 text = stringRes(co.electriccoin.zcash.ui.design.R.string.restoreInfo_gotIt),
-                onClick = state.onBack,
+                onClick = { state?.onBack?.invoke() },
             ),
         sheetState = sheetState,
-    ) {
-        Image(painterResource(R.drawable.ic_swap_quote_error), contentDescription = null)
+    ) { innerState ->
+        Image(painterResource(R.drawable.ic_error_circle), contentDescription = null)
         Spacer(12.dp)
         Text(
             text = stringResource(R.string.texKeystone_title),
@@ -58,8 +57,9 @@ fun TEXUnsupportedView(
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(8.dp)
+        val warn1Res = if (innerState.isLedger) R.string.texLedger_warn1 else R.string.texKeystone_warn1
         val description =
-            (stringRes(R.string.texKeystone_warn1) + stringRes(" ")).withStyle(
+            (stringRes(warn1Res) + stringRes(" ")).withStyle(
                 StyledStringStyle(
                     color = StringResourceColor.PRIMARY,
                     fontWeight = FontWeight.SemiBold,

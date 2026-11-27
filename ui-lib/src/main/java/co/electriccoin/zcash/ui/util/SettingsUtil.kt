@@ -19,7 +19,7 @@ object SettingsUtil {
      *
      * @return Intent for launching the system Settings app
      */
-    internal fun newSettingsIntent(packageName: String): Intent =
+    fun newSettingsIntent(packageName: String): Intent =
         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
             addCategory(Intent.CATEGORY_DEFAULT)
             data = Uri.parse("$SETTINGS_URI_PREFIX$packageName")

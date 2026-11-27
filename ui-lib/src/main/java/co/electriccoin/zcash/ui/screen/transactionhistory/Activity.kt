@@ -40,10 +40,12 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.Itemizable
+import co.electriccoin.zcash.ui.design.util.PressMorphDefaults
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.StyledStringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orHiddenString
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
@@ -56,6 +58,8 @@ fun Activity(
         state.onDisplayed()
     }
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
@@ -66,9 +70,10 @@ fun Activity(
         Row(
             modifier =
                 Modifier
+                    .pressMorph(interactionSource, PressMorphDefaults.PRESSED_SCALE_SUBTLE)
                     .clickable(
                         indication = ripple(),
-                        interactionSource = remember { MutableInteractionSource() },
+                        interactionSource = interactionSource,
                         onClick = state.onClick,
                         role = Role.Button,
                     ).padding(contentPadding),

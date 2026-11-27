@@ -204,7 +204,11 @@ object ZashiEndpointTextFieldParser {
                 return null
             }
 
-            LightWalletEndpoint(host, port, true)
+            // .onion addresses use Tor for transport encryption; TLS is not needed
+            // (and no public CA issues certs for .onion hosts). Any other host
+            // keeps isSecure=true. Explicit grpc:// scheme also opts out of TLS.
+            val isSecure = !host.endsWith(".onion") && uri.scheme != "grpc"
+            LightWalletEndpoint(host, port, isSecure)
         } catch (_: Exception) {
             null
         }

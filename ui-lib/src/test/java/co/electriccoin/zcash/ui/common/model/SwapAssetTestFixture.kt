@@ -23,7 +23,8 @@ object SwapAssetTestFixture {
         chainTicker: String = "btc",
         usdPrice: BigDecimal? = BigDecimal("100000"),
         decimals: Int = 8,
-        assetId: String = "$tokenTicker-$chainTicker"
+        assetId: String = "$tokenTicker-$chainTicker",
+        contractAddress: String? = null
     ): SwapAsset =
         NearSwapAsset(
             tokenTicker = tokenTicker,
@@ -31,6 +32,7 @@ object SwapAssetTestFixture {
             tokenIcon = imageRes(0),
             usdPrice = usdPrice,
             assetId = assetId,
+            contractAddress = contractAddress,
             decimals = decimals,
             blockchain = blockchain(chainTicker)
         )

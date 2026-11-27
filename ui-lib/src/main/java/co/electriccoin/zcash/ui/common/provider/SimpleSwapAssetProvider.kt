@@ -46,6 +46,10 @@ class SimpleSwapAssetProviderImpl(
             "USDC" to "pol",
             "XRP" to "xrp",
             "ETH" to "base",
+            "DASH" to "dash",
+            "BCH" to "bch",
+            "ZEC" to "sol",
+            "ZEC" to "near",
         )
 
     // Built once: the curated set is static, but getCuratedSwapAssets() is called on every

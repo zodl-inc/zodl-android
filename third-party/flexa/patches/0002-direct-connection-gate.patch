@@ -1,0 +1,874 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: y4ssi <11613913+y4ssi@users.noreply.github.com>
+Date: Wed, 04 Nov 2026 01:26:53 +0000
+Subject: [PATCH] Let the host app gate the SDK's direct connections (images, web views)
+
+FlexaClientConfiguration takes an optional directConnectionsAllowed, asked before the SDK connects
+to Flexa outside the API clients okHttpClientCustomizer reaches. Every image goes through one Coil
+ImageLoader (FlexaImageLoader) whose OkHttp client refuses the download while it returns false, so
+the placeholder shows; every web view (merchant directory, how to pay, legal pages) is wrapped in
+DirectConnectionConsent, which then shows a disclosure and loads the page only after the user agrees.
+Null keeps upstream's behaviour (always allowed).
+---
+ core/src/main/java/com/flexa/core/Flexa.kt         |  10 ++
+ .../flexa/core/shared/FlexaClientConfiguration.kt  |   5 +
+ .../com/flexa/core/view/DirectConnectionConsent.kt |  61 ++++++++
+ .../java/com/flexa/core/view/FlexaImageLoader.kt   |  54 +++++++
+ .../java/com/flexa/identity/main/BrandsList.kt     |   2 +
+ .../java/com/flexa/identity/main/WebViewScreen.kt  |  65 ++++-----
+ .../com/flexa/identity/terms_of_use/TermsOfUse.kt  |  25 ++--
+ core/src/main/res/values/strings.xml               |   4 +
+ .../src/main/java/com/flexa/spend/SpendActivity.kt |  20 +--
+ .../com/flexa/spend/main/confirm/ConfirmScreen.kt  |   2 +
+ .../spend/main/places_to_pay/LocationsWebView.kt   | 131 ++++++++---------
+ .../spend/main/places_to_pay/PlacesToPayWebView.kt | 155 +++++++++++----------
+ .../com/flexa/spend/main/ui_utils/Composables.kt   |   2 +
+ .../com/flexa/spend/main/web_view/WebViewScreen.kt |  65 ++++-----
+ 14 files changed, 371 insertions(+), 230 deletions(-)
+
+diff --git a/core/src/main/java/com/flexa/core/Flexa.kt b/core/src/main/java/com/flexa/core/Flexa.kt
+index 2c12bf81e..1828754e3 100644
+--- a/core/src/main/java/com/flexa/core/Flexa.kt
++++ b/core/src/main/java/com/flexa/core/Flexa.kt
+@@ -52,6 +52,15 @@ object Flexa {
+     internal var themeConfig = FlexaTheme()
+     @Volatile
+     internal var okHttpClientCustomizer: ((OkHttpClient.Builder) -> Unit)? = null
++    @Volatile
++    internal var directConnectionsAllowed: (() -> Boolean)? = null
++
++    /**
++     * Whether the SDK may connect to Flexa directly (images, web views) right now: see
++     * [FlexaClientConfiguration.directConnectionsAllowed]. Asked on every image download and before a web
++     * view loads, so a change (e.g. the user turns Tor on) applies at once.
++     */
++    fun allowsDirectConnections(): Boolean = directConnectionsAllowed?.invoke() ?: true
+     private val _appAccounts = MutableStateFlow<List<AssetAccount>>(emptyList())
+     val appAccounts: StateFlow<List<AssetAccount>> = _appAccounts
+     private val serializerProvider = SerializerProvider()
+@@ -80,6 +89,7 @@ object Flexa {
+     fun init(config: FlexaClientConfiguration) {
+         context = config.context.applicationContext
+         okHttpClientCustomizer = config.okHttpClientCustomizer
++        directConnectionsAllowed = config.directConnectionsAllowed
+         themeConfig = config.theme
+         setAssetAccounts(config.assetAccounts)
+         setUniqueIdentifier()
+diff --git a/core/src/main/java/com/flexa/core/shared/FlexaClientConfiguration.kt b/core/src/main/java/com/flexa/core/shared/FlexaClientConfiguration.kt
+index 4bf9943b7..127eaa6ab 100644
+--- a/core/src/main/java/com/flexa/core/shared/FlexaClientConfiguration.kt
++++ b/core/src/main/java/com/flexa/core/shared/FlexaClientConfiguration.kt
+@@ -13,6 +13,10 @@ import okhttp3.OkHttpClient
+  * @param webViewThemeConfig provide color scheme for Places to Pay
+  * @param okHttpClientCustomizer applied to every OkHttp client the SDK builds for the Flexa API,
+  * after the SDK's own interceptors, e.g. to add an interceptor that sends the requests through a proxy
++ * @param directConnectionsAllowed asked before the SDK connects to Flexa directly, outside the API
++ * clients [okHttpClientCustomizer] reaches: image downloads and web views (merchant directory, how to
++ * pay, legal pages). When it returns false, images are not downloaded (the placeholder shows) and a
++ * web view first shows a disclosure and loads only after the user agrees. Null = always allowed.
+  */
+ class FlexaClientConfiguration(
+     val context: Context,
+@@ -21,4 +25,5 @@ class FlexaClientConfiguration(
+     val theme: FlexaTheme = FlexaTheme(),
+     val webViewThemeConfig: String? = null,
+     val okHttpClientCustomizer: ((OkHttpClient.Builder) -> Unit)? = null,
++    val directConnectionsAllowed: (() -> Boolean)? = null,
+ )
+diff --git a/core/src/main/java/com/flexa/core/view/DirectConnectionConsent.kt b/core/src/main/java/com/flexa/core/view/DirectConnectionConsent.kt
+new file mode 100644
+index 000000000..53ed48c41
+--- /dev/null
++++ b/core/src/main/java/com/flexa/core/view/DirectConnectionConsent.kt
+@@ -0,0 +1,61 @@
++package com.flexa.core.view
++
++import androidx.compose.foundation.layout.Arrangement
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.fillMaxSize
++import androidx.compose.foundation.layout.padding
++import androidx.compose.material3.Button
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.runtime.saveable.rememberSaveable
++import androidx.compose.runtime.setValue
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.platform.LocalInspectionMode
++import androidx.compose.ui.res.stringResource
++import androidx.compose.ui.text.style.TextAlign
++import androidx.compose.ui.unit.dp
++import com.flexa.R
++import com.flexa.core.Flexa
++
++/**
++ * Shows [content] (a web view that loads a Flexa page directly) only when direct connections to Flexa are
++ * allowed ([Flexa.allowsDirectConnections]) or the user agreed on this screen. Otherwise it shows a
++ * disclosure that Flexa will see the user's IP address, with a button to load the page anyway: the page is
++ * never loaded silently while the app is on a private connection or Tor.
++ */
++@Composable
++fun DirectConnectionConsent(
++    modifier: Modifier = Modifier,
++    content: @Composable () -> Unit,
++) {
++    var agreed by rememberSaveable { mutableStateOf(false) }
++    if (agreed || LocalInspectionMode.current || Flexa.allowsDirectConnections()) {
++        content()
++        return
++    }
++    Column(
++        modifier = modifier
++            .fillMaxSize()
++            .padding(24.dp),
++        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
++        horizontalAlignment = Alignment.CenterHorizontally,
++    ) {
++        Text(
++            text = stringResource(R.string.direct_connection_title),
++            style = MaterialTheme.typography.titleMedium,
++            textAlign = TextAlign.Center,
++        )
++        Text(
++            text = stringResource(R.string.direct_connection_description),
++            style = MaterialTheme.typography.bodyMedium,
++            textAlign = TextAlign.Center,
++        )
++        Button(onClick = { agreed = true }) {
++            Text(text = stringResource(R.string.direct_connection_load))
++        }
++    }
++}
+diff --git a/core/src/main/java/com/flexa/core/view/FlexaImageLoader.kt b/core/src/main/java/com/flexa/core/view/FlexaImageLoader.kt
+new file mode 100644
+index 000000000..a45c49c7e
+--- /dev/null
++++ b/core/src/main/java/com/flexa/core/view/FlexaImageLoader.kt
+@@ -0,0 +1,54 @@
++package com.flexa.core.view
++
++import android.content.Context
++import coil.ImageLoader
++import coil.disk.DiskCache
++import coil.memory.MemoryCache
++import com.flexa.core.Flexa
++import okhttp3.Interceptor
++import okhttp3.OkHttpClient
++import okhttp3.Response
++import java.io.IOException
++
++/**
++ * The one Coil [ImageLoader] every Flexa image goes through (merchant logos, brand and asset icons).
++ * Images come from Flexa's own hosts, not from the API the app routes through
++ * [com.flexa.core.shared.FlexaClientConfiguration.okHttpClientCustomizer], so a download is a direct
++ * connection: [DirectConnectionGate] refuses it while [Flexa.allowsDirectConnections] is false, and the
++ * caller's placeholder or error image shows instead. Images already in the memory or disk cache still show.
++ */
++object FlexaImageLoader {
++    @Volatile
++    private var loader: ImageLoader? = null
++
++    fun get(context: Context): ImageLoader =
++        loader ?: synchronized(this) {
++            loader ?: build(context.applicationContext).also { loader = it }
++        }
++
++    private fun build(context: Context): ImageLoader =
++        ImageLoader.Builder(context)
++            .okHttpClient { OkHttpClient.Builder().addInterceptor(DirectConnectionGate).build() }
++            .memoryCache {
++                MemoryCache.Builder(context)
++                    .maxSizePercent(0.25)
++                    .build()
++            }
++            .diskCache {
++                DiskCache.Builder()
++                    .directory(context.cacheDir.resolve("image_cache"))
++                    .maxSizePercent(0.02)
++                    .build()
++            }
++            .build()
++}
++
++/** Fails a request while [Flexa.allowsDirectConnections] is false, before anything is sent. */
++internal object DirectConnectionGate : Interceptor {
++    override fun intercept(chain: Interceptor.Chain): Response {
++        if (!Flexa.allowsDirectConnections()) {
++            throw IOException("Direct connections to Flexa are off (private connection or Tor)")
++        }
++        return chain.proceed(chain.request())
++    }
++}
+diff --git a/core/src/main/java/com/flexa/identity/main/BrandsList.kt b/core/src/main/java/com/flexa/identity/main/BrandsList.kt
+index 2592f4cf8..6de7d3cb4 100644
+--- a/core/src/main/java/com/flexa/identity/main/BrandsList.kt
++++ b/core/src/main/java/com/flexa/identity/main/BrandsList.kt
+@@ -26,6 +26,7 @@ import androidx.compose.ui.res.painterResource
+ import androidx.compose.ui.tooling.preview.Preview
+ import androidx.compose.ui.unit.dp
+ import coil.compose.AsyncImage
++import com.flexa.core.view.FlexaImageLoader
+ import coil.request.ImageRequest
+ import com.flexa.core.theme.FlexaTheme
+ import com.flexa.core.view.FlexaLogo
+@@ -73,6 +74,7 @@ internal fun MerchantsIconsList(
+                     if (j > 4) j = 0
+                     AsyncImage(
+                         modifier = modifierProvider.getModifier(j),
++                        imageLoader = FlexaImageLoader.get(LocalContext.current),
+                         model = ImageRequest.Builder(LocalContext.current)
+                             .data(bundle.items[i])
+                             .crossfade(true)
+diff --git a/core/src/main/java/com/flexa/identity/main/WebViewScreen.kt b/core/src/main/java/com/flexa/identity/main/WebViewScreen.kt
+index 6173b4197..e81cfe82f 100644
+--- a/core/src/main/java/com/flexa/identity/main/WebViewScreen.kt
++++ b/core/src/main/java/com/flexa/identity/main/WebViewScreen.kt
+@@ -1,6 +1,7 @@
+ package com.flexa.identity.main
+ 
+ import android.annotation.SuppressLint
++import com.flexa.core.view.DirectConnectionConsent
+ import android.util.Xml.Encoding
+ import android.view.ViewGroup
+ import android.webkit.WebChromeClient
+@@ -60,40 +61,42 @@ fun WebView(
+         }
+     ) { padding ->
+         if (!previewMode) {
+-            AndroidView(
+-                modifier = Modifier
+-                    .padding(padding)
+-                    .fillMaxSize(),
+-                factory = { context ->
+-                    WebView(context).apply {
+-                        layoutParams = ViewGroup.LayoutParams(
+-                            ViewGroup.LayoutParams.MATCH_PARENT,
+-                            ViewGroup.LayoutParams.MATCH_PARENT
+-                        )
+-                        webChromeClient = object : WebChromeClient() {
+-                            override fun onReceivedTitle(view: WebView?, t: String?) {
+-                                super.onReceivedTitle(view, t)
+-                                title.value = t ?: ""
++            DirectConnectionConsent(modifier = Modifier.padding(padding)) {
++                AndroidView(
++                    modifier = Modifier
++                        .padding(padding)
++                        .fillMaxSize(),
++                    factory = { context ->
++                        WebView(context).apply {
++                            layoutParams = ViewGroup.LayoutParams(
++                                ViewGroup.LayoutParams.MATCH_PARENT,
++                                ViewGroup.LayoutParams.MATCH_PARENT
++                            )
++                            webChromeClient = object : WebChromeClient() {
++                                override fun onReceivedTitle(view: WebView?, t: String?) {
++                                    super.onReceivedTitle(view, t)
++                                    title.value = t ?: ""
++                                }
+                             }
+-                        }
+-                        webViewClient = object : WebViewClientCompat() {
+-                            override fun onPageFinished(view: WebView?, url: String?) {
+-                                title.value = view?.title ?: ""
+-                                super.onPageFinished(view, url)
++                            webViewClient = object : WebViewClientCompat() {
++                                override fun onPageFinished(view: WebView?, url: String?) {
++                                    title.value = view?.title ?: ""
++                                    super.onPageFinished(view, url)
++                                }
+                             }
++                            settings.javaScriptEnabled = true
++                            settings.domStorageEnabled = true
++                            settings.loadWithOverviewMode = true
++                            settings.useWideViewPort = true
++                            settings.builtInZoomControls = true
++                            settings.displayZoomControls = false
++                            settings.setSupportZoom(true)
++                            settings.defaultTextEncodingName = Encoding.UTF_8.name
+                         }
+-                        settings.javaScriptEnabled = true
+-                        settings.domStorageEnabled = true
+-                        settings.loadWithOverviewMode = true
+-                        settings.useWideViewPort = true
+-                        settings.builtInZoomControls = true
+-                        settings.displayZoomControls = false
+-                        settings.setSupportZoom(true)
+-                        settings.defaultTextEncodingName = Encoding.UTF_8.name
+-                    }
+-                },
+-                update = { it.loadUrl(url) }
+-            )
++                    },
++                    update = { it.loadUrl(url) }
++                )
++            }
+         } else {
+             Box(
+                 Modifier
+diff --git a/core/src/main/java/com/flexa/identity/terms_of_use/TermsOfUse.kt b/core/src/main/java/com/flexa/identity/terms_of_use/TermsOfUse.kt
+index 4ca6bcb9a..3865c8cda 100644
+--- a/core/src/main/java/com/flexa/identity/terms_of_use/TermsOfUse.kt
++++ b/core/src/main/java/com/flexa/identity/terms_of_use/TermsOfUse.kt
+@@ -1,6 +1,7 @@
+ package com.flexa.identity.terms_of_use
+ 
+ import android.webkit.WebView
++import com.flexa.core.view.DirectConnectionConsent
+ import androidx.compose.foundation.layout.fillMaxSize
+ import androidx.compose.foundation.layout.padding
+ import androidx.compose.material.icons.Icons
+@@ -50,17 +51,19 @@ fun TermsOfUse(
+             )
+         }
+     ) { padding ->
+-        AndroidView(
+-            modifier = Modifier
+-                .fillMaxSize()
+-                .padding(padding),
+-            factory = {
+-                WebView(context).apply {
+-                    webViewClient = WebViewClientCompat()
+-                }
+-            },
+-            update = { it.loadUrl(url) }
+-        )
++        DirectConnectionConsent(modifier = Modifier.padding(padding)) {
++            AndroidView(
++                modifier = Modifier
++                    .fillMaxSize()
++                    .padding(padding),
++                factory = {
++                    WebView(context).apply {
++                        webViewClient = WebViewClientCompat()
++                    }
++                },
++                update = { it.loadUrl(url) }
++            )
++        }
+     }
+ }
+ 
+diff --git a/core/src/main/res/values/strings.xml b/core/src/main/res/values/strings.xml
+index c2cabeb72..195f8a207 100644
+--- a/core/src/main/res/values/strings.xml
++++ b/core/src/main/res/values/strings.xml
+@@ -9,6 +9,10 @@
+     <string name="flexa_report_email">help@flexa.network</string>
+     <string name="report_an_issue">Report an issue</string>
+ 
++    <string name="direct_connection_title">This page comes from Flexa</string>
++    <string name="direct_connection_description">Flexa loads it directly, not through your private connection or Tor, so Flexa can see your IP address. Zodl can\'t.</string>
++    <string name="direct_connection_load">Load page</string>
++
+     <string name="flexa">Flexa</string>
+     <string name="just_now">Just now</string>
+     <string name="to">To</string>
+diff --git a/spend/src/main/java/com/flexa/spend/SpendActivity.kt b/spend/src/main/java/com/flexa/spend/SpendActivity.kt
+index f17a8ae55..d2a45c7b6 100644
+--- a/spend/src/main/java/com/flexa/spend/SpendActivity.kt
++++ b/spend/src/main/java/com/flexa/spend/SpendActivity.kt
+@@ -19,8 +19,7 @@ import androidx.navigation.compose.NavHost
+ import androidx.navigation.compose.rememberNavController
+ import coil.ImageLoader
+ import coil.ImageLoaderFactory
+-import coil.disk.DiskCache
+-import coil.memory.MemoryCache
++import com.flexa.core.view.FlexaImageLoader
+ import com.flexa.core.Flexa
+ import com.flexa.core.shared.AssetAccount
+ import com.flexa.core.shared.FlexaConstants
+@@ -63,21 +62,8 @@ class SpendActivity : ComponentActivity(), ImageLoaderFactory {
+         super.onDestroy()
+     }
+ 
+-    override fun newImageLoader(): ImageLoader {
+-        return ImageLoader.Builder(this)
+-            .memoryCache {
+-                MemoryCache.Builder(this)
+-                    .maxSizePercent(0.25)
+-                    .build()
+-            }
+-            .diskCache {
+-                DiskCache.Builder()
+-                    .directory(this.cacheDir.resolve("image_cache"))
+-                    .maxSizePercent(0.02)
+-                    .build()
+-            }
+-            .build()
+-    }
++    /** The SDK's image loader, which downloads nothing while direct connections are off. */
++    override fun newImageLoader(): ImageLoader = FlexaImageLoader.get(this)
+ 
+     private fun restoreAssetsAccounts() {
+         if (Flexa.appAccounts.value.isEmpty()) {
+diff --git a/spend/src/main/java/com/flexa/spend/main/confirm/ConfirmScreen.kt b/spend/src/main/java/com/flexa/spend/main/confirm/ConfirmScreen.kt
+index 9f42c8227..8ad60f230 100644
+--- a/spend/src/main/java/com/flexa/spend/main/confirm/ConfirmScreen.kt
++++ b/spend/src/main/java/com/flexa/spend/main/confirm/ConfirmScreen.kt
+@@ -93,6 +93,7 @@ import androidx.compose.ui.unit.sp
+ import androidx.lifecycle.compose.collectAsStateWithLifecycle
+ import androidx.lifecycle.viewmodel.compose.viewModel
+ import coil.compose.AsyncImage
++import com.flexa.core.view.FlexaImageLoader
+ import coil.decode.SvgDecoder
+ import coil.request.ImageRequest
+ import com.flexa.core.Flexa
+@@ -364,6 +365,7 @@ internal fun ConfirmCard(
+                                 modifier = Modifier
+                                     .size(38.dp)
+                                     .clip(CircleShape),
++                                imageLoader = FlexaImageLoader.get(LocalContext.current),
+                                 model = ImageRequest.Builder(LocalContext.current)
+                                     .data(selectedAsset?.asset?.logo())
+                                     .decoderFactory(SvgDecoder.Factory())
+diff --git a/spend/src/main/java/com/flexa/spend/main/places_to_pay/LocationsWebView.kt b/spend/src/main/java/com/flexa/spend/main/places_to_pay/LocationsWebView.kt
+index 19cd7e60e..e2bc803a4 100644
+--- a/spend/src/main/java/com/flexa/spend/main/places_to_pay/LocationsWebView.kt
++++ b/spend/src/main/java/com/flexa/spend/main/places_to_pay/LocationsWebView.kt
+@@ -1,6 +1,7 @@
+ package com.flexa.spend.main.places_to_pay
+ 
+ import android.annotation.SuppressLint
++import com.flexa.core.view.DirectConnectionConsent
+ import android.content.Intent
+ import android.util.Log
+ import android.view.ViewGroup
+@@ -29,78 +30,80 @@ fun LocationsWebView(
+     onTitle: (title: String) -> Unit,
+     onFirstPage: (Boolean) -> Unit,
+ ) {
+-    var webView by remember { mutableStateOf<WebView?>(null) }
+-    var loading by remember { mutableStateOf(true) }
+-    val blur by animateDpAsState(
+-        targetValue = if (loading) 10.dp else 0.dp, label = "blur",
+-    )
++    DirectConnectionConsent(modifier = modifier) {
++        var webView by remember { mutableStateOf<WebView?>(null) }
++        var loading by remember { mutableStateOf(true) }
++        val blur by animateDpAsState(
++            targetValue = if (loading) 10.dp else 0.dp, label = "blur",
++        )
+ 
+-    AndroidView(
+-        modifier = modifier.blur(blur),
+-        factory = {
+-            webView = WebView(it).apply {
+-                layoutParams = ViewGroup.LayoutParams(
+-                    ViewGroup.LayoutParams.MATCH_PARENT,
+-                    ViewGroup.LayoutParams.MATCH_PARENT
+-                )
+-                webChromeClient = object : WebChromeClient() {
+-                    override fun onReceivedTitle(view: WebView?, t: String?) {
+-                        super.onReceivedTitle(view, t)
+-                        onTitle.invoke(t ?: "")
++        AndroidView(
++            modifier = modifier.blur(blur),
++            factory = {
++                webView = WebView(it).apply {
++                    layoutParams = ViewGroup.LayoutParams(
++                        ViewGroup.LayoutParams.MATCH_PARENT,
++                        ViewGroup.LayoutParams.MATCH_PARENT
++                    )
++                    webChromeClient = object : WebChromeClient() {
++                        override fun onReceivedTitle(view: WebView?, t: String?) {
++                            super.onReceivedTitle(view, t)
++                            onTitle.invoke(t ?: "")
++                        }
+                     }
+-                }
+-                webViewClient = object : WebViewClient() {
+-                    override fun shouldOverrideUrlLoading(
+-                        view: WebView?,
+-                        request: WebResourceRequest?
+-                    ): Boolean {
+-                        if (!viewModel.url.host.equals(request?.url?.host, true)) {
+-                            try {
+-                                request?.url?.let { uri ->
+-                                    webView?.context?.startActivity(
+-                                        Intent(Intent.ACTION_VIEW, uri)
+-                                    )
++                    webViewClient = object : WebViewClient() {
++                        override fun shouldOverrideUrlLoading(
++                            view: WebView?,
++                            request: WebResourceRequest?
++                        ): Boolean {
++                            if (!viewModel.url.host.equals(request?.url?.host, true)) {
++                                try {
++                                    request?.url?.let { uri ->
++                                        webView?.context?.startActivity(
++                                            Intent(Intent.ACTION_VIEW, uri)
++                                        )
++                                    }
++                                } catch (ex: Exception) {
++                                    return false
+                                 }
+-                            } catch (ex: Exception) {
++                                return true
++                            } else {
++                                loading = true
++                                Log.d(
++                                    "TAG",
++                                    "Url: ${request?.url} NB: ${request?.url?.getQueryParameter("nb")}"
++                                )
++                                val nextUrl = request?.url?.toString() ?: ""
++                                viewModel.urlsList.add(nextUrl)
++                                onFirstPage.invoke(viewModel.urlsList.isEmpty())
+                                 return false
+                             }
+-                            return true
+-                        } else {
+-                            loading = true
+-                            Log.d(
+-                                "TAG",
+-                                "Url: ${request?.url} NB: ${request?.url?.getQueryParameter("nb")}"
+-                            )
+-                            val nextUrl = request?.url?.toString() ?: ""
+-                            viewModel.urlsList.add(nextUrl)
+-                            onFirstPage.invoke(viewModel.urlsList.isEmpty())
+-                            return false
+                         }
+-                    }
+ 
+-                    override fun onPageFinished(view: WebView?, url: String?) {
+-                        onTitle.invoke(view?.title ?: "")
+-                        super.onPageFinished(view, url)
+-                        loading = false
++                        override fun onPageFinished(view: WebView?, url: String?) {
++                            onTitle.invoke(view?.title ?: "")
++                            super.onPageFinished(view, url)
++                            loading = false
++                        }
++                    }
++                    val sdkVersion = BuildConfig.SPEND_VERSION
++                    settings.userAgentString += " Spend/$sdkVersion"
++                    settings.javaScriptEnabled = true
++                    if (viewModel.bundle.isEmpty) {
++                        loadUrl(viewModel.url.toString())
+                     }
+                 }
+-                val sdkVersion = BuildConfig.SPEND_VERSION
+-                settings.userAgentString += " Spend/$sdkVersion"
+-                settings.javaScriptEnabled = true
+-                if (viewModel.bundle.isEmpty) {
+-                    loadUrl(viewModel.url.toString())
++                try {
++                    webView!!
++                } finally {
++                    onViewCreated.invoke(webView!!)
++                }
++            },
++            update = {
++                if (!viewModel.bundle.isEmpty) {
++                    webView?.restoreState(viewModel.bundle)
++                    viewModel.bundle.clear()
+                 }
+-            }
+-            try {
+-                webView!!
+-            } finally {
+-                onViewCreated.invoke(webView!!)
+-            }
+-        },
+-        update = {
+-            if (!viewModel.bundle.isEmpty) {
+-                webView?.restoreState(viewModel.bundle)
+-                viewModel.bundle.clear()
+-            }
+-        })
++            })
++    }
+ }
+diff --git a/spend/src/main/java/com/flexa/spend/main/places_to_pay/PlacesToPayWebView.kt b/spend/src/main/java/com/flexa/spend/main/places_to_pay/PlacesToPayWebView.kt
+index b74a8ba51..9bda294b4 100644
+--- a/spend/src/main/java/com/flexa/spend/main/places_to_pay/PlacesToPayWebView.kt
++++ b/spend/src/main/java/com/flexa/spend/main/places_to_pay/PlacesToPayWebView.kt
+@@ -1,6 +1,7 @@
+ package com.flexa.spend.main.places_to_pay
+ 
+ import android.annotation.SuppressLint
++import com.flexa.core.view.DirectConnectionConsent
+ import android.content.Intent
+ import android.util.Base64
+ import android.util.Log
+@@ -33,91 +34,93 @@ fun PlacesToPayWebView(
+     onTitle: (title: String) -> Unit,
+     onFirstPage: (Boolean) -> Unit,
+ ) {
+-    var webView by remember { mutableStateOf<WebView?>(null) }
+-    var loading by remember { mutableStateOf(true) }
+-    val blur by animateDpAsState(
+-        targetValue = if (loading) 10.dp else 0.dp, label = "blur",
+-    )
+-    val themeData by viewModel.themeData.collectAsStateWithLifecycle()
+-    val palette = MaterialTheme.colorScheme
++    DirectConnectionConsent(modifier = modifier) {
++        var webView by remember { mutableStateOf<WebView?>(null) }
++        var loading by remember { mutableStateOf(true) }
++        val blur by animateDpAsState(
++            targetValue = if (loading) 10.dp else 0.dp, label = "blur",
++        )
++        val themeData by viewModel.themeData.collectAsStateWithLifecycle()
++        val palette = MaterialTheme.colorScheme
+ 
+-    AndroidView(
+-        modifier = modifier.blur(blur),
+-        factory = {
+-            webView = WebView(it).apply {
+-                layoutParams = ViewGroup.LayoutParams(
+-                    ViewGroup.LayoutParams.MATCH_PARENT,
+-                    ViewGroup.LayoutParams.MATCH_PARENT
+-                )
+-                webChromeClient = object : WebChromeClient() {
+-                    override fun onReceivedTitle(view: WebView?, t: String?) {
+-                        super.onReceivedTitle(view, t)
+-                        onTitle.invoke(t ?: "")
++        AndroidView(
++            modifier = modifier.blur(blur),
++            factory = {
++                webView = WebView(it).apply {
++                    layoutParams = ViewGroup.LayoutParams(
++                        ViewGroup.LayoutParams.MATCH_PARENT,
++                        ViewGroup.LayoutParams.MATCH_PARENT
++                    )
++                    webChromeClient = object : WebChromeClient() {
++                        override fun onReceivedTitle(view: WebView?, t: String?) {
++                            super.onReceivedTitle(view, t)
++                            onTitle.invoke(t ?: "")
++                        }
+                     }
+-                }
+-                webViewClient = object : WebViewClient() {
+-                    override fun shouldOverrideUrlLoading(
+-                        view: WebView?,
+-                        request: WebResourceRequest?
+-                    ): Boolean {
+-                        if (!viewModel.url.host.equals(request?.url?.host, true)) {
+-                            try {
+-                                request?.url?.let { uri ->
+-                                    webView?.context?.startActivity(
+-                                        Intent(Intent.ACTION_VIEW, uri)
+-                                    )
++                    webViewClient = object : WebViewClient() {
++                        override fun shouldOverrideUrlLoading(
++                            view: WebView?,
++                            request: WebResourceRequest?
++                        ): Boolean {
++                            if (!viewModel.url.host.equals(request?.url?.host, true)) {
++                                try {
++                                    request?.url?.let { uri ->
++                                        webView?.context?.startActivity(
++                                            Intent(Intent.ACTION_VIEW, uri)
++                                        )
++                                    }
++                                } catch (ex: Exception) {
++                                    return false
+                                 }
+-                            } catch (ex: Exception) {
++                                return true
++                            } else {
++                                loading = true
++                                Log.d(
++                                    "TAG",
++                                    "Url: ${request?.url} NB: ${request?.url?.getQueryParameter("nb")}"
++                                )
++                                val nextUrl = request?.url?.toString() ?: ""
++                                viewModel.urlsList.add(nextUrl)
++                                onFirstPage.invoke(viewModel.urlsList.isEmpty())
+                                 return false
+                             }
+-                            return true
+-                        } else {
+-                            loading = true
+-                            Log.d(
+-                                "TAG",
+-                                "Url: ${request?.url} NB: ${request?.url?.getQueryParameter("nb")}"
+-                            )
+-                            val nextUrl = request?.url?.toString() ?: ""
+-                            viewModel.urlsList.add(nextUrl)
+-                            onFirstPage.invoke(viewModel.urlsList.isEmpty())
+-                            return false
++                        }
++
++                        override fun onPageFinished(view: WebView?, url: String?) {
++                            onTitle.invoke(view?.title ?: "")
++                            super.onPageFinished(view, url)
++                            loading = false
+                         }
+                     }
++                    val sdkVersion = BuildConfig.SPEND_VERSION
++                    settings.userAgentString += " Spend/$sdkVersion"
++                    settings.javaScriptEnabled = true
++                    val themingData = if (themeData?.isNotBlank() == true)
++                        themeData!! else viewModel.getSDKThemeData(palette)
++                    Log.d("TAG", "PlacesToPayWebView: use >$themingData<")
++                    val jsonThemingData = Base64.encodeToString(
++                        themingData.toByteArray(),
++                        Base64.NO_WRAP
++                    )
++                    val cookieManager = CookieManager.getInstance()
++                    cookieManager.setAcceptCookie(true);
++                    cookieManager.setCookie(viewModel.url.host, "X-Theming-Data=$jsonThemingData")
+ 
+-                    override fun onPageFinished(view: WebView?, url: String?) {
+-                        onTitle.invoke(view?.title ?: "")
+-                        super.onPageFinished(view, url)
+-                        loading = false
++                    if (viewModel.bundle.isEmpty) {
++                        loadUrl(viewModel.url.toString())
+                     }
+                 }
+-                val sdkVersion = BuildConfig.SPEND_VERSION
+-                settings.userAgentString += " Spend/$sdkVersion"
+-                settings.javaScriptEnabled = true
+-                val themingData = if (themeData?.isNotBlank() == true)
+-                    themeData!! else viewModel.getSDKThemeData(palette)
+-                Log.d("TAG", "PlacesToPayWebView: use >$themingData<")
+-                val jsonThemingData = Base64.encodeToString(
+-                    themingData.toByteArray(),
+-                    Base64.NO_WRAP
+-                )
+-                val cookieManager = CookieManager.getInstance()
+-                cookieManager.setAcceptCookie(true);
+-                cookieManager.setCookie(viewModel.url.host, "X-Theming-Data=$jsonThemingData")
+-
+-                if (viewModel.bundle.isEmpty) {
+-                    loadUrl(viewModel.url.toString())
++                try {
++                    webView!!
++                } finally {
++                    onViewCreated.invoke(webView!!)
++                }
++            },
++            update = {
++                if (!viewModel.bundle.isEmpty) {
++                    webView?.restoreState(viewModel.bundle)
++                    viewModel.bundle.clear()
+                 }
+-            }
+-            try {
+-                webView!!
+-            } finally {
+-                onViewCreated.invoke(webView!!)
+-            }
+-        },
+-        update = {
+-            if (!viewModel.bundle.isEmpty) {
+-                webView?.restoreState(viewModel.bundle)
+-                viewModel.bundle.clear()
+-            }
+-        })
++            })
++    }
+ }
+diff --git a/spend/src/main/java/com/flexa/spend/main/ui_utils/Composables.kt b/spend/src/main/java/com/flexa/spend/main/ui_utils/Composables.kt
+index 5f5b69ce1..437f813d0 100644
+--- a/spend/src/main/java/com/flexa/spend/main/ui_utils/Composables.kt
++++ b/spend/src/main/java/com/flexa/spend/main/ui_utils/Composables.kt
+@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
+ import androidx.compose.ui.window.DialogProperties
+ import androidx.lifecycle.compose.collectAsStateWithLifecycle
+ import coil.compose.AsyncImage
++import com.flexa.core.view.FlexaImageLoader
+ import coil.decode.BitmapFactoryDecoder
+ import coil.decode.SvgDecoder
+ import coil.request.ImageRequest
+@@ -59,6 +60,7 @@ internal fun SpendAsyncImage(
+ ) {
+     AsyncImage(
+         modifier = modifier,
++        imageLoader = FlexaImageLoader.get(LocalContext.current),
+         model = ImageRequest.Builder(LocalContext.current)
+             .decoderFactory(BitmapFactoryDecoder.Factory())
+             .decoderFactory(SvgDecoder.Factory())
+diff --git a/spend/src/main/java/com/flexa/spend/main/web_view/WebViewScreen.kt b/spend/src/main/java/com/flexa/spend/main/web_view/WebViewScreen.kt
+index 9f333785d..97dc677aa 100644
+--- a/spend/src/main/java/com/flexa/spend/main/web_view/WebViewScreen.kt
++++ b/spend/src/main/java/com/flexa/spend/main/web_view/WebViewScreen.kt
+@@ -1,6 +1,7 @@
+ package com.flexa.spend.main.web_view
+ 
+ import android.annotation.SuppressLint
++import com.flexa.core.view.DirectConnectionConsent
+ import android.util.Xml.Encoding
+ import android.view.ViewGroup
+ import android.webkit.WebChromeClient
+@@ -58,40 +59,42 @@ fun WebView(
+             )
+         }
+     ) { padding ->
+-        AndroidView(
+-            modifier = Modifier
+-                .padding(padding)
+-                .fillMaxSize(),
+-            factory = { context ->
+-                WebView(context).apply {
+-                    layoutParams = ViewGroup.LayoutParams(
+-                        ViewGroup.LayoutParams.MATCH_PARENT,
+-                        ViewGroup.LayoutParams.MATCH_PARENT
+-                    )
+-                    webChromeClient = object : WebChromeClient() {
+-                        override fun onReceivedTitle(view: WebView?, t: String?) {
+-                            super.onReceivedTitle(view, t)
+-                            title.value = t ?: ""
++        DirectConnectionConsent(modifier = Modifier.padding(padding)) {
++            AndroidView(
++                modifier = Modifier
++                    .padding(padding)
++                    .fillMaxSize(),
++                factory = { context ->
++                    WebView(context).apply {
++                        layoutParams = ViewGroup.LayoutParams(
++                            ViewGroup.LayoutParams.MATCH_PARENT,
++                            ViewGroup.LayoutParams.MATCH_PARENT
++                        )
++                        webChromeClient = object : WebChromeClient() {
++                            override fun onReceivedTitle(view: WebView?, t: String?) {
++                                super.onReceivedTitle(view, t)
++                                title.value = t ?: ""
++                            }
+                         }
+-                    }
+-                    webViewClient = object : WebViewClientCompat() {
+-                        override fun onPageFinished(view: WebView?, url: String?) {
+-                            title.value = view?.title ?: ""
+-                            super.onPageFinished(view, url)
++                        webViewClient = object : WebViewClientCompat() {
++                            override fun onPageFinished(view: WebView?, url: String?) {
++                                title.value = view?.title ?: ""
++                                super.onPageFinished(view, url)
++                            }
+                         }
++                        settings.javaScriptEnabled = true
++                        settings.domStorageEnabled = true
++                        settings.loadWithOverviewMode = true
++                        settings.useWideViewPort = true
++                        settings.builtInZoomControls = true
++                        settings.displayZoomControls = false
++                        settings.setSupportZoom(true)
++                        settings.defaultTextEncodingName = Encoding.UTF_8.name
+                     }
+-                    settings.javaScriptEnabled = true
+-                    settings.domStorageEnabled = true
+-                    settings.loadWithOverviewMode = true
+-                    settings.useWideViewPort = true
+-                    settings.builtInZoomControls = true
+-                    settings.displayZoomControls = false
+-                    settings.setSupportZoom(true)
+-                    settings.defaultTextEncodingName = Encoding.UTF_8.name
+-                }
+-            },
+-            update = { it.loadUrl(url) }
+-        )
++                },
++                update = { it.loadUrl(url) }
++            )
++        }
+     }
+ }
+ 
+-- 
+2.43.0
+

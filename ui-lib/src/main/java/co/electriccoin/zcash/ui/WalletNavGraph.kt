@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
@@ -8,10 +9,17 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
 import androidx.navigation.toRoute
+import co.electriccoin.zcash.ui.common.ledger.LedgerNavContributor
+import co.electriccoin.zcash.ui.common.migration.MigrationNavContributor
+import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyNavContributor
+import co.electriccoin.zcash.ui.common.voting.VotingNavContributor
 import co.electriccoin.zcash.ui.screen.about.AboutArgs
 import co.electriccoin.zcash.ui.screen.about.AboutScreen
 import co.electriccoin.zcash.ui.screen.accountlist.AccountListArgs
 import co.electriccoin.zcash.ui.screen.accountlist.AccountListScreen
+import co.electriccoin.zcash.ui.screen.accountlist.options.WalletOptionsArgs
+import co.electriccoin.zcash.ui.screen.accountlist.options.WalletOptionsScreen
 import co.electriccoin.zcash.ui.screen.addressbook.AddressBookArgs
 import co.electriccoin.zcash.ui.screen.addressbook.AddressBookScreen
 import co.electriccoin.zcash.ui.screen.addressbook.SelectABRecipientArgs
@@ -22,26 +30,37 @@ import co.electriccoin.zcash.ui.screen.advancedsettings.debug.DebugArgs
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.DebugScreen
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.db.DebugDBArgs
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.db.DebugDBScreen
+import co.electriccoin.zcash.ui.screen.advancedsettings.debug.orchardbalance.DebugOrchardBalanceArgs
+import co.electriccoin.zcash.ui.screen.advancedsettings.debug.orchardbalance.DebugOrchardBalanceScreen
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.text.DebugTextArgs
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.text.DebugTextScreen
+import co.electriccoin.zcash.ui.screen.balances.breakdown.BalanceBreakdownArgs
+import co.electriccoin.zcash.ui.screen.balances.breakdown.BalanceBreakdownScreen
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceArgs
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceScreen
+import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletArgs
+import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletScreen
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerScreen
+import co.electriccoin.zcash.ui.screen.chooseserver.ohttpinfo.OhttpInfoArgs
+import co.electriccoin.zcash.ui.screen.chooseserver.ohttpinfo.OhttpInfoScreen
+import co.electriccoin.zcash.ui.screen.colorpicker.ColorPickerArgs
+import co.electriccoin.zcash.ui.screen.colorpicker.ColorPickerScreen
+import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollmentNavType
+import co.electriccoin.zcash.ui.screen.connecthw.date.HWDateArgs
+import co.electriccoin.zcash.ui.screen.connecthw.date.HWFirstTransactionScreen
+import co.electriccoin.zcash.ui.screen.connecthw.estimation.HWEstimationArgs
+import co.electriccoin.zcash.ui.screen.connecthw.estimation.HWFirstTransactionEstimationScreen
+import co.electriccoin.zcash.ui.screen.connecthw.height.HWHeightArgs
+import co.electriccoin.zcash.ui.screen.connecthw.height.HWWBHScreen
+import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveArgs
+import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveScreen
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneArgs
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneScreen
 import co.electriccoin.zcash.ui.screen.connectkeystone.connected.KeystoneConnectedArgs
 import co.electriccoin.zcash.ui.screen.connectkeystone.connected.KeystoneConnectedScreen
-import co.electriccoin.zcash.ui.screen.connectkeystone.date.KeystoneDateArgs
-import co.electriccoin.zcash.ui.screen.connectkeystone.date.KeystoneFirstTransactionScreen
-import co.electriccoin.zcash.ui.screen.connectkeystone.estimation.KeystoneEstimationArgs
-import co.electriccoin.zcash.ui.screen.connectkeystone.estimation.KeystoneFirstTransactionEstimationScreen
 import co.electriccoin.zcash.ui.screen.connectkeystone.explainer.KeystoneExplainerScreen
 import co.electriccoin.zcash.ui.screen.connectkeystone.explainer.KeystoneExplainerScreenArgs
-import co.electriccoin.zcash.ui.screen.connectkeystone.height.KeystoneHeightArgs
-import co.electriccoin.zcash.ui.screen.connectkeystone.height.KeystoneWBHScreen
-import co.electriccoin.zcash.ui.screen.connectkeystone.neworactive.KeystoneNewOrActiveArgs
-import co.electriccoin.zcash.ui.screen.connectkeystone.neworactive.KeystoneNewOrActiveScreen
 import co.electriccoin.zcash.ui.screen.contact.AddGenericABContactArgs
 import co.electriccoin.zcash.ui.screen.contact.AddGenericABContactScreen
 import co.electriccoin.zcash.ui.screen.contact.AddZashiABContactArgs
@@ -53,6 +72,8 @@ import co.electriccoin.zcash.ui.screen.deletewallet.ResetZashiArgs
 import co.electriccoin.zcash.ui.screen.deletewallet.ResetZashiScreen
 import co.electriccoin.zcash.ui.screen.disconnect.DisconnectArgs
 import co.electriccoin.zcash.ui.screen.disconnect.DisconnectScreen
+import co.electriccoin.zcash.ui.screen.editaccount.EditAccountArgs
+import co.electriccoin.zcash.ui.screen.editaccount.EditAccountScreen
 import co.electriccoin.zcash.ui.screen.error.AndroidErrorBottomSheet
 import co.electriccoin.zcash.ui.screen.error.AndroidErrorDialog
 import co.electriccoin.zcash.ui.screen.error.ErrorBottomSheet
@@ -68,6 +89,12 @@ import co.electriccoin.zcash.ui.screen.exchangerate.settings.ExchangeRateSetting
 import co.electriccoin.zcash.ui.screen.exchangerateunavailable.ExchangeRateUnavailableArgs
 import co.electriccoin.zcash.ui.screen.exchangerateunavailable.ExchangeRateUnavailableScreen
 import co.electriccoin.zcash.ui.screen.exportdata.WrapExportPrivateData
+import co.electriccoin.zcash.ui.screen.exportvk.ExportVKArgs
+import co.electriccoin.zcash.ui.screen.exportvk.ExportVKScreen
+import co.electriccoin.zcash.ui.screen.exportvk.confirm.ExportVKConfirmArgs
+import co.electriccoin.zcash.ui.screen.exportvk.confirm.ExportVKConfirmScreen
+import co.electriccoin.zcash.ui.screen.exportvk.detail.VKDetailArgs
+import co.electriccoin.zcash.ui.screen.exportvk.detail.VKDetailScreen
 import co.electriccoin.zcash.ui.screen.feedback.FeedbackArgs
 import co.electriccoin.zcash.ui.screen.feedback.FeedbackScreen
 import co.electriccoin.zcash.ui.screen.heightinfo.HeightInfoArgs
@@ -100,10 +127,16 @@ import co.electriccoin.zcash.ui.screen.insufficientfunds.InsufficientFundsArgs
 import co.electriccoin.zcash.ui.screen.insufficientfunds.InsufficientFundsScreen
 import co.electriccoin.zcash.ui.screen.integrations.IntegrationsArgs
 import co.electriccoin.zcash.ui.screen.integrations.IntegrationsScreen
+import co.electriccoin.zcash.ui.screen.ironwood.IronwoodAnnouncementArgs
+import co.electriccoin.zcash.ui.screen.ironwood.IronwoodAnnouncementScreen
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenArgs
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenScreen
 import co.electriccoin.zcash.ui.screen.more.MoreArgs
 import co.electriccoin.zcash.ui.screen.more.MoreScreen
+import co.electriccoin.zcash.ui.screen.ohttpoptin.OhttpOptInArgs
+import co.electriccoin.zcash.ui.screen.ohttpoptin.OhttpOptInScreen
+import co.electriccoin.zcash.ui.screen.ohttpunavailable.OhttpUnavailableArgs
+import co.electriccoin.zcash.ui.screen.ohttpunavailable.OhttpUnavailableScreen
 import co.electriccoin.zcash.ui.screen.pay.PayArgs
 import co.electriccoin.zcash.ui.screen.pay.PayScreen
 import co.electriccoin.zcash.ui.screen.pay.info.PayInfoArgs
@@ -116,6 +149,12 @@ import co.electriccoin.zcash.ui.screen.receive.info.ShieldedAddressInfoArgs
 import co.electriccoin.zcash.ui.screen.receive.info.ShieldedAddressInfoScreen
 import co.electriccoin.zcash.ui.screen.receive.info.TransparentAddressInfoArgs
 import co.electriccoin.zcash.ui.screen.receive.info.TransparentAddressInfoScreen
+import co.electriccoin.zcash.ui.screen.redeemgift.RedeemGiftArgs
+import co.electriccoin.zcash.ui.screen.redeemgift.RedeemGiftScreen
+import co.electriccoin.zcash.ui.screen.redeemgift.ScanGiftCardArgs
+import co.electriccoin.zcash.ui.screen.redeemgift.ScanGiftCardScreen
+import co.electriccoin.zcash.ui.screen.redeemgift.paste.PasteGiftCardLinkArgs
+import co.electriccoin.zcash.ui.screen.redeemgift.paste.PasteGiftCardLinkScreen
 import co.electriccoin.zcash.ui.screen.request.RequestArgs
 import co.electriccoin.zcash.ui.screen.request.RequestScreen
 import co.electriccoin.zcash.ui.screen.restore.info.AndroidSeedInfo
@@ -164,6 +203,8 @@ import co.electriccoin.zcash.ui.screen.swap.info.SwapRefundAddressInfoArgs
 import co.electriccoin.zcash.ui.screen.swap.info.SwapRefundAddressInfoScreen
 import co.electriccoin.zcash.ui.screen.swap.lock.EphemeralLockArgs
 import co.electriccoin.zcash.ui.screen.swap.lock.EphemeralLockScreen
+import co.electriccoin.zcash.ui.screen.swap.mismatch.SwapQuoteMismatchArgs
+import co.electriccoin.zcash.ui.screen.swap.mismatch.SwapQuoteMismatchScreen
 import co.electriccoin.zcash.ui.screen.swap.orconfirmation.ORSwapConfirmationArgs
 import co.electriccoin.zcash.ui.screen.swap.orconfirmation.ORSwapConfirmationScreen
 import co.electriccoin.zcash.ui.screen.swap.picker.SwapAssetPickerArgs
@@ -172,12 +213,20 @@ import co.electriccoin.zcash.ui.screen.swap.picker.SwapBlockchainPickerArgs
 import co.electriccoin.zcash.ui.screen.swap.picker.SwapBlockchainPickerScreen
 import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteArgs
 import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteScreen
+import co.electriccoin.zcash.ui.screen.swap.refundwarning.SwapRefundWarningArgs
+import co.electriccoin.zcash.ui.screen.swap.refundwarning.SwapRefundWarningScreen
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageArgs
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageScreen
 import co.electriccoin.zcash.ui.screen.taxexport.AndroidTaxExport
 import co.electriccoin.zcash.ui.screen.taxexport.TaxExport
 import co.electriccoin.zcash.ui.screen.texunsupported.AndroidTEXUnsupported
 import co.electriccoin.zcash.ui.screen.texunsupported.TEXUnsupportedArgs
+import co.electriccoin.zcash.ui.screen.theme.darklook.ThemeDarkLookArgs
+import co.electriccoin.zcash.ui.screen.theme.darklook.ThemeDarkLookScreen
+import co.electriccoin.zcash.ui.screen.theme.settings.ThemeSettingsArgs
+import co.electriccoin.zcash.ui.screen.theme.settings.ThemeSettingsScreen
+import co.electriccoin.zcash.ui.screen.toomanynotes.TooManyNotesArgs
+import co.electriccoin.zcash.ui.screen.toomanynotes.TooManyNotesScreen
 import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInArgs
 import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInScreen
 import co.electriccoin.zcash.ui.screen.tor.settings.TorSettingsArgs
@@ -192,28 +241,6 @@ import co.electriccoin.zcash.ui.screen.transactionnote.AndroidTransactionNote
 import co.electriccoin.zcash.ui.screen.transactionnote.TransactionNote
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressArgs
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressScreen
-import co.electriccoin.zcash.ui.screen.voting.chainconfig.VoteChainConfigArgs
-import co.electriccoin.zcash.ui.screen.voting.chainconfig.VoteChainConfigScreen
-import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
-import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingScreen
-import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionArgs
-import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionScreen
-import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteArgs
-import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteScreen
-import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionArgs
-import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionScreen
-import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailArgs
-import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailScreen
-import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
-import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListScreen
-import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
-import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsScreen
-import co.electriccoin.zcash.ui.screen.voting.scankeystone.ScanKeystoneVotingPCZTRequest
-import co.electriccoin.zcash.ui.screen.voting.scankeystone.WrapScanKeystoneVotingPCZTRequest
-import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingArgs
-import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingScreen
-import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
-import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingScreen
 import co.electriccoin.zcash.ui.screen.walletbackup.AndroidWalletBackup
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackup
 import co.electriccoin.zcash.ui.screen.warning.WrapNotEnoughSpace
@@ -222,20 +249,33 @@ import co.electriccoin.zcash.ui.screen.whatsnew.WrapWhatsNew
 
 fun NavGraphBuilder.walletNavGraph(
     storageCheckViewModel: StorageCheckViewModel,
+    walletViewModel: WalletViewModel,
     navigationRouter: NavigationRouter,
 ) {
     navigation<MainAppGraph>(startDestination = HomeArgs) {
         composable<HomeArgs> {
             AndroidHome()
 
+            val showIronwoodAnnouncement by
+                walletViewModel.shouldShowIronwoodAnnouncement.collectAsStateWithLifecycle()
+            LaunchedEffect(showIronwoodAnnouncement) {
+                if (showIronwoodAnnouncement) {
+                    navigationRouter.forward(IronwoodAnnouncementArgs)
+                }
+            }
+
             val isEnoughSpace by storageCheckViewModel.isEnoughSpace.collectAsStateWithLifecycle()
             if (isEnoughSpace == false) {
                 navigationRouter.forward(NavigationTargets.NOT_ENOUGH_SPACE)
             }
         }
+        composable<IronwoodAnnouncementArgs> { IronwoodAnnouncementScreen() }
         composable<MoreArgs> { MoreScreen() }
         composable<AdvancedSettingsArgs> { AdvancedSettingsScreen() }
         composable<ChooseServerArgs> { ChooseServerScreen() }
+        dialogComposable<OhttpInfoArgs> { OhttpInfoScreen() }
+        dialogComposable<OhttpUnavailableArgs> { OhttpUnavailableScreen() }
+        composable<OhttpOptInArgs> { OhttpOptInScreen() }
         composable<WalletBackup> { AndroidWalletBackup(it.toRoute()) }
         composable<FeedbackArgs> { FeedbackScreen() }
         composable<ResetZashiArgs> { ResetZashiScreen() }
@@ -247,11 +287,14 @@ fun NavGraphBuilder.walletNavGraph(
         composable<ScanKeystoneSignInRequest> { WrapScanKeystoneSignInRequest() }
         composable<ScanKeystonePCZTRequest> { WrapScanKeystonePCZTRequest() }
         composable<SignKeystoneTransactionArgs> { SignKeystoneTransactionScreen() }
-        composable<ScanKeystoneVotingPCZTRequest> { WrapScanKeystoneVotingPCZTRequest(it.toRoute()) }
-        composable<SignKeystoneVotingArgs> { SignKeystoneVotingScreen(it.toRoute()) }
-        dialogComposable<AccountListArgs> { AccountListScreen() }
+        composable<AccountListArgs> { AccountListScreen() }
+        dialogComposable<WalletOptionsArgs> { WalletOptionsScreen(it.toRoute()) }
+        composable<EditAccountArgs> { EditAccountScreen(it.toRoute()) }
         composable<ScanArgs> { ScanZashiAddressScreen(it.toRoute()) }
         composable(NavigationTargets.EXPORT_PRIVATE_DATA) { WrapExportPrivateData() }
+        composable<ExportVKArgs> { ExportVKScreen() }
+        dialogComposable<ExportVKConfirmArgs> { ExportVKConfirmScreen() }
+        composable<VKDetailArgs> { VKDetailScreen(it.toRoute()) }
         composable(NavigationTargets.NOT_ENOUGH_SPACE) {
             WrapNotEnoughSpace(
                 goPrevious = { navigationRouter.back() },
@@ -271,11 +314,20 @@ fun NavGraphBuilder.walletNavGraph(
         }
         composable<RequestArgs> { RequestScreen(it.toRoute()) }
         composable<ConnectKeystoneArgs> { ConnectKeystoneScreen() }
+        composable<ChooseHWWalletArgs> { ChooseHWWalletScreen() }
         dialogComposable<KeystoneExplainerScreenArgs> { KeystoneExplainerScreen() }
-        composable<KeystoneNewOrActiveArgs> { KeystoneNewOrActiveScreen(it.toRoute()) }
-        composable<KeystoneDateArgs> { KeystoneFirstTransactionScreen(it.toRoute()) }
-        composable<KeystoneEstimationArgs> { KeystoneFirstTransactionEstimationScreen(it.toRoute()) }
-        composable<KeystoneHeightArgs> { KeystoneWBHScreen(it.toRoute()) }
+        composable<HWNewOrActiveArgs>(typeMap = HWWalletEnrollmentNavType.typeMap) {
+            HWNewOrActiveScreen(it.toRoute())
+        }
+        composable<HWDateArgs>(typeMap = HWWalletEnrollmentNavType.typeMap) {
+            HWFirstTransactionScreen(it.toRoute())
+        }
+        composable<HWEstimationArgs>(typeMap = HWWalletEnrollmentNavType.typeMap) {
+            HWFirstTransactionEstimationScreen(it.toRoute())
+        }
+        composable<HWHeightArgs>(typeMap = HWWalletEnrollmentNavType.typeMap) {
+            HWWBHScreen(it.toRoute())
+        }
         composable<KeystoneConnectedArgs> { KeystoneConnectedScreen() }
         composable<KeepOpenArgs> { KeepOpenScreen(it.toRoute()) }
         dialogComposable<HeightInfoArgs> { HeightInfoScreen() }
@@ -289,8 +341,9 @@ fun NavGraphBuilder.walletNavGraph(
         composable<TaxExport> { AndroidTaxExport() }
         composable<ReceiveArgs> { ReceiveScreen() }
         composable<Send> { WrapSend(it.toRoute()) }
-        dialogComposable<TEXUnsupportedArgs> { AndroidTEXUnsupported() }
+        dialogComposable<TEXUnsupportedArgs> { AndroidTEXUnsupported(it.toRoute()) }
         dialogComposable<InsufficientFundsArgs> { InsufficientFundsScreen() }
+        dialogComposable<TooManyNotesArgs> { TooManyNotesScreen(it.toRoute()) }
         dialogComposable<SeedInfo> { AndroidSeedInfo() }
         composable<WalletBackupDetail> { AndroidWalletBackupDetail(it.toRoute()) }
         dialogComposable<SeedBackupInfo> { AndroidWalletBackupInfo() }
@@ -305,13 +358,19 @@ fun NavGraphBuilder.walletNavGraph(
         dialogComposable<ExchangeRateUnavailableArgs> { ExchangeRateUnavailableScreen() }
         dialogComposable<SyncErrorArgs> { SyncErrorScreen() }
         dialogComposable<SpendableBalanceArgs> { SpendableBalanceScreen() }
+        dialogComposable<BalanceBreakdownArgs> { BalanceBreakdownScreen() }
         composable<CrashReportOptIn> { AndroidCrashReportOptIn() }
         composable<ThirdPartyScan> { AndroidThirdPartyScan() }
+        composable<ScanGiftCardArgs> { ScanGiftCardScreen(it.toRoute()) }
+        composable<PasteGiftCardLinkArgs> { PasteGiftCardLinkScreen() }
+        composable<RedeemGiftArgs> { RedeemGiftScreen(it.toRoute()) }
         dialogComposable<SwapAssetPickerArgs> { SwapAssetPickerScreen(it.toRoute()) }
         dialogComposable<SwapBlockchainPickerArgs> { SwapBlockchainPickerScreen(it.toRoute()) }
         dialogComposable<CurrencyConversionPickerArgs> { CurrencyConversionPickerScreen(it.toRoute()) }
         composable<SwapArgs> { SwapScreen() }
         dialogComposable<SwapSlippageArgs> { SwapSlippageScreen(it.toRoute()) }
+        dialogComposable<ColorPickerArgs> { ColorPickerScreen(it.toRoute()) }
+        dialogComposable<SwapRefundWarningArgs> { SwapRefundWarningScreen(it.toRoute()) }
         dialogComposable<SwapInfoArgs> { SwapInfoScreen() }
         dialogComposable<DepositSwapInfoArgs> { DepositSwapInfoScreen() }
         dialogComposable<SwapQuoteArgs> { SwapQuoteScreen() }
@@ -321,6 +380,8 @@ fun NavGraphBuilder.walletNavGraph(
         composable<AddGenericABContactArgs> { AddGenericABContactScreen(it.toRoute()) }
         composable<UpdateGenericABContactArgs> { UpdateGenericABContactScreen(it.toRoute()) }
         composable<TorSettingsArgs> { TorSettingsScreen() }
+        composable<ThemeSettingsArgs> { ThemeSettingsScreen() }
+        dialogComposable<ThemeDarkLookArgs> { ThemeDarkLookScreen(it.toRoute()) }
         composable<TorOptInArgs> { TorOptInScreen() }
         dialogComposable<ShieldedAddressInfoArgs> { ShieldedAddressInfoScreen() }
         dialogComposable<TransparentAddressInfoArgs> { TransparentAddressInfoScreen() }
@@ -331,25 +392,34 @@ fun NavGraphBuilder.walletNavGraph(
         composable<SwapDetailArgs> { SwapDetailScreen(it.toRoute()) }
         dialogComposable<SwapRefundAddressInfoArgs> { SwapRefundAddressInfoScreen(it.toRoute()) }
         dialogComposable<SwapSupportArgs> { SwapSupportScreen(it.toRoute()) }
+        dialogComposable<SwapQuoteMismatchArgs> { SwapQuoteMismatchScreen(it.toRoute()) }
         dialogComposable<EphemeralHotfixArgs> { EphemeralHotfixScreen(it.toRoute()) }
         dialogComposable<EnhancementHotfixArgs> { EnhancementHotfixScreen() }
         dialogComposable<EphemeralLockArgs> { EphemeralLockScreen() }
         composable<DebugArgs> { DebugScreen() }
         composable<DebugDBArgs> { DebugDBScreen() }
+        composable<DebugOrchardBalanceArgs> { DebugOrchardBalanceScreen() }
         dialogComposable<DebugTextArgs> { DebugTextScreen(it.toRoute()) }
         composable<ResyncConfirmArgs> { ResyncConfirmScreen() }
         composable<ResyncDateArgs> { ResyncDateScreen(it.toRoute()) }
         composable<ResyncEstimationArgs> { ResyncEstimationScreen(it.toRoute()) }
         composable<ResyncHeightArgs> { ResyncHeightScreen() }
-        composable<DisconnectArgs> { DisconnectScreen() }
-        composable<VoteHowToVoteArgs> { VoteHowToVoteScreen() }
-        composable<VoteCoinholderPollingArgs> { VoteCoinholderPollingScreen() }
-        composable<VoteChainConfigArgs> { VoteChainConfigScreen() }
-        composable<VoteProposalListArgs> { VoteProposalListScreen(it.toRoute()) }
-        composable<VoteProposalDetailArgs> { VoteProposalDetailScreen(it.toRoute()) }
-        dialogComposable<VotePollDescriptionArgs> { VotePollDescriptionScreen(it.toRoute()) }
-        composable<VoteConfirmSubmissionArgs> { VoteConfirmSubmissionScreen(it.toRoute()) }
-        composable<VoteTallyingArgs> { VoteTallyingScreen(it.toRoute()) }
-        composable<VoteResultsArgs> { VoteResultsScreen(it.toRoute()) }
+        composable<DisconnectArgs> { DisconnectScreen(it.toRoute()) }
+        // Migration destinations are contributed by the feature-migration module — see
+        // MigrationNavContributor in MigrationContracts.kt (wired via Koin in the app module).
+        org.koin.mp.KoinPlatform.getKoin().getAll<MigrationNavContributor>().forEach {
+            it.contribute(this)
+        }
+        // Voting destinations are contributed by the feature-voting module — see
+        // VotingNavContributor in VotingContracts.kt (wired via Koin in the app module).
+        org.koin.mp.KoinPlatform.getKoin().getAll<VotingNavContributor>().forEach {
+            it.contribute(this)
+        }
+        org.koin.mp.KoinPlatform.getKoin().getAll<LedgerNavContributor>().forEach {
+            it.contribute(this)
+        }
+        org.koin.mp.KoinPlatform.getKoin().getAll<ViewOnlyNavContributor>().forEach {
+            it.contribute(this)
+        }
     }
 }

@@ -236,11 +236,16 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.zcash.sdk) // just to configure logging
+    implementation(libs.zodl.app.config) // OHTTP endpoint values, injected by that repo's CI
     implementation(projects.crashAndroidLib)
     implementation(projects.preferenceApiLib)
     implementation(projects.preferenceImplAndroidLib)
     implementation(projects.spackleAndroidLib)
     implementation(projects.uiLib)
+    implementation(projects.featureLedger)
+    implementation(projects.featureMigration)
+    implementation(projects.featureViewingKey)
+    implementation(projects.featureVoting)
 
     androidTestImplementation(projects.testLib)
 

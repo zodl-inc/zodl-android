@@ -17,4 +17,5 @@ data class KeepOpenState(
     val description: StringResource,
     val bullet1: StringResource = stringRes(R.string.keep_open_bullet_1),
     val bullet2: StringResource = stringRes(R.string.keep_open_bullet_2),
+    val buttonTestTag: String? = null,
 )

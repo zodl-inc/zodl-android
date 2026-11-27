@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiIconButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
+import co.electriccoin.zcash.ui.design.theme.internal.TopAppBarColors
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
@@ -21,6 +22,11 @@ fun ZashiTopAppbar(
     state: ZashiMainTopAppBarState?,
     title: StringResource? = null,
     showHideBalances: Boolean = true,
+    colors: TopAppBarColors =
+        ZcashTheme.colors.topAppBarColors orDark
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     onBack: () -> Unit,
 ) {
     ZashiSmallTopAppBar(
@@ -37,10 +43,6 @@ fun ZashiTopAppbar(
                 Spacer(Modifier.width(20.dp))
             }
         },
-        colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = Color.Transparent
-                ),
+        colors = colors,
     )
 }

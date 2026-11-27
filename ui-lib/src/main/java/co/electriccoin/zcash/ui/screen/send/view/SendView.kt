@@ -33,6 +33,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -61,24 +63,38 @@ import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiMainTopAppBarState
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppbar
+import co.electriccoin.zcash.ui.common.model.Spendability
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.isTransparentOrTex
+import co.electriccoin.zcash.ui.common.model.spendability
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.component.AppAlertDialog
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.BlankSurface
+import co.electriccoin.zcash.ui.design.component.MaxFeedback
+import co.electriccoin.zcash.ui.design.component.MaxTooManyNotesSheetState
+import co.electriccoin.zcash.ui.design.component.SendMaxChipState
 import co.electriccoin.zcash.ui.design.component.Spacer
+import co.electriccoin.zcash.ui.design.component.WithoutPersonalizedLearning
 import co.electriccoin.zcash.ui.design.component.ZashiAutoSizeText
 import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.design.component.ZashiMaxChip
+import co.electriccoin.zcash.ui.design.component.ZashiMaxFeedbackSlot
+import co.electriccoin.zcash.ui.design.component.ZashiMaxFeedbackSlotDefaults
+import co.electriccoin.zcash.ui.design.component.ZashiMaxTooManyNotesSheet
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
-import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.RobotoMonoFontFamily
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
 import co.electriccoin.zcash.ui.design.util.getString
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringResByFiatDisplayName
 import co.electriccoin.zcash.ui.screen.balances.BalanceWidget
@@ -89,6 +105,7 @@ import co.electriccoin.zcash.ui.screen.send.model.MemoState
 import co.electriccoin.zcash.ui.screen.send.model.RecipientAddressState
 import co.electriccoin.zcash.ui.screen.send.model.SendAddressBookState
 import co.electriccoin.zcash.ui.screen.send.model.SendStage
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 
 // TODO [#1260]: Cover Send screens UI with tests
@@ -112,36 +129,64 @@ fun Send(
     exchangeRateState: ExchangeRateState,
     sendAddressBookState: SendAddressBookState,
     zashiMainTopAppBarState: ZashiMainTopAppBarState?,
+    maxChipState: SendMaxChipState,
+    maxFeedback: MaxFeedback? = null,
+    amountFocusRequester: FocusRequester = remember { FocusRequester() },
+    onTooManyNotesOk: () -> Unit = {},
 ) {
     if (selectedAccount == null) {
         return
     }
 
+    val hazeState = rememberZashiFrostState()
+
     BlankBgScaffold(topBar = {
-        ZashiTopAppbar(
-            title = null,
-            state = zashiMainTopAppBarState,
-            onBack = onBack
-        )
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .zashiFrostedHeader(hazeState)
+        ) {
+            ZashiTopAppbar(
+                title = null,
+                state = zashiMainTopAppBarState,
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
+                onBack = onBack
+            )
+        }
     }) { paddingValues ->
-        SendMainContent(
-            balanceWidgetState = balanceWidgetState,
-            selectedAccount = selectedAccount,
-            exchangeRateState = exchangeRateState,
-            onBack = onBack,
-            onCreateZecSend = onCreateZecSend,
-            sendStage = sendStage,
-            onQrScannerOpen = onQrScannerOpen,
-            recipientAddressState = recipientAddressState,
-            onRecipientAddressChange = onRecipientAddressChange,
-            hasCameraFeature = hasCameraFeature,
-            amountState = amountState,
-            setAmountState = setAmountState,
-            memoState = memoState,
-            setMemoState = setMemoState,
-            sendState = sendAddressBookState,
-            modifier = Modifier.scaffoldPadding(paddingValues)
-        )
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .zashiFrostSource(hazeState)
+        ) {
+            SendMainContent(
+                balanceWidgetState = balanceWidgetState,
+                selectedAccount = selectedAccount,
+                exchangeRateState = exchangeRateState,
+                onBack = onBack,
+                onCreateZecSend = onCreateZecSend,
+                sendStage = sendStage,
+                onQrScannerOpen = onQrScannerOpen,
+                recipientAddressState = recipientAddressState,
+                onRecipientAddressChange = onRecipientAddressChange,
+                hasCameraFeature = hasCameraFeature,
+                amountState = amountState,
+                setAmountState = setAmountState,
+                memoState = memoState,
+                setMemoState = setMemoState,
+                sendState = sendAddressBookState,
+                maxChipState = maxChipState,
+                maxFeedback = maxFeedback,
+                amountFocusRequester = amountFocusRequester,
+                onTooManyNotesOk = onTooManyNotesOk,
+                modifier = Modifier.scaffoldPadding(paddingValues)
+            )
+        }
     }
 }
 
@@ -163,27 +208,36 @@ private fun SendMainContent(
     memoState: MemoState,
     setMemoState: (MemoState) -> Unit,
     sendState: SendAddressBookState,
+    maxChipState: SendMaxChipState,
+    maxFeedback: MaxFeedback?,
+    amountFocusRequester: FocusRequester,
+    onTooManyNotesOk: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // For now, we merge [SendStage.Form] and [SendStage.Proposing] into one stage. We could eventually display a
     // loader if calling the Proposal API takes longer than expected
 
-    SendForm(
-        balanceWidgetState = balanceWidgetState,
-        selectedAccount = selectedAccount,
-        recipientAddressState = recipientAddressState,
-        exchangeRateState = exchangeRateState,
-        onRecipientAddressChange = onRecipientAddressChange,
-        amountState = amountState,
-        setAmountState = setAmountState,
-        memoState = memoState,
-        setMemoState = setMemoState,
-        onCreateZecSend = onCreateZecSend,
-        onQrScannerOpen = onQrScannerOpen,
-        hasCameraFeature = hasCameraFeature,
-        sendState = sendState,
-        modifier = modifier
-    )
+    WithoutPersonalizedLearning {
+        SendForm(
+            balanceWidgetState = balanceWidgetState,
+            selectedAccount = selectedAccount,
+            recipientAddressState = recipientAddressState,
+            exchangeRateState = exchangeRateState,
+            onRecipientAddressChange = onRecipientAddressChange,
+            amountState = amountState,
+            setAmountState = setAmountState,
+            memoState = memoState,
+            setMemoState = setMemoState,
+            onCreateZecSend = onCreateZecSend,
+            onQrScannerOpen = onQrScannerOpen,
+            hasCameraFeature = hasCameraFeature,
+            sendState = sendState,
+            maxChipState = maxChipState,
+            maxFeedback = maxFeedback,
+            amountFocusRequester = amountFocusRequester,
+            modifier = modifier
+        )
+    }
 
     if (sendStage is SendStage.SendFailure) {
         SendFailure(
@@ -191,6 +245,26 @@ private fun SendMainContent(
             onConfirm = onBack
         )
     }
+
+    ZashiMaxTooManyNotesSheet(
+        state =
+            if (sendStage is SendStage.TooManyNotes) {
+                // OK (pacu decision D4): leave the sheet, then the view model clears the amount through
+                // `amountClears` and focuses the field through `amountFocusRequests`, both handled by the screen's
+                // own Max sheet host, which owns the one amount FocusRequester.
+                MaxTooManyNotesSheetState.create(
+                    onOk = {
+                        onBack()
+                        onTooManyNotesOk()
+                    },
+                    onDismiss = onBack
+                )
+            } else {
+                null
+            },
+        focusRequests = emptyFlow(),
+        focusRequester = amountFocusRequester
+    )
 }
 
 // TODO [#217]: Need to handle changing of Locale after user input, but before submitting the button.
@@ -215,6 +289,9 @@ private fun SendForm(
     onQrScannerOpen: () -> Unit,
     hasCameraFeature: Boolean,
     sendState: SendAddressBookState,
+    maxChipState: SendMaxChipState,
+    maxFeedback: MaxFeedback?,
+    amountFocusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -256,27 +333,22 @@ private fun SendForm(
         val isMemoFieldAvailable =
             recipientAddressState.address.isEmpty() ||
                 recipientAddressState.type is AddressType.Invalid ||
-                (
-                    recipientAddressState.type is AddressType.Valid &&
-                        recipientAddressState.type !is AddressType.Transparent &&
-                        recipientAddressState.type !is AddressType.Tex
-                )
+                (recipientAddressState.type is AddressType.Valid && !recipientAddressState.type.isTransparentOrTex)
 
         SendFormAmountTextField(
             amountState = amountState,
             imeAction =
-                if (recipientAddressState.type == AddressType.Transparent || !isMemoFieldAvailable) {
+                if (recipientAddressState.type.isTransparentOrTex || !isMemoFieldAvailable) {
                     ImeAction.Done
                 } else {
                     ImeAction.Next
                 },
-            isTransparentOrTextRecipient =
-                recipientAddressState.type?.let {
-                    it == AddressType.Transparent || it == AddressType.Tex
-                } ?: false,
+            isTransparentOrTextRecipient = recipientAddressState.type.isTransparentOrTex,
             exchangeRateState = exchangeRateState,
             setAmountState = setAmountState,
-            selectedAccount = selectedAccount
+            selectedAccount = selectedAccount,
+            maxChipState = maxChipState,
+            amountFocusRequester = amountFocusRequester
         )
 
         Spacer(Modifier.size(ZcashTheme.dimens.spacingDefault))
@@ -292,7 +364,12 @@ private fun SendForm(
                 Modifier.weight(1f)
         )
 
-        Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
+        // 24dp above Review either way: the slot draws its own 24dp below its row, so a plain spacer stands in for it
+        if (maxFeedback == null) {
+            Spacer(modifier = Modifier.height(ZashiMaxFeedbackSlotDefaults.SpacingToButton))
+        } else {
+            ZashiMaxFeedbackSlot(feedback = maxFeedback)
+        }
 
         SendButton(
             amountState = amountState,
@@ -300,9 +377,20 @@ private fun SendForm(
             onCreateZecSend = onCreateZecSend,
             recipientAddressState = recipientAddressState,
             selectedAccount = selectedAccount,
+            isMaxRequesting = maxChipState.isRequesting,
         )
     }
 }
+
+/**
+ * Review is enabled only when the wallet has something to spend (the same condition that enables Max) and the
+ * form rules hold (Figma "Send Max: Round 2": Review is disabled whenever Max is disabled by the balance).
+ */
+internal fun isReviewEnabled(
+    spendability: Spendability,
+    isFormValid: Boolean,
+    isMaxRequesting: Boolean = false
+): Boolean = spendability.allowsPrimaryAction && isFormValid && !isMaxRequesting
 
 @Suppress("CyclomaticComplexMethod")
 @Composable
@@ -312,19 +400,24 @@ fun SendButton(
     onCreateZecSend: (ZecSend) -> Unit,
     recipientAddressState: RecipientAddressState,
     selectedAccount: WalletAccount,
+    isMaxRequesting: Boolean = false,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
     // Common conditions continuously checked for validity
     val sendButtonEnabled =
-        recipientAddressState.type !is AddressType.Invalid &&
-            recipientAddressState.address.isNotEmpty() &&
-            amountState is AmountState.Valid &&
-            amountState.value.getValue().isNotBlank() &&
-            selectedAccount.canSpend(amountState.zatoshi) &&
-            // A valid memo is necessary only for non-transparent recipient
-            (recipientAddressState.type == AddressType.Transparent || memoState is MemoState.Correct)
+        isReviewEnabled(
+            spendability = selectedAccount.spendability,
+            isMaxRequesting = isMaxRequesting,
+            isFormValid =
+                recipientAddressState.type !is AddressType.Invalid &&
+                    recipientAddressState.address.isNotEmpty() &&
+                    amountState is AmountState.Valid &&
+                    amountState.value.getValue().isNotBlank() &&
+                    selectedAccount.canSpend(amountState.zatoshi) == true &&
+                    memoState.allowsSendTo(recipientAddressState.type)
+        )
 
     ZashiButton(
         onClick = {
@@ -335,13 +428,7 @@ fun SendButton(
                         locale = NUMBER_FORMAT_LOCALE,
                         destinationString = recipientAddressState.address,
                         zecString = amountState.value.getString(context),
-                        // Take memo for a valid non-transparent receiver only
-                        memoString =
-                            if (recipientAddressState.type == AddressType.Transparent) {
-                                ""
-                            } else {
-                                memoState.text
-                            },
+                        memoString = memoState.textToSend(recipientAddressState.type),
                     )
 
                 when (zecSendValidation) {
@@ -465,17 +552,21 @@ fun SendFormAddressTextField(
             suffix =
                 if (hasCameraFeature) {
                     {
+                        val addressBookInteractionSource = remember { MutableInteractionSource() }
+                        val scannerInteractionSource = remember { MutableInteractionSource() }
+
                         Row(
                             verticalAlignment = Alignment.Top
                         ) {
                             Image(
                                 modifier =
                                     Modifier
+                                        .pressMorph(addressBookInteractionSource)
                                         .clickable(
                                             onClick = sendAddressBookState.onButtonClick,
                                             role = Role.Button,
                                             indication = ripple(radius = 4.dp),
-                                            interactionSource = remember { MutableInteractionSource() }
+                                            interactionSource = addressBookInteractionSource
                                         ).testTag(SendTag.SEND_ADDRESS_BOOK_BUTTON),
                                 painter = painterResource(sendAddressBookState.mode.icon),
                                 contentDescription = stringResource(R.string.send_address_book_content_description),
@@ -486,11 +577,12 @@ fun SendFormAddressTextField(
                             Image(
                                 modifier =
                                     Modifier
+                                        .pressMorph(scannerInteractionSource)
                                         .clickable(
                                             onClick = onQrScannerOpen,
                                             role = Role.Button,
                                             indication = ripple(radius = 4.dp),
-                                            interactionSource = remember { MutableInteractionSource() }
+                                            interactionSource = scannerInteractionSource
                                         ).testTag(SendTag.SEND_SCAN_BUTTON),
                                 painter = painterResource(R.drawable.qr_code_icon),
                                 contentDescription = stringResource(R.string.send_scan_content_description),
@@ -527,6 +619,8 @@ fun SendFormAmountTextField(
     exchangeRateState: ExchangeRateState,
     setAmountState: (AmountState) -> Unit,
     selectedAccount: WalletAccount,
+    maxChipState: SendMaxChipState,
+    amountFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -545,7 +639,8 @@ fun SendFormAmountTextField(
             }
 
             is AmountState.Valid -> {
-                if (selectedAccount.spendableShieldedBalance < amountState.zatoshi) {
+                val spendableShieldedBalance = selectedAccount.spendableShieldedBalance
+                if (spendableShieldedBalance != null && spendableShieldedBalance < amountState.zatoshi) {
                     stringResource(id = R.string.sheet_insufficientBalance_title)
                 } else {
                     null
@@ -563,11 +658,18 @@ fun SendFormAmountTextField(
                 // Scroll TextField above ime keyboard
                 .bringIntoViewRequester(bringIntoViewRequester)
     ) {
-        Text(
-            text = stringResource(id = R.string.send_amount),
-            color = ZashiColors.Inputs.Default.label,
-            style = ZashiTypography.textMd
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(id = R.string.send_amount),
+                color = ZashiColors.Inputs.Default.label,
+                style = ZashiTypography.textMd,
+                modifier = Modifier.weight(1f)
+            )
+            ZashiMaxChip(state = maxChipState)
+        }
 
         Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingSmall))
 
@@ -592,6 +694,7 @@ fun SendFormAmountTextField(
                 innerModifier =
                     ZashiTextFieldDefaults
                         .innerModifier
+                        .focusRequester(amountFocusRequester)
                         .testTag(SendTag.SEND_AMOUNT_FIELD),
                 error = amountError,
                 placeholder = {
@@ -810,7 +913,7 @@ fun SendFormMemoTextField(
 @Composable
 @Preview("SendFailure")
 private fun PreviewSendFailure() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SendFailure(
                 onConfirm = {},

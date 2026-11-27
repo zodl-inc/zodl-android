@@ -15,7 +15,7 @@ import co.electriccoin.zcash.ui.design.util.orDark
 @Preview("Scaffold with blank background")
 @Composable
 private fun BlankBgScaffoldComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankBgScaffold {
             Text(text = "Blank background scaffold")
         }
@@ -32,6 +32,28 @@ fun BlankBgScaffold(
 ) {
     Scaffold(
         containerColor = ZashiColors.Surfaces.bgPrimary,
+        topBar = topBar,
+        snackbarHost = snackbarHost,
+        bottomBar = bottomBar,
+        content = content,
+        modifier = modifier,
+    )
+}
+
+/**
+ * Scaffold that paints no background of its own, for content hosted inside a surface that
+ * already provides one (e.g. a modal bottom sheet).
+ */
+@Composable
+fun TransparentBgScaffold(
+    modifier: Modifier = Modifier,
+    topBar: @Composable () -> Unit = {},
+    bottomBar: @Composable () -> Unit = {},
+    snackbarHost: @Composable () -> Unit = {},
+    content: @Composable (PaddingValues) -> Unit
+) {
+    Scaffold(
+        containerColor = Color.Transparent,
         topBar = topBar,
         snackbarHost = snackbarHost,
         bottomBar = bottomBar,

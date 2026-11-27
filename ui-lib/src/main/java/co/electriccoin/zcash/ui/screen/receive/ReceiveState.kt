@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.receive
 
 import co.electriccoin.zcash.ui.design.component.IconButtonState
+import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.StyledStringResource
 
@@ -11,7 +12,7 @@ data class ReceiveState(
 )
 
 data class ReceiveAddressState(
-    val icon: Int,
+    val icon: ImageResource,
     val title: StringResource,
     val subtitle: StyledStringResource,
     val isExpanded: Boolean,
@@ -25,7 +26,11 @@ data class ReceiveAddressState(
 ) {
     enum class ColorMode {
         ZASHI,
-        KEYSTONE,
+
+        /**
+         * The indigo scheme of a hardware wallet's shielded address, Keystone and Ledger alike.
+         */
+        HW_WALLET,
         DEFAULT
     }
 }

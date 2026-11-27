@@ -5,7 +5,9 @@ import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.MessageAvailabilityDataSource
 import co.electriccoin.zcash.ui.common.datasource.WalletSnapshotDataSource
+import co.electriccoin.zcash.ui.common.migration.MigrationHomeMessageSource
 import co.electriccoin.zcash.ui.common.model.SynchronizerError
+import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.model.WalletSnapshot
 import co.electriccoin.zcash.ui.common.provider.CrashReportingStorageProvider
@@ -13,12 +15,16 @@ import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageData
+import co.electriccoin.zcash.ui.common.repository.MigrationHomeMessage
 import co.electriccoin.zcash.ui.common.repository.RuntimeMessage
+import co.electriccoin.zcash.ui.common.repository.isDisconnectedFor
+import co.electriccoin.zcash.ui.common.voting.VotingHomeMessageSource
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.combine
@@ -27,10 +33,13 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 class GetHomeMessageUseCase(
     private val walletBackupMessageUseCase: WalletBackupMessageUseCase,
@@ -41,6 +50,9 @@ class GetHomeMessageUseCase(
     private val messageAvailabilityDataSource: MessageAvailabilityDataSource,
     private val cache: HomeMessageCacheRepository,
     private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider,
+    private val migrationHomeMessageSource: MigrationHomeMessageSource,
+    private val votingHomeMessageSource: VotingHomeMessageSource,
+    private val observeOhttpOptInVisible: ObserveOhttpOptInVisibleUseCase,
 ) {
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     fun observe(): Flow<HomeMessageData?> =
@@ -51,14 +63,26 @@ class GetHomeMessageUseCase(
                     walletBackupMessageUseCase.observe(),
                     observeIsTorMessageVisible(),
                     observeIsExchangeRateMessageVisible(),
-                    crashReportingStorageProvider.observe().map { it == null },
-                ) { runtimeMessage, backup, isTorAvailable, isCCAvailable, isCrashReportingEnabled ->
-                    createMessage(
+                    combine(
+                        votingHomeMessageSource.observeIsCoinholderPollingMessageVisible(),
+                        crashReportingStorageProvider.observe().map { it == null },
+                        observeOhttpOptInVisible(),
+                    ) { isCoinholderPollingVisible, isCrashReportingVisible, isOhttpOptInVisible ->
+                        TrailingPrioritizedInputs(
+                            isCoinholderPollingVisible,
+                            isCrashReportingVisible,
+                            isOhttpOptInVisible,
+                        )
+                    },
+                ) { runtimeMessage, backup, isTorAvailable, isCCAvailable, trailing ->
+                    createHomeMessage(
                         runtimeMessage = runtimeMessage,
                         backup = backup,
                         isTorVisible = isTorAvailable,
                         isCurrencyConversionEnabled = isCCAvailable,
-                        isCrashReportingVisible = isCrashReportingEnabled,
+                        isCoinholderPollingVisible = trailing.isCoinholderPollingVisible,
+                        isCrashReportingVisible = trailing.isCrashReportingVisible,
+                        isOhttpOptInVisible = trailing.isOhttpOptInVisible,
                     )
                 }
 
@@ -86,17 +110,18 @@ class GetHomeMessageUseCase(
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeShieldFundsMessage() =
         accountDataSource.selectedAccount.flatMapLatest { account ->
+            val transparentBalance = account?.transparentBalance
             when {
-                account == null -> {
+                account == null || transparentBalance == null -> {
                     flowOf(null)
                 }
 
-                account.isShieldingAvailable -> {
+                isShieldFundsMessageEligible(account) -> {
                     messageAvailabilityDataSource.canShowShieldMessage
                         .map { canShowShieldMessage ->
                             when {
                                 !canShowShieldMessage -> null
-                                else -> HomeMessageData.ShieldFunds(account.transparent.balance)
+                                else -> HomeMessageData.ShieldFunds(transparentBalance)
                             }
                         }
                 }
@@ -107,29 +132,75 @@ class GetHomeMessageUseCase(
             }
         }
 
+    private data class RuntimeMessageInputs(
+        val shieldFunds: HomeMessageData.ShieldFunds?,
+        val migration: MigrationHomeMessage?,
+        val account: WalletAccount?,
+        val walletSnapshot: WalletSnapshot,
+        /** [WalletSnapshot.status] DISCONNECTED for the shared grace (see [observeRuntimeMessage]). */
+        val isDisconnectedSustained: Boolean,
+    )
+
+    /**
+     * [HomeMessageData.CoinholderPolling], [HomeMessageData.CrashReport] and [HomeMessageData.OhttpOptIn] bundled into
+     * one flow purely so the outer `observe()` combine (already at kotlinx's 5-flow overload
+     * ceiling) doesn't need a 6th argument — same "bundle inputs into a data class" trick as
+     * [RuntimeMessageInputs] above.
+     */
+    private data class TrailingPrioritizedInputs(
+        val isCoinholderPollingVisible: Boolean,
+        val isCrashReportingVisible: Boolean,
+        val isOhttpOptInVisible: Boolean,
+    )
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeRuntimeMessage(): Flow<RuntimeMessage?> {
+        /*
+         * The wallet snapshot alongside [isDisconnectedFor] of its status: a status that is DISCONNECTED for less
+         * than [co.electriccoin.zcash.ui.common.repository.DISCONNECTED_GRACE] - one failed call, the blip around
+         * a lifecycle change - shows no banner. The same grace the automatic server selection applies before it
+         * treats the status as a connectivity edge.
+         */
+        val snapshots = walletSnapshotDataSource.observe().filterNotNull()
+        val snapshotsWithGrace =
+            combine(snapshots, snapshots.map { it.status }.isDisconnectedFor()) { snapshot, sustained ->
+                snapshot to sustained
+            }
         return channelFlow {
             var firstSyncingMessage: HomeMessageData.Syncing? = null
             combine(
                 observeShieldFundsMessage(),
+                migrationHomeMessageSource.observe(),
                 accountDataSource.selectedAccount,
-                walletSnapshotDataSource.observe().filterNotNull()
-            ) { availability, account, walletSnapshot ->
-                Triple(availability, account, walletSnapshot)
-            }.collect { (shieldFundsMessage, account, walletSnapshot) ->
-                if (walletSnapshot.status in listOf(Synchronizer.Status.STOPPED, Synchronizer.Status.INITIALIZING)) {
+                snapshotsWithGrace,
+            ) { sf, mig, acc, (ws, disconnectedSustained) ->
+                RuntimeMessageInputs(sf, mig, acc, ws, disconnectedSustained)
+            }.collect { inputs ->
+                val shieldFundsMessage = inputs.shieldFunds
+                val migrationMessage = inputs.migration
+                val account = inputs.account
+                val walletSnapshot = inputs.walletSnapshot
+
+                if (walletSnapshot.status in
+                    listOf(
+                        Synchronizer.Status.STOPPED,
+                        Synchronizer.Status.INITIALIZING
+                    )
+                ) {
                     return@collect
                 }
 
+                // Connectivity/sync states outrank migration: a user can't act on the migration banner
+                // while the wallet is disconnected, erroring, or still syncing.
                 val message =
-                    createDisconnectedMessage(walletSnapshot)
+                    createDisconnectedMessage(inputs.isDisconnectedSustained)
                         ?: createSynchronizerErrorMessage(walletSnapshot)
                         ?: createSyncingMessage(
                             walletSnapshot,
                             syncMessageShownBefore = firstSyncingMessage != null,
                             someBalance = (account?.spendableShieldedBalance?.value ?: 0) > 0
                         )
+                        ?: migrationMessage
                         ?: shieldFundsMessage
 
                 if (message is HomeMessageData.Syncing && firstSyncingMessage == null) {
@@ -151,52 +222,13 @@ class GetHomeMessageUseCase(
     private fun observeIsTorMessageVisible() =
         isTorEnabledStorageProvider.observe().map { it == null }.distinctUntilChanged()
 
-    private fun createMessage(
-        runtimeMessage: RuntimeMessage?,
-        backup: WalletBackupData,
-        isTorVisible: Boolean,
-        isCurrencyConversionEnabled: Boolean,
-        isCrashReportingVisible: Boolean,
-    ) = when {
-        runtimeMessage != null -> runtimeMessage
-        backup is WalletBackupData.Available -> HomeMessageData.Backup
-        isTorVisible -> HomeMessageData.EnableTor
-        isCurrencyConversionEnabled -> HomeMessageData.EnableCurrencyConversion
-        isCrashReportingVisible -> HomeMessageData.CrashReport
-        else -> null
-    }
-
     private fun prioritizeMessage(message: HomeMessageData?): HomeMessageData? {
-        val isSameMessageUpdate = message?.priority == cache.lastMessage?.priority // same but updated
-        val someMessageBeenShown = cache.lastShownMessage != null // has any message been shown while app in fg
-        val hasNoMessageBeenShownLately = cache.lastMessage == null // has no message been shown
-        val isHigherPriorityMessage = (message?.priority ?: 0) > (cache.lastShownMessage?.priority ?: 0)
         val result =
-            when {
-                message == null -> {
-                    null
-                }
-
-                message is RuntimeMessage -> {
-                    message
-                }
-
-                isSameMessageUpdate -> {
-                    message
-                }
-
-                isHigherPriorityMessage -> {
-                    if (hasNoMessageBeenShownLately) {
-                        if (someMessageBeenShown) null else message
-                    } else {
-                        message
-                    }
-                }
-
-                else -> {
-                    null
-                }
-            }
+            prioritizeHomeMessage(
+                message = message,
+                lastMessage = cache.lastMessage,
+                lastShownMessage = cache.lastShownMessage,
+            )
 
         if (result != null) {
             messageAvailabilityDataSource.onMessageShown()
@@ -228,12 +260,9 @@ class GetHomeMessageUseCase(
         return HomeMessageData.Error(walletSnapshot.synchronizerError)
     }
 
-    private fun createDisconnectedMessage(walletSnapshot: WalletSnapshot): HomeMessageData.Disconnected? =
-        if (walletSnapshot.status == Synchronizer.Status.DISCONNECTED) {
-            HomeMessageData.Disconnected
-        } else {
-            null
-        }
+    /** Only a DISCONNECTED status sustained for the shared grace shows the banner (a blip shows nothing). */
+    private fun createDisconnectedMessage(isDisconnectedSustained: Boolean): HomeMessageData.Disconnected? =
+        if (isDisconnectedSustained) HomeMessageData.Disconnected else null
 
     private fun createSyncingMessage(
         walletSnapshot: WalletSnapshot,
@@ -242,6 +271,97 @@ class GetHomeMessageUseCase(
     ): RuntimeMessage? = syncingMessageFor(walletSnapshot, syncMessageShownBefore, someBalance)
 }
 
+/**
+ * Resolves the single [HomeMessageData] to show, applying the MOB-1787 rule that an urgent
+ * [HomeMessageData.Backup] (i.e. [backup] is [WalletBackupData.Available] — seed not backed up
+ * and a balance has been received, as already gated by `WalletBackupMessageUseCase`, snooze
+ * included) outranks every [RuntimeMessage], not just the other [co.electriccoin.zcash.ui.common.repository.Prioritized]
+ * messages. When [backup] is [WalletBackupData.Unavailable], behavior is unchanged from before
+ * MOB-1787: [runtimeMessage], then the remaining opt-in messages in their existing order.
+ */
+internal fun createHomeMessage(
+    runtimeMessage: RuntimeMessage?,
+    backup: WalletBackupData,
+    isTorVisible: Boolean,
+    isCurrencyConversionEnabled: Boolean,
+    isCoinholderPollingVisible: Boolean,
+    isCrashReportingVisible: Boolean,
+    isOhttpOptInVisible: Boolean = false,
+): HomeMessageData? =
+    when {
+        backup is WalletBackupData.Available -> HomeMessageData.Backup
+        runtimeMessage != null -> runtimeMessage
+        isCoinholderPollingVisible -> HomeMessageData.CoinholderPolling
+        isTorVisible -> HomeMessageData.EnableTor
+        isCurrencyConversionEnabled -> HomeMessageData.EnableCurrencyConversion
+        isCrashReportingVisible -> HomeMessageData.CrashReport
+        isOhttpOptInVisible -> HomeMessageData.OhttpOptIn
+        else -> null
+    }
+
+/**
+ * Pure decision function behind [GetHomeMessageUseCase]'s `prioritizeMessage` — extracted (like
+ * [createHomeMessage] and [syncingMessageFor]) so its logic is directly unit-testable without
+ * standing up the whole use case's dependency graph.
+ *
+ * MOB-1787: [message] being [RuntimeMessage] or an urgent [HomeMessageData.Backup] (only ever
+ * produced by [createHomeMessage] when the seed is unbacked and a balance has been received) must
+ * always win immediately, bypassing the hysteresis below. That hysteresis exists to avoid flicker
+ * for optional/dismissible [co.electriccoin.zcash.ui.common.repository.Prioritized] messages —
+ * without the [HomeMessageData.Backup] special-case here, a previously-shown [RuntimeMessage]
+ * (priority `Int.MAX_VALUE`) cached as [lastShownMessage] would make Backup's finite priority (5)
+ * look "lower" and get silently filtered out by [isHigherPriorityMessage] below.
+ */
+internal fun prioritizeHomeMessage(
+    message: HomeMessageData?,
+    lastMessage: HomeMessageData?,
+    lastShownMessage: HomeMessageData?,
+): HomeMessageData? {
+    val isSameMessageUpdate = message?.priority == lastMessage?.priority
+    val someMessageBeenShownInForeground = lastShownMessage != null
+    val hasNoMessageBeenShownLately = lastMessage == null
+    val isHigherPriorityMessage = (message?.priority ?: 0) > (lastShownMessage?.priority ?: 0)
+    return when {
+        message == null -> {
+            null
+        }
+
+        message is RuntimeMessage || message is HomeMessageData.Backup -> {
+            message
+        }
+
+        isSameMessageUpdate -> {
+            message
+        }
+
+        isHigherPriorityMessage -> {
+            if (hasNoMessageBeenShownLately) {
+                if (someMessageBeenShownInForeground) null else message
+            } else {
+                message
+            }
+        }
+
+        else -> {
+            null
+        }
+    }
+}
+
+/**
+ * Whether [account] may be offered the shield-funds message: it must be able to spend, since
+ * shielding spends its transparent funds, and hold enough of them to be worth shielding.
+ */
+internal fun isShieldFundsMessageEligible(account: WalletAccount): Boolean =
+    account.isSpendable && account.isShieldingAvailable == true
+
+/**
+ * The first syncing banner stays hidden while the wallet is less than three days (of target block time) behind.
+ * 3456 blocks is that span at the pre-NU7 75 s spacing; from NU7 (25 s) it is 10368 blocks, so the threshold is
+ * kept in seconds and [WalletSnapshot.behindSeconds] is compared to it. The block count is only the fallback
+ * when the target time is unknown.
+ */
+internal const val SYNCING_BANNER_HIDE_BELOW_SECONDS = 3L * 24L * 3600L
 internal const val SYNCING_BANNER_HIDE_BELOW_BLOCKS = 3456L
 
 @Suppress("MagicNumber")
@@ -259,7 +379,13 @@ internal fun syncingMessageFor(
         HomeMessageData.Restoring(walletSnapshot.isSpendable && someBalance, progress)
     } else {
         if (!syncMessageShownBefore) {
-            if (walletSnapshot.blocksRemaining < SYNCING_BANNER_HIDE_BELOW_BLOCKS) {
+            val isBelowThreshold =
+                if (walletSnapshot.behindSeconds >= 0L) {
+                    walletSnapshot.behindSeconds < SYNCING_BANNER_HIDE_BELOW_SECONDS
+                } else {
+                    walletSnapshot.blocksRemaining < SYNCING_BANNER_HIDE_BELOW_BLOCKS
+                }
+            if (isBelowThreshold) {
                 null
             } else {
                 HomeMessageData.Syncing(progress = progress)

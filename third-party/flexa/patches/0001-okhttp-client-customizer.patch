@@ -1,0 +1,219 @@
+From f7a2971d2234888da30819c879131cadd7a35dc0 Mon Sep 17 00:00:00 2001
+From: y4ssi <11613913+y4ssi@users.noreply.github.com>
+Date: Sun, 18 Oct 2026 15:57:16 +0000
+Subject: [PATCH] Let the host app customise the SDK's OkHttp clients
+
+FlexaClientConfiguration takes an optional okHttpClientCustomizer, applied to every
+OkHttp client the SDK builds for the Flexa API (login, REST, SSE, token refresh, and the
+asset and brand listings) after the SDK's own interceptors. A wallet can then add an
+interceptor that sends these requests through its own proxy or transport.
+okhttp-android becomes an api dependency of core, since OkHttpClient.Builder is now on
+the public surface.
+---
+ core/build.gradle                             |  2 +-
+ core/src/main/java/com/flexa/core/Flexa.kt    |  4 ++
+ .../com/flexa/core/data/data/TokenProvider.kt |  3 +-
+ .../flexa/core/data/rest/OkHttpProvider.kt    | 10 +++--
+ .../flexa/core/data/rest/RestRepository.kt    |  4 +-
+ .../core/shared/FlexaClientConfiguration.kt   |  6 ++-
+ .../core/data/rest/BuildFlexaClientTest.kt    | 38 +++++++++++++++++++
+ 7 files changed, 59 insertions(+), 8 deletions(-)
+ create mode 100644 core/src/test/java/com/flexa/core/data/rest/BuildFlexaClientTest.kt
+
+diff --git a/core/build.gradle b/core/build.gradle
+index 6c8acc2..9f9e426 100644
+--- a/core/build.gradle
++++ b/core/build.gradle
+@@ -144,7 +144,7 @@ dependencies {
+ 
+     /*OkHttp*/
+     implementation(platform("com.squareup.okhttp3:okhttp-bom:$okhttpVersion"))
+-    implementation "com.squareup.okhttp3:okhttp-android"
++    api "com.squareup.okhttp3:okhttp-android"
+     implementation "com.squareup.okhttp3:logging-interceptor"
+     implementation "com.squareup.okhttp3:okhttp-sse"
+ 
+diff --git a/core/src/main/java/com/flexa/core/Flexa.kt b/core/src/main/java/com/flexa/core/Flexa.kt
+index cb963bc..2c12bf8 100644
+--- a/core/src/main/java/com/flexa/core/Flexa.kt
++++ b/core/src/main/java/com/flexa/core/Flexa.kt
+@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
+ import kotlinx.coroutines.flow.asStateFlow
+ import kotlinx.coroutines.launch
+ import kotlinx.serialization.encodeToString
++import okhttp3.OkHttpClient
+ import java.util.UUID
+ 
+ 
+@@ -49,6 +50,8 @@ object Flexa {
+     private val _selectedAsset = MutableStateFlow<SelectedAsset?>(null)
+     val selectedAsset: StateFlow<SelectedAsset?> = _selectedAsset
+     internal var themeConfig = FlexaTheme()
++    @Volatile
++    internal var okHttpClientCustomizer: ((OkHttpClient.Builder) -> Unit)? = null
+     private val _appAccounts = MutableStateFlow<List<AssetAccount>>(emptyList())
+     val appAccounts: StateFlow<List<AssetAccount>> = _appAccounts
+     private val serializerProvider = SerializerProvider()
+@@ -76,6 +79,7 @@ object Flexa {
+ 
+     fun init(config: FlexaClientConfiguration) {
+         context = config.context.applicationContext
++        okHttpClientCustomizer = config.okHttpClientCustomizer
+         themeConfig = config.theme
+         setAssetAccounts(config.assetAccounts)
+         setUniqueIdentifier()
+diff --git a/core/src/main/java/com/flexa/core/data/data/TokenProvider.kt b/core/src/main/java/com/flexa/core/data/data/TokenProvider.kt
+index 169f2c6..8c0af71 100644
+--- a/core/src/main/java/com/flexa/core/data/data/TokenProvider.kt
++++ b/core/src/main/java/com/flexa/core/data/data/TokenProvider.kt
+@@ -7,6 +7,7 @@ import com.flexa.core.Flexa
+ import com.flexa.core.data.rest.HeadersBundle
+ import com.flexa.core.data.rest.RestRepository
+ import com.flexa.core.data.rest.RestRepository.Companion.json
++import com.flexa.core.data.rest.buildFlexaClient
+ import com.flexa.core.data.storage.SecuredPreferences
+ import com.flexa.core.domain.data.ITokenProvider
+ import com.flexa.core.entity.TokenPatch
+@@ -45,7 +46,7 @@ internal class TokenProvider(
+                     else -> HttpLoggingInterceptor.Level.NONE
+                 }
+             }
+-            ).build()
++            ).buildFlexaClient()
+ 
+     override fun dropCache() {
+         errorCounter.set(0)
+diff --git a/core/src/main/java/com/flexa/core/data/rest/OkHttpProvider.kt b/core/src/main/java/com/flexa/core/data/rest/OkHttpProvider.kt
+index e2e5cc1..f88399a 100644
+--- a/core/src/main/java/com/flexa/core/data/rest/OkHttpProvider.kt
++++ b/core/src/main/java/com/flexa/core/data/rest/OkHttpProvider.kt
+@@ -26,7 +26,7 @@ internal class OkHttpProvider(
+                     }
+                 }
+                 )
+-                .build()
++                .buildFlexaClient()
+         }
+     internal val client by lazy {
+         val tokenProvider = tokenProvider
+@@ -45,7 +45,7 @@ internal class OkHttpProvider(
+                 }
+             }
+             )
+-            .build()
++            .buildFlexaClient()
+     }
+     internal val sseClient by lazy {
+         val tokenProvider = tokenProvider
+@@ -58,9 +58,13 @@ internal class OkHttpProvider(
+                 }
+             }
+             )
+-            .build()
++            .buildFlexaClient()
+     }
+     internal val tokenProvider by lazy {
+         TokenProvider(preferences, FlexaConstants.TOKEN)
+     }
+ }
++
++/** Builds the client after applying [Flexa.okHttpClientCustomizer], so it comes after the SDK's own interceptors. */
++internal fun OkHttpClient.Builder.buildFlexaClient(): OkHttpClient =
++    apply { Flexa.okHttpClientCustomizer?.invoke(this) }.build()
+diff --git a/core/src/main/java/com/flexa/core/data/rest/RestRepository.kt b/core/src/main/java/com/flexa/core/data/rest/RestRepository.kt
+index aa2773b..8371871 100644
+--- a/core/src/main/java/com/flexa/core/data/rest/RestRepository.kt
++++ b/core/src/main/java/com/flexa/core/data/rest/RestRepository.kt
+@@ -260,7 +260,7 @@ internal class RestRepository(
+                     }
+                 }
+                 )
+-                .build()
++                .buildFlexaClient()
+ 
+             runCatching { client.newCall(request).execute() }
+                 .fold(
+@@ -519,7 +519,7 @@ internal class RestRepository(
+                     }
+                 }
+                 )
+-                .build()
++                .buildFlexaClient()
+ 
+             runCatching { client.newCall(request).execute() }
+                 .fold(
+diff --git a/core/src/main/java/com/flexa/core/shared/FlexaClientConfiguration.kt b/core/src/main/java/com/flexa/core/shared/FlexaClientConfiguration.kt
+index 56363c9..4bf9943 100644
+--- a/core/src/main/java/com/flexa/core/shared/FlexaClientConfiguration.kt
++++ b/core/src/main/java/com/flexa/core/shared/FlexaClientConfiguration.kt
+@@ -2,6 +2,7 @@ package com.flexa.core.shared
+ 
+ import android.content.Context
+ import com.flexa.core.theme.FlexaTheme
++import okhttp3.OkHttpClient
+ 
+ /**
+  * Flexa init bundle
+@@ -10,11 +11,14 @@ import com.flexa.core.theme.FlexaTheme
+  * @param assetAccounts user wallets
+  * @param theme provide color schemes and dynamic colors
+  * @param webViewThemeConfig provide color scheme for Places to Pay
++ * @param okHttpClientCustomizer applied to every OkHttp client the SDK builds for the Flexa API,
++ * after the SDK's own interceptors, e.g. to add an interceptor that sends the requests through a proxy
+  */
+ class FlexaClientConfiguration(
+     val context: Context,
+     val publishableKey: String,
+     val assetAccounts: ArrayList<AssetAccount>,
+     val theme: FlexaTheme = FlexaTheme(),
+-    val webViewThemeConfig: String? = null
++    val webViewThemeConfig: String? = null,
++    val okHttpClientCustomizer: ((OkHttpClient.Builder) -> Unit)? = null,
+ )
+diff --git a/core/src/test/java/com/flexa/core/data/rest/BuildFlexaClientTest.kt b/core/src/test/java/com/flexa/core/data/rest/BuildFlexaClientTest.kt
+new file mode 100644
+index 0000000..69f7f09
+--- /dev/null
++++ b/core/src/test/java/com/flexa/core/data/rest/BuildFlexaClientTest.kt
+@@ -0,0 +1,38 @@
++package com.flexa.core.data.rest
++
++import com.flexa.core.Flexa
++import okhttp3.Interceptor
++import okhttp3.OkHttpClient
++import org.junit.After
++import org.junit.Assert.assertEquals
++import org.junit.Assert.assertSame
++import org.junit.Test
++
++class BuildFlexaClientTest {
++
++    private val sdkInterceptor = Interceptor { it.proceed(it.request()) }
++    private val appInterceptor = Interceptor { it.proceed(it.request()) }
++
++    @After
++    fun tearDown() {
++        Flexa.okHttpClientCustomizer = null
++    }
++
++    @Test
++    fun `without a customizer the client is built unchanged`() {
++        val client = OkHttpClient.Builder().addInterceptor(sdkInterceptor).buildFlexaClient()
++
++        assertEquals(listOf(sdkInterceptor), client.interceptors)
++    }
++
++    @Test
++    fun `the customizer runs after the SDK's own interceptors`() {
++        Flexa.okHttpClientCustomizer = { it.addInterceptor(appInterceptor) }
++
++        val client = OkHttpClient.Builder().addInterceptor(sdkInterceptor).buildFlexaClient()
++
++        assertEquals(2, client.interceptors.size)
++        assertSame(sdkInterceptor, client.interceptors[0])
++        assertSame(appInterceptor, client.interceptors[1])
++    }
++}
+-- 
+2.39.5
+

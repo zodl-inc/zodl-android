@@ -1,0 +1,4 @@
+Añadido:
+- Añadimos «Mover a Ironwood», una migración guiada que traslada tus fondos de Orchard al nuevo pool protegido Ironwood.
+- Añadimos dos formas de migrar: una opción privada que divide tu saldo en transferencias más pequeñas enviadas automáticamente en segundo plano con el tiempo, o una transferencia única inmediata.
+- Añadimos protección Tor, notificaciones de progreso, compatibilidad con Keystone y un aviso en la pantalla de inicio para seguir tu migración.

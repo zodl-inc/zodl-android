@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.ui.screen.advancedsettings.debug.text
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -8,11 +10,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.component.Spacer
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -27,29 +37,48 @@ fun DebugTextView(
 ) {
     ZashiScreenModalBottomSheet(
         state = state,
+        dragHandle = null,
         content = { state, contentPadding ->
-            Column(
-                modifier =
-                    Modifier
-                        .weight(1f, false)
-                        .verticalScroll(rememberScrollState())
-                        .padding(start = 24.dp, end = 24.dp, bottom = contentPadding.calculateBottomPadding())
-            ) {
-                Text(
-                    text = state.title.getValue(),
-                    color = ZashiColors.Text.textPrimary,
-                    style = ZashiTypography.textXl,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(12.dp)
-                SelectionContainer {
-                    Text(
-                        text = state.text.getValue(),
-                        style = ZashiTypography.textMd,
-                        color = ZashiColors.Text.textPrimary
-                    )
+            val hazeState = rememberZashiFrostState()
+            var headerHeight by remember { mutableStateOf(0.dp) }
+            Box(modifier = Modifier.weight(1f, false)) {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .zashiFrostSource(hazeState)
+                            .verticalScroll(rememberScrollState())
+                            .padding(
+                                start = 24.dp,
+                                end = 24.dp,
+                                top = headerHeight,
+                                bottom = contentPadding.calculateBottomPadding()
+                            )
+                ) {
+                    SelectionContainer {
+                        Text(
+                            text = state.text.getValue(),
+                            style = ZashiTypography.textMd,
+                            color = ZashiColors.Text.textPrimary
+                        )
+                    }
+                    Spacer(24.dp)
                 }
-                Spacer(24.dp)
+
+                ZashiFrostedSheetHeader(
+                    hazeState = hazeState,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    onHeightChanged = { headerHeight = it },
+                    title = {
+                        Text(
+                            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
+                            text = state.title.getValue(),
+                            color = ZashiColors.Text.textPrimary,
+                            style = ZashiTypography.textXl,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                )
             }
         }
     )

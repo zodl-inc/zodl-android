@@ -17,6 +17,8 @@ tasks {
         include("**/*.kts")
         exclude("**/resources/**")
         exclude("**/build/**")
+        exclude("**/.claude/**")
+        exclude("**/third-party/**")
         config.setFrom(files("${rootProject.projectDir}/tools/detekt.yml"))
         baseline.set(File("${rootProject.projectDir}/tools/detekt-baseline.xml"))
         buildUponDefaultConfig = true
@@ -34,5 +36,7 @@ tasks {
         include("**/*.kts")
         exclude("**/resources/**")
         exclude("**/build/**")
+        exclude("**/.claude/**")
+        exclude("**/third-party/**")
     }
 }

@@ -1,10 +1,11 @@
 package co.electriccoin.zcash.ui.screen.deletewallet
 
-import cash.z.ecc.android.sdk.SdkSynchronizer
+import cash.z.ecc.android.sdk.CloseableSynchronizer
 import cash.z.ecc.android.sdk.WalletCoordinator
 import co.electriccoin.zcash.preference.EncryptedPreferenceProvider
 import co.electriccoin.zcash.preference.StandardPreferenceProvider
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.AddressBookRepository
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
@@ -12,11 +13,14 @@ import co.electriccoin.zcash.ui.common.repository.BiometricRequest
 import co.electriccoin.zcash.ui.common.repository.BiometricsCancelledException
 import co.electriccoin.zcash.ui.common.repository.BiometricsFailureException
 import co.electriccoin.zcash.ui.common.repository.FlexaRepository
+import co.electriccoin.zcash.ui.common.repository.GiftCardRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.internal.closeQuietly
+import kotlin.time.Duration.Companion.seconds
 
 class ResetZashiUseCase(
     private val walletCoordinator: WalletCoordinator,
@@ -28,12 +32,19 @@ class ResetZashiUseCase(
     private val biometricRepository: BiometricRepository,
     private val addressBookRepository: AddressBookRepository,
     private val metadataRepository: MetadataRepository,
+    private val migrationAppHooks: MigrationAppHooks,
+    private val giftCardRepository: GiftCardRepository,
 ) {
     @Suppress("TooGenericExceptionCaught", "ThrowsCount")
     suspend operator fun invoke(keepFiles: Boolean) {
         try {
             requestBiometrics()
+            // Migration workers are self-rechaining OneTimeWork — a wallet wipe that leaves them
+            // scheduled produces zombie retries against a wallet that no longer exists (Milan,
+            // 2026-07-30). Cancel while the accounts are still resolvable.
+            migrationAppHooks.cancelMigrationWork()
             flexaRepository.disconnect()
+            giftCardRepository.closeAllSessions()
             deleteLocalFiles(keepFiles)
             closeSynchronizer()
             clearSDK()
@@ -58,8 +69,16 @@ class ResetZashiUseCase(
         )
     }
 
+    /**
+     * Waits for a synchronizer to close, bounded by [CLOSE_SYNCHRONIZER_TIMEOUT]. A latched seed
+     * mismatch ([WalletCoordinator.isSeedMismatch]) keeps [SynchronizerProvider.getSynchronizer]'s
+     * underlying flow null forever, which would otherwise hang this step indefinitely after
+     * [deleteLocalFiles] already ran. When no synchronizer materializes in time, this is a no-op —
+     * [clearSDK]'s lockout-aware erase still handles teardown of any lingering SDK state.
+     */
     private suspend fun closeSynchronizer() {
-        (synchronizerProvider.getSynchronizer() as SdkSynchronizer).closeQuietly()
+        withTimeoutOrNull(CLOSE_SYNCHRONIZER_TIMEOUT) { synchronizerProvider.getSynchronizer() }
+            ?.let { (it as CloseableSynchronizer).closeQuietly() }
     }
 
     private fun deleteLocalFiles(keepFiles: Boolean) {
@@ -76,9 +95,14 @@ class ResetZashiUseCase(
     private suspend fun clearSharedPrefs() {
         standardPreferenceProvider().clearPreferences()
         encryptedPreferenceProvider().clearPreferences()
+        encryptedPreferenceProvider.purgeQuarantine()
     }
 
     private fun clearInMemoryData() {
         homeMessageCacheRepository.reset()
+    }
+
+    companion object {
+        private val CLOSE_SYNCHRONIZER_TIMEOUT = 5.seconds
     }
 }

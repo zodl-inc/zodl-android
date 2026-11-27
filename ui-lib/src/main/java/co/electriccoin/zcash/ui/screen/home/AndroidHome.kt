@@ -24,6 +24,7 @@ internal fun AndroidHome() {
                     isBalanceButtonEnabled = false,
                     isExchangeRateButtonEnabled = true,
                     showDust = false,
+                    isBalanceBreakdownEnabled = true,
                 )
             )
         }

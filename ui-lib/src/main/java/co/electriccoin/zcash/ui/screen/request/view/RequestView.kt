@@ -2,8 +2,10 @@
 
 package co.electriccoin.zcash.ui.screen.request.view
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -16,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -27,13 +30,18 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
-import co.electriccoin.zcash.ui.design.component.OldZashiBottomBar
 import co.electriccoin.zcash.ui.design.component.QrCodeDefaults
+import co.electriccoin.zcash.ui.design.component.ZashiBottomBar
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.screen.request.model.AmountState
 import co.electriccoin.zcash.ui.screen.request.model.MemoState
@@ -46,7 +54,7 @@ import kotlin.math.roundToInt
 @Composable
 @PreviewScreens
 private fun RequestLoadingPreview() =
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         RequestView(
             state = RequestState.Loading,
             snackbarHostState = SnackbarHostState(),
@@ -56,7 +64,7 @@ private fun RequestLoadingPreview() =
 @Composable
 @PreviewScreens
 private fun RequestPreview() =
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         RequestView(
             state =
                 RequestState.Amount(
@@ -92,25 +100,39 @@ internal fun RequestView(
         }
 
         is RequestState.Prepared -> {
+            val hazeState = rememberZashiFrostState()
             BlankBgScaffold(
                 topBar = {
                     RequestTopAppBar(
                         onBack = state.onBack,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .zashiFrostedHeader(hazeState)
                     )
                 },
                 snackbarHost = { SnackbarHost(snackbarHostState) },
                 bottomBar = {
-                    RequestBottomBar(state = state)
+                    RequestBottomBar(
+                        state = state,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .zashiFrostedFooter(hazeState)
+                    )
                 }
             ) { paddingValues ->
-                RequestContents(
-                    state = state,
+                Box(
                     modifier =
-                        Modifier.padding(
-                            top = paddingValues.calculateTopPadding(),
-                            bottom = paddingValues.calculateBottomPadding()
-                        ),
-                )
+                        Modifier
+                            .fillMaxSize()
+                            .zashiFrostSource(hazeState)
+                ) {
+                    RequestContents(
+                        state = state,
+                        contentPadding = paddingValues,
+                    )
+                }
             }
         }
     }
@@ -119,9 +141,15 @@ internal fun RequestView(
 @Composable
 private fun RequestTopAppBar(
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     ZashiSmallTopAppBar(
         title = stringResource(id = R.string.receive_request),
+        modifier = modifier,
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
         },
@@ -133,7 +161,11 @@ private fun RequestBottomBar(
     state: RequestState.Prepared,
     modifier: Modifier = Modifier,
 ) {
-    OldZashiBottomBar(modifier = modifier.fillMaxWidth()) {
+    ZashiBottomBar(
+        modifier = modifier,
+        isElevated = false,
+        color = Color.Transparent
+    ) {
         when (state) {
             is RequestState.Amount -> {
                 ZashiButton(
@@ -173,7 +205,7 @@ private fun RequestBottomBar(
                             .padding(horizontal = 24.dp)
                 )
 
-                Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingTiny))
+                Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingSmall))
 
                 ZashiButton(
                     colors = ZashiButtonDefaults.secondaryColors(),
@@ -194,21 +226,25 @@ val DEFAULT_QR_CODE_SIZE = 320.dp
 @Composable
 private fun RequestContents(
     state: RequestState.Prepared,
-    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues,
 ) {
-    Column(modifier = modifier) {
-        when (state) {
-            is RequestState.Amount -> {
-                RequestAmountView(state = state)
-            }
+    val scrollPadding =
+        Modifier.padding(
+            top = contentPadding.calculateTopPadding(),
+            bottom = contentPadding.calculateBottomPadding()
+        )
 
-            is RequestState.Memo -> {
-                RequestMemoView(state = state)
-            }
+    when (state) {
+        is RequestState.Amount -> {
+            RequestAmountView(state = state, modifier = scrollPadding)
+        }
 
-            is RequestState.QrCode -> {
-                RequestQrCodeView(state = state)
-            }
+        is RequestState.Memo -> {
+            RequestMemoView(state = state, modifier = scrollPadding)
+        }
+
+        is RequestState.QrCode -> {
+            RequestQrCodeView(state = state, modifier = scrollPadding)
         }
     }
 }

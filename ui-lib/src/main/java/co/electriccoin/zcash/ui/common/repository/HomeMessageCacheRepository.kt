@@ -79,20 +79,42 @@ sealed interface HomeMessageData {
         val zatoshi: Zatoshi
     ) : RuntimeMessage()
 
-    data object EnableTor : Prioritized {
-        override val priority: Int = 3
-    }
-
-    data object Backup : Prioritized {
-        override val priority: Int = 4
-    }
-
-    data object EnableCurrencyConversion : Prioritized {
-        override val priority: Int = 2
+    /**
+     * Offers the private connection to users on Public or Manual. It has no close button and stays until the user
+     * opts out or turns Private on, so it ranks below every opt-in message the user can dismiss: those get their
+     * turn first, instead of being hidden behind this one for good.
+     */
+    data object OhttpOptIn : Prioritized {
+        override val priority: Int = 1
     }
 
     data object CrashReport : Prioritized {
-        override val priority: Int = 1
+        override val priority: Int = 2
+    }
+
+    data object EnableCurrencyConversion : Prioritized {
+        override val priority: Int = 3
+    }
+
+    data object EnableTor : Prioritized {
+        override val priority: Int = 4
+    }
+
+    data object Backup : Prioritized {
+        override val priority: Int = 6
+    }
+
+    /**
+     * Nudge to participate in the active Coinholder Polling (CHP) round (MOB-1805). Ranked below
+     * [Backup] but above the other opt-in flows ([EnableTor], [EnableCurrencyConversion],
+     * [CrashReport]) — see [co.electriccoin.zcash.ui.common.usecase.GetHomeMessageUseCase]'s
+     * `createMessage`. No dismiss affordance in the design, so unlike the other opt-in messages
+     * this one has no persisted "seen"/dismissed flag — its producer
+     * (`VotingHomeMessageSource.observeIsCoinholderPollingMessageVisible`) is purely data-driven:
+     * it disappears on its own once the account has voted, the round ends, or voting is disabled.
+     */
+    data object CoinholderPolling : Prioritized {
+        override val priority: Int = 5
     }
 }
 
@@ -102,6 +124,14 @@ sealed interface HomeMessageData {
 sealed class RuntimeMessage : HomeMessageData {
     override val priority: Int = Int.MAX_VALUE
 }
+
+/**
+ * Home-banner payload produced by the feature-migration module. A [RuntimeMessage] subclass so it
+ * keeps the always-shown priority the banner had when it lived in ui-lib; abstract (and declared
+ * here, in [RuntimeMessage]'s own package, per the sealed-subclassing rule) because the concrete
+ * data class lives in the feature module — see MigrationContracts.kt.
+ */
+abstract class MigrationHomeMessage : RuntimeMessage()
 
 /**
  * Message which always is displayed only if previous message was lower priority.

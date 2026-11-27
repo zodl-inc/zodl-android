@@ -22,9 +22,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+
 jobs:
   validate_gradle_wrapper:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
     steps:
@@ -38,7 +39,7 @@ jobs:
         uses: gradle/actions/wrapper-validation@v6
 
   check_firebase_secrets:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     outputs:
       has-secrets: ${{ steps.check_firebase_secrets.outputs.defined }}
     steps:
@@ -52,7 +53,7 @@ jobs:
 
   check_properties:
     needs: validate_gradle_wrapper
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
     steps:
@@ -74,7 +75,7 @@ jobs:
 
   static_analysis_detekt:
     needs: validate_gradle_wrapper
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
     steps:
@@ -113,7 +114,7 @@ jobs:
 
   static_analysis_ktlint:
     needs: validate_gradle_wrapper
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
     steps:
@@ -152,15 +153,26 @@ jobs:
 
   static_analysis_android_lint:
     needs: validate_gradle_wrapper
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LINUX_RUNNER_LONG || vars.LINUX_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
+    env:
+      # PR builds only need x86_64 for smoke testing, saving ~4x disk and build time.
+      RUST_ANDROID_ABIS: x86_64
     steps:
       - name: Checkout
         timeout-minutes: 1
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0 # to fetch all commits
+      - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
+        timeout-minutes: 30
+        uses: ./.github/actions/setup-sdk-companion
+        with:
+          sdk-repo: ${{ vars.SDK_COMPANION_REPO }}
+          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN }}
+          cargo-app-id: ${{ secrets.CARGO_PRIVATE_APP_ID }}
+          cargo-app-private-key: ${{ secrets.CARGO_PRIVATE_APP_KEY }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -168,7 +180,12 @@ jobs:
         uses: ./.github/actions/setup-gradle
         timeout-minutes: 5
       - name: Android Lint
-        timeout-minutes: 15
+        # 120 minutes for cold-cache first run: when SDK_COMMIT_PIN is set (see
+        # setup-sdk-companion), this compiles the full companion SDK's Rust dependency
+        # graph (vendored zodl-slipstream + arti/hpke, orchard, etc.) for x86_64 — observed
+        # at ~45+ min alone before lint analysis. Warm-cache runs (after Swatinem/rust-cache
+        # in setup-sdk-companion seeds artifacts) complete in <30 min.
+        timeout-minutes: 120
         env:
           # Disable minify, since it makes lint run faster
           ORG_GRADLE_PROJECT_IS_MINIFY_ENABLED: false
@@ -192,17 +209,82 @@ jobs:
           name: Android Lint static analysis results
           path: ~/artifacts
 
-  test_kotlin_modules:
-    needs: validate_gradle_wrapper
-    runs-on: ubuntu-latest
+  # Translation checks run apart from the Kotlin unit tests on purpose:
+  # translation drift on the merge base must not stop the unit tests from
+  # running and reporting their own signal.
+  check_translations:
+    runs-on: ${{ vars.LINUX_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        timeout-minutes: 1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Set up Python
+        # check_translations.py needs Python 3.9+ (str.removesuffix).
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Check translations and checker fixtures
+        run: |
+          python3 -m unittest discover -s scripts/tests -v
+          python3 scripts/check_translations.py
+      - name: Baseline must not grow in a pull request
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags --depth=1 origin "$GITHUB_BASE_REF"
+          python3 - <<'EOF'
+          import json
+          import subprocess
+          import sys
+
+          sys.path.insert(0, "scripts")
+          from check_translations import Issue, baseline_additions
+
+          show = subprocess.run(
+              ["git", "show", "FETCH_HEAD:scripts/translation-baseline.json"],
+              capture_output=True, text=True,
+          )
+          if show.returncode:
+              print("No baseline on the base branch; initial adoption is allowed.")
+              sys.exit(0)
+
+          def debts(data):
+              return {Issue(**entry) for entry in data["issues"]}
+
+          base = debts(json.loads(show.stdout))
+          head = debts(json.load(open("scripts/translation-baseline.json")))
+          added = sorted(baseline_additions(head, base))
+          for entry in added:
+              print("ADDED:", entry)
+          if added:
+              print("::error::translation-baseline.json gained entries; the baseline only shrinks. Fix the resource instead of deferring it.")
+          sys.exit(1 if added else 0)
+          EOF
+
+  test_kotlin_modules:
+    needs: validate_gradle_wrapper
+    runs-on: ${{ vars.LINUX_RUNNER_LONG || vars.LINUX_RUNNER || 'ubuntu-latest' }}
+    permissions:
+      contents: read
+    env:
+      # PR builds only need x86_64 for smoke testing, saving ~4x disk and build time.
+      RUST_ANDROID_ABIS: x86_64
     steps:
       - name: Checkout
         timeout-minutes: 1
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0 # to fetch all commits
+      - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
+        timeout-minutes: 30
+        uses: ./.github/actions/setup-sdk-companion
+        with:
+          sdk-repo: ${{ vars.SDK_COMPANION_REPO }}
+          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN }}
+          cargo-app-id: ${{ secrets.CARGO_PRIVATE_APP_ID }}
+          cargo-app-private-key: ${{ secrets.CARGO_PRIVATE_APP_KEY }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -210,10 +292,15 @@ jobs:
         uses: ./.github/actions/setup-gradle
         timeout-minutes: 5
       - name: Test
-        timeout-minutes: 15
+        # 120 minutes for cold-cache first run: when SDK_COMMIT_PIN is set (see
+        # setup-sdk-companion), compiling :ui-lib pulls in the full companion SDK's Rust
+        # dependency graph (vendored zodl-slipstream + arti/hpke, etc.) for x86_64 — takes
+        # ~45+ min on cold cargo/target cache. Warm-cache runs complete in <30 min.
+        timeout-minutes: 120
         run: |
-          ./gradlew :configuration-api-lib:check :crash-lib:check :preference-api-lib:check :spackle-lib:check :ui-design-lib:check
-          ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest
+          ./gradlew :configuration-api-lib:check :crash-lib:check :preference-api-lib:check :spackle-lib:check :ui-design-lib:check :preference-impl-android-lib:testDebugUnitTest
+          ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest :feature-ledger:testZcashmainnetStoreDebugUnitTest :feature-migration:testZcashmainnetStoreDebugUnitTest :feature-voting:testZcashmainnetStoreDebugUnitTest :feature-viewing-key:testZcashmainnetStoreDebugUnitTest
+          python3 scripts/verify-unit-test-results.py
       - name: Collect Artifacts
         if: ${{ always() }}
         timeout-minutes: 1
@@ -223,7 +310,7 @@ jobs:
 
           mkdir ${ARTIFACTS_DIR_PATH}
 
-          zip -r ${RESULTS_ZIP_PATH} . -i \*build/reports/\* \*/build/kover/html/\* \*/build/kover/xml/report.xml
+          zip -r ${RESULTS_ZIP_PATH} . -i \*build/reports/\* \*/build/kover/html/\* \*/build/kover/xml/report.xml \*/build/test-results/\*.xml
       - name: Upload Artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -241,16 +328,28 @@ jobs:
   test_android_modules_emulator:
     name: test_android_modules_emulator (${{ matrix.shard }})
     needs: [validate_gradle_wrapper]
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+    runs-on: ubuntu-24.04
+    # 120 minutes for cold-cache first run: the `app` shard needs the SDK compiled, and when
+    # SDK_COMMIT_PIN is set (see setup-sdk-companion) a cold cargo/target cache (vendored
+    # zodl-slipstream + arti/hpke, x86_64 only) takes ~45+ min before emulator/test steps start.
+    # Warm-cache runs complete in <60 min. Previous 90 min caused emulator death mid-run.
+    timeout-minutes: 120
     permissions:
       contents: read
+    env:
+      # PR builds only need x86_64 for the emulator, saving ~4x disk and build time.
+      RUST_ANDROID_ABIS: x86_64
     strategy:
       fail-fast: false
       matrix:
         include:
           - shard: libs
             coverage: true
+            assemble-tasks: >-
+              assembleDebugAndroidTest
+              -x :app:assembleZcashmainnetStoreDebugAndroidTest
+              :app:assembleZcashmainnetStoreDebug
+              :ui-integration-test:assembleZcashmainnetStoreDebug
             gradle-tasks: >-
               connectedDebugAndroidTest
               -x :app:connectedZcashmainnetStoreDebugAndroidTest
@@ -260,6 +359,10 @@ jobs:
               :ui-integration-test:connectedZcashmainnetStoreDebugAndroidTest
           - shard: app
             coverage: false
+            assemble-tasks: >-
+              :app:assembleZcashmainnetStoreDebug
+              :app:assembleZcashmainnetStoreDebugAndroidTest
+              :ui-screenshot-test:assembleZcashmainnetStoreDebug
             gradle-tasks: >-
               :app:connectedZcashmainnetStoreDebugAndroidTest
               :ui-screenshot-test:connectedZcashmainnetStoreDebugAndroidTest
@@ -269,54 +372,87 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0 # to fetch all commits
+      - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
+        timeout-minutes: 30
+        uses: ./.github/actions/setup-sdk-companion
+        with:
+          sdk-repo: ${{ vars.SDK_COMPANION_REPO }}
+          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN }}
+          cargo-app-id: ${{ secrets.CARGO_PRIVATE_APP_ID }}
+          cargo-app-private-key: ${{ secrets.CARGO_PRIVATE_APP_KEY }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
       - name: Set up Gradle
         uses: ./.github/actions/setup-gradle
         timeout-minutes: 5
+      - name: Pre-build instrumentation APKs
+        # Both shards compile before emulator boot. The libs runner has repeatedly
+        # shut down while compiling APKs alongside an already-running emulator.
+        # Keep the same resource and coverage settings as the test invocation so
+        # it can reuse these APKs instead of compiling them again after boot.
+        # Keep Kotlin in the bounded Gradle heap, then release that heap before
+        # emulator startup on the standard hosted runner.
+        timeout-minutes: 120
+        env:
+          ORG_GRADLE_PROJECT_ZCASH_DEBUG_APP_NAME_SUFFIX: ""
+          ORG_GRADLE_PROJECT_IS_ANDROID_INSTRUMENTATION_TEST_COVERAGE_ENABLED: ${{ matrix.coverage }}
+        run: |
+          ./gradlew ${{ matrix.assemble-tasks }} --max-workers=2 --no-parallel --stacktrace \
+            "-Dorg.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1g" -Pkotlin.compiler.execution.strategy=in-process
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          variant = "zcashmainnetStoreDebug"
+          modules = ["app", "ui-screenshot-test" if "${{ matrix.shard }}" == "app" else "ui-integration-test"]
+          for module in modules:
+              metadata = []
+              for path in (Path(module) / "build/outputs/apk").rglob("output-metadata.json"):
+                  data = json.loads(path.read_text())
+                  if data.get("variantName") == variant:
+                      metadata.append((path, data))
+              if len(metadata) != 1:
+                  raise SystemExit(f"Expected one prepared {variant} APK metadata file for {module}")
+              path, data = metadata[0]
+              apks = [path.parent / entry["outputFile"] for entry in data.get("elements", [])]
+              if not apks or not all(apk.is_file() and apk.stat().st_size for apk in apks):
+                  raise SystemExit(f"Prepared {variant} APK is missing for {module}")
+              print(f"Verified {module}: {len(apks)} prepared {variant} APK(s)")
+          PY
+          ./gradlew --stop
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: AVD cache
-        uses: actions/cache@v5
-        id: avd-cache
-        with:
-          path: |
-            ~/.android/avd/*
-            ~/.android/adb*
-          key: avd-api-35-x86_64-pixel_6-default-v2
-      - name: Create AVD and generate snapshot for caching
-        if: steps.avd-cache.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          arch: x86_64
-          profile: pixel_6
-          target: default
-          force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: false
-          script: echo "Generated AVD snapshot for caching"
+      # Boot once from a fresh AVD. The separate cache-warming boot timed out
+      # before the library tests started; tests do not need a saved snapshot.
       - name: Run instrumentation tests
         uses: reactivecircus/android-emulator-runner@v2
         env:
           # Force blank suffix for screenshot tests
           ORG_GRADLE_PROJECT_ZCASH_DEBUG_APP_NAME_SUFFIX: ""
           ORG_GRADLE_PROJECT_IS_ANDROID_INSTRUMENTATION_TEST_COVERAGE_ENABLED: ${{ matrix.coverage }}
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         with:
           api-level: 35
           arch: x86_64
           profile: pixel_6
           target: default
-          force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          force-avd-creation: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: ./gradlew ${{ matrix.gradle-tasks }}
+          script: >-
+            ./gradlew ${{ matrix.gradle-tasks }} --max-workers=2 --no-parallel --stacktrace
+            "-Dorg.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1g" -Pkotlin.compiler.execution.strategy=in-process
+      - name: Emulator host diagnostics
+        if: failure()
+        run: |
+          free -m
+          df -h /
+          # Process names and memory only: never print command arguments.
+          ps -eo pid,comm,rss --sort=-rss | sed -n '1,16p'
+          sudo dmesg | grep -Ei 'out of memory|oom-kill|killed process|segfault' || true
       - name: Collect Artifacts
         if: ${{ always() }}
         timeout-minutes: 1
@@ -372,8 +508,6 @@ jobs:
         timeout-minutes: 20
         env:
           ORG_GRADLE_PROJECT_IS_CRASH_ON_STRICT_MODE_VIOLATION: true
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew :app:assembleZcashmainnetStoreDebug :app:assembleZcashtestnetStoreDebug
       - name: Authenticate to Google Cloud for Firebase Test Lab
@@ -396,15 +530,26 @@ jobs:
 
   build:
     needs: [validate_gradle_wrapper]
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.LINUX_RUNNER_LONG || vars.LINUX_RUNNER || 'ubuntu-latest' }}
     permissions:
       contents: read
+    env:
+      # PR builds only need x86_64 for smoke testing; deploy workflow refuses live SDK_COMMIT_PIN anyway.
+      RUST_ANDROID_ABIS: x86_64
     steps:
       - name: Checkout
         timeout-minutes: 1
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0 # to fetch all commits
+      - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
+        timeout-minutes: 30
+        uses: ./.github/actions/setup-sdk-companion
+        with:
+          sdk-repo: ${{ vars.SDK_COMPANION_REPO }}
+          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN }}
+          cargo-app-id: ${{ secrets.CARGO_PRIVATE_APP_ID }}
+          cargo-app-private-key: ${{ secrets.CARGO_PRIVATE_APP_KEY }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -434,16 +579,38 @@ jobs:
         run: |
           keytool -genkey -v -keystore $SIGNING_KEY_PATH -keypass android -storepass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 100000 -dname "CN=, OU=, O=Test, L=, S=, C=" -noprompt
       - name: Build Store APK
-        timeout-minutes: 25
+        # 120 minutes for cold-cache first run: when SDK_COMMIT_PIN is set (see
+        # setup-sdk-companion), this compiles the full companion SDK's Rust dependency
+        # graph (vendored zodl-slipstream + arti/hpke, etc.) for release profile, x86_64 only,
+        # across both mainnet/testnet variants. Warm-cache runs complete in <45 min.
+        timeout-minutes: 120
         env:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PATH: ${{ format('{0}/release.jks', env.home) }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: android
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: androiddebugkey
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: android
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
+        shell: bash
         run: |
-          ./gradlew :app:assembleZcashmainnetStoreDebug :app:assembleZcashtestnetStoreDebug :app:bundleZcashmainnetStoreRelease :app:bundleZcashtestnetStoreRelease :app:packageZcashmainnetStoreReleaseUniversalApk
+          # Match the bounded concurrency used by the E2E APK build. This job
+          # packages several variants, so avoid overlapping their packaging workers
+          # and include the underlying exception if APK packaging fails.
+          # This step's worker processes (bundletool's standalone-APK packaging,
+          # in particular) can OOM on the standard runner's RAM when SDK_COMMIT_PIN
+          # is set and the companion SDK's Rust compilation is sharing the box with
+          # this already-heavy multi-variant release build. A fresh Gradle daemon
+          # (and freshly-spawned workers) reliably clears it -- retry once, matching
+          # zodl-helpers/scripts/deploy.sh's established OOM-retry-once handling for
+          # this same build.
+          TASKS=":app:assembleZcashmainnetStoreDebug :app:assembleZcashtestnetStoreDebug :app:bundleZcashmainnetStoreRelease :app:bundleZcashtestnetStoreRelease :app:packageZcashmainnetStoreReleaseUniversalApk"
+          if ! ./gradlew ${TASKS} --max-workers=2 --no-parallel --stacktrace 2>&1 | tee build-store-apk.log; then
+            if grep -qi "OutOfMemoryError\|Java heap space" build-store-apk.log; then
+              echo "::warning::Build Store APK failed with OOM -- stopping the daemon and retrying once with a fresh heap."
+              ./gradlew --stop
+              ./gradlew ${TASKS} --max-workers=2 --no-parallel --stacktrace
+            else
+              exit 1
+            fi
+          fi
 
       - name: Collect Artifacts
         timeout-minutes: 1
@@ -469,10 +636,25 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: android
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: androiddebugkey
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: android
-          # TODO [#1789] Re-enable Flexa integrations for FOSS variant
-          # ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
+          # No Flexa key: every build carries only the gateway's placeholder key (the OHTTP gateway injects
+          # the real one), and Flexa is offered on FOSS too.
         run: |
           ./gradlew clean :app:assembleZcashmainnetFossRelease
+
+      # The FOSS runtime classpath must resolve nothing F-Droid's inclusion policy forbids (the vendored
+      # Flexa SDK is offered on every distribution since the perf/status round of 2026-10-22, so the
+      # check runs here, on the branch the F-Droid build is made from, not only on feature/fdroid-parity).
+      - name: Check FOSS dependencies
+        timeout-minutes: 10
+        run: |
+          ./scripts/check-foss-dependencies.sh --self-test
+          ./scripts/check-foss-dependencies.sh zcashmainnetFossReleaseRuntimeClasspath
+
+      - name: F-Droid scanner
+        timeout-minutes: 10
+        run: |
+          pipx run --spec fdroidserver fdroid scanner --exit-code --verbose \
+            app/build/outputs/apk/zcashmainnetFoss/release/app-zcashmainnet-foss-release.apk
 
       - name: Check APK size
         timeout-minutes: 1
@@ -545,8 +727,6 @@ jobs:
           # This first environment variable is used by Flank, since the temporary token is missing the project name
           GOOGLE_CLOUD_PROJECT: ${{ vars.FIREBASE_TEST_LAB_PROJECT }}
           ORG_GRADLE_PROJECT_ZCASH_FIREBASE_TEST_LAB_API_KEY_PATH: ${{ steps.auth_test_lab.outputs.credentials_file_path }}
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           unzip ${BINARIES_ZIP_PATH}
           ./gradlew :app:runFlankSanityConfigRelease

@@ -11,9 +11,14 @@ import co.electriccoin.zcash.ui.screen.send.Send
 
 class OnAddressScannedUseCase(
     private val navigationRouter: NavigationRouter,
-    private val prefillSend: PrefillSendUseCase
+    private val prefillSend: PrefillSendUseCase,
+    private val rejectIfSelectedAccountCannotSpend: RejectIfSelectedAccountCannotSpendUseCase,
 ) {
-    operator fun invoke(
+    /**
+     * An address scanned from home opens the send form, so an account that cannot spend gets the
+     * unsupported-operation error in place of the scanner instead.
+     */
+    suspend operator fun invoke(
         address: String,
         addressType: AddressType,
         scanArgs: ScanArgs
@@ -31,6 +36,7 @@ class OnAddressScannedUseCase(
             }
 
             HOMEPAGE -> {
+                if (rejectIfSelectedAccountCannotSpend { replace(it) }) return
                 navigationRouter.replace(
                     Send(
                         address,

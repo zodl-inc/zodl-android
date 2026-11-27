@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.design.component
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
@@ -13,6 +14,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,9 +31,11 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.ImageResource
+import co.electriccoin.zcash.ui.design.util.PressMorphDefaults
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
@@ -44,9 +48,12 @@ fun ZashiPicker(
     )
     val borderColor = if (state.isEnabled) Color.Unspecified else ZashiColors.Inputs.Disabled.stroke
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     Surface(
-        modifier = modifier,
+        modifier = modifier.pressMorph(interactionSource, PressMorphDefaults.PRESSED_SCALE_SUBTLE),
         onClick = { if (state.isEnabled) state.onClick() },
+        interactionSource = interactionSource,
         shape = RoundedCornerShape(ZashiDimensions.Radius.radiusLg),
         color = bgColor,
         border = if (borderColor.isUnspecified) null else BorderStroke(1.dp, borderColor)

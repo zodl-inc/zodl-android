@@ -1,0 +1,5 @@
+Cambiado:
+- Aceleramos considerablemente la firma de migraciones con Keystone.
+
+Corregido:
+- Corregimos problemas de interfaz en las migraciones.

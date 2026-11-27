@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="exportViewingKey_settingsItem">Exportar clave de visualización</string>
+    <string name="exportViewingKey_topBar">Exportar clave de visualización</string>
+    <string name="exportViewingKey_title">Exportar clave de visualización</string>
+    <string name="exportViewingKey_description">Compartir una clave de visualización permite a otros supervisar la actividad de tu billetera <xliff:g id="app_name" example="Zodl">%1$s</xliff:g>. Nunca la compartas con alguien en quien no confíes.</string>
+    <string name="exportViewingKey_option_incoming">Clave de visualización de entradas</string>
+    <string name="exportViewingKey_option_incoming_desc">Permite a otros ver solo las transacciones entrantes. Segura para contables y verificación de pagos.</string>
+    <string name="exportViewingKey_option_full">Clave de visualización completa</string>
+    <string name="exportViewingKey_option_full_desc">Visibilidad total de toda la actividad de la billetera. Úsala para billeteras de solo lectura, auditorías o cumplimiento legal.</string>
+    <string name="exportViewingKey_continue">Continuar</string>
+
+    <string name="exportViewingKey_confirm_title">Antes de compartir tu clave de visualización completa</string>
+    <string name="exportViewingKey_confirm_alert">Cualquiera con esta clave puede ver todas las transacciones que has hecho y todas las que hagas en el futuro.</string>
+    <string name="exportViewingKey_confirm_check_reveals">Entiendo que esto revela todas mis transacciones, pasadas y futuras</string>
+    <string name="exportViewingKey_confirm_check_trust">Confío en la parte con la que la comparto</string>
+    <string name="exportViewingKey_confirm_check_undone">Entiendo que esto no se puede deshacer</string>
+    <string name="exportViewingKey_confirm_export">Exportar clave</string>
+
+    <string name="exportViewingKey_detail_title_incoming">Tu clave de visualización de entradas</string>
+    <string name="exportViewingKey_detail_title_full">Tu clave de visualización completa</string>
+    <string name="exportViewingKey_detail_subtitle_incoming">Solo transacciones entrantes.</string>
+    <string name="exportViewingKey_detail_subtitle_full">Visibilidad total. Manéjala con cuidado.</string>
+    <string name="exportViewingKey_tab_qr">Código QR</string>
+    <string name="exportViewingKey_tab_key">Cadena de clave</string>
+    <string name="exportViewingKey_disclaimer_qr_incoming">Escanéalo con cualquier billetera compatible para añadirla como solo lectura.</string>
+    <string name="exportViewingKey_disclaimer_qr_full">Escanéalo solo en un entorno privado y de confianza</string>
+    <string name="exportViewingKey_disclaimer_key_incoming">Esta clave es segura para compartirla con software de contabilidad o billeteras de solo lectura.</string>
+    <string name="exportViewingKey_disclaimer_key_full">Esta clave revela todo tu historial de envíos y recepciones. Compártela solo con partes de confianza.</string>
+    <string name="exportViewingKey_share">Compartir</string>
+    <string name="exportViewingKey_reveal">Mostrar clave</string>
+    <string name="exportViewingKey_hide">Ocultar clave</string>
+    <string name="exportViewingKey_share_picker_title">Compartir clave de visualización</string>
+    <string name="exportViewingKey_auth_use_case">Función de Exportar clave de visualización</string>
+    <string name="exportViewingKey_hidden_content_description">Clave de visualización oculta</string>
+</resources>

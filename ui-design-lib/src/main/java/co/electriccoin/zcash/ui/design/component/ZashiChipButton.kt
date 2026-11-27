@@ -5,6 +5,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,8 +14,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,6 +34,7 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
@@ -47,15 +51,21 @@ fun ZashiChipButton(
 ) {
     val normalizedColor by animateColorAsState(color)
     val normalizedTextColor by animateColorAsState(textStyle.color)
+    val interactionSource = remember { MutableInteractionSource() }
     Surface(
-        modifier = modifier,
+        modifier = modifier.pressMorph(interactionSource),
         shape = shape,
         border = border,
         color = normalizedColor,
     ) {
         Row(
             modifier =
-                Modifier.clickable(onClick = state.onClick, enabled = state.isEnabled) then
+                Modifier.clickable(
+                    onClick = state.onClick,
+                    enabled = state.isEnabled,
+                    interactionSource = interactionSource,
+                    indication = ripple()
+                ) then
                     Modifier.padding
                         (contentPadding),
             verticalAlignment = Alignment.CenterVertically

@@ -32,7 +32,7 @@ class IsEphemeralAddressLockedUseCase(
                     .find {
                         val fee = it.fee ?: Zatoshi(0)
                         val amount = it.amount - fee
-                        it.recipient?.address == ephemeral.address && amount <= Zatoshi(100)
+                        it.recipient == ephemeral.address && amount <= Zatoshi(100)
                     }
 
             when (unlockTransaction) {
@@ -63,7 +63,7 @@ class IsEphemeralAddressLockedUseCase(
                                 .none {
                                     val fee = it.fee ?: Zatoshi(0)
                                     val amount = it.amount - fee
-                                    it.recipient?.address == ephemeral.address && amount <= Zatoshi(100)
+                                    it.recipient == ephemeral.address && amount <= Zatoshi(100)
                                 }
                         }
                 }

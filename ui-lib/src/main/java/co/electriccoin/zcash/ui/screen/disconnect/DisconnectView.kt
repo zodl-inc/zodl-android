@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.disconnect
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -29,37 +31,53 @@ import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
-import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiBulletText
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
-import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
 fun DisconnectView(state: DisconnectState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
-        topBar = { AppBar(state) },
-        bottomBar = {},
-        content = { padding ->
-            Content(
+        topBar = {
+            AppBar(
                 state = state,
                 modifier =
                     Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .scaffoldPadding(padding)
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
             )
+        },
+        bottomBar = {},
+        content = { padding ->
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .zashiFrostSource(hazeState)
+            ) {
+                Content(
+                    state = state,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .scaffoldPadding(padding)
+                )
+            }
         }
     )
 
@@ -110,7 +128,7 @@ private fun Content(
         // Currently connected card
         ConnectedCard(state = state)
 
-        Spacer(20.dp)
+        Spacer(24.dp)
 
         // Disconnect button
         ZashiButton(
@@ -120,13 +138,19 @@ private fun Content(
     }
 }
 
+/**
+ * Figma's 44 dp hardware wallet avatar with its 14 dp connected badge, whose outline overhangs the
+ * avatar's bottom-right edge by 2 dp.
+ */
 @Composable
-private fun KeystoneConnectedIcon() {
+private fun ConnectedIcon(
+    @DrawableRes icon: Int
+) {
     Box(
-        modifier = Modifier.size(40.dp)
+        modifier = Modifier.size(44.dp)
     ) {
         Image(
-            painter = painterResource(id = co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone),
+            painter = painterResource(id = icon),
             contentDescription = null,
             modifier = Modifier.fillMaxSize()
         )
@@ -134,10 +158,10 @@ private fun KeystoneConnectedIcon() {
         Box(
             modifier =
                 Modifier
-                    .offset(3.dp, 3.dp)
-                    .border(3.dp, ZashiColors.Surfaces.bgPrimary, CircleShape)
+                    .offset(2.dp, 2.dp)
+                    .border(2.dp, ZashiColors.Surfaces.bgPrimary, CircleShape)
                     .background(ZashiColors.Avatars.avatarStatus, CircleShape)
-                    .size(16.dp)
+                    .size(14.dp)
                     .align(Alignment.BottomEnd)
         )
     }
@@ -166,7 +190,7 @@ private fun ConnectedCard(state: DisconnectState) {
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 16.dp)
                 ) {
-                    KeystoneConnectedIcon()
+                    ConnectedIcon(state.icon)
                     Spacer(16.dp)
                     Column {
                         Text(
@@ -197,7 +221,7 @@ private fun ConnectedCard(state: DisconnectState) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_advanced_settings_info),
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(20.dp),
                     colorFilter = ColorFilter.tint(ZashiColors.Text.textTertiary)
                 )
                 Spacer(12.dp)
@@ -213,8 +237,12 @@ private fun ConnectedCard(state: DisconnectState) {
 }
 
 @Composable
-private fun AppBar(state: DisconnectState) {
+private fun AppBar(
+    state: DisconnectState,
+    modifier: Modifier = Modifier
+) {
     ZashiSmallTopAppBar(
+        modifier = modifier,
         title = state.header.getValue(),
         navigationAction = {
             ZashiTopAppBarBackNavigation(
@@ -223,10 +251,9 @@ private fun AppBar(state: DisconnectState) {
             )
         },
         colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = androidx.compose.ui.graphics.Color.Transparent
-                ),
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 
@@ -234,29 +261,5 @@ private fun AppBar(state: DisconnectState) {
 @Composable
 private fun DisconnectPreview() =
     ZcashTheme {
-        DisconnectView(
-            state =
-                DisconnectState(
-                    header = stringRes(R.string.disconnectHWWallet_title),
-                    title = stringRes(R.string.deleteKeystoneTitle),
-                    subtitle = stringRes(R.string.deleteKeystoneDesc),
-                    warningTitle = stringRes(R.string.disconnectHWWallet_mayInclude),
-                    warningItems =
-                        listOf(
-                            stringRes(R.string.disconnectHWWallet_bullet1),
-                            stringRes(R.string.disconnectHWWallet_bullet2),
-                            stringRes(R.string.disconnectHWWallet_bullet3),
-                        ),
-                    connectedTitle = stringRes(R.string.keystoneHW),
-                    connectedStatus = stringRes(R.string.currentlyConnected),
-                    infoText = stringRes(R.string.connectedHWInfo),
-                    disconnectButton =
-                        co.electriccoin.zcash.ui.design.component.ButtonState(
-                            stringRes(R.string.disconnectHWWallet_title),
-                            style = ButtonStyle.DESTRUCTIVE1
-                        ) {},
-                    confirmationDialog = null,
-                    onBack = {}
-                )
-        )
+        DisconnectView(state = DisconnectState.preview)
     }

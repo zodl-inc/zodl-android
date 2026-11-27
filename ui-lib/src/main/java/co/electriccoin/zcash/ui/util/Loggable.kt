@@ -4,14 +4,14 @@ import co.electriccoin.zcash.ui.BuildConfig
 import java.util.concurrent.atomic.AtomicInteger
 
 interface Loggable {
-    operator fun invoke(message: String, excetion: Exception? = null)
+    operator fun invoke(message: String, excetion: Throwable? = null)
 }
 
 fun loggableNot(tag: String) = loggable(tag)
 
 fun loggable(tag: String, enabled: Boolean = BuildConfig.DEBUG) =
     object : Loggable {
-        override fun invoke(message: String, excetion: Exception?) {
+        override fun invoke(message: String, excetion: Throwable?) {
             if (enabled) {
                 if (excetion != null) {
                     android.util.Log.e(tag, message, excetion)

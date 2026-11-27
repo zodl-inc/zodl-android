@@ -30,6 +30,12 @@ interface NavigationRouter {
     fun replaceAll(vararg routes: Any)
 
     /**
+     * Pop every screen back to and including the first [route] found on the backstack, then add [routes] to
+     * backstack - the first of them takes the popped screen's place.
+     */
+    fun replaceFrom(route: KClass<*>, vararg routes: Any)
+
+    /**
      * Pop last screen from backstack.
      */
     fun back()
@@ -60,6 +66,9 @@ class NavigationRouterImpl : NavigationRouter {
     override fun replace(vararg routes: Any) = navigateWithBackoff(NavigationCommand.Replace(routes.toList()))
 
     override fun replaceAll(vararg routes: Any) = navigateWithBackoff(NavigationCommand.ReplaceAll(routes.toList()))
+
+    override fun replaceFrom(route: KClass<*>, vararg routes: Any) =
+        navigateWithBackoff(NavigationCommand.ReplaceFrom(route, routes.toList()))
 
     override fun back() = navigateWithBackoff(NavigationCommand.Back)
 
@@ -101,6 +110,11 @@ sealed interface NavigationCommand : BaseNavigationCommand {
     ) : NavigationCommand
 
     data class ReplaceAll(
+        val routes: List<Any>
+    ) : NavigationCommand
+
+    data class ReplaceFrom(
+        val route: KClass<*>,
         val routes: List<Any>
     ) : NavigationCommand
 

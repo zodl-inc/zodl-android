@@ -214,4 +214,25 @@ class ZashiEndpointTextFieldParserTest {
         )
         MatcherAssert.assertThat("Port should be correct", result?.port, CoreMatchers.equalTo(9067))
     }
+
+    @Test
+    @SmallTest
+    fun onionEndpointIsInsecureTest() {
+        val result =
+            ZashiEndpointTextFieldParser.toEndpointOrNull(
+                "zodllo6te2kegjkrqtluiucuymyrpqxrrz37afuzi6f7jcy6rxlpgzqd.onion:9067"
+            )
+        MatcherAssert.assertThat(".onion endpoint should be valid", result, CoreMatchers.notNullValue())
+        MatcherAssert.assertThat(
+            ".onion host should be parsed",
+            result?.host,
+            CoreMatchers.equalTo("zodllo6te2kegjkrqtluiucuymyrpqxrrz37afuzi6f7jcy6rxlpgzqd.onion")
+        )
+        MatcherAssert.assertThat("Port should be 9067", result?.port, CoreMatchers.equalTo(9067))
+        MatcherAssert.assertThat(
+            ".onion endpoint must be insecure (Tor provides transport encryption)",
+            result?.isSecure,
+            CoreMatchers.equalTo(false)
+        )
+    }
 }

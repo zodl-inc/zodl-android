@@ -109,8 +109,6 @@ tasks {
             "ZCASH_GOOGLE_PLAY_DEPLOY_TRACK" to "internal",
             "ZCASH_GOOGLE_PLAY_DEPLOY_STATUS" to "draft",
 
-            "ZCASH_FLEXA_KEY" to "",
-            "ZCASH_CMC_KEY" to "",
             "SDK_INCLUDED_BUILD_PATH" to "",
             "BIP_39_INCLUDED_BUILD_PATH" to ""
         )

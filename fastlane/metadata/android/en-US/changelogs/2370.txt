@@ -1,0 +1,5 @@
+Changed:
+- We made Keystone migration signing much faster.
+
+Fixed:
+- We fixed migration UI issues.

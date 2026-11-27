@@ -24,7 +24,7 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.common.InfoBottomSheetView
+import co.electriccoin.zcash.ui.screen.common.ZodlInfoBottomSheetView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,8 +32,7 @@ fun WalletBackupInfoView(
     state: WalletBackupInfoState?,
     sheetState: SheetState = rememberScreenModalBottomSheetState(),
 ) {
-    state ?: return
-    InfoBottomSheetView(onBack = state.onBack, sheetState = sheetState) {
+    ZodlInfoBottomSheetView(state = state, sheetState = sheetState) { innerState ->
         Image(painterResource(R.drawable.ic_info_backup), contentDescription = null)
         Spacer(12.dp)
         Text(
@@ -72,21 +71,23 @@ fun WalletBackupInfoView(
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textMd,
         )
-        Spacer(32.dp)
-        state.checkboxState?.let {
-            ZashiCheckbox(state = it)
-            Spacer(12.dp)
+        if (innerState.checkboxState != null) {
+            Spacer(32.dp)
+            ZashiCheckbox(state = innerState.checkboxState)
+            Spacer(16.dp)
+        } else {
+            Spacer(36.dp)
         }
         ZashiButton(
-            state = state.secondaryButton,
+            state = innerState.secondaryButton,
             modifier =
                 androidx.compose.ui.Modifier
                     .fillMaxWidth(),
             defaultPrimaryColors = ZashiButtonDefaults.secondaryColors(),
         )
-        Spacer(4.dp)
+        Spacer(8.dp)
         ZashiButton(
-            state = state.primaryButton,
+            state = innerState.primaryButton,
             modifier =
                 androidx.compose.ui.Modifier
                     .fillMaxWidth(),

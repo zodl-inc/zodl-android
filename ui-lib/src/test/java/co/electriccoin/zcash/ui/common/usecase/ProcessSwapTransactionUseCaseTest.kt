@@ -15,7 +15,6 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -45,7 +44,7 @@ class ProcessSwapTransactionUseCaseTest {
 
             fx.useCase(proposal, SubmitResult.Success(listOf("tx1")))
 
-            verify(exactly = 1) {
+            coVerify(exactly = 1) {
                 fx.metadataRepository.markTxAsSwap(
                     depositAddress = "deposit-address",
                     provider = "near",
@@ -95,7 +94,7 @@ class ProcessSwapTransactionUseCaseTest {
 
             fx.useCase(swapProposal(), SubmitResult.Success(emptyList()))
 
-            verify(exactly = 1) {
+            coVerify(exactly = 1) {
                 fx.metadataRepository.markTxAsSwap(
                     any(),
                     any(),

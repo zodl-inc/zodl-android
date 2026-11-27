@@ -24,4 +24,6 @@ enum class KeepOpenFlow {
     RESTORE,
     RESYNC,
     KEYSTONE,
+    LEDGER,
+    VIEW_ONLY,
 }

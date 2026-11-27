@@ -66,7 +66,7 @@ class GetFilteredActivitiesUseCase(
                                         flowOf(InternalState.ByTransaction(activity, null))
                                     } else {
                                         addressBookRepository
-                                            .observeContactByAddress(recipient.address)
+                                            .observeContactByAddress(recipient)
                                             .map { contact ->
                                                 InternalState.ByTransaction(activity, contact)
                                             }
@@ -293,7 +293,6 @@ class GetFilteredActivitiesUseCase(
 
             is InternalState.ByTransaction -> {
                 transaction.activity.transaction.recipient
-                    ?.address
                     ?.contains(fulltextFilter, ignoreCase = true) ?: false
             }
         }

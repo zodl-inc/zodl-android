@@ -34,10 +34,12 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.PressMorphDefaults
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.StyledStringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.withStyle
 
@@ -136,8 +138,10 @@ private fun ExpandedBaseListItem(
     border: BorderStroke? = null,
     content: @Composable (Modifier) -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+
     Surface(
-        modifier = modifier,
+        modifier = modifier.pressMorph(interactionSource, PressMorphDefaults.PRESSED_SCALE_SUBTLE),
         shape = shape,
         color = Color.Transparent,
         border = border,
@@ -146,7 +150,7 @@ private fun ExpandedBaseListItem(
     ) {
         Column(
             modifier =
-                clickableModifier(remember { MutableInteractionSource() }, onClick)
+                clickableModifier(interactionSource, onClick)
                     .padding(contentPadding)
         ) {
             Row(

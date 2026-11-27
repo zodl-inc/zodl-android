@@ -3,6 +3,7 @@
 package co.electriccoin.zcash.ui.design.component
 
 import android.view.WindowManager
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -13,6 +14,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -92,7 +94,8 @@ private fun Dialog(
             Text(
                 text = message.getValue(),
                 color = ZashiColors.Text.textTertiary,
-                style = ZashiTypography.textMd
+                style = ZashiTypography.textMd,
+                modifier = Modifier.padding(bottom = 4.dp)
             )
         },
         properties = properties,

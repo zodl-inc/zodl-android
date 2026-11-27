@@ -35,19 +35,20 @@ inline fun <reified T : ViewModel> koinActivityViewModel(
 )
 
 @Composable
-fun ProvidableCompositionLocal<Context>.componentActivity(): ComponentActivity {
-    val context = this.current
-    return when {
-        context is ComponentActivity -> {
-            context
-        }
+fun ProvidableCompositionLocal<Context>.componentActivity(): ComponentActivity = this.current.findComponentActivity()
 
-        context is ContextWrapper && context.baseContext is ComponentActivity -> {
-            context.baseContext as ComponentActivity
-        }
-
-        else -> {
-            throw ClassCastException("Context is not a ComponentActivity")
-        }
+/**
+ * Walks the whole [ContextWrapper] chain instead of a single level, because the ambient context can carry
+ * more than one wrapper: [co.electriccoin.zcash.ui.design.component.Override] wraps it for automated tests
+ * and the app theme wraps it again whenever the chosen appearance diverges from the ambient configuration.
+ * A single-level unwrap threw for every screen composed below such a stack.
+ */
+private fun Context.findComponentActivity(): ComponentActivity {
+    var context: Context = this
+    while (context !is ComponentActivity) {
+        context =
+            (context as? ContextWrapper)?.baseContext
+                ?: throw ClassCastException("Context is not a ComponentActivity and does not wrap one")
     }
+    return context
 }

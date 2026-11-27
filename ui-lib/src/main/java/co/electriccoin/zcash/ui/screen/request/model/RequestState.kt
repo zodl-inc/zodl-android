@@ -5,6 +5,7 @@ import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.sdk.type.ZcashCurrency
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.component.QrState
+import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.QrCodeColors
 import co.electriccoin.zcash.ui.design.util.StringResource
 
@@ -26,7 +27,7 @@ internal sealed class RequestState {
     ) : Prepared(onBack)
 
     data class Memo(
-        val icon: Int,
+        val icon: ImageResource,
         val request: Request,
         val walletAddress: WalletAddress,
         val zcashCurrency: ZcashCurrency,

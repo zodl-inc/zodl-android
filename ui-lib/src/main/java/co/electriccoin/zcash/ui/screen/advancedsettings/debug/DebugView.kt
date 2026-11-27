@@ -1,22 +1,29 @@
 package co.electriccoin.zcash.ui.screen.advancedsettings.debug
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachIndexed
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItem
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.util.imageRes
@@ -27,46 +34,63 @@ import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 fun DebugView(state: DebugState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             Toolbar(
                 onBack = state.onBack,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
             )
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldScrollPadding(paddingValues),
+                    .zashiFrostSource(hazeState)
         ) {
-            state.items.fastForEachIndexed { index, item ->
-                ZashiListItem(
-                    state = item,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                )
-                if (index != state.items.lastIndex) {
-                    ZashiHorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 4.dp)
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldScrollPadding(paddingValues),
+            ) {
+                state.items.fastForEachIndexed { index, item ->
+                    ZashiListItem(
+                        state = item,
+                        modifier = Modifier.padding(horizontal = 4.dp),
                     )
+                    if (index != state.items.lastIndex) {
+                        ZashiHorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                    }
                 }
             }
         }
     }
+    ZashiConfirmationBottomSheet(state = state.confirmationDialog)
 }
 
 @Composable
 private fun Toolbar(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     ZashiSmallTopAppBar(
         title = "Debug menu",
-        modifier = Modifier.testTag(AdvancedSettingsTag.ADVANCED_SETTINGS_TOP_APP_BAR),
-        showTitleLogo = true,
+        modifier = modifier.testTag(AdvancedSettingsTag.ADVANCED_SETTINGS_TOP_APP_BAR),
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
         },
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

@@ -4,8 +4,15 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.ExactInputSwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.ExactOutputSwapTransactionProposal
+import co.electriccoin.zcash.ui.common.datasource.MigrationSweepTransactionProposal
+import co.electriccoin.zcash.ui.common.datasource.ShieldTransactionProposal
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
+import co.electriccoin.zcash.ui.common.migration.MigrationNavigator
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
@@ -16,20 +23,27 @@ import co.electriccoin.zcash.ui.screen.swap.SwapArgs
 class CancelProposalFlowUseCase(
     private val zashiProposalRepository: ZashiProposalRepository,
     private val keystoneProposalRepository: KeystoneProposalRepository,
+    private val ledgerProposalPipeline: LedgerProposalPipeline,
     private val navigationRouter: NavigationRouter,
     private val observeClearSend: ObserveClearSendUseCase,
     private val accountDataSource: AccountDataSource,
-    private val swapRepository: SwapRepository
+    private val swapRepository: SwapRepository,
+    private val migrationNavigator: MigrationNavigator,
+    private val signerCapabilitiesProvider: SignerCapabilitiesProvider,
 ) {
     suspend operator fun invoke(clearSendForm: Boolean = true) {
         val proposal =
             when (accountDataSource.getSelectedAccount()) {
-                is ZashiAccount -> zashiProposalRepository.getTransactionProposal()
+                is ZodlAccount -> zashiProposalRepository.getTransactionProposal()
                 is KeystoneAccount -> keystoneProposalRepository.getTransactionProposal()
+                is LedgerAccount -> ledgerProposalPipeline.getTransactionProposal()
+                is ViewOnlyAccount -> null
             }
 
         zashiProposalRepository.clear()
         keystoneProposalRepository.clear()
+        ledgerProposalPipeline.clear()
+        signerCapabilitiesProvider.endFlow()
 
         when (proposal) {
             is ExactInputSwapTransactionProposal -> {
@@ -40,6 +54,25 @@ class CancelProposalFlowUseCase(
             is ExactOutputSwapTransactionProposal -> {
                 swapRepository.clearQuote()
                 navigationRouter.backTo(PayArgs::class)
+            }
+
+            is MigrationSweepTransactionProposal -> {
+                // Reached via MigrationReviewVM's IMMEDIATE-mode Keystone branch, never via the
+                // ordinary Send flow — Send was never on this back stack, so falling through to
+                // the `else` branch's `backTo(Send::class)` would silently no-op (no matching
+                // destination to pop to), leaving the user stuck on the Sign/reject sheet.
+                migrationNavigator.backToMigrationReview()
+            }
+
+            is ShieldTransactionProposal -> {
+                // Reached via ShieldFundsUseCase's Keystone branch, which (unlike the Zashi
+                // branch) never pops/replaces the screen the shield prompt was shown on before
+                // pushing the Sign screen. So that origin screen (ShieldFundsInfo dialog,
+                // Balances, or Home) is still directly beneath us on the back stack — falling
+                // through to the `else` branch's `backTo(Send::class)` would silently no-op
+                // (Send was never pushed for this flow), leaving the user stuck on the
+                // Sign/reject sheet. A plain back() pops the Sign screen and reveals it again.
+                navigationRouter.back()
             }
 
             else -> {

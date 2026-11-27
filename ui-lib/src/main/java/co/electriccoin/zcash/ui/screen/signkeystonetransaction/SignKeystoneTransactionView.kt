@@ -2,20 +2,26 @@ package co.electriccoin.zcash.ui.screen.signkeystonetransaction
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.CenterHorizontally
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,6 +30,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.common.compose.DisableScreenTimeout
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -33,10 +40,15 @@ import co.electriccoin.zcash.ui.design.component.ZashiBadgeDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiQr
+import co.electriccoin.zcash.ui.design.component.ZashiQrDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.listitem.BaseListItem
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItemDefaults
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -51,28 +63,50 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun SignKeystoneTransactionView(state: SignKeystoneTransactionState) {
+    DisableScreenTimeout()
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
                 title = state.barTitle.getValue(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(onBack = state.onBack)
                 }
             )
+        },
+        bottomBar = {
+            BottomSection(
+                state = state,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedFooter(hazeState)
+                        .padding(horizontal = ZashiDimensions.Spacing.spacing3xl)
+                        .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                        .padding(bottom = ZashiDimensions.Spacing.spacingMd)
+            )
         }
     ) {
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .scaffoldPadding(it)
+                    .zashiFrostSource(hazeState)
         ) {
             Column(
                 modifier =
                     Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
+                        .fillMaxSize()
                         .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(it)
                         .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
             ) {
                 ZashiAccountInfoListItem(
@@ -101,14 +135,6 @@ fun SignKeystoneTransactionView(state: SignKeystoneTransactionState) {
                 )
                 Spacer(Modifier.height(32.dp))
             }
-            BottomSection(
-                state = state,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
-                        .padding(bottom = ZashiDimensions.Spacing.spacingMd)
-            )
         }
     }
 }
@@ -153,7 +179,7 @@ private fun ZashiAccountInfoListItem(
 
 @Composable
 private fun ColumnScope.QrContent(ksState: SignKeystoneTransactionState) {
-    ksState.qrData?.let {
+    if (ksState.qrData != null) {
         ZashiQr(
             state = ksState.toQrState(),
             modifier = Modifier.align(CenterHorizontally),
@@ -163,6 +189,18 @@ private fun ColumnScope.QrContent(ksState: SignKeystoneTransactionState) {
                     foreground = Color.Black
                 )
         )
+    } else {
+        // Encoding the transaction/batch into its first animated-QR part (createKeystoneProposalPCZTEncoder,
+        // called from init{}) can take a while for a large proposal, with no progress feedback across
+        // that boundary — previously this left the screen looking broken (title/buttons rendered,
+        // QR area silently blank) until it suddenly appeared. Same size as the QR itself so nothing
+        // shifts once qrData arrives.
+        Box(
+            modifier = Modifier.align(CenterHorizontally).size(ZashiQrDefaults.width),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(color = ZashiColors.Text.textPrimary)
+        }
     }
     LaunchedEffect(ksState.qrData) {
         if (ksState.qrData != null) {
@@ -186,18 +224,19 @@ private fun BottomSection(
                 state = state.secondaryButton,
                 defaultPrimaryColors = ZashiButtonDefaults.secondaryColors()
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
         }
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
             state = state.negativeButton,
             defaultPrimaryColors = ZashiButtonDefaults.destructive1Colors()
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
             state = state.positiveButton
         )
+        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
     }
 }
 

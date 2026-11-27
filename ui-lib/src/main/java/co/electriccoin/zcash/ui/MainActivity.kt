@@ -10,13 +10,16 @@ import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.VisibleForTesting
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -30,11 +33,15 @@ import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.compose.BindCompLocalProvider
 import co.electriccoin.zcash.ui.common.compose.DisableScreenTimeout
 import co.electriccoin.zcash.ui.common.extension.setContentCompat
+import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
+import co.electriccoin.zcash.ui.common.provider.AppAccessLockProvider
+import co.electriccoin.zcash.ui.common.usecase.HandleExternalLinkUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationUIState
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.SecretState
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
+import co.electriccoin.zcash.ui.common.viewmodel.isAppAccessLocked
 import co.electriccoin.zcash.ui.design.component.BlankSurface
 import co.electriccoin.zcash.ui.design.component.ConfigurationOverride
 import co.electriccoin.zcash.ui.design.component.Override
@@ -45,7 +52,7 @@ import co.electriccoin.zcash.ui.screen.authentication.RETRY_TRIGGER_DELAY
 import co.electriccoin.zcash.ui.screen.authentication.WrapAuthentication
 import co.electriccoin.zcash.ui.screen.authentication.view.AnimationConstants
 import co.electriccoin.zcash.ui.screen.authentication.view.WelcomeAnimationAutostart
-import co.electriccoin.zcash.ui.screen.scan.thirdparty.ThirdPartyScan
+import co.electriccoin.zcash.ui.screen.theme.ThemeVM
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
 import co.electriccoin.zcash.work.WorkIds
 import kotlinx.coroutines.delay
@@ -65,6 +72,8 @@ import kotlin.time.Duration.Companion.seconds
 class MainActivity : FragmentActivity() {
     private val oldHomeViewModel by viewModel<OldHomeViewModel>()
 
+    private val themeVM by viewModel<ThemeVM>()
+
     val walletViewModel by viewModel<WalletViewModel>()
 
     val storageCheckViewModel by viewModel<StorageCheckViewModel>()
@@ -75,13 +84,21 @@ class MainActivity : FragmentActivity() {
 
     val configurationOverrideFlow = MutableStateFlow<ConfigurationOverride?>(null)
 
-    private val navigationRouter: NavigationRouter by inject()
+    private val migrationAppHooks: MigrationAppHooks by inject()
+    private val handleExternalLink: HandleExternalLinkUseCase by inject()
+    private val appAccessLockProvider: AppAccessLockProvider by inject()
 
+    /**
+     * Initializes the activity. A recreated Activity starts locked; the first composition of
+     * AuthenticationForAppAccess determines the actual lock state.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Twig.debug { "Activity state: Create" }
 
         setAllowedScreenOrientation()
+
+        appAccessLockProvider.setLocked(true)
 
         setupSplashScreen()
 
@@ -89,28 +106,55 @@ class MainActivity : FragmentActivity() {
 
         monitorForBackgroundSync()
 
-        if (intent.data != null) {
-            navigationRouter.forward(ThirdPartyScan)
-        }
+        handleViewIntent(intent, isRecreated = savedInstanceState != null)
+        handleMigrationIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
-        if (intent.data != null) {
-            navigationRouter.forward(ThirdPartyScan)
+        handleViewIntent(intent, isRecreated = false)
+        handleMigrationIntent(intent)
+    }
+
+    /**
+     * Links from outside the app are never used as they are: `zcash:` URIs go to the third party scan screen and gift
+     * card app links to the gift card scanner, both asking the user to scan the code with the app instead. A gift
+     * card link is then dropped from the intent: it is not trusted, and it carries a spending secret that must not
+     * stay around in the activity's intent.
+     */
+    private fun handleViewIntent(
+        intent: Intent,
+        isRecreated: Boolean
+    ) {
+        val data = intent.data ?: return
+        val isFromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
+        val isGiftCardLink = handleExternalLink(host = data.host, isRedelivery = isRecreated || isFromHistory)
+        if (isGiftCardLink) {
+            intent.data = null
         }
     }
+
+    private fun handleMigrationIntent(intent: Intent): Boolean = migrationAppHooks.handleIntent(intent, lifecycleScope)
 
     override fun onStart() {
         Twig.debug { "Activity state: Start" }
         authenticationViewModel.runAuthenticationRequiredCheck()
+        checkMigrationRecoveryOnStart()
         super.onStart()
+    }
+
+    // RootNavGraph's secretState-driven redirect only re-fires when secretState changes
+    // identity, so it won't catch "a transfer became overdue while backgrounded, already
+    // unlocked." onStart() fires on every foreground transition and catches that case —
+    // isSyncBlocked() has already stopped sync regardless, this is routing only.
+    private fun checkMigrationRecoveryOnStart() {
+        lifecycleScope.launch { migrationAppHooks.checkRecovery() }
     }
 
     override fun onStop() {
         Twig.debug { "Activity state: Stop" }
-        authenticationViewModel.persistGoToBackgroundTime(System.currentTimeMillis())
+        authenticationViewModel.onEnteredBackground()
         super.onStop()
     }
 
@@ -127,6 +171,15 @@ class MainActivity : FragmentActivity() {
             }
     }
 
+    /**
+     * Holds the splash screen until the wallet secret is known and the stored theme has been read. Without
+     * the theme gate the first frames would render with [ThemeVM]'s seeded System/Classic Dark defaults and
+     * then repaint the whole tree once the stored values land.
+     *
+     * The theme is the first operand because `||` short-circuits: reading it second would leave [ThemeVM]
+     * unconstructed - and its preference read unstarted - until the wallet secret had already landed,
+     * serialising the two reads instead of running them alongside each other.
+     */
     private fun setupSplashScreen() {
         val splashScreen = installSplashScreen()
         val start = SystemClock.elapsedRealtime().milliseconds
@@ -141,7 +194,7 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            SecretState.LOADING == walletViewModel.secretState.value
+            !themeVM.isThemeResolved.value || SecretState.LOADING == walletViewModel.secretState.value
         }
     }
 
@@ -153,8 +206,12 @@ class MainActivity : FragmentActivity() {
         setContentCompat {
             Override(configurationOverrideFlow) {
                 val isHideBalances by oldHomeViewModel.isHideBalances.collectAsStateWithLifecycle()
+                val appearanceMode by themeVM.appearanceMode.collectAsStateWithLifecycle()
+                val isOledEnabled by themeVM.isOledEnabled.collectAsStateWithLifecycle()
                 ZcashTheme(
-                    balancesAvailable = isHideBalances == false
+                    balancesAvailable = isHideBalances == false,
+                    appearanceMode = appearanceMode,
+                    isOledEnabled = isOledEnabled
                 ) {
                     BlankSurface(
                         Modifier
@@ -167,7 +224,16 @@ class MainActivity : FragmentActivity() {
                             .semantics { testTagsAsResourceId = true }
                     ) {
                         BindCompLocalProvider {
-                            MainContent()
+                            val isAppAccessLocked by appAccessLockProvider.isLocked.collectAsStateWithLifecycle()
+                            // While the app-access lock overlay is shown, hide the wallet UI underneath from
+                            // accessibility services so it can't be focused or activated through the lock.
+                            Box(
+                                Modifier
+                                    .fillMaxSize()
+                                    .then(if (isAppAccessLocked) Modifier.clearAndSetSemantics {} else Modifier)
+                            ) {
+                                MainContent()
+                            }
                             AuthenticationForAppAccess()
                             ScreenTimeoutHandle()
                         }
@@ -186,6 +252,12 @@ class MainActivity : FragmentActivity() {
         val authState = authenticationViewModel.appAccessAuthenticationResultState.collectAsStateWithLifecycle().value
         val animateAppAccess = authenticationViewModel.showWelcomeAnimation.collectAsStateWithLifecycle().value
         val authFailed = authenticationViewModel.authFailed.collectAsStateWithLifecycle().value
+
+        LaunchedEffect(authState) {
+            appAccessLockProvider.setLocked(
+                isAppAccessLocked(authState, authenticationViewModel.appAccessAuthentication.value)
+            )
+        }
 
         if (animateAppAccess) {
             WelcomeAnimationAutostart(

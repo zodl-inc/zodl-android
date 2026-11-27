@@ -1,5 +1,9 @@
 package co.electriccoin.zcash.di
 
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealthOwner
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionHealthOwnerImpl
+import co.electriccoin.zcash.ui.common.privateconnection.PrivateConnectionProbe
+import co.electriccoin.zcash.ui.common.privateconnection.RequestHealthDetection
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepository
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
@@ -10,34 +14,30 @@ import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.EphemeralAddressRepository
 import co.electriccoin.zcash.ui.common.repository.EphemeralAddressRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.EvaluationInterval
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.FiatCurrencyRepository
+import co.electriccoin.zcash.ui.common.repository.FiatCurrencyRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.FlexaRepository
 import co.electriccoin.zcash.ui.common.repository.FlexaRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.GiftCardLinkStore
+import co.electriccoin.zcash.ui.common.repository.GiftCardLinkStoreImpl
+import co.electriccoin.zcash.ui.common.repository.GiftCardRepository
+import co.electriccoin.zcash.ui.common.repository.GiftCardRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.MINIMUM_EVALUATION_INTERVAL
+import co.electriccoin.zcash.ui.common.repository.MockOrchardBalanceRepository
+import co.electriccoin.zcash.ui.common.repository.MockOrchardBalanceRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.TransactionFilterRepository
 import co.electriccoin.zcash.ui.common.repository.TransactionFilterRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.TransactionRepository
 import co.electriccoin.zcash.ui.common.repository.TransactionRepositoryImpl
-import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
-import co.electriccoin.zcash.ui.common.repository.VotingApiRepositoryImpl
-import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
-import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepositoryImpl
-import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
-import co.electriccoin.zcash.ui.common.repository.VotingConfigRepositoryImpl
-import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRepository
-import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRepositoryImpl
-import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
-import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepositoryImpl
-import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
-import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepositoryImpl
-import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
-import co.electriccoin.zcash.ui.common.repository.VotingSessionStoreImpl
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import co.electriccoin.zcash.ui.common.repository.WalletRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.WalletSnapshotRepository
@@ -53,6 +53,7 @@ val repositoryModule =
         singleOf(::WalletRepositoryImpl) bind WalletRepository::class
         singleOf(::ConfigurationRepositoryImpl) bind ConfigurationRepository::class
         singleOf(::ExchangeRateRepositoryImpl) bind ExchangeRateRepository::class
+        singleOf(::FiatCurrencyRepositoryImpl) bind FiatCurrencyRepository::class
         singleOf(::FlexaRepositoryImpl) bind FlexaRepository::class
         singleOf(::BiometricRepositoryImpl) bind BiometricRepository::class
         singleOf(::KeystoneProposalRepositoryImpl) bind KeystoneProposalRepository::class
@@ -62,19 +63,24 @@ val repositoryModule =
         singleOf(::HomeMessageCacheRepositoryImpl) bind HomeMessageCacheRepository::class
         singleOf(::WalletSnapshotRepositoryImpl) bind WalletSnapshotRepository::class
         singleOf(::ApplicationStateRepositoryImpl) bind ApplicationStateRepository::class
+        single { EvaluationInterval(minimumInterval = MINIMUM_EVALUATION_INTERVAL) }
+        // The request-health outage detection (MOB-2300), on in every build type: the outage is confirmed from the
+        // evidence of the OHTTP requests, and the previous probe with two confirmations no longer reports it.
+        single { RequestHealthDetection { true } }
+        single { PrivateConnectionProbe(application = get()) }
+        single<PrivateConnectionHealthOwner> {
+            PrivateConnectionHealthOwnerImpl(
+                synchronizerProvider = get(),
+                probe = get(),
+                applicationStateProvider = get(),
+                appAccessLockProvider = get(),
+                networkConnectivityProvider = get(),
+            )
+        }
         singleOf(::AutomaticServerRepositoryImpl) bind AutomaticServerRepository::class
         singleOf(::SwapRepositoryImpl) bind SwapRepository::class
         singleOf(::EphemeralAddressRepositoryImpl) bind EphemeralAddressRepository::class
-        singleOf(::VotingConfigRepositoryImpl) bind VotingConfigRepository::class
-        singleOf(::VotingChainConfigRepositoryImpl) bind VotingChainConfigRepository::class
-        singleOf(::VotingApiRepositoryImpl) bind VotingApiRepository::class
-        singleOf(::VotingRecoveryRepositoryImpl) bind VotingRecoveryRepository::class
-        single<VotingProofPrecomputeRepository> {
-            VotingProofPrecomputeRepositoryImpl(
-                votingCryptoClient = get(),
-                pirSnapshotResolver = get()
-            )
-        }
-        singleOf(::VotingKeystoneRepositoryImpl) bind VotingKeystoneRepository::class
-        singleOf(::VotingSessionStoreImpl) bind VotingSessionStore::class
+        singleOf(::MockOrchardBalanceRepositoryImpl) bind MockOrchardBalanceRepository::class
+        singleOf(::GiftCardRepositoryImpl) bind GiftCardRepository::class
+        singleOf(::GiftCardLinkStoreImpl) bind GiftCardLinkStore::class
     }

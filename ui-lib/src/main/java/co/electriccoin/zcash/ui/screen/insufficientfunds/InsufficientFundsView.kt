@@ -18,7 +18,7 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.common.InfoBottomSheetView
+import co.electriccoin.zcash.ui.screen.common.ZodlInfoBottomSheetView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,17 +26,16 @@ fun InsufficientFundsView(
     state: InsufficientFundsState?,
     sheetState: SheetState = rememberScreenModalBottomSheetState(),
 ) {
-    state ?: return
-    InfoBottomSheetView(
-        onBack = state.onBack,
+    ZodlInfoBottomSheetView(
+        state = state,
         primaryButton =
             ButtonState(
                 text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok),
-                onClick = state.onBack,
+                onClick = { state?.onBack?.invoke() },
             ),
         sheetState = sheetState,
-    ) {
-        Image(painterResource(R.drawable.ic_swap_quote_error), contentDescription = null)
+    ) { innerState ->
+        Image(painterResource(R.drawable.ic_error_circle), contentDescription = null)
         Spacer(12.dp)
         Text(
             text = stringResource(R.string.sheet_insufficientBalance_title),

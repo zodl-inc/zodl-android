@@ -1,0 +1,2 @@
+Changed:
+- We sped up the cryptography behind shielded transactions and syncing on 64-bit devices.

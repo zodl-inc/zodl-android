@@ -8,6 +8,7 @@ import cash.z.ecc.sdk.extension.typicalFee
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.model.LoadedAccountBalances
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.isPending
 import co.electriccoin.zcash.ui.common.usecase.GetTransactionsUseCase
@@ -52,31 +53,38 @@ class SpendableBalanceVM(
                     )
             )
 
+    @Suppress("ReturnCount")
     private fun createState(account: WalletAccount?, transactions: List<ListTransactionData>?): SpendableBalanceState? {
         if (account == null) return null
+        val balances = account.loadedBalances ?: return null
+        val canShield = account.isSpendable && balances.isShieldingAvailable
         return SpendableBalanceState(
             title = stringRes(R.string.balances_spendableBalance_title),
-            message = createMessage(account, transactions),
-            positive = createPositiveButton(account),
+            message = createMessage(balances, transactions, canShield),
+            positive = createPositiveButton(canShield),
             onBack = ::onBack,
-            rows = createInfoRows(account, transactions),
-            shieldButton = createShieldButtonState(account)
+            rows = createInfoRows(balances, transactions),
+            shieldButton = createShieldButtonState(balances, canShield)
         )
     }
 
-    private fun createMessage(account: WalletAccount, transactions: List<ListTransactionData>?): StringResource {
+    private fun createMessage(
+        balances: LoadedAccountBalances,
+        transactions: List<ListTransactionData>?,
+        canShield: Boolean
+    ): StringResource {
         val pending =
             when {
-                account.isAllShielded -> {
+                balances.isAllShielded -> {
                     stringRes(R.string.balances_everythingDone)
                 }
 
-                account.totalBalance > account.spendableShieldedBalance &&
+                balances.totalBalance > balances.spendableShieldedBalance &&
                     transactions.orEmpty().any { it.transaction.isPending } -> {
                     stringRes(R.string.balances_infoPending)
                 }
 
-                account.totalBalance > account.spendableShieldedBalance -> {
+                balances.totalBalance > balances.spendableShieldedBalance -> {
                     stringRes(R.string.balances_infoSyncing)
                 }
 
@@ -91,7 +99,7 @@ class SpendableBalanceVM(
                 CURRENCY_TICKER,
                 stringRes(Zatoshi.typicalFee, HIDDEN),
                 CURRENCY_TICKER
-            ).takeIf { account.isShieldingAvailable }
+            ).takeIf { canShield }
 
         return if (pending != null && shielding != null) {
             pending + stringRes("\n\n") + shielding
@@ -100,10 +108,10 @@ class SpendableBalanceVM(
         }
     }
 
-    private fun createPositiveButton(account: WalletAccount) =
+    private fun createPositiveButton(canShield: Boolean) =
         ButtonState(
             text =
-                if (account.isShieldingAvailable) {
+                if (canShield) {
                     stringRes(co.electriccoin.zcash.ui.design.R.string.balances_dismiss)
                 } else {
                     stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok)
@@ -112,7 +120,7 @@ class SpendableBalanceVM(
         )
 
     private fun createInfoRows(
-        account: WalletAccount,
+        balances: LoadedAccountBalances,
         transactions: List<ListTransactionData>?
     ): List<SpendableBalanceRowState> {
         val hasPendingTransaction = transactions.orEmpty().any { it.transaction.isPending }
@@ -121,25 +129,25 @@ class SpendableBalanceVM(
                 title = stringRes(R.string.balances_spendableBalance),
                 icon = imageRes(R.drawable.ic_balance_shield),
                 value =
-                    stringRes(account.spendableShieldedBalance)
+                    stringRes(balances.spendableShieldedBalance)
             ),
             when {
-                account.totalShieldedBalance > account.spendableShieldedBalance &&
-                    account.isShieldedPending &&
+                balances.totalShieldedBalance > balances.spendableShieldedBalance &&
+                    balances.isShieldedPending &&
                     hasPendingTransaction -> {
                     SpendableBalanceRowState(
                         title = stringRes(R.string.balances_pending),
                         icon = loadingImageRes(),
-                        value = stringRes(account.pendingShieldedBalance)
+                        value = stringRes(balances.pendingShieldedBalance)
                     )
                 }
 
-                account.totalShieldedBalance > account.spendableShieldedBalance && hasPendingTransaction -> {
+                balances.totalShieldedBalance > balances.spendableShieldedBalance && hasPendingTransaction -> {
                     SpendableBalanceRowState(
                         title = stringRes(R.string.balances_pending),
                         icon = loadingImageRes(),
                         value =
-                            stringRes(account.totalShieldedBalance - account.spendableShieldedBalance)
+                            stringRes(balances.totalShieldedBalance - balances.spendableShieldedBalance)
                     )
                 }
 
@@ -150,11 +158,14 @@ class SpendableBalanceVM(
         )
     }
 
-    private fun createShieldButtonState(account: WalletAccount): SpendableBalanceShieldButtonState? =
+    private fun createShieldButtonState(
+        balances: LoadedAccountBalances,
+        canShield: Boolean
+    ): SpendableBalanceShieldButtonState? =
         SpendableBalanceShieldButtonState(
-            amount = account.transparent.balance,
+            amount = balances.transparentBalance,
             onShieldClick = ::onShieldClick
-        ).takeIf { account.isShieldingAvailable }
+        ).takeIf { canShield }
 
     private fun onBack() = navigationRouter.back()
 

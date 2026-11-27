@@ -1,0 +1,11 @@
+-keepattributes RuntimeVisibleAnnotations
+-keepattributes RuntimeInvisibleAnnotations
+-keep class com.flexa.BuildConfig { public *; }
+-keep class **.R$* { <fields>; }
+-keep class com.flexa.identity.shared.ConnectResult { public *; }
+-keep class com.flexa.identity.shared.ConnectResult$Connected { public *; }
+-keep class com.flexa.identity.shared.ConnectResult$NotConnected { public *; }
+-keep class com.flexa.identity.IdentityConfig { public *; }
+-keep class com.flexa.identity.IdentityConfig$Builder { public *; }
+-keep class com.flexa.identity.IdentityNavGraphKt { public *; }
+-keep class com.flexa.identity.IdentityModuleKt { public *; }

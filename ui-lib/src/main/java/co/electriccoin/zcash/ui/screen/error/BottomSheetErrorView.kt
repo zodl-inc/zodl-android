@@ -77,7 +77,7 @@ fun BottomSheetContent(
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textMd
         )
-        Spacer(32.dp)
+        Spacer(36.dp)
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
             state = state.negative,

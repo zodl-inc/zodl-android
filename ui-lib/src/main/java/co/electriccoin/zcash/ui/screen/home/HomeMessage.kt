@@ -37,12 +37,18 @@ import androidx.compose.ui.zIndex
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.screen.home.backup.WalletBackupMessage
 import co.electriccoin.zcash.ui.screen.home.backup.WalletBackupMessageState
+import co.electriccoin.zcash.ui.screen.home.coinholderpolling.CoinholderPollingMessage
+import co.electriccoin.zcash.ui.screen.home.coinholderpolling.CoinholderPollingMessageState
 import co.electriccoin.zcash.ui.screen.home.currency.EnableCurrencyConversionMessage
 import co.electriccoin.zcash.ui.screen.home.currency.EnableCurrencyConversionMessageState
 import co.electriccoin.zcash.ui.screen.home.disconnected.WalletDisconnectedMessage
 import co.electriccoin.zcash.ui.screen.home.disconnected.WalletDisconnectedMessageState
 import co.electriccoin.zcash.ui.screen.home.error.WalletErrorMessage
 import co.electriccoin.zcash.ui.screen.home.error.WalletErrorMessageState
+import co.electriccoin.zcash.ui.screen.home.migration.MigrationMessage
+import co.electriccoin.zcash.ui.screen.home.migration.MigrationMessageState
+import co.electriccoin.zcash.ui.screen.home.ohttpoptin.OhttpOptInMessage
+import co.electriccoin.zcash.ui.screen.home.ohttpoptin.OhttpOptInMessageState
 import co.electriccoin.zcash.ui.screen.home.orswap.ORSwapMessage
 import co.electriccoin.zcash.ui.screen.home.orswap.ORSwapMessageState
 import co.electriccoin.zcash.ui.screen.home.reporting.CrashReportMessage
@@ -211,10 +217,34 @@ fun HomeMessage(
                     )
                 }
 
+                is CoinholderPollingMessageState -> {
+                    CoinholderPollingMessage(
+                        innerModifier = innerModifier,
+                        state = normalizedState as CoinholderPollingMessageState,
+                        contentPadding = contentPadding
+                    )
+                }
+
                 is ORSwapMessageState -> {
                     ORSwapMessage(
                         innerModifier = innerModifier,
                         state = normalizedState as ORSwapMessageState,
+                        contentPadding = contentPadding
+                    )
+                }
+
+                is MigrationMessageState -> {
+                    MigrationMessage(
+                        contentPadding = contentPadding,
+                        state = normalizedState as MigrationMessageState,
+                        innerModifier = innerModifier
+                    )
+                }
+
+                is OhttpOptInMessageState -> {
+                    OhttpOptInMessage(
+                        innerModifier = innerModifier,
+                        state = normalizedState as OhttpOptInMessageState,
                         contentPadding = contentPadding
                     )
                 }

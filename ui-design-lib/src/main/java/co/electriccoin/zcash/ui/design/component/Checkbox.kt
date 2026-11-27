@@ -1,14 +1,17 @@
 package co.electriccoin.zcash.ui.design.component
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,12 +21,15 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
+import co.electriccoin.zcash.ui.design.util.PressMorphDefaults
+import co.electriccoin.zcash.ui.design.util.pressMorph
 
 @Preview
 @Composable
 private fun LabeledCheckboxPreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             Row {
                 LabeledCheckBox(
@@ -44,7 +50,7 @@ private fun LabeledCheckboxPreview() {
 @Preview
 @Composable
 private fun LabeledCheckboxDarkPreview() {
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         BlankSurface {
             Row {
                 LabeledCheckBox(
@@ -74,13 +80,19 @@ fun LabeledCheckBox(
 ) {
     val (checkedState, setCheckedState) = rememberSaveable { mutableStateOf(checked) }
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
             modifier.then(
                 Modifier
+                    .pressMorph(interactionSource, PressMorphDefaults.PRESSED_SCALE_SUBTLE)
                     .clip(RoundedCornerShape(ZcashTheme.dimens.regularRippleEffectCorner))
-                    .clickable {
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = ripple()
+                    ) {
                         setCheckedState(!checkedState)
                         onCheckedChange(!checkedState)
                     }

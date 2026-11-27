@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.mapper
 
 import cash.z.ecc.android.sdk.model.TransactionPool
+import cash.z.ecc.android.sdk.model.Zip318Kind
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
@@ -144,10 +145,22 @@ class ActivityMapper {
 
             is SendTransaction -> {
                 if (data.metadata.swapMetadata == null) {
-                    when (transaction) {
-                        is SendTransaction.Success -> R.drawable.ic_transaction_sent
-                        is SendTransaction.Pending -> R.drawable.ic_transaction_send_pending
-                        is SendTransaction.Failed -> R.drawable.ic_transaction_send_failed
+                    when (transaction.overview.zip318Kind) {
+                        Zip318Kind.PREPARATION, Zip318Kind.TRANSFER -> {
+                            when (transaction) {
+                                is SendTransaction.Success -> R.drawable.ic_transaction_migration
+                                is SendTransaction.Pending -> R.drawable.ic_transaction_migration_pending
+                                is SendTransaction.Failed -> R.drawable.ic_transaction_migration_failed
+                            }
+                        }
+
+                        Zip318Kind.NOT_CLASSIFIED, Zip318Kind.NONCONFORMING -> {
+                            when (transaction) {
+                                is SendTransaction.Success -> R.drawable.ic_transaction_sent
+                                is SendTransaction.Pending -> R.drawable.ic_transaction_send_pending
+                                is SendTransaction.Failed -> R.drawable.ic_transaction_send_failed
+                            }
+                        }
                     }
                 } else {
                     if (transaction is SendTransaction.Failed) {
@@ -207,10 +220,30 @@ class ActivityMapper {
 
             is SendTransaction -> {
                 if (data.metadata.swapMetadata == null) {
-                    when (transaction) {
-                        is SendTransaction.Success -> stringRes(R.string.transaction_sent)
-                        is SendTransaction.Pending -> stringRes(R.string.transaction_history_sending)
-                        is SendTransaction.Failed -> stringRes(R.string.transaction_history_sending_failed)
+                    when (transaction.overview.zip318Kind) {
+                        Zip318Kind.PREPARATION -> {
+                            when (transaction) {
+                                is SendTransaction.Success -> stringRes(R.string.transaction_noteSplit)
+                                is SendTransaction.Pending -> stringRes(R.string.transaction_history_noteSplitting)
+                                is SendTransaction.Failed -> stringRes(R.string.transaction_history_noteSplitFailed)
+                            }
+                        }
+
+                        Zip318Kind.TRANSFER -> {
+                            when (transaction) {
+                                is SendTransaction.Success -> stringRes(R.string.transaction_migrated)
+                                is SendTransaction.Pending -> stringRes(R.string.transaction_history_migrating)
+                                is SendTransaction.Failed -> stringRes(R.string.transaction_migrationFailed)
+                            }
+                        }
+
+                        Zip318Kind.NOT_CLASSIFIED, Zip318Kind.NONCONFORMING -> {
+                            when (transaction) {
+                                is SendTransaction.Success -> stringRes(R.string.transaction_sent)
+                                is SendTransaction.Pending -> stringRes(R.string.transaction_history_sending)
+                                is SendTransaction.Failed -> stringRes(R.string.transaction_history_sending_failed)
+                            }
+                        }
                     }
                 } else {
                     if (transaction is SendTransaction.Failed) {
@@ -294,7 +327,13 @@ class ActivityMapper {
                 is SendTransaction.Success,
                 is SendTransaction.Failed,
                 is SendTransaction.Pending -> {
-                    stringRes("- ") + stringRes(data.transaction.amount)
+                    if (data.transaction.overview.zip318Kind == Zip318Kind.TRANSFER ||
+                        data.transaction.overview.zip318Kind == Zip318Kind.PREPARATION
+                    ) {
+                        stringRes(data.transaction.amount)
+                    } else {
+                        stringRes("- ") + stringRes(data.transaction.amount)
+                    }
                 }
 
                 is ShieldTransaction.Success,

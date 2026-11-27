@@ -1,0 +1,35 @@
+<!-- Migration Complete screen header icon (Figma "C6 · Migration Complete -> Dust", node 3836:8596):
+     a dark coins-swap glyph badge with a green completion check. Colors match the Figma exactly;
+     the white circle strokes are the cutout that separates the green badge from the dark disc. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="52dp"
+    android:height="51dp"
+    android:viewportWidth="51"
+    android:viewportHeight="50">
+    <path
+        android:pathData="M22,1C33.598,1 43,10.402 43,22C43,33.598 33.598,43 22,43C10.402,43 1,33.598 1,22C1,10.402 10.402,1 22,1Z"
+        android:fillColor="#282622" />
+    <path
+        android:pathData="M22,1C33.598,1 43,10.402 43,22C43,33.598 33.598,43 22,43C10.402,43 1,33.598 1,22C1,10.402 10.402,1 22,1Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2" />
+    <path
+        android:pathData="M16,12L18,14L16,16M18,14H16C13.7909,14 12,15.7909 12,18M20.189,16.5C20.8551,13.9122 23.2042,12 26,12C29.3137,12 32,14.6863 32,18C32,20.7957 30.0879,23.1449 27.5001,23.811M24,26C24,29.3137 21.3137,32 18,32C14.6863,32 12,29.3137 12,26C12,22.6863 14.6863,20 18,20C21.3137,20 24,22.6863 24,26Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.67"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M36.5,23C43.6797,23 49.5,28.8203 49.5,36C49.5,43.1797 43.6797,49 36.5,49C29.3203,49 23.5,43.1797 23.5,36C23.5,28.8203 29.3203,23 36.5,23Z"
+        android:fillColor="#17B26A" />
+    <path
+        android:pathData="M36.5,23C43.6797,23 49.5,28.8203 49.5,36C49.5,43.1797 43.6797,49 36.5,49C29.3203,49 23.5,43.1797 23.5,36C23.5,28.8203 29.3203,23 36.5,23Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2" />
+    <path
+        android:pathData="M41.8337,32L34.5003,39.3333L31.167,36"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.33"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

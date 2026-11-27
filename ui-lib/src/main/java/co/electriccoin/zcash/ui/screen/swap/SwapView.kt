@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -21,12 +22,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.key.NativeKeyEvent
 import androidx.compose.ui.input.key.onKeyEvent
@@ -58,10 +61,14 @@ import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
 import co.electriccoin.zcash.ui.design.component.ZashiIconButton
 import co.electriccoin.zcash.ui.design.component.ZashiImageButton
 import co.electriccoin.zcash.ui.design.component.ZashiInfoText
+import co.electriccoin.zcash.ui.design.component.ZashiMaxFeedbackSlot
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.listitem.SimpleListItemState
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiSimpleListItem
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -71,6 +78,7 @@ import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByDynamicCurrencyNumber
+import co.electriccoin.zcash.ui.design.util.tryRequestFocus
 import co.electriccoin.zcash.ui.fixture.ZashiMainTopAppBarStateFixture
 import co.electriccoin.zcash.ui.screen.swap.SwapState.AddressLocation.BOTTOM
 import co.electriccoin.zcash.ui.screen.swap.SwapState.AddressLocation.TOP
@@ -83,75 +91,96 @@ import co.electriccoin.zcash.ui.screen.swap.ui.SwapAmountTextState
 internal fun SwapView(
     state: SwapState,
     appBarState: ZashiMainTopAppBarState,
+    amountFocusRequester: FocusRequester = remember { FocusRequester() },
     onSideEffect: (amountFocusRequester: FocusRequester) -> Unit = { },
 ) {
-    val amountFocusRequester = remember { FocusRequester() }
+    val hazeState = rememberZashiFrostState()
 
     BlankBgScaffold(
-        topBar = { TopAppBar(state, appBarState) }
+        topBar = {
+            TopAppBar(
+                state = state,
+                appBarState = appBarState,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
+            )
+        }
     ) {
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldPadding(it)
+                    .zashiFrostSource(hazeState)
         ) {
-            SwapAmountTextField(
-                state = state.amountTextField,
-                focusRequester = amountFocusRequester
-            )
-
-            if (state.addressLocation == TOP) {
-                Spacer(10.dp)
-                AddressTextField(state = state)
-                Spacer(16.dp)
-            } else {
-                Spacer(16.dp)
-            }
-
-            SlippageSeparator(
-                state = state
-            )
-            Spacer(14.dp)
-            SwapAmountText(state = state.amountText)
-
-            if (state.addressLocation == BOTTOM) {
-                Spacer(10.dp)
-                AddressTextField(state = state)
-            }
-
-            Spacer(22.dp)
-
-            SlippageButton(
-                state = state.slippage
-            )
-
-            state.infoItems.forEach { infoItem ->
-                Spacer(16.dp)
-                ZashiSimpleListItem(
-                    state = infoItem
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(it)
+            ) {
+                SwapAmountTextField(
+                    state = state.amountTextField,
+                    focusRequester = amountFocusRequester
                 )
-            }
-            Spacer(24.dp)
-            Spacer(1f)
-            if (state.errorFooter != null) {
-                SwapErrorFooter(state.errorFooter)
-                Spacer(32.dp)
-            } else if (state.infoFooter != null) {
-                ZashiInfoText(
-                    text = state.infoFooter.getValue()
+
+                if (state.addressLocation == TOP) {
+                    Spacer(10.dp)
+                    AddressTextField(state = state)
+                    Spacer(16.dp)
+                } else {
+                    Spacer(16.dp)
+                }
+
+                SlippageSeparator(
+                    state = state
                 )
+                Spacer(14.dp)
+                SwapAmountText(state = state.amountText)
+
+                if (state.addressLocation == BOTTOM) {
+                    Spacer(10.dp)
+                    AddressTextField(state = state)
+                }
+
+                Spacer(22.dp)
+
+                SlippageButton(
+                    state = state.slippage
+                )
+
+                state.infoItems.forEach { infoItem ->
+                    Spacer(16.dp)
+                    ZashiSimpleListItem(
+                        state = infoItem
+                    )
+                }
                 Spacer(24.dp)
-            }
-            if (state.primaryButton != null) {
-                ZashiButton(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .testTag(SwapTag.SWAP_REVIEW_BUTTON),
-                    state = state.primaryButton
-                )
+                Spacer(1f)
+                if (state.errorFooter != null) {
+                    SwapErrorFooter(state.errorFooter)
+                    Spacer(36.dp)
+                } else if (state.infoFooter != null) {
+                    ZashiInfoText(
+                        text = state.infoFooter.getValue()
+                    )
+                    Spacer(28.dp)
+                } else if (state.maxFeedback == null) {
+                    Spacer(4.dp)
+                }
+                // The slot owns the 24 dp between its row and the button
+                ZashiMaxFeedbackSlot(feedback = state.maxFeedback)
+                if (state.primaryButton != null) {
+                    ZashiButton(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .testTag(SwapTag.SWAP_REVIEW_BUTTON),
+                        state = state.primaryButton
+                    )
+                }
             }
         }
 
@@ -196,7 +225,7 @@ fun SwapErrorFooter(errorFooter: SwapErrorFooterState) {
 @Composable
 fun SlippageButton(state: ButtonState, modifier: Modifier = Modifier) {
     Row(
-        modifier = modifier,
+        modifier = modifier.heightIn(min = 48.dp),
         verticalAlignment = CenterVertically
     ) {
         Text(
@@ -208,6 +237,7 @@ fun SlippageButton(state: ButtonState, modifier: Modifier = Modifier) {
         Spacer(1f)
         ZashiButton(
             state = state,
+            minHeight = 40.dp,
             contentPadding = PaddingValues(start = 10.dp, end = 12.dp),
             defaultPrimaryColors = ZashiButtonDefaults.tertiaryColors()
         )
@@ -219,30 +249,53 @@ private fun SlippageSeparator(
     state: SwapState,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = CenterVertically
-    ) {
-        ZashiHorizontalDivider(
-            modifier = Modifier.weight(1f),
-            color = ZashiColors.Utility.Gray.utilityGray100
-        )
+    if (state.changeModeButton == null) {
+        Box(
+            modifier = modifier.heightIn(min = ChangeModeButtonMinSize),
+            contentAlignment = Alignment.Center
+        ) {
+            ZashiHorizontalDivider(
+                modifier = Modifier.fillMaxWidth(),
+                color = ZashiColors.Utility.Gray.utilityGray100
+            )
+        }
+    } else {
+        Row(
+            modifier = modifier,
+            verticalAlignment = CenterVertically
+        ) {
+            ZashiHorizontalDivider(
+                modifier = Modifier.weight(1f),
+                color = ZashiColors.Utility.Gray.utilityGray100
+            )
 
-        ZashiImageButton(
-            state = state.changeModeButton,
-            modifier = Modifier.testTag(SwapTag.SWAP_CHANGE_MODE_BUTTON)
-        )
+            ZashiImageButton(
+                state = state.changeModeButton,
+                modifier = Modifier.testTag(SwapTag.SWAP_CHANGE_MODE_BUTTON)
+            )
 
-        ZashiHorizontalDivider(
-            modifier = Modifier.weight(1f),
-            color = ZashiColors.Utility.Gray.utilityGray100
-        )
+            ZashiHorizontalDivider(
+                modifier = Modifier.weight(1f),
+                color = ZashiColors.Utility.Gray.utilityGray100
+            )
+        }
     }
 }
 
+/**
+ * Minimum touch size of [ZashiImageButton]; the unbroken divider keeps this height so the content below
+ * does not shift when the change-mode button is hidden.
+ */
+private val ChangeModeButtonMinSize = 48.dp
+
 @Composable
-private fun TopAppBar(state: SwapState, appBarState: ZashiMainTopAppBarState) {
+private fun TopAppBar(
+    state: SwapState,
+    appBarState: ZashiMainTopAppBarState,
+    modifier: Modifier = Modifier
+) {
     ZashiSmallTopAppBar(
+        modifier = modifier,
         content = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -272,6 +325,10 @@ private fun TopAppBar(state: SwapState, appBarState: ZashiMainTopAppBarState) {
             ZashiIconButton(state.swapInfoButton)
             Spacer(20.dp)
         },
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 
@@ -415,10 +472,8 @@ private fun Preview() {
                             textFieldPrefix = imageRes(R.drawable.ic_send_zashi),
                             textField = NumberTextFieldState {},
                             secondaryText = stringResByDynamicCurrencyNumber(100, "USDT"),
-                            max =
-                                ButtonState(
-                                    stringResByDynamicCurrencyNumber(100, "$")
-                                ),
+                            spendable = null,
+                            max = null,
                             onSwapChange = {}
                         ),
                     slippage =
@@ -488,6 +543,17 @@ private fun Preview() {
 
 @PreviewScreens
 @Composable
+private fun ViewOnlyAccountPreview() {
+    ZcashTheme {
+        SwapView(
+            state = SwapState.previewViewOnly,
+            appBarState = ZashiMainTopAppBarStateFixture.new(),
+        )
+    }
+}
+
+@PreviewScreens
+@Composable
 private fun UnexpectedErrorPreview() {
     ZcashTheme {
         SwapView(
@@ -509,10 +575,8 @@ private fun UnexpectedErrorPreview() {
                             textFieldPrefix = imageRes(R.drawable.ic_send_zashi),
                             textField = NumberTextFieldState {},
                             secondaryText = stringResByDynamicCurrencyNumber(100, "USDT"),
-                            max =
-                                ButtonState(
-                                    stringResByDynamicCurrencyNumber(100, "$")
-                                ),
+                            spendable = null,
+                            max = null,
                             onSwapChange = {}
                         ),
                     slippage =
@@ -598,10 +662,8 @@ private fun ServiceUnavailableErrorPreview() {
                             textFieldPrefix = imageRes(R.drawable.ic_send_zashi),
                             textField = NumberTextFieldState {},
                             secondaryText = stringResByDynamicCurrencyNumber(100, "USDT"),
-                            max =
-                                ButtonState(
-                                    stringResByDynamicCurrencyNumber(100, "$")
-                                ),
+                            spendable = null,
+                            max = null,
                             onSwapChange = {}
                         ),
                     slippage =

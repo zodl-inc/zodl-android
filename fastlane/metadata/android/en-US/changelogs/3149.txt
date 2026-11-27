@@ -1,0 +1,5 @@
+Added:
+- We added support for Ledger hardware wallets. Connect your Ledger to receive ZEC and to send it with approval on your device. You can choose which Ledger account to connect; one account can be connected at a time.
+
+Changed:
+- We updated our cryptography library for faster performance.

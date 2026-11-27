@@ -1,0 +1,85 @@
+name: Publish E2E results
+
+# Listen on the default branch, so existing PR branches publish too. The source
+# PR never needs to merge, and a failed test still publishes its evidence.
+on:
+  # Installing/updating the listener backfills the one-day source artifact window.
+  push:
+    branches: [main]
+    paths: [.github/workflows/publish-e2e-results.yml]
+  workflow_run:
+    workflows: [E2E Smoke Tests]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: 'Existing E2E run ID (publication only; no tests rerun)'
+        type: string
+      source_run_attempt:
+        description: 'Source attempt, or latest when omitted'
+        type: string
+      backfill_since:
+        description: 'Backfill from yesterday or today UTC (YYYY-MM-DD), instead of one run'
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: e2e-publication-${{ github.event.workflow_run.id || inputs.source_run_id || github.run_id }}-${{ github.event.workflow_run.run_attempt || inputs.source_run_attempt || 'latest' }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      # Always use the trusted publisher pin, never the triggering PR's code.
+      - name: Checkout evidence publisher
+        uses: actions/checkout@v4
+        with:
+          repository: zodl-inc/zodl-qa
+          ref: e891da084fe6b1829c4a003229319ecdc178e011
+          token: ${{ secrets.ZODL_QA }}
+          persist-credentials: false
+
+      - name: Prepare original E2E run evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id || inputs.source_run_id }}
+          SOURCE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt || inputs.source_run_attempt }}
+          BACKFILL_SINCE: ${{ inputs.backfill_since }}
+        shell: bash
+        run: |
+          args=(--output-dir "$RUNNER_TEMP/e2e-publication")
+          if [[ "$GITHUB_EVENT_NAME" == push ]]; then
+            BACKFILL_SINCE=$(date -u -d "1 day ago" +%F)
+          fi
+          if [[ -n "$SOURCE_RUN_ID" && -z "$BACKFILL_SINCE" ]]; then
+            args+=(--run-id "$SOURCE_RUN_ID")
+            if [[ -n "$SOURCE_RUN_ATTEMPT" ]]; then
+              args+=(--run-attempt "$SOURCE_RUN_ATTEMPT")
+            fi
+          elif [[ -n "$BACKFILL_SINCE" && -z "$SOURCE_RUN_ID" && -z "$SOURCE_RUN_ATTEMPT" ]]; then
+            args+=(--since "$BACKFILL_SINCE")
+          else
+            echo '::error::Provide a source run ID or a backfill date.'
+            exit 1
+          fi
+          python3 scripts/publish-e2e-run.py "${args[@]}"
+
+      # Acquire AWS credentials only after processing the source artifacts.
+      - name: Configure E2E upload credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.E2E_ARTIFACTS_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: e2e-publication-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Publish E2E evidence to S3
+        run: python3 scripts/publish-e2e-run.py --output-dir "$RUNNER_TEMP/e2e-publication" --upload-only

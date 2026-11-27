@@ -1,0 +1,3 @@
+Added:
+- We added view-only accounts. Import a full viewing key by pasting it or scanning a QR code to follow an account's balance and activity without being able to spend from it.
+- We added the option to rename a view-only account, change its color, or remove it from the app.

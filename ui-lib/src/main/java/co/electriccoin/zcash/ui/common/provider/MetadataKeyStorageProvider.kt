@@ -48,24 +48,52 @@ private class MetadataKeyPreferenceDefault(
     private fun getKey(uuid: AccountUuid) = PreferenceKey("metadata_key_${uuid.value.toHexString()}")
 }
 
+/**
+ * Each entry is encoded as "$index:$base64Bytes" so [decode] can restore [MetadataKey.bytes]'
+ * preference order, which a plain [Set] does not preserve on its own.
+ */
 @OptIn(ExperimentalEncodingApi::class)
 private fun MetadataKey?.encode(secretKeyAccess: SecretKeyAccess?): Set<String>? =
     this
         ?.bytes
-        ?.map {
-            Base64.encode(it.toByteArray(secretKeyAccess))
+        ?.mapIndexed { index, secretBytes ->
+            "$index:${Base64.encode(secretBytes.toByteArray(secretKeyAccess))}"
         }?.toSet()
 
+/**
+ * Returns null, so the caller re-derives the key in canonical order, for an empty set, a legacy
+ * set whose entries carry no "$index:" prefix, indices other than exactly 0 until the entry count,
+ * or an entry whose bytes are empty or not valid base64.
+ */
 @OptIn(ExperimentalEncodingApi::class)
-private fun Set<String>?.decode(secretKeyAccess: SecretKeyAccess?) =
-    if (this != null) {
-        MetadataKey(
-            this
-                .toList()
-                .map {
-                    SecretBytes.copyFrom(Base64.decode(it), secretKeyAccess)
-                }
-        )
-    } else {
+private fun Set<String>?.decode(secretKeyAccess: SecretKeyAccess?): MetadataKey? {
+    val indexedEntries = this?.map { it.parseIndexedEntry() }
+    return if (indexedEntries.isNullOrEmpty() || indexedEntries.any { it == null }) {
         null
+    } else {
+        val sortedEntries = indexedEntries.filterNotNull().sortedBy { (index, _) -> index }
+        if (sortedEntries.map { (index, _) -> index } != sortedEntries.indices.toList()) {
+            null
+        } else {
+            runCatching {
+                MetadataKey(
+                    sortedEntries.map { (_, encoded) ->
+                        SecretBytes.copyFrom(Base64.decode(encoded), secretKeyAccess)
+                    }
+                )
+            }.getOrNull()
+        }
     }
+}
+
+/**
+ * Parses one "$index:$base64Bytes" entry, or null if it carries no "$index:" prefix or no bytes.
+ */
+private fun String.parseIndexedEntry(): Pair<Int, String>? {
+    val separatorIndex = indexOf(':')
+    return if (separatorIndex <= 0 || separatorIndex == lastIndex) {
+        null
+    } else {
+        substring(0, separatorIndex).toIntOrNull()?.let { index -> index to substring(separatorIndex + 1) }
+    }
+}

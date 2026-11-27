@@ -9,62 +9,52 @@ import cash.z.ecc.android.sdk.model.CreatedTransaction
 import cash.z.ecc.android.sdk.model.Memo
 import cash.z.ecc.android.sdk.model.Pczt
 import cash.z.ecc.android.sdk.model.Proposal
+import cash.z.ecc.android.sdk.model.SubmitRejection
+import cash.z.ecc.android.sdk.model.TransactionId
+import cash.z.ecc.android.sdk.model.TransactionSizeBound
 import cash.z.ecc.android.sdk.model.TransactionSubmitResult
 import cash.z.ecc.android.sdk.model.UnifiedSpendingKey
 import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
-import cash.z.ecc.android.sdk.model.proposeSend
 import cash.z.ecc.android.sdk.type.AddressType
+import co.electriccoin.lightwallet.client.health.OhttpHealthCenter
+import co.electriccoin.lightwallet.client.health.runOhttpOperation
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.spackle.Twig
-import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.NetworkDimension
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.VersionInfo
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.requireSpendable
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.zecdev.zip321.ZIP321
 import org.zecdev.zip321.parser.ParserContext
 import java.math.BigDecimal
 
 interface ProposalDataSource {
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createProposal(account: WalletAccount, send: ZecSend): RegularTransactionProposal
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createZip321Proposal(account: WalletAccount, zip321Uri: String): Zip321TransactionProposal
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createExactInputProposal(
         account: WalletAccount,
         send: ZecSend,
         quote: SwapQuote,
     ): ExactInputSwapTransactionProposal
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createExactOutputProposal(
         account: WalletAccount,
         send: ZecSend,
@@ -74,15 +64,32 @@ interface ProposalDataSource {
     @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createShieldProposal(account: WalletAccount): ShieldTransactionProposal
 
-    @Throws(PcztException.CreatePcztFromProposalException::class)
-    suspend fun createPcztFromProposal(account: WalletAccount, proposal: Proposal): Pczt
+    /**
+     * Propagates the SDK's [PcztException.MultiStepProposalUnsupportedException] untouched: whether a
+     * multi-step rejection means "TEX is unsupported on Keystone" depends on what the proposal was
+     * for, which only the caller knows (see
+     * [co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository.createPCZTFromProposal]).
+     */
+    @Throws(
+        PcztException.CreatePcztFromProposalException::class,
+        PcztException.MultiStepProposalUnsupportedException::class
+    )
+    suspend fun createPcztFromProposal(
+        account: WalletAccount,
+        proposal: Proposal,
+        sizeBound: TransactionSizeBound
+    ): Pczt
 
     @Throws(PcztException.AddProofsToPcztException::class)
     suspend fun addProofsToPczt(pczt: Pczt): Pczt
 
     suspend fun submitTransaction(pcztWithProofs: Pczt, pcztWithSignatures: Pczt): SubmitResult
 
-    suspend fun submitTransaction(proposal: Proposal, usk: UnifiedSpendingKey): SubmitResult
+    suspend fun submitTransaction(
+        proposal: Proposal,
+        usk: UnifiedSpendingKey,
+        sizeBound: TransactionSizeBound
+    ): SubmitResult
 
     @Throws(PcztException.RedactPcztForSignerException::class)
     suspend fun redactPcztForSigner(pczt: Pczt): Pczt
@@ -92,32 +99,39 @@ class TransactionProposalNotCreatedException(
     cause: Exception
 ) : Exception(cause)
 
-class InsufficientFundsException : Exception()
+class InsufficientFundsException(
+    cause: Throwable? = null
+) : Exception(cause)
 
 class TexUnsupportedOnKSException : Exception("TEX addresses are unsupported on Keystone")
 
+/**
+ * Every proposal it creates is for an account that can spend: a view-only account is refused with
+ * [co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException] before the SDK is
+ * asked, whichever flow got this far.
+ */
 @Suppress("TooManyFunctions")
 class ProposalDataSourceImpl(
     private val synchronizerProvider: SynchronizerProvider,
-    private val lightWalletEndpointProvider: LightWalletEndpointProvider,
-    private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
     private val persistableWalletProvider: PersistableWalletProvider,
+    private val signerCapabilitiesProvider: SignerCapabilitiesProvider,
 ) : ProposalDataSource {
     override suspend fun createProposal(account: WalletAccount, send: ZecSend): RegularTransactionProposal =
         withContext(Dispatchers.IO) {
+            account.requireSpendable()
             getOrThrow { synchronizer ->
-                validate(account, synchronizer, send.destination.address)
                 RegularTransactionProposal(
                     destination = send.destination,
                     amount = send.amount,
                     memo = send.memo,
-                    proposal = synchronizer.proposeSend(account = account.sdkAccount, send = send),
+                    proposal = synchronizer.proposeSend(account, send),
                 )
             }
         }
 
     override suspend fun createZip321Proposal(account: WalletAccount, zip321Uri: String): Zip321TransactionProposal =
         withContext(Dispatchers.IO) {
+            account.requireSpendable()
             getOrThrow { synchronizer ->
                 val payment =
                     when (
@@ -140,8 +154,6 @@ class ProposalDataSourceImpl(
                         )
                     }
 
-                validate(account, synchronizer, payment.recipientAddress.value)
-
                 if (payment.nonNegativeAmount == null) {
                     throw TransactionProposalNotCreatedException(IllegalArgumentException("Null amount"))
                 }
@@ -159,7 +171,12 @@ class ProposalDataSourceImpl(
                             ?.toBigDecimal()
                             .convertZecToZatoshi(),
                     memo = Memo(payment.memo?.data?.decodeToString() ?: ""),
-                    proposal = synchronizer.proposeFulfillingPaymentUri(account = account.sdkAccount, uri = zip321Uri),
+                    proposal =
+                        synchronizer.proposeFulfillingPaymentUri(
+                            account = account.sdkAccount,
+                            uri = zip321Uri,
+                            sizeBound = sizeBoundOf(account)
+                        ),
                 )
             }
         }
@@ -170,13 +187,13 @@ class ProposalDataSourceImpl(
         quote: SwapQuote,
     ): ExactInputSwapTransactionProposal =
         withContext(Dispatchers.IO) {
+            account.requireSpendable()
             getOrThrow { synchronizer ->
-                validate(account, synchronizer, send.destination.address)
                 ExactInputSwapTransactionProposal(
                     destination = send.destination,
                     amount = send.amount,
                     memo = send.memo,
-                    proposal = synchronizer.proposeSend(account.sdkAccount, send),
+                    proposal = synchronizer.proposeSend(account, send),
                     quote = quote,
                 )
             }
@@ -188,13 +205,13 @@ class ProposalDataSourceImpl(
         quote: SwapQuote,
     ): ExactOutputSwapTransactionProposal =
         withContext(Dispatchers.IO) {
+            account.requireSpendable()
             getOrThrow { synchronizer ->
-                validate(account, synchronizer, send.destination.address)
                 ExactOutputSwapTransactionProposal(
                     destination = send.destination,
                     amount = send.amount,
                     memo = send.memo,
-                    proposal = synchronizer.proposeSend(account.sdkAccount, send),
+                    proposal = synchronizer.proposeSend(account, send),
                     quote = quote,
                 )
             }
@@ -202,6 +219,7 @@ class ProposalDataSourceImpl(
 
     override suspend fun createShieldProposal(account: WalletAccount): ShieldTransactionProposal =
         withContext(Dispatchers.IO) {
+            account.requireSpendable()
             getOrThrow { synchronizer ->
                 val newProposal =
                     synchronizer.proposeShielding(
@@ -219,12 +237,17 @@ class ProposalDataSourceImpl(
             }
         }
 
-    override suspend fun createPcztFromProposal(account: WalletAccount, proposal: Proposal): Pczt =
+    override suspend fun createPcztFromProposal(
+        account: WalletAccount,
+        proposal: Proposal,
+        sizeBound: TransactionSizeBound
+    ): Pczt =
         withContext(Dispatchers.IO) {
-            val synchronizer = synchronizerProvider.getSynchronizer()
-            synchronizer.createPcztFromProposal(
+            account.requireSpendable()
+            synchronizerProvider.getSynchronizer().createPcztFromProposal(
                 accountUuid = account.sdkAccount.accountUuid,
-                proposal = proposal
+                proposal = proposal,
+                sizeBound = sizeBound
             )
         }
 
@@ -243,11 +266,16 @@ class ProposalDataSourceImpl(
             )
         }
 
-    override suspend fun submitTransaction(proposal: Proposal, usk: UnifiedSpendingKey): SubmitResult =
+    override suspend fun submitTransaction(
+        proposal: Proposal,
+        usk: UnifiedSpendingKey,
+        sizeBound: TransactionSizeBound
+    ): SubmitResult =
         submitTransactionInternal(MULTI_SUBMIT_TAG) {
             it.broadcaster.createProposedTransactions(
                 proposal = proposal,
                 usk = usk,
+                sizeBound = sizeBound,
             )
         }
 
@@ -259,26 +287,25 @@ class ProposalDataSourceImpl(
         }
 
     /**
-     * @throws TexUnsupportedOnKSException if the address is a TEX address and the account is a Keystone account
+     * One explicit user send: its OHTTP requests are attributed to it, and when it ends the health center is told
+     * whether it failed and which call decided that, so the private-connection outage detection can tell a send that
+     * failed because the private route is down from one that failed for any other reason.
      */
-    @Throws(TexUnsupportedOnKSException::class)
-    private suspend fun validate(
-        account: WalletAccount,
-        synchronizer: Synchronizer,
-        address: String
-    ) {
-        if (account is KeystoneAccount && synchronizer.validateAddress(address) == AddressType.Tex) {
-            throw TexUnsupportedOnKSException()
-        }
-    }
-
-    @Suppress("CyclomaticComplexMethod", "TooGenericExceptionCaught")
     private suspend fun submitTransactionInternal(
         logTag: String,
-        block: suspend (SdkSynchronizer) -> List<CreatedTransaction>
+        block: suspend (Synchronizer) -> List<CreatedTransaction>
+    ): SubmitResult =
+        OhttpHealthCenter.shared.runOhttpOperation(isFailure = { it.isOperationFailure() }) {
+            submitTransactionAttributed(logTag, block)
+        }
+
+    @Suppress("CyclomaticComplexMethod", "TooGenericExceptionCaught")
+    private suspend fun submitTransactionAttributed(
+        logTag: String,
+        block: suspend (Synchronizer) -> List<CreatedTransaction>
     ): SubmitResult =
         withContext(Dispatchers.IO) {
-            val synchronizer = synchronizerProvider.getSynchronizer() as SdkSynchronizer
+            val synchronizer = synchronizerProvider.getSynchronizer()
             val transactions = block(synchronizer)
 
             if (transactions.isEmpty()) {
@@ -304,15 +331,21 @@ class ProposalDataSourceImpl(
 
             Twig.debug { "Internal transaction submit results: $submitResults" }
 
-            val result = submitResults.toSubmitResult()
-            synchronizer.refreshTransactions()
-            synchronizer.refreshAllBalances()
+            // Whether a transaction failed is the SDK's verdict over every endpoint it was submitted to, not the
+            // refusal one endpoint returned: read it once every submission has settled.
+            val result = submitResults.toSubmitResult(rejections = synchronizer.rejectedTransactions.first())
+
+            if (synchronizer is SdkSynchronizer) {
+                synchronizer.refreshTransactions()
+                synchronizer.refreshAllBalances()
+            }
+
             Twig.debug { "Transaction submit result: $result" }
             result
         }
 
     private suspend fun submitCreatedTransactions(
-        synchronizer: SdkSynchronizer,
+        synchronizer: Synchronizer,
         transactions: List<CreatedTransaction>,
         endpoints: List<LightWalletEndpoint>,
         logTag: String
@@ -328,40 +361,41 @@ class ProposalDataSourceImpl(
         )
 
     /**
-     * Resolves which endpoints a created transaction is broadcast to. In automatic server-selection
-     * mode this returns every bundled endpoint: broadcasting to all of them trades a small amount of
-     * privacy (the transaction is sent to each bundled server, not just one) for higher reliability
-     * and faster confirmation. Manual mode honors the user's explicit choice and submits only through
-     * the selected endpoint.
+     * Resolves which endpoint a created transaction is broadcast to. Returns only the current
+     * endpoint - the one the wallet is actively using for sync and queries. In automatic mode this
+     * is the OHTTP gateway when available (chosen by ServerFallbackPolicy), or a manually-selected
+     * fallback when OHTTP is down.
+     *
+     * In automatic mode, submit ONLY to the current endpoint (OHTTP gateway when
+     * available). Never broadcast to multiple servers - that would expose the tx to all operators
+     * and defeat OHTTP's IP hiding. The current endpoint already provides the right privacy/Tor
+     * routing, as determined by ServerFallbackPolicy.
      */
-    private suspend fun getSubmissionEndpoints(): List<LightWalletEndpoint> {
-        val knownEndpoints = lightWalletEndpointProvider.getEndpoints()
+    internal suspend fun getSubmissionEndpoints(): List<LightWalletEndpoint> {
         val currentEndpoint = persistableWalletProvider.requirePersistableWallet().endpoint
-        val isAutomatic =
-            resolveIsServerSelectionAutomatic(
-                isAutomaticPreference = isServerSelectionAutomaticProvider.get(),
-                currentEndpoint = currentEndpoint,
-                knownEndpoints = knownEndpoints
-            )
-        return if (isAutomatic) knownEndpoints else listOf(currentEndpoint)
+        return listOf(currentEndpoint)
     }
+
+    private suspend fun sizeBoundOf(account: WalletAccount): TransactionSizeBound =
+        signerCapabilitiesProvider.forAccount(account).sizeBound
+
+    /** Proposes [send] from [account] within the size bound its signer can handle. */
+    private suspend fun Synchronizer.proposeSend(account: WalletAccount, send: ZecSend): Proposal =
+        proposeTransfer(
+            account = account.sdkAccount,
+            recipient = send.destination.address,
+            amount = send.amount,
+            memo = send.memo.value,
+            sizeBound = sizeBoundOf(account)
+        )
 
     @Suppress("TooGenericExceptionCaught")
     private suspend inline fun <T : Any> getOrThrow(block: (Synchronizer) -> T): T =
         try {
             val synchronizer = synchronizerProvider.getSynchronizer()
             block(synchronizer)
-        } catch (e: TransactionEncoderException.ProposalFromParametersException) {
-            val message = e.rootCause.message ?: ""
-            if (message.contains("Insufficient balance", true) ||
-                message.contains("The transaction requires an additional change output of", true)
-            ) {
-                throw InsufficientFundsException()
-            } else {
-                throw TransactionProposalNotCreatedException(e)
-            }
-        } catch (e: TexUnsupportedOnKSException) {
-            throw e
+        } catch (e: TransactionEncoderException.InsufficientFundsException) {
+            throw InsufficientFundsException(e)
         } catch (e: TransactionProposalNotCreatedException) {
             throw e
         } catch (e: Exception) {
@@ -378,7 +412,21 @@ class ProposalDataSourceImpl(
         }
 }
 
-internal fun List<TransactionSubmitResult>.toSubmitResult(): SubmitResult {
+/**
+ * The [SubmitResult] of a proposal's transactions, from what the multi-endpoint submission returned for each and the
+ * SDK's verdict ([Synchronizer.rejectedTransactions], given as [rejections], or a [TransactionSubmitResult.Failure]
+ * carrying that verdict in its `rejection`). A `Success` from any endpoint is an acceptance; transport failures are
+ * inconclusive and stay pending.
+ *
+ * A transaction failed only when the SDK recorded it as rejected: every endpoint it was submitted to answered, none
+ * accepted it and one refused it for good. A refusal for good returned here is one endpoint's answer, so without that
+ * verdict the transaction stays pending (the SDK keeps resubmitting it). Orchard to Ironwood migration transactions
+ * are never in [rejections].
+ */
+@Suppress("CyclomaticComplexMethod")
+internal fun List<TransactionSubmitResult>.toSubmitResult(
+    rejections: Map<TransactionId, SubmitRejection>
+): SubmitResult {
     if (isEmpty()) {
         return SubmitResult.Failure(
             txIds = emptyList(),
@@ -405,33 +453,60 @@ internal fun List<TransactionSubmitResult>.toSubmitResult(): SubmitResult {
         } else {
             null
         }
-
-    val (errCode, errDesc) =
-        failures
-            .firstOrNull { !it.grpcError }
-            ?.let { it.code to it.description } ?: (0 to "")
-
-    return when (successCount) {
-        0 -> {
-            if (failures.size == size && failures.all { it.grpcError }) {
-                SubmitResult.GrpcFailure(
-                    txIds = txIds,
-                    description = grpcFailureDescription,
-                    reason = grpcFailureReason
-                )
-            } else if (hasNotAttempted && failures.none { !it.grpcError }) {
-                SubmitResult.Partial(txIds = txIds, statuses = map { it.statusDescription() })
-            } else {
-                SubmitResult.Failure(txIds = txIds, code = errCode, description = errDesc)
+    // The transactions the SDK rejected, each with the refusal it recorded.
+    val rejected =
+        failures.mapNotNull { failure ->
+            // Failure.rejection is the SDK's stored verdict (set only when every endpoint answered and none
+            // accepted); a transport failure or a refusal beside a pending endpoint carries none.
+            (rejections[TransactionId.new(failure.txId)] ?: failure.rejection)?.let { rejection ->
+                failure to rejection
             }
         }
 
-        txIds.size -> {
+    val firstNonGrpcFailure = failures.firstOrNull { !it.grpcError }
+
+    return when {
+        successCount == txIds.size -> {
             SubmitResult.Success(txIds = txIds)
         }
 
-        else -> {
+        hasNotAttempted -> {
+            // The SDK can only retry a transaction after submit() registered an endpoint for it.
+            // Keeping an untouched leg pending would promise a retry that cannot happen.
             SubmitResult.Partial(txIds = txIds, statuses = map { it.statusDescription() })
+        }
+
+        successCount == 0 && rejected.isNotEmpty() -> {
+            // No endpoint accepted and the SDK rejected it: it no longer retries it, so it is not pending.
+            val (failure, rejection) = rejected.first()
+            SubmitResult.Failure(
+                txIds = txIds,
+                code = failure.code,
+                description = failure.description,
+                rejection = rejection
+            )
+        }
+
+        rejected.isNotEmpty() -> {
+            // Some transactions of the proposal were accepted and the SDK rejected another: the existing
+            // multi-transaction semantics, funds possibly stuck, which only a Partial result conveys.
+            Twig.warn { "Transaction submission was rejected for good: ${rejected.first().second}" }
+            SubmitResult.Partial(txIds = txIds, statuses = map { it.statusDescription() })
+        }
+
+        else -> {
+            // Every non-accepted transaction was attempted and the SDK has not rejected it, so its retry plan
+            // remains active. This includes one endpoint's refusal for good while another has not answered:
+            // reporting a terminal failure would invite a manual retry while background resubmission can still
+            // broadcast the same transaction.
+            firstNonGrpcFailure?.let { failure ->
+                Twig.warn { "Transaction submission remains pending after rejected code: ${failure.code}" }
+            }
+            SubmitResult.GrpcFailure(
+                txIds = txIds,
+                description = grpcFailureDescription,
+                reason = grpcFailureReason
+            )
         }
     }
 }
@@ -516,6 +591,22 @@ data class ExactOutputSwapTransactionProposal(
     override val quote: SwapQuote,
 ) : SwapTransactionProposal
 
+/**
+ * IMMEDIATE-mode migration send-max: an ordinary send proposal (see
+ * [cash.z.ecc.android.sdk.OrchardMigrationSdk.proposeImmediateMigration]) sweeping all spendable
+ * Orchard funds into this account's own Ironwood receiver. There is no destination/memo to
+ * validate, only an already-built [proposal].
+ *
+ * Both account types adopt it into the same shared submit pipeline every other send uses (see
+ * `MigrationReviewVM.onConfirmImmediate`): a Keystone account routes it through the external-signer
+ * QR flow, a software-key (Zashi) account through [ZashiProposalRepository.submit]. Either way the
+ * generic Transaction Progress screen renders its sending/success states.
+ */
+data class MigrationSweepTransactionProposal(
+    val amount: Zatoshi,
+    override val proposal: Proposal,
+) : TransactionProposal
+
 private const val DEFAULT_SHIELDING_THRESHOLD = 100000L
 private const val MULTI_SUBMIT_TAG = "[MultiSubmit]"
 private const val MULTI_SUBMIT_PCZT_TAG = "[MultiSubmit/PCZT]"
@@ -523,3 +614,10 @@ private const val MULTI_SUBMIT_EMPTY_TRANSACTION_CODE = -1
 private const val MULTI_SUBMIT_EMPTY_TRANSACTION_DESCRIPTION = "No transactions created"
 private const val MULTI_SUBMIT_GRPC_FAILURE_STATUS = "grpcFailure"
 private const val MULTI_SUBMIT_REJECTED_STATUS_PREFIX = "rejected code: "
+
+/**
+ * Whether a send's result is a failed operation for the outage detection: anything but a full success. A relay that
+ * is down surfaces as a gRPC failure, or as a partial result across several transactions, not as a rejection; the
+ * policy still requires the deciding call's evidence to be a transport failure, so a rejection stays harmless.
+ */
+internal fun SubmitResult.isOperationFailure(): Boolean = this !is SubmitResult.Success

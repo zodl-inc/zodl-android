@@ -103,4 +103,4 @@ class AddressBookVM(
         }
 }
 
-internal const val ADDRESS_MAX_LENGTH = 20
+const val ADDRESS_MAX_LENGTH = 20

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="error_keystone_firmware_title">Actualización de Firmware de Keystone Requerida</string>
+    <string name="error_keystone_firmware_message">El firmware de tu Keystone (%1$s) está por debajo de la versión mínima admitida (%2$s). Actualiza el firmware de tu dispositivo y vuelve a intentarlo.</string>
+    <string name="error_keystone_firmware_message_legacy">El firmware de tu Keystone es demasiado antiguo para informar su versión y está por debajo de la versión mínima admitida (%1$s). Actualiza el firmware de tu dispositivo y vuelve a intentarlo.</string>
+    <string name="error_keystone_firmware_close">Cerrar</string>
+
+    <string name="error_keystone_account_title">No Se Puede Añadir la Cuenta Keystone</string>
+    <string name="error_keystone_account_message">La cuenta Keystone escaneada no se puede usar con esta aplicación. Asegúrate de que tu dispositivo Keystone esté configurado en la misma red que esta aplicación y vuelve a escanear el código QR.</string>
+</resources>

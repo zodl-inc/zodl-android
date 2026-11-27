@@ -2,6 +2,13 @@
     <string name="amount_with_fiat_currency_symbol" formatted="true"><xliff:g example="$" id="fiat_currency_symbol">%1$s</xliff:g><xliff:g example="123" id="amount">%2$s</xliff:g></string>
     <string name="general_hideBalancesMost">-----</string>
     <string name="general_back">Back</string>
+    <string name="general_max">Max</string>
+    <string name="general_maxFeeHint">Max leaves room for a transaction fee.</string>
+    <string name="general_maxFeeSlippageHint">Max leaves room for fees and slippage, and updates with each new quote.</string>
+    <string name="general_maxUnavailableSend">Max isn\'t available right now. Enter the amount you want to send.</string>
+    <string name="general_maxUnavailableSwap">Max isn\'t available right now. Enter the amount you want to swap.</string>
+    <string name="general_maxTooManyNotesTitle">Too many notes to send at once</string>
+    <string name="general_maxTooManyNotesBody">Your balance is split into many small pieces, so it can\'t all go in one transaction. Try sending a smaller amount.</string>
     <string name="triple_dots">…</string>
     <string name="seed_recovery_reveal">Reveal recovery phrase</string>
     <string name="general_masked_seed_word">•••••</string>
@@ -22,6 +29,8 @@
     <string name="general_loading">Loading</string>
     <string name="send_review">Review</string>
     <string name="general_ok">OK</string>
+    <string name="general_dismiss">Dismiss</string>
+    <string name="general_report">Report</string>
     <string name="restoreInfo_gotIt">Got it!</string>
     <string name="send_report">Report</string>
     <string name="general_zec">%1$s %2$s</string>
@@ -50,6 +59,7 @@
     <string name="zcash_logo_content_description">Zcash logo</string>
     <string name="scan_openSettings">Open Settings</string>
     <string name="balance_widget_available">Available Balance:</string>
+    <string name="hide_balance_placeholder">-----</string>
     <string name="hide_balances_content_description">Hide balances</string>
     <string name="unable_to_open_email">Unable to launch email app.</string>
     <string name="restoring_wallet_label">[Restoring Your Wallet…]</string>
@@ -90,10 +100,20 @@
     <string name="about_privacyPolicy">Privacy Policy</string>
 
     <!-- ===== account_list ===== -->
-    <string name="keystone_drawer_title">Wallets &amp; Hardware</string>
-    <string name="keystone_drawer_banner_title">Keystone Hardware Wallet</string>
-    <string name="keystone_drawer_banner_desc">Get 5%% off airgapped hardware wallet. Promo code "Zodl".</string>
-    <string name="keystone_connect">Connect Hardware Wallet</string>
+    <string name="hwWallet_drawer_title">Wallets &amp; Hardware</string>
+    <string name="hwWallet_connect">Connect Hardware Wallet</string>
+    <string name="hwWallet_section_zodl">Zodl Wallet</string>
+    <string name="hwWallet_section_keystone">Keystone Wallet</string>
+    <string name="hwWallet_section_keystone_plural">Keystone Wallets</string>
+    <string name="hwWallet_section_ledger">Ledger Wallet</string>
+    <string name="hwWallet_section_ledger_plural">Ledger Wallets</string>
+    <string name="hwWallet_walletOptions_contentDescription">Options for %1$s</string>
+    <string name="hwWallet_promo_title">Keystone Hardware Wallet</string>
+    <string name="hwWallet_promo_message">Get 5%% off an airgapped hardware wallet. Promo code “Zodl”.</string>
+    <string name="hwWallet_options_title">Wallet Options</string>
+    <string name="hwWallet_options_disconnect_title">Disconnect hardware wallet</string>
+    <string name="hwWallet_options_disconnect_keystone">Unpair your Keystone device.</string>
+    <string name="hwWallet_options_disconnect_ledger">Unpair your Ledger device.</string>
 
     <!-- ===== add_contact ===== -->
     <string name="addressBook_addNewContact">Add New Contact</string>
@@ -121,9 +141,9 @@
     <string name="settings_deleteZashi">Reset Zodl</string>
     <string name="taxExport_taxFile">Export Tax File</string>
     <string name="resyncWallet_title">Resync Wallet</string>
-    <string name="disconnectHWWallet_cta">Disconnect Hardware</string>
     <string name="disconnect_hardware_wallet_biometric_message">Confirm to disconnect your hardware wallet</string>
     <string name="disconnectHWWallet_title">DISCONNECT</string>
+    <string name="disconnectHWWallet_button">Disconnect</string>
     <string name="deleteKeystoneTitle">Disconnect Keystone</string>
     <string name="deleteKeystoneDesc">Disconnecting your hardware wallet will permanently delete some local data that can\'t be recovered from the blockchain.</string>
     <string name="disconnectHWWallet_mayInclude">This may include:</string>
@@ -133,6 +153,7 @@
     <string name="keystoneHW">Keystone Hardware</string>
     <string name="currentlyConnected">Currently connected</string>
     <string name="connectedHWInfo">If you disconnect now, your Keystone will no longer be paired with your Zodl wallet.</string>
+    <string name="connectedHWInfo_ledger">If you disconnect now, your Ledger will no longer be paired with your Zodl wallet.</string>
     <string name="deleteWallet_sheet_title">Are you sure?</string>
     <string name="disconnectHWWallet_sheetDesc">Disconnecting the hardware wallet cannot be undone.</string>
     <string name="disconnectHWWallet_failureTitle">Disconnect Failed</string>
@@ -173,6 +194,14 @@
     <string name="smartBanner_content_shield_button">Shield</string>
     <string name="smartBanner_help_shield_transparent">Transparent</string>
     <string name="widget_balances_button_spendable">Spendable</string>
+    <string name="balance_breakdown_title">Total Balance Across Pools</string>
+    <string name="balance_breakdown_subtitle">Your ZEC balance is now broken down by Zcash pool, so you can see exactly where your funds sit.</string>
+    <string name="balance_breakdown_total">Total Balance</string>
+    <string name="balance_breakdown_pool_orchard">Orchard</string>
+    <string name="balance_breakdown_pool_sapling">Sapling</string>
+    <string name="balance_breakdown_pool_transparent">Transparent</string>
+    <string name="balance_breakdown_pool_ironwood">Ironwood</string>
+    <string name="balance_breakdown_got_it">Got it</string>
 
     <!-- ===== choose_server ===== -->
     <string name="serverSetup_title">Server</string>
@@ -195,11 +224,36 @@
     <string name="choose_server_save_success_dialog_title">Server saved</string>
     <string name="choose_server_save_success_dialog_text">The selected server endpoint has been
         successfully saved.</string>
-    <string name="serverSetup_default">Default</string>
+    <string name="serverSetup_clearnetNotPrivate">Clearnet · not private</string>
+    <string name="serverSetup_customNotPrivate">Custom · not private</string>
+    <string name="serverSetup_ohttpTestRelayNotPrivate">OHTTP · test relay, not private</string>
+    <string name="choose_server_ohttp_gateway_mainnet">Zodl Private Server</string>
+    <string name="choose_server_ohttp_gateway_testnet">Zodl Private Server (OHTTP, Testnet)</string>
     <string name="serverSetup_performingTest">Performing server test…</string>
     <string name="serverSetup_couldTakeTime">This may take a moment…</string>
     <string name="serverSetup_connectionMode">Connection mode</string>
-    <string name="serverSetup_automatic">Automatic</string>
+    <string name="serverSetup_private">Private</string>
+    <string name="serverSetup_privateSubtitle">ZODL servers</string>
+    <string name="serverSetup_public">Public</string>
+    <string name="serverSetup_unavailable">Unavailable</string>
+    <string name="serverSetup_notPrivate">Not private</string>
+    <string name="serverSetup_privateInfo">Learn more about the private connection</string>
+    <string name="ohttpInfo_title">Private Connection</string>
+    <string name="ohttpInfo_body">Zodl sends its requests to the wallet servers through a private relay using Oblivious HTTP (OHTTP), instead of connecting to them directly.</string>
+    <string name="ohttpInfo_item1Title">Your IP stays yours</string>
+    <string name="ohttpInfo_item1Body">The wallet servers that answer Zodl\'s requests can\'t see where they came from. This doesn\'t cover Flexa\'s pages and images, custom servers, or links you open.</string>
+    <string name="ohttpInfo_item2Title">Your requests stay sealed</string>
+    <string name="ohttpInfo_item2Body">The relay in between passes them along without reading them.</string>
+    <string name="ohttpInfo_item3Title">You\'re always asked first</string>
+    <string name="ohttpInfo_item3Body">If the private relay goes down, Zodl won\'t switch to public servers without your OK.</string>
+    <string name="ohttpInfo_gotIt">Got it</string>
+    <string name="ohttpOptIn_widgetTitle">Private connection available</string>
+    <string name="ohttpOptIn_widgetSubtitle">Hide your IP address</string>
+    <string name="ohttpOptIn_widgetView">View</string>
+    <string name="ohttpOptIn_title">Hide Your IP Address</string>
+    <string name="ohttpOptIn_body">Zodl can send its requests through a private relay using Oblivious HTTP (OHTTP) instead of connecting to servers directly.</string>
+    <string name="ohttpOptIn_notNow">Not now</string>
+    <string name="ohttpOptIn_turnOn">Turn on private connection</string>
     <string name="serverSetup_manual">Manual</string>
     <string name="serverSetup_fastestServers">Fastest servers</string>
     <string name="serverSetup_otherServers">Other servers</string>
@@ -208,6 +262,12 @@
     <string name="serverSetup_active">Active</string>
     <string name="serverSetup_testing">Testing</string>
     <string name="choose_server_multi_server_info">We may use multiple servers to optimize performance. To reduce metadata exposure, choose Manual connection mode to select your single server of choice, and ensure Tor is enabled in Advanced Settings.</string>
+    <string name="ohttpUnavailableSheet_title">Private connection unavailable</string>
+    <string name="ohttpUnavailableSheet_body">Zodl can\'t reach its private relay right now. You can keep waiting or switch to public servers, which can see your IP address unless you turn on Tor below or use a VPN. Zodl will switch you back automatically once the relay is available. Swaps and currency prices stay paused until the private connection is back.</string>
+    <string name="ohttpUnavailableSheet_torTitle">Enable Tor Protection</string>
+    <string name="ohttpUnavailableSheet_torBody">Hide your IP address by routing traffic through the Tor network.</string>
+    <string name="ohttpUnavailableSheet_keepWaiting">Keep waiting</string>
+    <string name="ohttpUnavailableSheet_switchToPublic">Switch to public servers</string>
 
     <!-- ===== connect_keystone ===== -->
     <string name="keystone_addHWWallet_scan">Scan your device’s QR code to connect.</string>
@@ -288,15 +348,17 @@
     <string name="shieldFunds_error_failure_message">An error happened during the last shielding transaction. You can try again
         later or report this issue if the problem persists.\n\n%s</string>
     <string name="shieldFunds_error_gprc_message">An error happened during the last shielding transaction. We will try to resubmit the transaction later. If it fails, you may need to repeat the shielding attempt at a later time.</string>
-    <string name="torSetup_alert_title">Disable Tor?</string>
-    <string name="torSetup_alert_msg">Tor connection issues detected. To improve performance, try disabling Tor. This will stop exchange rate updates. You can re-enable it later in Advanced Settings.</string>
-    <string name="torSetup_alert_disable">Disable</string>
-    <string name="torSetup_alert_dontDisable">Don’t disable</string>
+    <string name="error_keystone_firmware_title">Keystone Firmware Update Required</string>
+    <string name="error_keystone_firmware_message">Your Keystone’s firmware (%1$s) is below the minimum supported version (%2$s). Update your device’s firmware, then try again.</string>
+    <string name="error_keystone_firmware_message_legacy">Your Keystone’s firmware is too old to report its version and is below the minimum supported version (%1$s). Update your device’s firmware, then try again.</string>
+    <string name="error_keystone_firmware_close">Close</string>
+    <string name="error_keystone_account_title">Unable to Add Keystone Account</string>
+    <string name="error_keystone_account_message">The scanned Keystone account can’t be used with this app. Make sure your Keystone device is set to the same network as this app, then scan the QR code again.</string>
 
     <!-- ===== exchange_rate ===== -->
     <string name="currencyConversion_ipTitle">IP Address Protection</string>
     <string name="currencyConversion_ipDesc">Zodl\'s currency conversion feature doesn\'t compromise your IP address.</string>
-    <string name="exchange_rate_info_subtitle_1_no_cmc">Exchange rates are fetched over Tor to protect your IP address. Ensure Tor use is allowed in your region.</string>
+    <string name="exchange_rate_info_subtitle_1_no_cmc">Exchange rates are fetched privately via OHTTP to protect your IP address.</string>
     <string name="currencyConversion_refresh">Rate Refresh</string>
     <string name="currencyConversion_refreshDesc">The rate is refreshed automatically and can also be refreshed manually.</string>
     <string name="tooltip_exchangeRate_title">Exchange rate unavailable</string>
@@ -325,6 +387,7 @@
     <string name="currencyConversion_torOnInfo">Disabling Tor Protection will also disable the Currency Conversion feature until re-enabled.</string>
     <string name="currencyConversion_torOffInfo">If you would like to protect your IP address, enable Tor Protection in Advanced Settings.</string>
     <string name="currencyConversion_selectCurrencyTitle">Select currency</string>
+    <string name="currencyConversion_pickerErrorDesc">We couldn\’t load the currencies. Please check your connection and try again.</string>
 
     <!-- ===== export_data ===== -->
     <string name="privateDataConsent_screenTitle">Data Export</string>
@@ -427,6 +490,8 @@
     <string name="crash_report_detail_item_title_1">What is shared?</string>
     <string name="home_message_crash_reporting_title">Help improve Zodl</string>
     <string name="home_message_crash_reporting_subtitle">Allow sharing crash reports</string>
+    <string name="home_message_coinholder_polling_subtitle" tools:ignore="MissingTranslation">Shape the future of the Zcash network.</string>
+    <string name="home_message_coinholder_polling_button" tools:ignore="MissingTranslation">Start</string>
     <string name="balances_spendableBalance_title">Spendable Balance</string>
     <string name="balances_everythingDone">All your funds are shielded and spendable.</string>
     <string name="balances_infoPending">Pending receipt of change from a prior transaction.</string>
@@ -450,14 +515,15 @@
     <string name="integrations_disabled_info">During the Restore process, it is not possible to use payment integrations.</string>
     <string name="settings_flexa">Pay with Flexa</string>
     <string name="settings_flexaDesc">Spend ZEC at thousands of retail locations.</string>
+    <string name="settings_flexaIpDesc">Flexa can see your IP address when it shows merchants and its pages. Zodl can\'t.</string>
     <string name="integrations_flexa_biometric_message">Authenticate yourself to pay with Flexa</string>
-    <string name="settings_keystone">Connect Keystone</string>
-    <string name="settings_keystoneDesc">Connect airgapped hardware wallet to store shielded ZEC.</string>
     <string name="integrations_disabled_info_flexa">Switch from Keystone to Zodl to use Flexa.</string>
     <string name="integrations_dialog_more_options">More Options</string>
     <string name="integrations_near_swap">Swap %s with NEAR Intents</string>
     <string name="integrations_near_swap_message">Swap %s with other cryptocurrencies.</string>
     <string name="integrations_coinbase_subtitle_disabled">Coinbase Onramp is temporarily unavailable.</string>
+    <string name="integrations_redeemGift">Redeem Gift Card</string>
+    <string name="integrations_redeemGift_subtitle">Scan or paste a Zcash gift card to add its funds to your wallet.</string>
 
     <!-- ===== keep_open ===== -->
     <string name="restoreInfo_title">Keep Zodl open!</string>
@@ -467,6 +533,7 @@
     <string name="keepZodlOpenInstructionsHWWallet">Zodl is scanning the blockchain to retrieve your transactions. Older wallets can take hours to complete syncing. Follow these steps to prevent interruption:</string>
     <string name="keepZodlOpenSubtitleHWWallet">Your wallet is being synced.</string>
     <string name="keep_open_keystone_warning">Your Zodl funds cannot be spent until your Keystone wallet is synced.</string>
+    <string name="keep_open_hw_wallet_warning">You can\'t spend from this wallet until syncing is complete.</string>
     <string name="keepScreenOnSyncing">Keep screen on while syncing</string>
     <string name="keepZodlOpenInstructionsResyncing">Zodl is scanning the blockchain to retrieve your transactions. Older wallets can take hours to resync. Follow these steps to prevent interruption:</string>
     <string name="keepZodlOpenSubtitleResync">Your wallet is being resynced.</string>
@@ -483,7 +550,7 @@
 
     <!-- ===== pay ===== -->
     <string name="crosspay_help_payWith">CrossPay with</string>
-    <string name="pay_info_subtitle">Make cross-chain payments in any NEAR-supported coin or token.\n\nIf the actual slippage and network conditions result in your recipient receiving less than the promised amount, your transaction will be reversed. You will receive a full refund minus network fees.</string>
+    <string name="pay_info_subtitle">Make cross-chain payments in any NEAR-supported coin or token.\n\nIf slippage or network conditions result in your recipient receiving less than the promised amount, your payment will be refunded minus network fees.\n\nRefunds only apply to payments of $300 or more. Payments under $300 aren\'t eligible for a refund. Please double-check all details before continuing.</string>
     <string name="swapAndPay_slippageWarn">Any unused portion of the slippage fee will be refunded if the swap executes with lower slippage than expected.</string>
 
     <!-- ===== payment_request ===== -->
@@ -537,6 +604,52 @@
     <string name="receive_help_transparent_desc2">We don\'t recommend using this address type unless the wallet or exchange from which %s is being sent doesn’t support sending funds to shielded Zcash addresses.</string>
     <string name="receive_help_transparent_desc3">To protect your privacy, Zodl will guide you to shield any transparent %s you receive with just one click.</string>
     <string name="receive_info_transparent_bullet_4">You won\'t be able to spend your transparent %s until you shield it.</string>
+
+    <!-- ===== redeem_gift ===== -->
+    <string name="redeemGift_title">Redeem Gift Card</string>
+    <string name="redeemGift_scan_invalid">This isn\'t a valid gift card. Scan the gift card\'s QR code or copy its link and try again.</string>
+    <string name="redeemGift_scan_externalLink">Looks like you opened a gift card from another app. For better safety and security, scan the gift card\'s QR code with Zodl.</string>
+    <string name="redeemGift_paste_title">Paste your gift card link</string>
+    <string name="redeemGift_paste_subtitle">Paste the link that came with your Zcash gift card. You will see the amount before you redeem it.</string>
+    <string name="redeemGift_paste_label">Gift card link</string>
+    <string name="redeemGift_paste_placeholder">Paste link here</string>
+    <string name="redeemGift_paste_paste">Paste</string>
+    <string name="redeemGift_paste_clear">Clear</string>
+    <string name="redeemGift_paste_invalid">This link is not a valid gift card. Check it and try again.</string>
+    <string name="redeemGift_paste_continue">Continue</string>
+    <string name="redeemGift_checking_title">Looking for your gift…</string>
+    <string name="redeemGift_checking_subtitle">Checking your gift card. This can take a moment.</string>
+    <string name="redeemGift_ready_title">You received a gift!</string>
+    <string name="redeemGift_ready_messageLabel">Message from the sender</string>
+    <string name="redeemGift_ready_disclaimer">The funds will be sent to your <xliff:g id="wallet" example="Zodl">%1$s</xliff:g> wallet. The network fee is already deducted from the amount shown.</string>
+    <string name="redeemGift_ready_disclaimer_noWallet">The network fee is already deducted from the amount shown.</string>
+    <!-- The memo on the redeem transaction; followed by " · " and the card's message when it has one -->
+    <string name="redeemGift_memo">Gift Card</string>
+    <string name="redeemGift_redeem">Redeem</string>
+    <string name="redeemGift_pending_title">Preparing your gift…</string>
+    <string name="redeemGift_pending_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> needs a few more confirmations before it can be redeemed. We\'ll keep checking while this screen is open.</string>
+    <string name="redeemGift_empty_title">Nothing to redeem</string>
+    <string name="redeemGift_empty_subtitle">This gift card was already redeemed, or hasn\'t been funded yet. Try again in a few minutes.</string>
+    <string name="redeemGift_empty_subtitle_dust">This gift card holds too little to cover the network fee, so there\'s nothing to redeem.</string>
+    <string name="redeemGift_invalid_title">Invalid gift card</string>
+    <string name="redeemGift_invalid_subtitle">This link isn\'t a valid gift card. Check the link and try again.</string>
+    <string name="redeemGift_wrongNetwork_title">Wrong network</string>
+    <string name="redeemGift_wrongNetwork_subtitle">This gift card was made for a different Zcash network than this wallet.</string>
+    <string name="redeemGift_linkUnavailable_title">Open the gift card again</string>
+    <string name="redeemGift_linkUnavailable_subtitle">The gift card link is no longer available. Scan its QR code or open its link again.</string>
+    <string name="redeemGift_notAvailable_title">Not available yet</string>
+    <string name="redeemGift_notAvailable_subtitle">Redeeming gift cards isn\'t available in this version of the app.</string>
+    <string name="redeemGift_checkFailed_title">Couldn\'t check your gift</string>
+    <string name="redeemGift_checkFailed_subtitle">Something went wrong while checking the gift card. Check your connection and try again.</string>
+    <string name="redeemGift_redeeming_title">Redeeming your gift…</string>
+    <string name="redeemGift_redeeming_subtitle">Sending the gift card\'s funds to your wallet.</string>
+    <string name="redeemGift_success_title">Gift redeemed!</string>
+    <string name="redeemGift_success_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> is on its way to your wallet.\nIt will show up in your activity shortly.</string>
+    <string name="redeemGift_success_subtitle_noAmount">Your gift is on its way to your wallet.\nIt will show up in your activity shortly.</string>
+    <string name="redeemGift_failure_title">Redemption not confirmed</string>
+    <string name="redeemGift_failure_subtitle">We couldn\'t confirm redemption. Tap Try again to check the card\'s current status.</string>
+    <string name="redeemGift_retry">Try again</string>
+    <string name="redeemGift_checkAgain">Check again</string>
 
     <!-- ===== request ===== -->
     <string name="zecKeyboard_invalid">This transaction amount is invalid</string>
@@ -605,6 +718,7 @@
     <string name="scan_invalidImage">This image doesn`t contain a valid Zcash address.</string>
     <string name="scan_severalCodesFound">This image contains several valid Zcash addresses.</string>
     <string name="scan_torch_content_description">Camera torch toggle</string>
+    <string name="scan_pasteLink">Paste link</string>
     <string name="gallery_content_description">Gallery</string>
     <string name="deeplinkWarning_screenTitle">Hello!</string>
     <string name="deeplinkWarning_title">Looks like you used a third-party app to scan for payment.</string>
@@ -674,6 +788,10 @@
 
     <!-- ===== send_confirmation ===== -->
     <string name="send_confirmationTitle">Confirmation</string>
+    <string name="send_orchardWarning_title">This send requires spending Orchard funds</string>
+    <string name="send_orchardWarning_message">We recommend migrating your funds first to avoid leaking the transaction amount on-chain.</string>
+    <string name="send_orchardWarning_continue">Continue anyway</string>
+    <string name="send_orchardWarning_cancel">Cancel</string>
     <string name="send_amountSummary">Total Amount</string>
     <string name="accounts_sendingFrom">Send from</string>
     <string name="send_confirmation_sending_title">Sending…</string>
@@ -720,6 +838,11 @@
         code: <xliff:g example="123" id="code">%3$d</xliff:g>,
         description: <xliff:g example="Network unreachable" id="desc">%4$s</xliff:g>
     </string>
+    <string name="send_confirmation_report_status_presubmission_failure" formatted="true">Failure before transaction
+        submission (no gRPC call was made):
+        <xliff:g example="IOException" id="type">%1$s</xliff:g>:
+        <xliff:g example="Failed to download Sapling parameters" id="detail">%2$s</xliff:g>
+    </string>
     <string name="send_confirmation_multiple_trx_failure_report_unable_open_email">Unable to launch email app.</string>
     <string name="send_confirmation_multiple_trx_failure_copy_tag">Transaction IDs</string>
     <string name="swapAndPay_successSwapInfo">You successfully initiated a swap.\nFollow its status on the transaction screen.</string>
@@ -745,7 +868,7 @@
     <string name="settings_version">Version <xliff:g example="1" id="version">%s</xliff:g></string>
     <string name="settings_addressBook">Address Book</string>
     <string name="settings_whats_new">What\'s New</string>
-    <string name="settings_coinholderPolling" translatable="false">Beta: Coinholder Polling</string>
+    <string name="settings_coinholderPolling" tools:ignore="MissingTranslation">Beta: Coinholder Polling</string>
     <string name="settings_troubleshooting_menu_content_description">Additional settings</string>
     <string name="settings_troubleshooting_rescan">Rescan blockchain</string>
     <string name="settings_troubleshooting_enable_background_sync">Background sync</string>
@@ -762,32 +885,33 @@
     <string name="sign_keystone_transaction_bottom_sheet_subtitle">Rejecting the signature will cancel the transaction, and you’ll need to start over if you want to proceed. This action cannot be undone.</string>
     <string name="keystoneTransactionReject_goBack">Go back</string>
     <string name="keystoneTransactionReject_rejectSig">Reject Signature</string>
-    <string name="coinVote_common_confirmation" translatable="false">Confirmation</string>
-    <string name="coinVote_delegationSigning_instruction" translatable="false">After you have signed with Keystone, tap on the Scan Signature button below.</string>
-    <string name="coinVote_delegationSigning_scanSignature" translatable="false">Scan Signature</string>
-    <string name="sign_keystone_voting_error_title" translatable="false">Unable to prepare Keystone signing</string>
-    <string name="sign_keystone_voting_error_skip_remaining" translatable="false">Unable to skip remaining Keystone bundles.</string>
-    <string name="sign_keystone_voting_error_no_account" translatable="false">No selected Keystone account is available.</string>
-    <string name="sign_keystone_voting_error_prepare_request" translatable="false">Failed to prepare the Keystone signing request.</string>
-    <string name="scan_keystone_voting_rejected_title" translatable="false">Signature not accepted</string>
-    <string name="coinVote_delegationSigning_duplicateSignature" translatable="false">That Keystone signature was already scanned for bundle %1$d of %2$d. Sign the current bundle on Keystone, then scan the new QR.</string>
-    <string name="coinVote_delegationSigning_wrongSignature" translatable="false">That signature is for a different bundle. Sign bundle %1$d of %2$d on Keystone, then scan the new QR.</string>
-    <string name="sign_keystone_voting_skip_remaining_bundle" translatable="false">Skip remaining bundle</string>
+    <string name="coinVote_common_confirmation" tools:ignore="MissingTranslation">Confirmation</string>
+    <string name="coinVote_delegationSigning_instruction" tools:ignore="MissingTranslation" translatable="false">After you have signed with Keystone, tap on the Scan Signature button below.</string>
+    <string name="coinVote_delegationSigning_scanSignature" tools:ignore="MissingTranslation" translatable="false">Scan Signature</string>
+    <string name="sign_keystone_voting_error_title" tools:ignore="MissingTranslation" translatable="false">Unable to prepare Keystone signing</string>
+    <string name="sign_keystone_voting_error_skip_remaining" tools:ignore="MissingTranslation" translatable="false">Unable to skip remaining Keystone bundles.</string>
+    <string name="sign_keystone_voting_error_no_account" tools:ignore="MissingTranslation" translatable="false">No selected Keystone account is available.</string>
+    <string name="sign_keystone_voting_error_prepare_request" tools:ignore="MissingTranslation" translatable="false">Failed to prepare the Keystone signing request.</string>
+    <string name="scan_keystone_voting_rejected_title" tools:ignore="MissingTranslation" translatable="false">Signature not accepted</string>
+    <string name="coinVote_delegationSigning_duplicateSignature" tools:ignore="MissingTranslation" translatable="false">That Keystone signature was already scanned for bundle %1$d of %2$d. Sign the current bundle on Keystone, then scan the new QR.</string>
+    <string name="coinVote_delegationSigning_wrongSignature" tools:ignore="MissingTranslation" translatable="false">That signature is for a different bundle. Sign bundle %1$d of %2$d on Keystone, then scan the new QR.</string>
+    <string name="sign_keystone_voting_skip_remaining_bundle" tools:ignore="MissingTranslation" translatable="false">Skip remaining bundle</string>
     <string name="sign_keystone_voting_skip_remaining_bundles" translatable="false" tools:ignore="PluralsCandidate">Skip %1$d remaining bundles</string>
-    <string name="sign_keystone_voting_skip_remaining_title" translatable="false">Skip remaining bundles?</string>
-    <string name="sign_keystone_voting_skip_remaining_message" translatable="false">You will submit with %1$s signed and give up %2$s from the unsigned bundles.</string>
-    <string name="sign_keystone_voting_skip_remaining_confirm" translatable="false">Skip Remaining</string>
-    <string name="coinVote_delegationSigning_title" translatable="false">Authorize Vote</string>
-    <string name="coinVote_delegationSigning_currentBundleProgress" translatable="false">Signature %1$d of %2$d</string>
+    <string name="sign_keystone_voting_skip_remaining_title" tools:ignore="MissingTranslation" translatable="false">Skip remaining bundles?</string>
+    <string name="sign_keystone_voting_skip_remaining_message" tools:ignore="MissingTranslation" translatable="false">You will submit with %1$s signed and give up %2$s from the unsigned bundles.</string>
+    <string name="sign_keystone_voting_skip_remaining_confirm" tools:ignore="MissingTranslation" translatable="false">Skip Remaining</string>
+    <string name="coinVote_delegationSigning_title" tools:ignore="MissingTranslation" translatable="false">Authorize Vote</string>
+    <string name="coinVote_delegationSigning_currentBundleProgress" tools:ignore="MissingTranslation" translatable="false">Signature %1$d of %2$d</string>
     <string name="authorize_vote_signed_badge" translatable="false" tools:ignore="PluralsCandidate">%1$d of %2$d signed</string>
-    <string name="authorize_vote_zec_signed" translatable="false">%1$s signed</string>
-    <string name="authorize_vote_zec_awaiting" translatable="false">%1$s awaiting</string>
-    <string name="coinVote_delegationSigning_useSignedBundlesOnly" translatable="false">Use signed bundles only</string>
-    <string name="authorize_vote_use_signed_bundles_only_subtitle" translatable="false">Continue without the remaining %1$s</string>
-    <string name="coinVote_delegationSigning_memo" translatable="false">Memo</string>
+    <string name="authorize_vote_zec_signed" tools:ignore="MissingTranslation" translatable="false">%1$s signed</string>
+    <string name="authorize_vote_zec_awaiting" tools:ignore="MissingTranslation" translatable="false">%1$s awaiting</string>
+    <string name="coinVote_delegationSigning_useSignedBundlesOnly" tools:ignore="MissingTranslation" translatable="false">Use signed bundles only</string>
+    <string name="authorize_vote_use_signed_bundles_only_subtitle" tools:ignore="MissingTranslation" translatable="false">Continue without the remaining %1$s</string>
+    <string name="coinVote_delegationSigning_memo" tools:ignore="MissingTranslation" translatable="false">Memo</string>
 
     <!-- ===== swap ===== -->
-    <string name="swap_info_message">Swap %1$s with any NEAR-supported token.\n\nIf swapping TO %2$s, you will send funds from a 3rd party wallet and provide an address where change can be refunded.\n\nIf swapping FROM %3$s, you must provide a valid address for the asset you are swapping to.</string>
+    <string name="swap_info_message">Swap between %1$s and any NEAR-supported coin or token.\n\nIf swapping TO %2$s, you will send funds from a third-party wallet and provide an address where funds can be refunded.\n\nRefunds only apply to swaps of $300 or more. Swaps under $300 aren\'t eligible for a refund if the wrong asset is sent, or sent on the wrong network.\n\nIf swapping FROM %3$s, you must provide a valid address for the asset you are swapping to.</string>
+    <string name="swap_info_learn_more">Learn more</string>
     <string name="swapAndPay_help_swapWith">Swap with</string>
     <string name="swap_select_token">Select Token</string>
     <string name="swapAndPay_search">Search by name or ticker…</string>
@@ -813,6 +937,8 @@
     <string name="swap_cancel_positive">Don\’t cancel</string>
     <string name="swap_quote_error_too_low_try_at_least">Amount is too low for bridge, try at least %s</string>
     <string name="swap_quote_error_too_low_try_higher">Amount is too low for bridge, try higher amount.</string>
+    <string name="swap_error_giftCardLink">Gift card links can\'t be used as swap addresses. Use Redeem Gift Card instead.</string>
+    <string name="contact_error_giftCardLink">Gift card links can\'t be saved as contacts. Use Redeem Gift Card instead.</string>
     <string name="swap_quoteUnavailable">We tried but couldn\’t get a quote for a payment with your parameters. You can try to adjust the slippage or try again later.</string>
     <string name="swap_quoteUnavailableSwap">We tried but couldn\’t get a quote for a swap with your parameters. You can try to adjust the slippage or try again later.</string>
     <string name="swapAndPay_quoteUnavailable">Quote Unavailable</string>
@@ -826,7 +952,6 @@
     <string name="swapAndPay_totalFees">Total fees</string>
     <string name="swapAndPay_maxSlippage">Max slippage %s</string>
     <string name="swapAndPay_totalAmount">Total Amount</string>
-    <string name="swapAndPay_quote_zashi">Zodl</string>
     <string name="swapAndPay_swapQuoteSlippageWarn">You could receive up to %s less based on the %s slippage you set.</string>
     <string name="swapAndPay_getQuote">Get a quote</string>
     <string name="swapAndPay_custom">Custom</string>
@@ -838,8 +963,13 @@
     <string name="swap_to_zec_share_text">Deposit address for %1$s %2$s on %3$s swap to %4$s in Zodl</string>
     <string name="swapToZec_refundAddress">Refund Address</string>
     <string name="swapToZec_refundAddress_title">Refund Address</string>
-    <string name="swap_refund_address_info_message_empty">If the swap fails or market conditions change, your transaction may be refunded minus the transaction fees.\n\nThe refunded amount will be returned to your wallet in the source currency. Please enter a valid address to avoid loss of funds.</string>
-    <string name="swap_refund_address_info_message">If the swap fails or market conditions change, your transaction may be refunded minus the transaction fees.\n\nThe refunded amount will be returned to your wallet in the source currency - %s on %s. Please enter a valid address to avoid loss of funds.</string>
+    <string name="swap_refund_address_info_message_empty">If the swap fails or market conditions change, your transaction may be refunded minus network fees.\n\nRefunds only apply to swaps of $300 or more. Swaps under $300 aren\'t eligible for a refund.\n\nThe refunded amount will be returned to your wallet in the source currency. Please enter a valid address to avoid loss of funds.</string>
+    <string name="swap_refund_address_info_message">If the swap fails or market conditions change, your transaction may be refunded minus network fees.\n\nRefunds only apply to swaps of $300 or more. Swaps under $300 aren\'t eligible for a refund.\n\nThe refunded amount will be returned to your wallet in the source currency on the same network. Please enter a valid address to avoid loss of funds.</string>
+    <string name="swap_refund_warning_title">No Refunds Under $300</string>
+    <string name="swap_refund_warning_message_swap">NEAR doesn\'t refund mistakes like a wrong asset or wrong network for swaps under $300. Please double-check all details before continuing.</string>
+    <string name="swap_refund_warning_message_pay">NEAR doesn\'t refund mistakes like a wrong asset or wrong network for payments under $300. Please double-check all details before continuing.</string>
+    <string name="swap_refund_warning_checkbox">Don\'t show this message again</string>
+    <string name="swap_refund_warning_continue">Continue</string>
     <string name="swapToZec_swapDetails">Swap Details</string>
     <string name="swapToZec_depositTo">Deposit to</string>
     <string name="swapStatus_swapExpired">Swap Expired</string>
@@ -866,6 +996,7 @@
     <!-- ===== tex_unsupported ===== -->
     <string name="texKeystone_title">Unsupported Address Type</string>
     <string name="texKeystone_warn1">Keystone doesn\'t currently support transfers to Binance TEX addresses.</string>
+    <string name="texLedger_warn1">Ledger doesn\'t currently support transfers to Binance TEX addresses.</string>
     <string name="texKeystone_warn2">Please use the steps below to complete your transaction.</string>
     <string name="texKeystone_workaround">Workaround Steps</string>
     <string name="tex_unsupported_step_1_badge">Step 1</string>
@@ -904,6 +1035,12 @@
     <string name="transactionHistory_sendAgain">Send again</string>
     <string name="transaction_sent">Sent</string>
     <string name="transaction_sending">Sending</string>
+    <string name="transaction_noteSplit">Balance Split</string>
+    <string name="transaction_noteSplitting">Splitting Balance</string>
+    <string name="transaction_noteSplitFailed">Balance Split Failed</string>
+    <string name="transaction_migrated">Migrated</string>
+    <string name="transaction_migrating">Migrating</string>
+    <string name="transaction_migrationFailed">Migration Failed</string>
     <string name="transaction_received">Received</string>
     <string name="transaction_receiving">Receiving</string>
     <string name="transaction_failedReceive">Receive failed</string>
@@ -930,6 +1067,31 @@
     <string name="reportSwap_msg">Tapping the button below will send details about this swap (like the deposit address and target asset) to the Zodl support team so they can help resolve your issue. The transaction info is included automatically.</string>
     <string name="transaction_detail_support_email_subject">Swap Transaction Issue</string>
     <string name="transaction_detail_support_email_body">Please describe your issue here:\n\n\n\nSwap Details:\nDeposit Address: %1$s\nSource Asset: %2$s\nTarget Asset: %3$s</string>
+    <string name="swap_mismatch_title">Swap details didn\’t match</string>
+    <string name="swap_mismatch_msg_1">We received a quote back from the swap provider, however, it didn\’t match some details you provided. We make this check to ensure your swap is what you expect.</string>
+    <string name="swap_mismatch_msg_2">We\’d appreciate you reporting this to us so we can investigate it with the swap provider.</string>
+    <string name="swap_mismatch_msg_3">Reported or not, you can also try again. If the details match, you won\’t see this screen and you\’ll be able to proceed.</string>
+    <string name="swap_mismatch_goBack">Go back</string>
+    <string name="swap_mismatch_support_email_subject">Zodl Swap: API mismatch</string>
+    <string name="swap_mismatch_support_email_body">Zodl detected the following error in the API response from the swap provider. Providing these details allows us to raise it with them to investigate. We won\’t relay your personal details to the swap provider. You can send this as-is, or include a note to us. Thanks in advance.\n\nSwap provider: %1$s\nSwap type: %2$s\nMismatch type: %3$s\nQuote ID: %4$s</string>
+    <string name="swap_mismatch_mode_swap">Swap</string>
+    <string name="swap_mismatch_mode_crosspay">CrossPay</string>
+    <string name="swap_mismatch_mode_swapIntoZec">Swap into ZEC</string>
+    <string name="swap_mismatch_type_recipientAddress">Recipient address</string>
+    <string name="swap_mismatch_type_refundAddress">Refund address</string>
+    <string name="swap_mismatch_type_originAsset">Origin asset</string>
+    <string name="swap_mismatch_type_destinationAsset">Destination asset</string>
+    <string name="swap_mismatch_type_swapType">Swap type</string>
+    <string name="swap_mismatch_type_slippageTolerance">Slippage tolerance</string>
+    <string name="swap_mismatch_type_inputAmount">Input amount</string>
+    <string name="swap_mismatch_type_outputAmount">Output amount</string>
+    <string name="swap_mismatch_type_requestedAmount">Requested amount</string>
+    <string name="swap_mismatch_type_slippageExceeded">Slippage exceeded</string>
+    <string name="swap_mismatch_type_nonPositiveAmount">Non-positive amount</string>
+    <string name="swap_mismatch_provider_near">NEAR</string>
+    <string name="swap_mismatch_quoteId_unknown">unknown</string>
+    <string name="swap_mismatch_swapType_format">%1$s - %2$s &gt; %3$s</string>
+    <string name="swap_mismatch_asset_format">%1$s (%2$s)</string>
     <string name="deposits_info">Deposits may take several minutes to confirm.</string>
     <string name="swapAndPay_status_incompleteDeposit">Incomplete deposit</string>
     <string name="swapAndPay_status_pending">Pending</string>
@@ -975,6 +1137,9 @@
     <string name="filter_search">Search</string>
     <string name="transaction_history_sending">Sending…</string>
     <string name="transaction_history_sending_failed">Sending failed</string>
+    <string name="transaction_history_noteSplitting">Splitting Balance…</string>
+    <string name="transaction_history_noteSplitFailed">Split Failed</string>
+    <string name="transaction_history_migrating">Migrating…</string>
     <string name="transaction_history_receiving">Receiving…</string>
     <string name="transaction_history_receiving_failed">Receiving failed</string>
     <string name="transaction_history_shielding">Shielding…</string>
@@ -1010,211 +1175,220 @@
     <string name="addressBook_alert_message">You are about to delete this contact. This cannot be undone.</string>
 
     <!-- ===== voting ===== -->
-    <string name="coinVote_common_screenTitle" translatable="false">Coinholder Polling</string>
-    <string name="coinVote_common_continue" translatable="false">Continue</string>
-    <string name="coinVote_pollsList_chainConfigAccessibility" translatable="false">Voting chain config</string>
-    <string name="coinVote_configSettings_screenTitle" translatable="false">Select Data Source</string>
-    <string name="coinVote_configSettings_sectionTitle" translatable="false">Poll Data Source</string>
-    <string name="coinVote_configSettings_sectionSubtitle" translatable="false">Pick a poll source, or add your own.</string>
-    <string name="coinVote_configSettings_bundledName" translatable="false">Coinholder Poll</string>
-    <string name="coinVote_configSettings_defaultBadge" translatable="false">Default</string>
-    <string name="vote_chain_config_custom_empty" translatable="false">No custom chains yet.</string>
-    <string name="vote_chain_config_add" translatable="false">Add</string>
-    <string name="coinVote_configSettings_addCustomSource" translatable="false">Add custom source</string>
-    <string name="coinVote_configSettings_edit" translatable="false">Edit</string>
-    <string name="coinVote_configSettings_delete" translatable="false">Delete</string>
-    <string name="coinVote_common_cancel" translatable="false">Cancel</string>
-    <string name="coinVote_configSettings_save" translatable="false">Save</string>
-    <string name="coinVote_configSettings_saveChanges" translatable="false">Save changes</string>
-    <string name="coinVote_configSettings_toolbarAdd" translatable="false">Add Source</string>
-    <string name="coinVote_configSettings_toolbarEdit" translatable="false">Edit Source</string>
-    <string name="coinVote_configSettings_headerAddTitle" translatable="false">Add Custom Source</string>
-    <string name="coinVote_configSettings_headerEditTitle" translatable="false">Edit Custom Source</string>
-    <string name="coinVote_configSettings_headerAddBody" translatable="false">Add a poll source that isn\'t listed by default. You\'ll need a valid chain URL from the provider hosting the poll.</string>
-    <string name="coinVote_configSettings_headerEditBody" translatable="false">Update the title or URL for this custom poll source. You\'ll need a valid chain URL from the provider hosting the poll.</string>
-    <string name="coinVote_configSettings_titleField" translatable="false">Title</string>
-    <string name="coinVote_configSettings_urlField" translatable="false">URL</string>
-    <string name="coinVote_configSettings_urlPlaceholder" translatable="false">Enter...</string>
-    <string name="vote_chain_config_error_title" translatable="false">Invalid Source</string>
-    <string name="vote_chain_config_error_name_required" translatable="false">Enter a title for this source.</string>
-    <string name="coinVote_configSettings_errorTitleTooLong" translatable="false">Title must be 15 characters or less, including spaces.</string>
-    <string name="vote_chain_config_error_url_required" translatable="false">Enter a static config HTTPS URL.</string>
-    <string name="coinVote_configSettings_errorInvalidUrl" translatable="false">Please enter a valid URL (e.g. https://zodl.com/polls)</string>
-    <string name="vote_chain_config_error_duplicate_default" translatable="false">That URL is the default source. Select Default instead.</string>
-    <string name="coinVote_configSettings_errorDuplicateUrl" translatable="false">This source URL is already added.</string>
-    <string name="vote_chain_config_error_validation_failed" translatable="false">Unable to validate this source. Check the URL and checksum, then try again.</string>
-    <string name="coinVote_howToVote_titleZodl" translatable="false">How to vote with %1$s</string>
-    <string name="coinVote_howToVote_subtitle" translatable="false">Your ZEC gives you a voice. Shape the future of the Zcash network by voting on active proposals.</string>
-    <string name="coinVote_howToVote_stepVotingTitle" translatable="false">Voting on Proposals</string>
-    <string name="coinVote_howToVote_stepVotingBody" translatable="false">Vote on each question by selecting an answer. You can skip questions and update your choices anytime before submitting.</string>
-    <string name="coinVote_howToVote_stepAuthorizeTitle" translatable="false">Authorize and Submit</string>
-    <string name="coinVote_howToVote_stepAuthorizeBody" translatable="false">When you\'re ready, you\'ll confirm a small authorization transaction and submit your vote in one step. After submission, your vote cannot be changed.</string>
-    <string name="coinVote_howToVote_infoCard" translatable="false">Your balance at the snapshot time determines your voting weight. You don\'t need to move your funds anywhere.</string>
-    <string name="coinVote_pollsList_emptyTitle" translatable="false">No Polls Right Now</string>
-    <string name="coinVote_pollsList_emptyMessage" translatable="false">There aren\'t any active polls at the moment. Check back later.</string>
-    <string name="coinVote_common_gotIt" translatable="false">Got it</string>
-    <string name="coinVote_common_refresh" translatable="false">Refresh</string>
-    <string name="coinVote_common_pollDescription" translatable="false">Poll Description</string>
-    <string name="coinVote_pollsList_statusActive" translatable="false">Active</string>
-    <string name="coinVote_common_voted" translatable="false">Voted</string>
-    <string name="coinVote_pollsList_statusClosed" translatable="false">Closed</string>
-    <string name="coinVote_pollsList_approvedByZodl" translatable="false">Approved by Zodl</string>
-    <string name="coinVote_pollsList_unverifiedSheetTitle" translatable="false">Unverified Poll</string>
-    <string name="coinVote_pollsList_dateCloses" translatable="false">Closes %1$s</string>
-    <string name="coinVote_pollsList_dateClosed" translatable="false">Closed %1$s</string>
-    <string name="coinVote_pollsList_enterPoll" translatable="false">Enter Poll</string>
-    <string name="coinVote_proposalList_ctaReviewAnswers" translatable="false">Review</string>
-    <string name="coinVote_common_viewResults" translatable="false">View Results</string>
-    <string name="coinVote_delegationSigning_signedProgress" translatable="false">%1$d of %2$d voted</string>
-    <string name="coinVote_pollsList_loadErrorTitle" translatable="false">Couldn\'t load polls</string>
-    <string name="vote_error_unable_to_load_polls_message" translatable="false">Could not fetch voting rounds. Please try again.</string>
-    <string name="vote_error_confirmation_unavailable_title" translatable="false">Confirmation unavailable</string>
-    <string name="vote_error_confirmation_unavailable_message" translatable="false">Could not load poll details. Please try again.</string>
-    <string name="vote_error_proposal_unavailable_title" translatable="false">Proposal unavailable</string>
-    <string name="vote_error_proposal_unavailable_message" translatable="false">Could not load proposal. Please try again.</string>
-    <string name="coinVote_error_configUnavailableTitle" translatable="false">Voting unavailable</string>
-    <string name="vote_error_voting_unavailable_message" translatable="false">Could not load voting proposals. Please try again.</string>
-    <string name="coinVote_results_loadErrorTitle" translatable="false">Couldn\'t load results</string>
-    <string name="vote_error_results_unavailable_message" translatable="false">Could not load voting results. Please try again.</string>
-    <string name="vote_error_unable_to_load_round_title" translatable="false">Unable to load round</string>
-    <string name="vote_error_unable_to_load_round_message" translatable="false">Could not fetch voting round data. Please try again.</string>
-    <string name="vote_error_something_went_wrong_message" translatable="false">We couldn\'t connect to the voting service. Please try again later, or contact support if the issue persists.</string>
-    <string name="vote_error_wallet_update_required" translatable="false">Wallet Update Required</string>
-    <string name="vote_error_insufficient_funds_message" translatable="false">You don\'t have enough ZEC to cover the transaction fee. Add funds to your wallet and try again.</string>
-    <string name="coinVote_common_goBack" translatable="false">Go Back</string>
-    <string name="coinVote_confirmSubmission_authorizationFailedTitle" translatable="false">Authorization Failed</string>
-    <string name="coinVote_confirmSubmission_authorizationFailedMessage" translatable="false">We couldn\'t authorize your vote. Check your connection and try again.</string>
-    <string name="coinVote_pollClosedSheet_title" translatable="false">Poll Closed</string>
-    <string name="coinVote_pollClosedSheet_message" translatable="false">The voting period has ended.
+    <string name="coinVote_common_screenTitle" tools:ignore="MissingTranslation">Coinholder Polling</string>
+    <string name="coinVote_common_continue" tools:ignore="MissingTranslation">Continue</string>
+    <string name="coinVote_pollsList_chainConfigAccessibility" tools:ignore="MissingTranslation">Voting chain config</string>
+    <string name="coinVote_configSettings_screenTitle" tools:ignore="MissingTranslation">Select Data Source</string>
+    <string name="coinVote_configSettings_sectionTitle" tools:ignore="MissingTranslation">Poll Data Source</string>
+    <string name="coinVote_configSettings_sectionSubtitle" tools:ignore="MissingTranslation">Pick a poll source, or add your own.</string>
+    <string name="coinVote_configSettings_bundledName" tools:ignore="MissingTranslation">Coinholder Poll</string>
+    <string name="coinVote_configSettings_defaultBadge" tools:ignore="MissingTranslation">Default</string>
+    <string name="vote_chain_config_custom_empty" tools:ignore="MissingTranslation">No custom chains yet.</string>
+    <string name="vote_chain_config_add" tools:ignore="MissingTranslation">Add</string>
+    <string name="coinVote_configSettings_addCustomSource" tools:ignore="MissingTranslation">Add custom source</string>
+    <string name="coinVote_configSettings_edit" tools:ignore="MissingTranslation">Edit</string>
+    <string name="coinVote_configSettings_delete" tools:ignore="MissingTranslation">Delete</string>
+    <string name="coinVote_common_cancel" tools:ignore="MissingTranslation">Cancel</string>
+    <string name="coinVote_configSettings_save" tools:ignore="MissingTranslation">Save</string>
+    <string name="coinVote_configSettings_saveChanges" tools:ignore="MissingTranslation">Save changes</string>
+    <string name="coinVote_configSettings_toolbarAdd" tools:ignore="MissingTranslation">Add Source</string>
+    <string name="coinVote_configSettings_toolbarEdit" tools:ignore="MissingTranslation">Edit Source</string>
+    <string name="coinVote_configSettings_headerAddTitle" tools:ignore="MissingTranslation">Add Custom Source</string>
+    <string name="coinVote_configSettings_headerEditTitle" tools:ignore="MissingTranslation">Edit Custom Source</string>
+    <string name="coinVote_configSettings_headerAddBody" tools:ignore="MissingTranslation">Add a poll source that isn\'t listed by default. You\'ll need a valid chain URL from the provider hosting the poll.</string>
+    <string name="coinVote_configSettings_headerEditBody" tools:ignore="MissingTranslation">Update the title or URL for this custom poll source. You\'ll need a valid chain URL from the provider hosting the poll.</string>
+    <string name="coinVote_configSettings_titleField" tools:ignore="MissingTranslation">Title</string>
+    <string name="coinVote_configSettings_urlField" tools:ignore="MissingTranslation">URL</string>
+    <string name="coinVote_configSettings_urlPlaceholder" tools:ignore="MissingTranslation">Enter...</string>
+    <string name="vote_chain_config_error_title" tools:ignore="MissingTranslation">Invalid Source</string>
+    <string name="vote_chain_config_error_name_required" tools:ignore="MissingTranslation">Enter a title for this source.</string>
+    <string name="coinVote_configSettings_errorTitleTooLong" tools:ignore="MissingTranslation">Title must be 15 characters or less, including spaces.</string>
+    <string name="vote_chain_config_error_url_required" tools:ignore="MissingTranslation">Enter a static config HTTPS URL.</string>
+    <string name="coinVote_configSettings_errorInvalidUrl" tools:ignore="MissingTranslation">Please enter a valid URL (e.g. https://zodl.com/polls)</string>
+    <string name="vote_chain_config_error_duplicate_default" tools:ignore="MissingTranslation">That URL is the default source. Select Default instead.</string>
+    <string name="coinVote_configSettings_errorDuplicateUrl" tools:ignore="MissingTranslation">This source URL is already added.</string>
+    <string name="vote_chain_config_error_validation_failed" tools:ignore="MissingTranslation">Unable to validate this source. Check the URL and checksum, then try again.</string>
+    <string name="coinVote_howToVote_titleZodl" tools:ignore="MissingTranslation">How to vote with %1$s</string>
+    <string name="coinVote_howToVote_subtitle" tools:ignore="MissingTranslation">Your ZEC gives you a voice. Shape the future of the Zcash network by voting on active proposals.</string>
+    <string name="coinVote_howToVote_stepVotingTitle" tools:ignore="MissingTranslation">Voting on Proposals</string>
+    <string name="coinVote_howToVote_stepVotingBody" tools:ignore="MissingTranslation">Vote on each question by selecting an answer. You can skip questions and update your choices anytime before submitting.</string>
+    <string name="coinVote_howToVote_stepAuthorizeTitle" tools:ignore="MissingTranslation">Authorize and Submit</string>
+    <string name="coinVote_howToVote_stepAuthorizeBody" tools:ignore="MissingTranslation">When you\'re ready, you\'ll confirm a small authorization transaction and submit your vote in one step. After submission, your vote cannot be changed.</string>
+    <string name="coinVote_howToVote_infoCard" tools:ignore="MissingTranslation">Your balance at the snapshot time determines your voting weight. You don\'t need to move your funds anywhere.</string>
+    <string name="coinVote_pollsList_emptyTitle" tools:ignore="MissingTranslation">No Polls Right Now</string>
+    <string name="coinVote_pollsList_emptyMessage" tools:ignore="MissingTranslation">There aren\'t any active polls at the moment. Check back later.</string>
+    <string name="coinVote_common_gotIt" tools:ignore="MissingTranslation">Got it</string>
+    <string name="coinVote_common_refresh" tools:ignore="MissingTranslation">Refresh</string>
+    <string name="coinVote_common_pollDescription" tools:ignore="MissingTranslation">Poll Description</string>
+    <string name="coinVote_pollsList_statusActive" tools:ignore="MissingTranslation">Active</string>
+    <string name="coinVote_common_voted" tools:ignore="MissingTranslation">Voted</string>
+    <string name="coinVote_pollsList_statusClosed" tools:ignore="MissingTranslation">Closed</string>
+    <string name="coinVote_pollsList_approvedByZodl" tools:ignore="MissingTranslation">Approved by Zodl</string>
+    <string name="coinVote_pollsList_unverifiedSheetTitle" tools:ignore="MissingTranslation">Unverified Poll</string>
+    <string name="coinVote_pollsList_customServerNotPrivate">Custom server · not private</string>
+    <string name="coinVote_pollsList_dateCloses" tools:ignore="MissingTranslation">Closes %1$s</string>
+    <string name="coinVote_pollsList_dateClosed" tools:ignore="MissingTranslation">Closed %1$s</string>
+    <string name="coinVote_pollsList_enterPoll" tools:ignore="MissingTranslation">Enter Poll</string>
+    <string name="coinVote_proposalList_ctaReviewAnswers" tools:ignore="MissingTranslation">Review</string>
+    <string name="coinVote_common_viewResults" tools:ignore="MissingTranslation">View Results</string>
+    <string name="coinVote_delegationSigning_signedProgress" tools:ignore="MissingTranslation">%1$d of %2$d voted</string>
+    <string name="coinVote_pollsList_loadErrorTitle" tools:ignore="MissingTranslation">Couldn\'t load polls</string>
+    <string name="vote_error_unable_to_load_polls_message" tools:ignore="MissingTranslation">Could not fetch voting rounds. Please try again.</string>
+    <string name="vote_error_confirmation_unavailable_title" tools:ignore="MissingTranslation">Confirmation unavailable</string>
+    <string name="vote_error_confirmation_unavailable_message" tools:ignore="MissingTranslation">Could not load poll details. Please try again.</string>
+    <string name="vote_error_proposal_unavailable_title" tools:ignore="MissingTranslation">Proposal unavailable</string>
+    <string name="vote_error_proposal_unavailable_message" tools:ignore="MissingTranslation">Could not load proposal. Please try again.</string>
+    <string name="coinVote_error_configUnavailableTitle" tools:ignore="MissingTranslation">Voting unavailable</string>
+    <string name="vote_error_voting_unavailable_message" tools:ignore="MissingTranslation">Could not load voting proposals. Please try again.</string>
+    <string name="coinVote_results_loadErrorTitle" tools:ignore="MissingTranslation">Couldn\'t load results</string>
+    <string name="vote_error_results_unavailable_message" tools:ignore="MissingTranslation">Could not load voting results. Please try again.</string>
+    <string name="vote_error_unable_to_load_round_title" tools:ignore="MissingTranslation">Unable to load round</string>
+    <string name="vote_error_unable_to_load_round_message" tools:ignore="MissingTranslation">Could not fetch voting round data. Please try again.</string>
+    <string name="vote_error_something_went_wrong_message" tools:ignore="MissingTranslation">We couldn\'t connect to the voting service. Please try again later, or contact support if the issue persists.</string>
+    <string name="vote_error_wallet_update_required" tools:ignore="MissingTranslation">Wallet Update Required</string>
+    <string name="vote_error_insufficient_funds_message" tools:ignore="MissingTranslation">You don\'t have enough ZEC to cover the transaction fee. Add funds to your wallet and try again.</string>
+    <string name="coinVote_common_goBack" tools:ignore="MissingTranslation">Go Back</string>
+    <string name="coinVote_confirmSubmission_authorizationFailedTitle" tools:ignore="MissingTranslation">Authorization Failed</string>
+    <string name="coinVote_confirmSubmission_authorizationFailedMessage" tools:ignore="MissingTranslation">We couldn\'t authorize your vote. Check your connection and try again.</string>
+    <string name="coinVote_pollClosedSheet_title" tools:ignore="MissingTranslation">Poll Closed</string>
+    <string name="coinVote_pollClosedSheet_message" tools:ignore="MissingTranslation">The voting period has ended.
 Your vote can no longer be submitted.</string>
-    <string name="coinVote_votingView_unverifiedPollTitle" translatable="false">Unverified Poll</string>
-    <string name="coinVote_votingView_unverifiedPollMessage" translatable="false">This poll hasn\'t been verified. We can\'t confirm its legitimacy or how results will be used.</string>
-    <string name="coinVote_pollsList_unverifiedSheetProceed" translatable="false">Proceed anyway</string>
-    <string name="coinVote_common_done" translatable="false">Done</string>
-    <string name="coinVote_common_dismiss" translatable="false">Dismiss</string>
-    <string name="coinVote_common_tryAgain" translatable="false">Try Again</string>
-    <string name="coinVote_common_close" translatable="false">Close</string>
-    <string name="coinVote_confirmSubmission_confirmWithKeystone" translatable="false">Confirm with Keystone</string>
-    <string name="coinVote_common_confirm" translatable="false">Confirm</string>
-    <string name="vote_confirm_cta_preparing" translatable="false">Preparing vote...</string>
-    <string name="vote_confirm_cta_resume_keystone_signing" translatable="false">Resume Keystone signing</string>
-    <string name="vote_confirm_cta_sign_keystone" translatable="false">Sign with Keystone</string>
-    <string name="coinVote_delegationSigning_bundleProgress" translatable="false">Sign bundle %1$d/%2$d</string>
-    <string name="coinVote_submission_continuedProcessingTitle" translatable="false">Submitting votes</string>
-    <string name="coinVote_confirmSubmission_progressAuthorizing" translatable="false">Authorizing...</string>
-    <string name="vote_confirm_cta_submitting" translatable="false">Submitting vote %1$d of %2$d</string>
-    <string name="coinVote_store_submissionAuthorizingVote" translatable="false">Authorizing vote...</string>
-    <string name="coinVote_confirmSubmission_progressSubmittingVoteCount" translatable="false">Submitting vote %1$d of %2$d...</string>
-    <string name="coinVote_results_percentValue" translatable="false">%1$d%%</string>
-    <string name="coinVote_common_submission" translatable="false">Submission</string>
-    <string name="coinVote_confirmSubmission_headerTitleIdle" translatable="false">Confirm &amp; Submit</string>
-    <string name="coinVote_confirmSubmission_headerTitleCompleted" translatable="false">Submission Confirmed!</string>
-    <string name="coinVote_confirmSubmission_submissionFailedTitle" translatable="false">Submission Failed</string>
-    <string name="coinVote_confirmSubmission_headerSubtitleIdleKeystone" translatable="false">Review before signing the voting authorization with your Keystone. This is final. Your vote will be published and cannot be changed.</string>
-    <string name="coinVote_confirmSubmission_headerSubtitleIdle" translatable="false">Review before confirming the voting authorization. This is final. Your vote will be published and cannot be changed.</string>
-    <string name="coinVote_confirmSubmission_headerSubtitleSubmitting" translatable="false">Vote submission is in progress, please don\'t leave this screen until it is finished.</string>
-    <string name="coinVote_confirmSubmission_headerSubtitleCompleted" translatable="false">Your vote was successfully published and cannot be changed.</string>
-    <string name="coinVote_confirmSubmission_submissionFailedMessage" translatable="false">Your vote couldn\'t be submitted. Check your connection and try again.</string>
-    <string name="vote_confirm_error_auth" translatable="false">Authorization transaction failed. Please try again.</string>
-    <string name="vote_confirm_error_no_choices" translatable="false">No vote choices are available to submit.</string>
-    <string name="vote_confirm_error_authentication" translatable="false">Authentication failed. Please try again.</string>
-    <string name="vote_confirm_preparing" translatable="false">Preparing...</string>
-    <string name="vote_confirm_memo_resume_keystone" translatable="false">Resume the pending Keystone signing request, then continue signing the remaining delegation bundles.</string>
-    <string name="vote_confirm_memo_sign_keystone" translatable="false">Sign each prepared delegation bundle with Keystone before submitting your votes.</string>
-    <string name="coinVote_delegationSigning_memoMessage" translatable="false">I am authorizing this hotkey managed by my wallet to vote on %1$s with %2$s.</string>
-    <string name="vote_confirm_memo_preparing" translatable="false">Your wallet is still preparing the voting authorization for this poll.</string>
-    <string name="coinVote_confirmSubmission_detailPoll" translatable="false">Poll</string>
-    <string name="coinVote_confirmSubmission_detailVotingPower" translatable="false">Voting power</string>
-    <string name="coinVote_confirmSubmission_detailVotingHotkey" translatable="false">Voting hotkey</string>
-    <string name="coinVote_confirmSubmission_detailMemo" translatable="false">Memo</string>
-    <string name="vote_delegation_signing_title" translatable="false">Delegation signing</string>
-    <string name="vote_delegation_signing_status_generating" translatable="false">Generating proof... %1$d%%</string>
-    <string name="vote_delegation_signing_status_complete" translatable="false">Proof complete - submitting delegation...</string>
-    <string name="vote_delegation_signing_status_ready" translatable="false">Ready to generate zero-knowledge proof</string>
-    <string name="vote_delegation_signing_cta_generating" translatable="false">Generating...</string>
-    <string name="vote_delegation_signing_cta" translatable="false">Generate delegation proof</string>
-    <string name="vote_ineligible_top_bar_title" translatable="false">Voting Eligibility</string>
-    <string name="coinVote_ineligible_titleNoVote" translatable="false">Not Eligible for This Round</string>
-    <string name="coinVote_ineligible_noNotesMessage" translatable="false">Your wallet has no shielded notes from before the snapshot block. Only funds that existed at block #%@ are eligible for this voting round.</string>
-    <string name="vote_ineligible_no_notes_at_snapshot" translatable="false">Your wallet has no shielded notes from before snapshot block #%1$s. Only funds that existed at the snapshot block are eligible for this voting round.</string>
-    <string name="vote_ineligible_balance_too_low" translatable="false">Your shielded voting weight at the snapshot block was %1$s ZEC, so this wallet is not eligible for this voting round.</string>
-    <string name="vote_ineligible_balance_too_low_at_snapshot" translatable="false">Your shielded voting weight at snapshot block #%1$s was %2$s ZEC, so this wallet is not eligible for this voting round.</string>
-    <string name="coinVote_proposalDetail_position" translatable="false">%1$d OF %2$d</string>
-    <string name="coinVote_proposalList_ctaConfirmSubmit" translatable="false">Confirm &amp; Submit</string>
-    <string name="coinVote_proposalList_ctaStartVoting" translatable="false">Start Voting</string>
-    <string name="coinVote_proposalList_ctaContinueVoting" translatable="false">Continue Voting</string>
-    <string name="coinVote_proposalList_reviewTitle" translatable="false">Review and submit vote</string>
-    <string name="vote_proposal_list_meta_line" translatable="false">%1$s  &#8226;  %2$s</string>
-    <string name="coinVote_proposalList_headerEndsAt" translatable="false">Ends %1$s</string>
-    <string name="coinVote_common_votedDate" translatable="false">Voted %1$s</string>
-    <string name="coinVote_proposalList_votingPower" translatable="false">Voting Power %1$s</string>
-    <string name="coinVote_tallying_detailEnded" translatable="false">Ended</string>
-    <string name="vote_proposal_list_time_minutes_left" translatable="false">%1$dm left</string>
-    <string name="vote_proposal_list_time_hours_left" translatable="false">%1$dh left</string>
-    <string name="vote_proposal_list_time_day_left" translatable="false">%1$d day left</string>
-    <string name="vote_proposal_list_time_days_left" translatable="false">%1$d days left</string>
-    <string name="coinVote_common_viewMore" translatable="false">View more</string>
-    <string name="coinVote_common_viewLess" translatable="false">View less</string>
-    <string name="coinVote_proposalList_viewForumDiscussions" translatable="false">View Forum Discussions</string>
-    <string name="coinVote_common_support" translatable="false">Support</string>
-    <string name="coinVote_common_oppose" translatable="false">Oppose</string>
-    <string name="coinVote_common_abstain" translatable="false">Abstain</string>
-    <string name="coinVote_common_back" translatable="false">Back</string>
-    <string name="coinVote_common_next" translatable="false">Next</string>
-    <string name="coinVote_common_save" translatable="false">Save</string>
-    <string name="coinVote_proposalDetail_viewForumDiscussion" translatable="false">View Forum Discussion</string>
-    <string name="coinVote_proposalDetail_unansweredTitle" translatable="false">Unanswered Questions</string>
-    <string name="coinVote_proposalDetail_skippedMessageSingle" translatable="false">You have not responded to 1 question. Confirm to skip this question or go back to respond.</string>
-    <string name="coinVote_proposalDetail_skippedMessageMultiple" translatable="false">You have not responded to %1$d questions. Confirm to skip these questions or go back to respond.</string>
-    <string name="vote_proposal_detail_no_choices_message" translatable="false">Select at least one answer before reviewing and submitting your vote.</string>
-    <string name="coinVote_proposalList_reviewSubtitle" translatable="false">Tap on the question to edit any of your answers. After you review your answers, tap on Confirm &amp; Submit.</string>
-    <string name="coinVote_proposalList_yourVote" translatable="false">Your vote:</string>
-    <string name="coinVote_results_title" translatable="false">Results</string>
-    <string name="coinVote_common_zecValue" translatable="false">%1$.3f ZEC</string>
-    <string name="coinVote_results_total" translatable="false">Total: %1$.3f ZEC</string>
-    <string name="vote_results_ended" translatable="false">Ended %1$s</string>
-    <string name="vote_results_voted" translatable="false">Voted %1$s</string>
-    <string name="coinVote_common_votingPower" translatable="false">Voting Power %1$.3f ZEC</string>
-    <string name="coinVote_results_metaLine" translatable="false">%1$s  &#8226;  %2$s</string>
-    <string name="coinVote_results_votedLine" translatable="false">Voted: %1$s</string>
-    <string name="coinVote_common_governanceTitle" translatable="false">Governance</string>
-    <string name="coinVote_tallying_titleInProgress" translatable="false">Votes Closed</string>
-    <string name="coinVote_tallying_bodyInProgress" translatable="false">Results are being tallied. The election authority is decrypting the aggregate vote totals.</string>
-    <string name="coinVote_tallying_status" translatable="false">Tallying</string>
-    <string name="coinVote_tallying_detailRound" translatable="false">Round</string>
-    <string name="coinVote_tallying_detailProposals" translatable="false">Proposals</string>
-    <string name="coinVote_configError_title" translatable="false">Wallet Update Required</string>
-    <string name="coinVote_store_userError_noReachableVoteServers" translatable="false">Unable to reach any vote server. Please check your internet connection and try again.</string>
-    <string name="coinVote_store_userError_nullifierAlreadySpent" translatable="false">This wallet has already been registered for this voting round. If you have this wallet on multiple devices, please use the device where you originally started the voting process.</string>
-    <string name="coinVote_store_userError_roundNotActive" translatable="false">This voting round is no longer accepting votes. It may have ended or is not yet open.</string>
-    <string name="coinVote_store_userError_roundNotFound" translatable="false">This voting round could not be found on the network.</string>
-    <string name="coinVote_store_userError_pirSnapshotMismatch" translatable="false">The nullifier service is out of sync with the round\'s snapshot. Voting cannot proceed until a PIR server reports the matching snapshot. Please try again in a few minutes.</string>
-    <string name="coinVote_store_userError_pirInvalidProofData" translatable="false">The nullifier service returned invalid proof data. Please try again in a few minutes.</string>
-    <string name="coinVote_store_userError_pirUnavailable" translatable="false">Unable to reach the nullifier service. Please check your internet connection and try again.</string>
-    <string name="coinVote_store_userError_pirEndpointsMissing" translatable="false">The voting configuration is missing nullifier-service endpoints. Please update the app and try again.</string>
-    <string name="coinVote_store_userError_commitmentTreeNotGrown" translatable="false">Your transaction hasn\'t been confirmed yet. The network may be congested — please wait a moment and try again.</string>
-    <string name="coinVote_store_userError_invalidAnchorHeight" translatable="false">The voting state is out of sync. Please retry to use the latest data.</string>
-    <string name="coinVote_store_userError_invalidProof" translatable="false">Your proof was rejected by the network. Please try again.</string>
-    <string name="coinVote_store_userError_proofGenerationFailed" translatable="false">Proof generation failed. Please try again.</string>
-    <string name="coinVote_store_userError_noTreeState" translatable="false">The voting commitment tree is not available yet. The voting round may not have started or the chain has not processed any commitments.</string>
-    <string name="coinVote_store_userError_http5" translatable="false">The voting server is temporarily unavailable. Please try again shortly.</string>
-    <string name="coinVote_store_userError_lightwalletdUnavailable" translatable="false">Unable to reach the Zcash lightwalletd server. Please check your internet connection or try switching to a different server in Settings.</string>
-    <string name="vote_error_mapper_pir_connection" translatable="false">Could not connect to the privacy-preserving vote server. Please check your connection and try again.</string>
-    <string name="vote_error_mapper_insufficient_funds" translatable="false">Insufficient funds to authorize your vote. A small fee is required.</string>
-    <string name="coinVote_delegation_insufficientSnapshotBalance" translatable="false">Your shielded balance at the snapshot (%1$s ZEC) is below the minimum required to vote (%2$s ZEC).</string>
-    <string name="vote_error_mapper_wallet_sync" translatable="false">Your wallet is not fully synced. Please wait for syncing to complete before voting.</string>
-    <string name="vote_error_mapper_network" translatable="false">Network error. Please check your connection and try again.</string>
-    <string name="vote_error_mapper_version" translatable="false">Your app may need an update to participate in this voting round.</string>
-    <string name="vote_error_mapper_unknown" translatable="false">An unexpected error occurred. Please try again.</string>
-    <string name="coinVote_walletSyncing_title" translatable="false">Wallet Syncing</string>
-    <string name="coinVote_walletSyncing_subtitle" translatable="false">Your wallet needs to sync to the snapshot block height before you can participate in voting.</string>
-    <string name="vote_wallet_syncing_top_bar_title" translatable="false">Wallet Sync</string>
-    <string name="vote_wallet_syncing_title" translatable="false">Syncing your wallet</string>
-    <string name="vote_wallet_syncing_message" translatable="false">Your wallet needs to scan up to block %1$d before you can vote. Currently at block %2$d.</string>
-    <string name="vote_wallet_syncing_progress_complete" translatable="false">100%% complete</string>
-    <string name="vote_wallet_syncing_progress_percent" translatable="false">%1$d%% complete</string>
-    <string name="vote_wallet_syncing_status_complete" translatable="false">Sync complete</string>
-    <string name="vote_wallet_syncing_status_progress" translatable="false">%1$d%% - block %2$d of %3$d</string>
+    <string name="coinVote_votingView_unverifiedPollTitle" tools:ignore="MissingTranslation">Unverified Poll</string>
+    <string name="coinVote_votingView_unverifiedPollMessage" tools:ignore="MissingTranslation">This poll hasn\'t been verified. We can\'t confirm its legitimacy or how results will be used.</string>
+    <string name="coinVote_pollsList_unverifiedSheetProceed" tools:ignore="MissingTranslation">Proceed anyway</string>
+    <string name="coinVote_common_done" tools:ignore="MissingTranslation">Done</string>
+    <string name="coinVote_common_dismiss" tools:ignore="MissingTranslation">Dismiss</string>
+    <string name="coinVote_common_tryAgain" tools:ignore="MissingTranslation">Try Again</string>
+    <string name="coinVote_common_close" tools:ignore="MissingTranslation">Close</string>
+    <string name="coinVote_confirmSubmission_confirmWithKeystone" tools:ignore="MissingTranslation">Confirm with Keystone</string>
+    <string name="coinVote_common_confirm" tools:ignore="MissingTranslation">Confirm</string>
+    <string name="vote_confirm_cta_preparing" tools:ignore="MissingTranslation">Preparing vote...</string>
+    <string name="vote_confirm_cta_resume_keystone_signing" tools:ignore="MissingTranslation">Resume Keystone signing</string>
+    <string name="vote_confirm_cta_sign_keystone" tools:ignore="MissingTranslation">Sign with Keystone</string>
+    <string name="coinVote_delegationSigning_bundleProgress" tools:ignore="MissingTranslation">Sign bundle %1$d/%2$d</string>
+    <string name="coinVote_submission_continuedProcessingTitle" tools:ignore="MissingTranslation">Submitting votes</string>
+    <string name="coinVote_confirmSubmission_progressAuthorizing" tools:ignore="MissingTranslation">Authorizing...</string>
+    <string name="vote_confirm_cta_submitting" tools:ignore="MissingTranslation">Submitting vote %1$d of %2$d</string>
+    <string name="coinVote_store_submissionAuthorizingVote" tools:ignore="MissingTranslation">Authorizing vote...</string>
+    <string name="coinVote_confirmSubmission_progressSubmittingVoteCount" tools:ignore="MissingTranslation">Submitting vote %1$d of %2$d...</string>
+    <string name="coinVote_confirmSubmission_progressRetrying" tools:ignore="MissingTranslation">Reconnecting...</string>
+    <string name="coinVote_confirmSubmission_submittingExplainerNote" tools:ignore="MissingTranslation">This can take a few minutes. Wallets with more voting weight take longer to process.</string>
+    <string name="coinVote_results_percentValue" tools:ignore="MissingTranslation">%1$d%%</string>
+    <string name="coinVote_common_submission" tools:ignore="MissingTranslation">Submission</string>
+    <string name="coinVote_confirmSubmission_headerTitleIdle" tools:ignore="MissingTranslation">Confirm &amp; Submit</string>
+    <string name="coinVote_confirmSubmission_headerTitleCompleted" tools:ignore="MissingTranslation">Submission Confirmed!</string>
+    <string name="coinVote_confirmSubmission_submissionFailedTitle" tools:ignore="MissingTranslation">Submission Failed</string>
+    <string name="coinVote_confirmSubmission_headerSubtitleIdleKeystone" tools:ignore="MissingTranslation">Review before signing the voting authorization with your Keystone. This is final. Your vote will be published and cannot be changed.</string>
+    <string name="coinVote_confirmSubmission_headerSubtitleIdle" tools:ignore="MissingTranslation">Review before confirming the voting authorization. This is final. Your vote will be published and cannot be changed.</string>
+    <string name="coinVote_confirmSubmission_headerSubtitleSubmitting" tools:ignore="MissingTranslation">Vote submission is in progress, please don\'t leave this screen until it is finished.</string>
+    <string name="coinVote_confirmSubmission_headerSubtitleCompleted" tools:ignore="MissingTranslation">Your vote was successfully published and cannot be changed.</string>
+    <string name="coinVote_confirmSubmission_submissionFailedMessage" tools:ignore="MissingTranslation">Your vote couldn\'t be submitted. Check your connection and try again.</string>
+    <string name="vote_confirm_error_auth" tools:ignore="MissingTranslation">Authorization transaction failed. Please try again.</string>
+    <string name="vote_confirm_error_no_choices" tools:ignore="MissingTranslation">No vote choices are available to submit.</string>
+    <string name="vote_confirm_error_authentication" tools:ignore="MissingTranslation">Authentication failed. Please try again.</string>
+    <string name="vote_confirm_preparing" tools:ignore="MissingTranslation">Preparing...</string>
+    <string name="vote_confirm_memo_resume_keystone" tools:ignore="MissingTranslation">Resume the pending Keystone signing request, then continue signing the remaining delegation bundles.</string>
+    <string name="vote_confirm_memo_sign_keystone" tools:ignore="MissingTranslation">Sign each prepared delegation bundle with Keystone before submitting your votes.</string>
+    <string name="coinVote_delegationSigning_memoMessage" tools:ignore="MissingTranslation">I am authorizing this hotkey managed by my wallet to vote on %1$s with %2$s.</string>
+    <string name="vote_confirm_memo_preparing" tools:ignore="MissingTranslation">Your wallet is still preparing the voting authorization for this poll.</string>
+    <string name="coinVote_confirmSubmission_detailPoll" tools:ignore="MissingTranslation">Poll</string>
+    <string name="coinVote_confirmSubmission_detailVotingPower" tools:ignore="MissingTranslation">Voting power</string>
+    <string name="coinVote_confirmSubmission_detailExcludedWeight">Excluded from this vote</string>
+    <string name="coinVote_confirmSubmission_detailVotingHotkey" tools:ignore="MissingTranslation">Voting hotkey</string>
+    <string name="coinVote_confirmSubmission_detailMemo" tools:ignore="MissingTranslation">Memo</string>
+    <string name="vote_delegation_signing_title" tools:ignore="MissingTranslation">Delegation signing</string>
+    <string name="vote_delegation_signing_status_generating" tools:ignore="MissingTranslation">Generating proof... %1$d%%</string>
+    <string name="vote_delegation_signing_status_complete" tools:ignore="MissingTranslation">Proof complete - submitting delegation...</string>
+    <string name="vote_delegation_signing_status_ready" tools:ignore="MissingTranslation">Ready to generate zero-knowledge proof</string>
+    <string name="vote_delegation_signing_cta_generating" tools:ignore="MissingTranslation">Generating...</string>
+    <string name="vote_delegation_signing_cta" tools:ignore="MissingTranslation">Generate delegation proof</string>
+    <string name="vote_ineligible_top_bar_title" tools:ignore="MissingTranslation">Voting Eligibility</string>
+    <string name="coinVote_ineligible_titleNoVote" tools:ignore="MissingTranslation">Not Eligible for This Round</string>
+    <string name="coinVote_ineligible_noNotesMessage" tools:ignore="MissingTranslation">Your wallet has no shielded notes from before the snapshot block. Only funds that existed at block #%@ are eligible for this voting round.</string>
+    <string name="vote_ineligible_no_notes_at_snapshot" tools:ignore="MissingTranslation">Your wallet has no shielded notes from before snapshot block #%1$s. Only funds that existed at the snapshot block are eligible for this voting round.</string>
+    <string name="vote_ineligible_balance_too_low" tools:ignore="MissingTranslation">Your shielded voting weight at the snapshot block was %1$s ZEC, so this wallet is not eligible for this voting round.</string>
+    <string name="vote_ineligible_balance_too_low_at_snapshot" tools:ignore="MissingTranslation">Your shielded voting weight at snapshot block #%1$s was %2$s ZEC, so this wallet is not eligible for this voting round.</string>
+    <string name="coinVote_proposalDetail_position" tools:ignore="MissingTranslation">%1$d OF %2$d</string>
+    <string name="coinVote_proposalList_ctaConfirmSubmit" tools:ignore="MissingTranslation">Confirm &amp; Submit</string>
+    <string name="coinVote_proposalList_ctaStartVoting" tools:ignore="MissingTranslation">Start Voting</string>
+    <string name="coinVote_proposalList_ctaContinueVoting" tools:ignore="MissingTranslation">Continue Voting</string>
+    <string name="coinVote_proposalList_reviewTitle" tools:ignore="MissingTranslation">Review and submit vote</string>
+    <string name="vote_proposal_list_meta_line" tools:ignore="MissingTranslation">%1$s  &#8226;  %2$s</string>
+    <string name="coinVote_proposalList_headerEndsAt" tools:ignore="MissingTranslation">Ends %1$s</string>
+    <string name="coinVote_common_votedDate" tools:ignore="MissingTranslation">Voted %1$s</string>
+    <string name="coinVote_proposalList_votingPower" tools:ignore="MissingTranslation">Voting Power %1$s</string>
+    <string name="coinVote_tallying_detailEnded" tools:ignore="MissingTranslation">Ended</string>
+    <string name="vote_proposal_list_time_minutes_left" tools:ignore="MissingTranslation">%1$dm left</string>
+    <string name="vote_proposal_list_time_hours_left" tools:ignore="MissingTranslation">%1$dh left</string>
+    <string name="vote_proposal_list_time_day_left" tools:ignore="MissingTranslation">%1$d day left</string>
+    <string name="vote_proposal_list_time_days_left" tools:ignore="MissingTranslation">%1$d days left</string>
+    <string name="coinVote_common_viewMore" tools:ignore="MissingTranslation">View more</string>
+    <string name="coinVote_common_viewLess" tools:ignore="MissingTranslation">View less</string>
+    <string name="coinVote_proposalList_viewForumDiscussions" tools:ignore="MissingTranslation">View Forum Discussions</string>
+    <string name="coinVote_common_support" tools:ignore="MissingTranslation">Support</string>
+    <string name="coinVote_common_oppose" tools:ignore="MissingTranslation">Oppose</string>
+    <string name="coinVote_common_abstain" tools:ignore="MissingTranslation">Abstain</string>
+    <string name="coinVote_common_back" tools:ignore="MissingTranslation">Back</string>
+    <string name="coinVote_common_next" tools:ignore="MissingTranslation">Next</string>
+    <string name="coinVote_common_save" tools:ignore="MissingTranslation">Save</string>
+    <string name="coinVote_proposalDetail_viewForumDiscussion" tools:ignore="MissingTranslation">View Forum Discussion</string>
+    <string name="coinVote_proposalDetail_unansweredTitle" tools:ignore="MissingTranslation">Unanswered Questions</string>
+    <string name="coinVote_proposalDetail_skippedMessageSingle" tools:ignore="MissingTranslation">You have not responded to 1 question. Confirm to skip this question or go back to respond.</string>
+    <string name="coinVote_proposalDetail_skippedMessageMultiple" tools:ignore="MissingTranslation">You have not responded to %1$d questions. Confirm to skip these questions or go back to respond.</string>
+    <string name="vote_proposal_detail_no_choices_message" tools:ignore="MissingTranslation">Select at least one answer before reviewing and submitting your vote.</string>
+    <string name="coinVote_proposalList_reviewSubtitle" tools:ignore="MissingTranslation">Tap on the question to edit any of your answers. After you review your answers, tap on Confirm &amp; Submit.</string>
+    <string name="coinVote_proposalList_yourVote" tools:ignore="MissingTranslation">Your vote:</string>
+    <string name="coinVote_results_title" tools:ignore="MissingTranslation">Results</string>
+    <string name="coinVote_common_zecValue" tools:ignore="MissingTranslation">%1$.3f ZEC</string>
+    <string name="coinVote_results_total" tools:ignore="MissingTranslation">Total: %1$.3f ZEC</string>
+    <string name="vote_results_ended" tools:ignore="MissingTranslation">Ended %1$s</string>
+    <string name="vote_results_voted" tools:ignore="MissingTranslation">Voted %1$s</string>
+    <string name="coinVote_common_votingPower" tools:ignore="MissingTranslation">Voting Power %1$.3f ZEC</string>
+    <string name="coinVote_results_metaLine" tools:ignore="MissingTranslation">%1$s  &#8226;  %2$s</string>
+    <string name="coinVote_results_votedLine" tools:ignore="MissingTranslation">Voted: %1$s</string>
+    <string name="coinVote_common_governanceTitle" tools:ignore="MissingTranslation">Governance</string>
+    <string name="coinVote_tallying_titleInProgress" tools:ignore="MissingTranslation">Votes Closed</string>
+    <string name="coinVote_tallying_bodyInProgress" tools:ignore="MissingTranslation">Results are being tallied. The election authority is decrypting the aggregate vote totals.</string>
+    <string name="coinVote_tallying_status" tools:ignore="MissingTranslation">Tallying</string>
+    <string name="coinVote_tallying_detailRound" tools:ignore="MissingTranslation">Round</string>
+    <string name="coinVote_tallying_detailProposals" tools:ignore="MissingTranslation">Proposals</string>
+    <string name="coinVote_configError_title" tools:ignore="MissingTranslation">Wallet Update Required</string>
+    <string name="coinVote_store_userError_noReachableVoteServers" tools:ignore="MissingTranslation">Unable to reach any vote server. Please check your internet connection and try again.</string>
+    <string name="coinVote_store_userError_nullifierAlreadySpent" tools:ignore="MissingTranslation">This wallet has already been registered for this voting round. If you have this wallet on multiple devices, please use the device where you originally started the voting process.</string>
+    <string name="coinVote_store_userError_roundNotActive" tools:ignore="MissingTranslation">This voting round is no longer accepting votes. It may have ended or is not yet open.</string>
+    <string name="coinVote_store_userError_roundNotFound" tools:ignore="MissingTranslation">This voting round could not be found on the network.</string>
+    <string name="coinVote_store_userError_pirSnapshotMismatch" tools:ignore="MissingTranslation">The nullifier service is out of sync with the round\'s snapshot. Voting cannot proceed until a PIR server reports the matching snapshot. Please try again in a few minutes.</string>
+    <string name="coinVote_store_userError_pirInvalidProofData" tools:ignore="MissingTranslation">The nullifier service returned invalid proof data. Please try again in a few minutes.</string>
+    <string name="coinVote_store_userError_pirUnavailable" tools:ignore="MissingTranslation">Unable to reach the nullifier service. Please check your internet connection and try again.</string>
+    <string name="coinVote_store_userError_pirEndpointsMissing" tools:ignore="MissingTranslation">The voting configuration is missing nullifier-service endpoints. Please update the app and try again.</string>
+    <string name="coinVote_store_userError_commitmentTreeNotGrown" tools:ignore="MissingTranslation">Your transaction hasn\'t been confirmed yet. The network may be congested — please wait a moment and try again.</string>
+    <string name="coinVote_store_userError_invalidAnchorHeight" tools:ignore="MissingTranslation">The voting state is out of sync. Please retry to use the latest data.</string>
+    <string name="coinVote_store_userError_invalidProof" tools:ignore="MissingTranslation">Your proof was rejected by the network. Please try again.</string>
+    <string name="coinVote_store_userError_proofGenerationFailed" tools:ignore="MissingTranslation">Proof generation failed. Please try again.</string>
+    <string name="coinVote_store_userError_noTreeState" tools:ignore="MissingTranslation">The voting commitment tree is not available yet. The voting round may not have started or the chain has not processed any commitments.</string>
+    <string name="coinVote_store_userError_http5" tools:ignore="MissingTranslation">The voting server is temporarily unavailable. Please try again shortly.</string>
+    <string name="coinVote_store_userError_lightwalletdUnavailable" tools:ignore="MissingTranslation">Unable to reach the Zcash lightwalletd server. Please check your internet connection or try switching to a different server in Settings.</string>
+    <string name="coinVote_store_userError_conflictingSelection" tools:ignore="MissingTranslation">Your choice for a proposal was locked by an earlier submission attempt and can\'t be changed. Resubmit with your original selection to finish voting.</string>
+    <string name="coinVote_store_userError_omittedCommittedProposal" tools:ignore="MissingTranslation">A proposal from an earlier submission attempt still needs to finish. Resubmit with all of your original selections to finish voting.</string>
+    <string name="coinVote_store_userError_recoveredVoteMismatch" tools:ignore="MissingTranslation">The network reported an existing vote for this wallet that does not match this submission. If you voted from another device, check that device\'s voting status.</string>
+    <string name="coinVote_store_userError_recoveredVoteUnverified" tools:ignore="MissingTranslation">An earlier vote transaction may already be on the network, but it could not be verified with the vote servers. Please try again in a moment.</string>
+    <string name="coinVote_store_userError_roundNotPrepared" tools:ignore="MissingTranslation">This voting round\'s prepared data is missing on this device. Reopen the round to prepare it again.</string>
+    <string name="vote_error_mapper_pir_connection" tools:ignore="MissingTranslation">Could not connect to the privacy-preserving vote server. Please check your connection and try again.</string>
+    <string name="vote_error_mapper_insufficient_funds" tools:ignore="MissingTranslation">Insufficient funds to authorize your vote. A small fee is required.</string>
+    <string name="coinVote_delegation_insufficientSnapshotBalance" tools:ignore="MissingTranslation">Your shielded balance at the snapshot (%1$s ZEC) is below the minimum required to vote (%2$s ZEC).</string>
+    <string name="vote_error_mapper_wallet_sync" tools:ignore="MissingTranslation">Your wallet is not fully synced. Please wait for syncing to complete before voting.</string>
+    <string name="vote_error_mapper_network" tools:ignore="MissingTranslation">Network error. Please check your connection and try again.</string>
+    <string name="vote_error_mapper_version" tools:ignore="MissingTranslation">Your app may need an update to participate in this voting round.</string>
+    <string name="vote_error_mapper_unknown" tools:ignore="MissingTranslation">An unexpected error occurred. Please try again.</string>
+    <string name="coinVote_walletSyncing_title" tools:ignore="MissingTranslation">Wallet Syncing</string>
+    <string name="coinVote_walletSyncing_subtitle" tools:ignore="MissingTranslation">Your wallet needs to sync to the snapshot block height before you can participate in voting.</string>
+    <string name="vote_wallet_syncing_top_bar_title" tools:ignore="MissingTranslation">Wallet Sync</string>
+    <string name="vote_wallet_syncing_title" tools:ignore="MissingTranslation">Syncing your wallet</string>
+    <string name="vote_wallet_syncing_message" tools:ignore="MissingTranslation">Your wallet needs to scan up to block %1$d before you can vote. Currently at block %2$d.</string>
+    <string name="vote_wallet_syncing_progress_complete" tools:ignore="MissingTranslation">100%% complete</string>
+    <string name="vote_wallet_syncing_progress_percent" tools:ignore="MissingTranslation">%1$d%% complete</string>
+    <string name="vote_wallet_syncing_status_complete" tools:ignore="MissingTranslation">Sync complete</string>
+    <string name="vote_wallet_syncing_status_progress" tools:ignore="MissingTranslation">%1$d%% - block %2$d of %3$d</string>
 
     <!-- ===== warning ===== -->
     <string name="notEnoughFreeSpace_title">Not enough free space</string>
@@ -1227,5 +1401,270 @@ Your vote can no longer be submitted.</string>
     <!-- ===== whats_new ===== -->
     <string name="whats_new_title">What\'s new</string>
 
+    <!-- ===== migration (MigrationNotifier: notification channel + Orchard→Ironwood progress) ===== -->
+    <string name="migration_notification_channelName">Ironwood Migration</string>
+    <string name="migration_notification_channelDescription">Notifications for Orchard to Ironwood migration progress</string>
+    <string name="migration_notification_title">Ironwood Migration</string>
+    <string name="migration_notification_noteSplitProgress">Note split %1$d of %2$d</string>
+    <string name="migration_notification_noteSplitPreparing">Preparing your balance for migration</string>
+    <string name="migration_notification_transferComplete">Transfer %1$d of %2$d complete</string>
+    <string name="migration_notification_rescheduleWithCounts">Transfer %1$d of %2$d can\'t be sent — tap to reschedule the migration.</string>
+    <string name="migration_notification_rescheduleGeneric">The migration is blocked — tap to reschedule.</string>
+    <string name="migration_notification_actionRequiredTitle">Migration: Action Required</string>
+    <string name="migration_notification_manualConfirmationWithCounts">Transfer %1$d of %2$d is ready. Tap to confirm.</string>
+    <string name="migration_notification_manualConfirmationGeneric">A migration transfer is ready. Tap to confirm.</string>
+    <string name="migration_notification_torFailureTitle">Migration: Couldn\'t Connect to Tor</string>
+    <string name="migration_notification_torFailureText">A scheduled transfer couldn\'t send over Tor. Open Zodl to resolve.</string>
+    <string name="migration_notification_stepDueText">Your migration is ready to continue — tap to run the next step.</string>
+    <string name="migration_notification_planInvalidText">Migration plan needs update. Open Zodl to review the details.</string>
+    <string name="migration_notification_transferExpiredText">A transfer expired. Open Zodl to continue your migration.</string>
+    <string name="migration_notification_completeTitle">Ironwood Migration Complete</string>
+    <string name="migration_notification_completeText">All your funds have been migrated to Ironwood.</string>
+
+    <!-- Restart Migration -->
+    <string name="restartMigration_settingsItem">Restart Migration</string>
+    <string name="restartMigration_title">Restart Migration</string>
+    <string name="restartMigration_body">If your migration looks stuck, you can restart it safely. This creates a new plan for your remaining funds. Completed transfers are not affected.</string>
+    <string name="restartMigration_summaryMigratedLabel">Migrated</string>
+    <string name="restartMigration_summaryMigratedValue">%1$d of %2$d transfers</string>
+    <string name="restartMigration_summaryRemainingLabel">Remaining balance</string>
+    <string name="restartMigration_warning">This cancels the current migration plan. It cannot be undone once confirmed.</string>
+    <string name="restartMigration_support">If restarting doesn\'t resolve the issue, please reach out to Zodl Support via Send Feedback.</string>
+    <string name="restartMigration_next">Next</string>
+    <string name="restartMigration_confirmTitle">Restart this migration?</string>
+    <string name="restartMigration_confirmMessage">A new plan will be created for your remaining %1$s. The %2$d transfers already completed stay as they are and won\'t be repeated.</string>
+    <string name="restartMigration_confirmPrimary">Confirm restart</string>
+
+    <!-- ===== migration (feature-migration screens UI copy) ===== -->
+    <string name="migration_common_gotIt">Got it</string>
+    <string name="migration_common_skip">Skip</string>
+    <string name="migration_common_allow">Allow</string>
+    <string name="migration_common_continue">Continue</string>
+    <string name="migration_common_retry">Retry</string>
+    <string name="migration_common_dismiss">Dismiss</string>
+    <string name="migration_common_continueWithoutTor">Continue without Tor</string>
+    <string name="migration_common_tryAgain">Try again</string>
+    <string name="migration_common_whatAreTheRisks">What are the risks?</string>
+    <string name="migration_common_splitBalanceTitle">Split Balance</string>
+    <string name="migration_common_splitBalanceNumbered">Split balance %1$d</string>
+    <string name="migration_common_transferTitle">Transfer %1$d</string>
+    <string name="migration_common_showDetails">Show details</string>
+    <string name="migration_common_progressTitle">Migration Progress</string>
+    <string name="migration_common_enableTorProtectionTitle">Enable Tor Protection</string>
+    <string name="migration_common_torCheckboxSubtitle">Routes your connection through the Tor network for enhanced anonymity and privacy protection.</string>
+
+    <!-- Only this one status word is resource-backed: it's a plain button label (Scheduled
+         screen), not one of the dynamic per-row status functions in MigrationProgressVM /
+         MigrationPreparationDetails / MigrationReviewVM. Those stay English-literal ByString on
+         purpose — they're unit-tested in plain JVM tests via a StringResource.ByString-only
+         reflection helper with no Android Context available to resolve a real resource
+         (MigrationPreparationDetailsTest, MigrationProgressVMTest, MigrationReviewPlanShapeTest).
+         Localizing them needs that test harness reworked first; tracked as a known gap. -->
+    <string name="migration_status_done">Done</string>
+
+    <string name="migrationPrivacy_bodyImmediate">If Tor is available in your region, we strongly recommend enabling it to prevent linking your balance to your IP address. You can also use a trusted VPN if Tor is unavailable in your region.</string>
+    <string name="migrationPrivacy_bodyAutomatic">If Tor is available in your region, we strongly recommend enabling it to prevent linking the migration amounts to your IP address. You can also use a trusted VPN if Tor is unavailable in your region.</string>
+
+    <string name="migrationKeystoneScan_instructions">Scan the QR code shown on your Keystone device after signing.</string>
+    <string name="migrationKeystoneScan_errorMessage">Something went wrong while processing that scan. Please try again.</string>
+    <string name="migrationKeystoneScan_firmwareUnsupported">Your Keystone firmware doesn\'t support migration yet. Update your Keystone device, then come back to retry.</string>
+
+    <string name="migrationSuccess_title">Sent!</string>
+    <string name="migrationSuccess_subtitle">Your ZEC was successfully\nmigrated to Ironwood.</string>
+    <string name="migrationSuccess_viewTransaction">View Transaction</string>
+
+    <string name="migrationSending_title">Sending...</string>
+    <string name="migrationSending_subtitle">Your ZEC is being migrated to\nIronwood...</string>
+
+    <string name="migrationProgress_subtitleComplete">All %1$d transfers are complete.</string>
+    <string name="migrationProgress_subtitlePreStart">Your balance splits into %1$d transfers over %2$s. There are %3$d remaining transfers.</string>
+    <string name="migrationProgress_subtitleInProgressRemaining">Your balance splits into %1$d transfers. About %2$s remaining. There are %3$d remaining transfers.</string>
+    <string name="migrationProgress_subtitleInProgressLate">Your balance splits into %1$d transfers. Finishing up… There are %2$d remaining transfers.</string>
+    <string name="migrationProgress_orchardLabel">Orchard</string>
+    <string name="migrationProgress_ironwoodLabel">Ironwood</string>
+
+    <string name="migrationComplete_title">Migration Complete</string>
+    <string name="migrationComplete_subtitle">Your ZEC is now in the Ironwood pool.</string>
+    <string name="migrationComplete_totalTransferredLabel">Total transferred</string>
+    <string name="migrationComplete_remainingDustLabel">Remaining dust</string>
+    <string name="migrationComplete_transfersLabel">Transfers</string>
+    <string name="migrationComplete_durationLabel">Duration</string>
+    <string name="migrationComplete_orchardBalanceRemainingTitle">Orchard balance remaining</string>
+    <string name="migrationComplete_orchardBalanceRemainingBody">%1$s stayed in Orchard. An amount this specific can identify you on the network. To protect your privacy, we recommend locking this balance rather than migrating it.</string>
+    <string name="migrationComplete_migrateAnyway">Migrate anyway</string>
+    <string name="migrationComplete_migrating">Migrating…</string>
+    <string name="migrationComplete_lockBalance">Lock balance</string>
+    <string name="migrationComplete_lockingBalance">Locking balance…</string>
+    <string name="migrationComplete_orchardBalanceLockedTitle">Orchard balance locked</string>
+    <string name="migrationComplete_orchardBalanceLockedBody">%1$s is now locked in Orchard. Locking keeps this amount unspendable to protect your privacy.</string>
+    <string name="migrationComplete_transfersProgress">%1$d of %2$d sent</string>
+    <string name="migrationComplete_migrateAnywayFailureNetworkError">Couldn\'t reach the network. Check your connection and try again.</string>
+    <string name="migrationComplete_migrateAnywayFailureRejected">The network rejected this transaction. Please contact support.</string>
+    <string name="migrationComplete_migrateAnywayFailureError">Something went wrong while sending. Please contact support.</string>
+    <string name="migrationComplete_migrateAnywayFailurePartial">Some but not all of this transaction\'s parts were sent. Please contact support.</string>
+    <string name="migrationComplete_residueTitle">You’ve moved to Ironwood</string>
+    <string name="migrationComplete_residueSubtitle">A small balance is still sitting in Orchard.</string>
+    <string name="migrationComplete_inIronwoodLabel">In Ironwood</string>
+    <string name="migrationComplete_leftInOrchardLabel">Left in Orchard</string>
+    <string name="migrationComplete_residueRecommendationBody">%1$s is still in Orchard. Moving an amount this specific would link your Ironwood funds back to your Orchard history. We recommend locking it instead.</string>
+
+    <string name="migrationNotifPermission_title">Allow Notifications</string>
+    <string name="migrationNotifPermission_subtitle">If a scheduled transfer is missed or a background submission fails, we can send you a local notification and prompt you to open Zodl. Get notified about:</string>
+    <string name="migrationNotifPermission_statusTitle">Migration Status</string>
+    <string name="migrationNotifPermission_statusBody">We will inform you whenever your funds are fully migrated to Ironwood.</string>
+    <string name="migrationNotifPermission_actionNeededTitle">Action Needed</string>
+    <string name="migrationNotifPermission_actionNeededBody">If we miss a window, we will prompt you to open the app and send a transfer manually.</string>
+    <string name="migrationNotifPermission_planChangesTitle">Transfer Plan Changes</string>
+    <string name="migrationNotifPermission_planChangesBody">If allocated funds are spent or a scheduled transfer can no longer be sent, we\'ll let you know.</string>
+    <string name="migrationNotifPermission_warningHint">Without notifications, the migration can\'t continue on its own. You\'ll be responsible for opening Zodl at every step to send each transfer.</string>
+
+    <string name="migrationCustomServerTor_title">Your Server Doesn’t Support Tor</string>
+    <string name="migrationCustomServerTor_bodyImmediate">The migration transaction can\'t be broadcast over Tor when you\'re using a custom server. If you continue, this transaction will be sent without Tor\'s IP protection.</string>
+    <string name="migrationCustomServerTor_bodyAutomatic">Migration transactions can’t be broadcast over Tor when you’re using a custom server. If you continue, these transactions will be sent without Tor’s IP protection.</string>
+    <string name="migrationCustomServerTor_riskBodyImmediate">Without Tor, your IP address is exposed to the custom server and could be linked to your full balance.</string>
+    <string name="migrationCustomServerTor_riskBodyAutomatic">Without Tor, your IP address is exposed to the custom server and could be linked to the migration amounts.</string>
+    <string name="migrationCustomServerTor_switchServer">Switch Server</string>
+
+    <string name="migrationTorFailure_title">Couldn\'t Connect to Tor</string>
+    <string name="migrationTorFailure_body">We couldn\'t establish a Tor connection. You can proceed without Tor protection, or cancel and try again.</string>
+    <string name="migrationTorFailure_riskBody">Without Tor, your IP address is exposed to the server and could be linked to the migration amounts.</string>
+
+    <string name="migrationSetup_title">Move to Ironwood</string>
+    <string name="migrationSetup_bodyPrefix">"Latest Zcash network upgrade requires moving your "</string>
+    <string name="migrationSetup_bodyFiatSuffix">" (%1$s)"</string>
+    <string name="migrationSetup_bodySuffix">" from the Orchard pool to the new Ironwood pool. Your funds are safe."</string>
+    <string name="migrationSetup_findOutMore">Find out more</string>
+    <string name="migrationSetup_immediateWarning">All funds transferred in this transaction will be revealed on-chain.</string>
+    <string name="migrationSetup_automaticWarning">The amount of an individual transfer across pools is revealed on-chain.</string>
+    <string name="migrationSetup_automaticTitle">Migrate with Privacy</string>
+    <string name="migrationSetup_automaticSubtitle">Split transfers over time · Scheduled in background · Maximum privacy</string>
+    <string name="migrationSetup_immediateTitle">Migrate Immediately</string>
+    <string name="migrationSetup_immediateSubtitle">Single transfer · Sends now · Less privacy</string>
+    <string name="migrationSetup_automaticPausedSubtitle">Available after the network upgrade, about %1$s</string>
+    <string name="migrationSetup_automaticPausedSubtitleNoDate">Available after the network upgrade</string>
+    <string name="migrationUpgradePaused_title">Migration is paused</string>
+    <string name="migrationUpgradePaused_message">A scheduled migration cannot start before the network upgrade. Please try again after it.</string>
+    <string name="migrationTipUnavailable_title">Zodl is still syncing</string>
+    <string name="migrationTipUnavailable_message">Zodl needs to finish syncing before it can plan a migration. Please try again in a moment.</string>
+
+    <string name="migrationLockExplainer_title">What does locking do?</string>
+    <string name="migrationLockExplainer_bullet1Prefix">Locking marks this balance as </string>
+    <string name="migrationLockExplainer_bullet1Bold">unspendable</string>
+    <string name="migrationLockExplainer_bullet1Suffix">, so it can\'t compromise your privacy in future transactions.</string>
+    <string name="migrationLockExplainer_bullet2Bold">The lock lives on this Zodl/Keystone instance only.</string>
+    <string name="migrationLockExplainer_bullet2Suffix"> Restoring your wallet won\'t carry it over.</string>
+    <string name="migrationLockExplainer_bullet3Prefix">A future release will let you </string>
+    <string name="migrationLockExplainer_bullet3Bold">unlock this balance.</string>
+
+    <string name="migrationFailureSheet_title">Couldn\'t Send</string>
+    <string name="migrationFailureMessage_networkError">Couldn\'t reach the network. Check your connection and try again.</string>
+    <string name="migrationFailureMessage_invalidNote">This transfer\'s note was already spent elsewhere. Reschedule to plan a new one.</string>
+    <string name="migrationFailureMessage_expired">This transfer\'s anchor expired. Reschedule to plan a new one.</string>
+    <string name="migrationSending_notReady">This transfer isn\'t ready to send yet. Please try again in a moment.</string>
+
+    <string name="migrationPreparationDetails_title">Prepare Your Balance</string>
+    <string name="migrationPreparationDetails_body">Your balance needs to be split into transfer-sized notes across %1$d steps before your scheduled transfers begin.</string>
+    <string name="migrationPreparationDetails_stepsTitle">Preparation Steps</string>
+    <string name="migrationPreparationDetails_amountBeingSplitTitle">Amount Being Split</string>
+
+    <string name="migrationTransferInvalid_planUpdateTitle">Update Migration Plan</string>
+    <string name="migrationTransferInvalid_planUpdateBody">Some Orchard notes were spent outside the migration flow, which invalidated the pre-signed transfer plan. The plan needs to be re-created for the remaining balance. No funds are lost — only the pre-signed transactions are discarded.</string>
+    <string name="migrationTransferInvalid_planUpdateFirstStep">The invalidated transfer is discarded</string>
+    <string name="migrationTransferInvalid_transferExpiredTitle">Transfer No Longer Valid</string>
+    <string name="migrationTransferInvalid_transferExpiredBodyPlural">Transfer %1$s expired without being sent — the app wasn\'t opened in time to broadcast them. The migration plan needs to be re-created for the remaining balance. No funds are lost — only the pre-signed transactions are discarded.</string>
+    <string name="migrationTransferInvalid_transferExpiredBodySingular">Transfer %1$s expired without being sent — the app wasn\'t opened in time to broadcast it. The migration plan needs to be re-created for the remaining balance. No funds are lost — only the pre-signed transactions are discarded.</string>
+    <string name="migrationTransferInvalid_expiredStepLabelPlural">Expired transfers are discarded</string>
+    <string name="migrationTransferInvalid_expiredStepLabelSingular">Expired transfer is discarded</string>
+    <string name="migrationTransferInvalid_whatHappensNextTitle">What Happens Next</string>
+    <string name="migrationTransferInvalid_remainingBalanceReproposed">Remaining balance is re-proposed</string>
+    <string name="migrationTransferInvalid_transfersDoneProgress">%1$d of %2$d transfers done; migration will continue.</string>
+
+    <string name="migrationHowItWorks_title">How This Works</string>
+    <string name="migrationHowItWorks_subtitle">Moving funds between Zcash pools reveals the amount of each transfer. Here\'s how we protect your privacy during migration.</string>
+    <string name="migrationHowItWorks_splitScheduleTitle">Split and schedule</string>
+    <string name="migrationHowItWorks_splitScheduleDescription">Your balance is divided into smaller amounts and spaced out over time, so they’re harder to link together.</string>
+    <string name="migrationHowItWorks_approveOnceTitle">Approve once</string>
+    <string name="migrationHowItWorks_approveOnceDescription">Zodl handles the rest, sending each transfer automatically in its scheduled window while the app runs in the background.</string>
+    <string name="migrationHowItWorks_ifSomethingFailsTitle">If something fails</string>
+    <string name="migrationHowItWorks_ifSomethingFailsDescription">We’ll notify you so you can complete it manually.</string>
+    <string name="migrationHowItWorks_largeBalanceTitle">Large balance</string>
+    <string name="migrationHowItWorks_largeBalanceDescription">If your wallet holds large balance or many small notes, migration may run across multiple scheduled rounds.</string>
+    <string name="migrationHowItWorks_disclaimer">Choosing this option may require a small amount (less than 0.01 ZEC) to be left in the Orchard pool, and which won\'t be transferred.</string>
+
+    <string name="migrationReview_title">Review Transfer</string>
+    <string name="migrationReview_immediateBody">Your full Orchard balance will be transferred to Ironwood in a single on-chain transfer. Once confirmed, this transfer cannot be cancelled.</string>
+    <string name="migrationReview_feeLabel">Fee</string>
+    <string name="migrationReview_amountLabel">Amount</string>
+    <string name="migrationReview_signing">Signing...</string>
+    <string name="migrationReview_confirm">Confirm</string>
+    <string name="migrationReview_confirmTransferPlanTitle">Confirm Transfer Plan</string>
+    <string name="migrationReview_privacyBody">Your balance splits into %1$d transfers over %2$s. Approve once and we\'ll handle the rest — just keep the app running in the background. Amounts are randomized for privacy. If we miss a window, Zodl will prompt you on next open.</string>
+    <string name="migrationReview_roundOfTotal">Round %1$d of %2$d</string>
+    <string name="migrationReview_startMigration">Start Migration</string>
+    <string name="migrationReview_sendImmediately">Send immediately</string>
+
+    <string name="migrationKeystoneSign_prepareErrorMessage">Couldn\'t prepare the migration for signing. Try again.</string>
+    <string name="migrationKeystoneSign_barTitle">Sign Transaction</string>
+    <string name="migrationKeystoneSign_scanWithKeystone">Scan with your Keystone wallet%1$s</string>
+    <string name="migrationKeystoneSign_roundSuffix"> (%1$d of %2$d)</string>
+    <string name="migrationKeystoneSign_subtitle">After you have signed with Keystone, tap on the Get Signature button below.</string>
+    <string name="migrationKeystoneSign_badgeHardware">Hardware</string>
+    <string name="migrationKeystoneSign_getSignature">Get Signature</string>
+    <string name="migrationKeystoneSign_reject">Reject</string>
+
+    <string name="migrationBattery_title">Allow Background Delivery</string>
+    <string name="migrationBattery_body">To send migration transfers at their scheduled times, Zodl needs to keep running in the background. Allow background activity for Zodl in your device settings.</string>
+    <string name="migrationBattery_scheduledWindowsTitle">Transfers send at their scheduled windows</string>
+    <string name="migrationBattery_scheduledWindowsBody">Zodl wakes up and sends each transfer at its scheduled time — no action needed.</string>
+    <string name="migrationBattery_noNeedToOpenTitle">No need to open the app for each send</string>
+    <string name="migrationBattery_noNeedToOpenBody">Once you confirm the new schedule, we will send the transfers in the background.</string>
+    <string name="migrationBattery_fixedScheduleTitle">Sends on a fixed schedule, not your activity</string>
+    <string name="migrationBattery_fixedScheduleBody">Transfers go out at set network-wide times, so they\'re not linked to when you open Zodl.</string>
+    <string name="migrationBattery_withoutPermissionHint">Without this permission, you\'ll need to open Zodl manually at each scheduled time to send.</string>
+
+    <string name="migrationScheduled_schedulingTitle">Scheduling...</string>
+    <string name="migrationScheduled_schedulingSubtitle">Your ZEC migration schedule is getting confirmed.</string>
+    <string name="migrationScheduled_totalToTransferLabel">Total to transfer</string>
+    <string name="migrationScheduled_poolLabel">Pool</string>
+    <string name="migrationScheduled_poolValue">Orchard → Ironwood</string>
+    <string name="migrationScheduled_transfersLabel">Transfers</string>
+    <string name="migrationScheduled_durationLabel">Duration</string>
+    <string name="migrationScheduled_doneTitle">Migration Scheduled</string>
+    <string name="migrationScheduled_doneSubtitle">Your ZEC will be migrated to the Ironwood pool based on the schedule you approved.</string>
+    <string name="migrationScheduled_finalizeErrorMessage">Something went wrong finalizing your migration schedule. Please try again.</string>
+    <string name="migrationScheduled_backgroundActivityHint">Transfers run when you open the app — enable background activity in Settings for automatic sending.</string>
+    <string name="migrationScheduled_transfersProgressPending">0 of %1$d</string>
+
+    <string name="migrationHome_completeTitle">Migration complete</string>
+    <string name="migrationHome_requiredTitle">Migration Required</string>
+    <string name="migrationHome_readyToSendTitle">Transfer Ready</string>
+    <string name="migrationHome_attentionTitle">Migration plan needs update</string>
+    <string name="migrationHome_defaultSubtitle">Move your funds to Ironwood.</string>
+    <string name="migrationHome_residueTitle">%1$s left in Orchard</string>
+    <string name="migrationHome_residueSubtitle">Tap to decide what happens to it</string>
+    <string name="migrationHome_upgradeStoppedTitle">Migration Stopped</string>
+    <string name="migrationHome_upgradeStoppedSubtitle">The Zcash network upgrade stopped your migration before it finished. Confirmed transfers are unaffected. Funds in unconfirmed transfers may remain unavailable until those transactions expire and your wallet synchronizes. Tap to migrate what is left.</string>
+
+    <string name="colorPicker_title">Colors</string>
+    <string name="colorPicker_grid">Grid</string>
+    <string name="colorPicker_spectrum">Spectrum</string>
+    <string name="colorPicker_sliders">Sliders</string>
+    <string name="colorPicker_red">Red</string>
+    <string name="colorPicker_green">Green</string>
+    <string name="colorPicker_blue">Blue</string>
+    <string name="colorPicker_hex">Hex Color #</string>
+    <string name="colorPicker_done">Done</string>
+    <string name="colorPicker_edit">Change color</string>
+    <string name="colorPicker_gridDescription">Color grid</string>
+    <string name="colorPicker_spectrumDescription">Color spectrum</string>
+    <string name="colorPicker_selectedHex">Selected color #%1$s</string>
+    <string name="editAccount_title">Edit Account</string>
+    <string name="accountName_heading">Customize Account</string>
+    <string name="accountName_message">Choose a name to tell it apart from your other accounts.</string>
+    <string name="accountName_label">Account Name</string>
+    <string name="accountName_placeholder">Enter...</string>
+    <string name="accountName_counter">%1$d/%2$d</string>
+    <string name="accountName_duplicate">An account with this name already exists</string>
+    <string name="editAccount_save">Save changes</string>
 
 </resources>

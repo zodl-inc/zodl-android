@@ -224,6 +224,8 @@ private fun createViewModel(
 
             override suspend fun isServerAutomatic() = false
 
+            override suspend fun isServerCustom() = false
+
             override fun init() = Unit
         }
     return ChooseServerVM(
@@ -300,6 +302,7 @@ private class FakeWalletRepository(
     override val secretState = MutableStateFlow(SecretState.NONE)
     override val fastestEndpoints = MutableStateFlow(FastestServersState(listOf(fastestEndpoint), false))
     override val walletRestoringState = MutableStateFlow(WalletRestoringState.NONE)
+    override val isIronwoodAnnouncementShown = MutableStateFlow<Boolean?>(true)
 
     val endpointUpdateStarted = CompletableDeferred<Unit>()
 
@@ -328,11 +331,14 @@ private class FakeWalletRepository(
     override fun refreshFastestServers() {
         refreshCount++
     }
+
+    override suspend fun markIronwoodAnnouncementShown() = Unit
 }
 
 private class FakeSynchronizerProvider : SynchronizerProvider {
     override val error = MutableStateFlow<SynchronizerError?>(null)
     override val synchronizer = MutableStateFlow<Synchronizer?>(MockSynchronizer(ServerValidation.Valid))
+    override val isSeedMismatch = MutableStateFlow(false)
 
     override suspend fun getSynchronizer(): Synchronizer = checkNotNull(synchronizer.value)
 
@@ -349,6 +355,8 @@ private object FakeNavigationRouter : NavigationRouter {
     override fun replace(vararg routes: Any) = Unit
 
     override fun replaceAll(vararg routes: Any) = Unit
+
+    override fun replaceFrom(route: KClass<*>, vararg routes: Any) = Unit
 
     override fun back() = Unit
 

@@ -78,6 +78,15 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0  # To fetch all commits
+      - name: Refuse to deploy with a live SDK_COMMIT_PIN
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          if grep -qE '^SDK_COMMIT_PIN=.+' gradle.properties; then
+            echo '::error::SDK_COMMIT_PIN is set — releases must build against a published SDK.'
+            exit 1
+          fi
+
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -86,6 +95,11 @@ jobs:
         timeout-minutes: 10
         with:
           gradle-home-cache-cleanup: true
+      # Release builds must carry valid OHTTP values: the app-config artifact is checked for format,
+      # mainnet != testnet and a relay digest in INDEPENDENT_RELAY_URL_SHA256 (the former release-only script).
+      - name: Check the OHTTP values
+        timeout-minutes: 15
+        run: ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest --tests '*.AppConfigTest'
       - name: Export Google Services JSON
         env:
           FIREBASE_DEBUG_JSON_BASE64: ${{ secrets.FIREBASE_DEBUG_JSON_BASE64 }}
@@ -135,8 +149,6 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew :app:bundleZcashmainnetStoreRelease :app:packageZcashmainnetStoreReleaseUniversalApk
       - name: Collect Artifacts
@@ -220,7 +232,7 @@ jobs:
         run: |
           unzip binaries.zip
       - name: Upload to Play Store
-        timeout-minutes: 10
+        timeout-minutes: 25
         env:
           # TODO [#1033]: Use token-based authorization on Google Play for automated deployment
           # TODO [#1033]: https://github.com/Electric-Coin-Company/zashi-android/issues/1033
@@ -232,7 +244,5 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew :app:publishToGooglePlay

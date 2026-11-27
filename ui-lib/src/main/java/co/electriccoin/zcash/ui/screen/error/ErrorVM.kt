@@ -4,10 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
+import co.electriccoin.zcash.ui.common.model.KeystoneFirmwareVersion
 import co.electriccoin.zcash.ui.common.model.SubmitResult
-import co.electriccoin.zcash.ui.common.usecase.OptInExchangeRateAndTorUseCase
+import co.electriccoin.zcash.ui.common.model.errorCopy
 import co.electriccoin.zcash.ui.common.usecase.SendEmailUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.STACKTRACE_LIMIT
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyContent
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlinx.coroutines.NonCancellable
@@ -23,7 +26,7 @@ class ErrorVM(
     private val navigateToErrorBottom: NavigateToErrorUseCase,
     private val navigationRouter: NavigationRouter,
     private val sendEmailUseCase: SendEmailUseCase,
-    private val optInExchangeRateAndTor: OptInExchangeRateAndTorUseCase
+    private val viewOnlyContent: ViewOnlyContent,
 ) : ViewModel() {
     val state: StateFlow<ErrorState> = MutableStateFlow(createState(args)).asStateFlow()
 
@@ -40,25 +43,9 @@ class ErrorVM(
             is ErrorArgs.ShieldingError -> createShieldingErrorState(args)
             is ErrorArgs.General -> createGeneralErrorState(args)
             is ErrorArgs.ShieldingGeneralError -> createGeneralShieldingErrorState(args)
-            is ErrorArgs.SynchronizerTorInitError -> createSdkSynchronizerError()
+            is ErrorArgs.KeystoneFirmwareUpdateRequired -> createKeystoneFirmwareUpdateRequiredState(args)
+            is ErrorArgs.KeystoneAccountUnsupported -> createKeystoneAccountUnsupportedState(args)
         }
-
-    private fun createSdkSynchronizerError(): ErrorState =
-        ErrorState(
-            title = stringRes(R.string.torSetup_alert_title),
-            message = stringRes(R.string.torSetup_alert_msg),
-            positive =
-                ButtonState(
-                    text = stringRes(R.string.torSetup_alert_disable),
-                    onClick = ::onDisableTorClick
-                ),
-            negative =
-                ButtonState(
-                    text = stringRes(R.string.torSetup_alert_dontDisable),
-                    onClick = { navigationRouter.back() }
-                ),
-            onBack = ::onBack,
-        )
 
     private fun createSyncErrorState(args: ErrorArgs.SyncError) =
         ErrorState(
@@ -73,6 +60,50 @@ class ErrorVM(
                 ButtonState(
                     text = stringRes(co.electriccoin.zcash.ui.design.R.string.send_report),
                     onClick = { sendReportClick(args) }
+                ),
+            onBack = ::onBack,
+        )
+
+    private fun createKeystoneAccountUnsupportedState(args: ErrorArgs.KeystoneAccountUnsupported) =
+        ErrorState(
+            title = stringRes(R.string.error_keystone_account_title),
+            message = stringRes(R.string.error_keystone_account_message),
+            positive =
+                ButtonState(
+                    text = stringRes(R.string.error_keystone_firmware_close),
+                    onClick = { navigationRouter.back() }
+                ),
+            negative =
+                ButtonState(
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.send_report),
+                    onClick = { sendReportClick(args.exception) }
+                ),
+            onBack = ::onBack,
+        )
+
+    private fun createKeystoneFirmwareUpdateRequiredState(args: ErrorArgs.KeystoneFirmwareUpdateRequired) =
+        ErrorState(
+            title = stringRes(R.string.error_keystone_firmware_title),
+            message =
+                args.exception.detected?.let { detected ->
+                    stringRes(
+                        R.string.error_keystone_firmware_message,
+                        detected.toString(),
+                        KeystoneFirmwareVersion.MINIMUM_SUPPORTED.toString()
+                    )
+                } ?: stringRes(
+                    R.string.error_keystone_firmware_message_legacy,
+                    KeystoneFirmwareVersion.MINIMUM_SUPPORTED.toString()
+                ),
+            positive =
+                ButtonState(
+                    text = stringRes(R.string.error_keystone_firmware_close),
+                    onClick = { navigationRouter.back() }
+                ),
+            negative =
+                ButtonState(
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.send_report),
+                    onClick = { sendReportClick(args.exception) }
                 ),
             onBack = ::onBack,
         )
@@ -123,14 +154,21 @@ class ErrorVM(
             onBack = ::onBack,
         )
 
-    private fun createGeneralErrorState(args: ErrorArgs.General) =
-        ErrorState(
-            title = stringRes(R.string.error_general_title),
+    /**
+     * [AccountOperationUnsupportedException] is a product limitation, not a failure — it gets the
+     * copy of its kind instead of the generic title plus a stack trace.
+     */
+    private fun createGeneralErrorState(args: ErrorArgs.General): ErrorState {
+        val unsupported =
+            (args.exception as? AccountOperationUnsupportedException)?.kind?.errorCopy(viewOnlyContent)
+        return ErrorState(
+            title = unsupported?.title ?: stringRes(R.string.error_general_title),
             message =
-                stringRes(
-                    R.string.error_general_message,
-                    stringRes(args.exception.stackTraceToString().take(STACKTRACE_LIMIT))
-                ),
+                unsupported?.message
+                    ?: stringRes(
+                        R.string.error_general_message,
+                        stringRes(args.exception.stackTraceToString().take(STACKTRACE_LIMIT))
+                    ),
             positive =
                 ButtonState(
                     text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok),
@@ -143,6 +181,7 @@ class ErrorVM(
                 ),
             onBack = ::onBack,
         )
+    }
 
     private fun createGeneralShieldingErrorState(args: ErrorArgs.ShieldingGeneralError) =
         ErrorState(
@@ -208,6 +247,4 @@ class ErrorVM(
                 sendEmailUseCase(exception)
             }
         }
-
-    private fun onDisableTorClick() = viewModelScope.launch { optInExchangeRateAndTor(false) }
 }

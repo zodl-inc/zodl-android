@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.exchangerate.picker
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,19 +26,23 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
-import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
+import co.electriccoin.zcash.ui.design.component.TransparentBgScaffold
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
+import co.electriccoin.zcash.ui.design.component.ZashiModalBottomSheetDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.orDark
-import co.electriccoin.zcash.ui.design.util.scaffoldScrollPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.home.common.CommonErrorScreen
+import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,36 +50,61 @@ fun CurrencyConversionPickerView(state: CurrencyConversionPickerState?) {
     ZashiScreenModalBottomSheet(
         state = state,
         dragHandle = null,
+        sheetGesturesEnabled = false,
         content = { innerState, _ ->
-            BlankBgScaffold(
+            val hazeState = rememberZashiFrostState()
+            TransparentBgScaffold(
                 modifier = Modifier.fillMaxSize(),
                 topBar = {
-                    TopAppBar(innerState, windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp))
+                    TopAppBar(
+                        innerState = innerState,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .zashiFrostedHeader(
+                                    hazeState = hazeState,
+                                    frostColor = ZashiModalBottomSheetDefaults.ContainerColor,
+                                    fallbackColor = ZashiModalBottomSheetDefaults.ContainerColor
+                                ),
+                        windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp)
+                    )
                 }
             ) { padding ->
-                LazyColumn(
+                Box(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .scaffoldScrollPadding(
-                                paddingValues = padding,
-                                top = padding.calculateTopPadding(),
-                                bottom = 0.dp,
-                                start = 0.dp,
-                                end = 0.dp,
-                            ),
-                    state = rememberLazyListState(),
-                    contentPadding = PaddingValues(bottom = padding.calculateBottomPadding()),
+                            .zashiFrostSource(hazeState)
                 ) {
-                    itemsIndexed(
-                        items = innerState.items,
-                        key = { _, item -> item.key },
-                        contentType = { _, item -> item.contentType }
-                    ) { index, item ->
-                        CurrencyItem(item)
-                        if (index != innerState.items.lastIndex) {
-                            ZashiHorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 24.dp)
+                    when (innerState.data) {
+                        is CurrencyConversionPickerDataState.Error -> {
+                            CommonErrorScreen(
+                                state = innerState.data,
+                                shimmerColor = ZashiColors.Surfaces.bgTertiary,
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .padding(top = padding.calculateTopPadding())
+                            )
+                        }
+
+                        CurrencyConversionPickerDataState.Loading -> {
+                            CommonShimmerLoadingScreen(
+                                shimmerItemsCount = 10,
+                                color = ZashiColors.Surfaces.bgTertiary,
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .padding(top = padding.calculateTopPadding() + 20.dp),
+                                contentPaddingValues = PaddingValues(24.dp, 12.dp),
+                            )
+                        }
+
+                        is CurrencyConversionPickerDataState.Success -> {
+                            Success(
+                                state = innerState.data,
+                                contentPadding = padding,
+                                modifier = Modifier.fillMaxSize()
                             )
                         }
                     }
@@ -82,6 +112,36 @@ fun CurrencyConversionPickerView(state: CurrencyConversionPickerState?) {
             }
         }
     )
+}
+
+@Composable
+private fun Success(
+    state: CurrencyConversionPickerDataState.Success,
+    contentPadding: PaddingValues,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier,
+        state = rememberLazyListState(),
+        contentPadding =
+            PaddingValues(
+                top = contentPadding.calculateTopPadding(),
+                bottom = contentPadding.calculateBottomPadding()
+            ),
+    ) {
+        itemsIndexed(
+            items = state.items,
+            key = { _, item -> item.key },
+            contentType = { _, item -> item.contentType }
+        ) { index, item ->
+            CurrencyItem(item)
+            if (index != state.items.lastIndex) {
+                ZashiHorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -119,9 +179,11 @@ private fun CurrencyItem(item: CurrencyConversionPickerItemState) {
 @Composable
 private fun TopAppBar(
     innerState: CurrencyConversionPickerState,
+    modifier: Modifier = Modifier,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
 ) {
     ZashiSmallTopAppBar(
+        modifier = modifier,
         title = stringRes(co.electriccoin.zcash.ui.R.string.currencyConversion_selectCurrencyTitle).getValue(),
         navigationAction = {
             ZashiTopAppBarCloseNavigation(
@@ -130,10 +192,9 @@ private fun TopAppBar(
             )
         },
         colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = Color.Transparent
-                ),
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
         windowInsets = windowInsets
     )
 }
@@ -143,4 +204,18 @@ private fun TopAppBar(
 private fun CurrencyConversionPickerPreview() =
     ZcashTheme {
         CurrencyConversionPickerView(state = CurrencyConversionPickerState.preview)
+    }
+
+@PreviewScreens
+@Composable
+private fun CurrencyConversionPickerLoadingPreview() =
+    ZcashTheme {
+        CurrencyConversionPickerView(state = CurrencyConversionPickerState.previewLoading)
+    }
+
+@PreviewScreens
+@Composable
+private fun CurrencyConversionPickerErrorPreview() =
+    ZcashTheme {
+        CurrencyConversionPickerView(state = CurrencyConversionPickerState.previewError)
     }

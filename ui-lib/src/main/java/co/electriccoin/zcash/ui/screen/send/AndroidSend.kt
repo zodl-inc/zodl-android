@@ -9,11 +9,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.ZecSend
 import cash.z.ecc.android.sdk.model.toZecString
 import cash.z.ecc.android.sdk.type.AddressType
@@ -23,13 +25,15 @@ import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarVM
 import co.electriccoin.zcash.ui.common.compose.LocalActivity
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.isTransparentOrTex
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveClearSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.PrefillSendData
 import co.electriccoin.zcash.ui.common.usecase.PrefillSendUseCase
-import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
+import co.electriccoin.zcash.ui.common.usecase.ValidateAddressUseCase
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
+import co.electriccoin.zcash.ui.design.component.ZashiMaxTooManyNotesSheet
 import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
 import co.electriccoin.zcash.ui.design.util.TickerLocation
 import co.electriccoin.zcash.ui.design.util.getString
@@ -45,6 +49,7 @@ import co.electriccoin.zcash.ui.screen.send.model.MemoState
 import co.electriccoin.zcash.ui.screen.send.model.RecipientAddressState
 import co.electriccoin.zcash.ui.screen.send.model.SendStage
 import co.electriccoin.zcash.ui.screen.send.view.Send
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -55,8 +60,6 @@ internal fun WrapSend(args: Send) {
     val activity = LocalActivity.current
 
     val navigationRouter = koinInject<NavigationRouter>()
-
-    val walletViewModel = koinActivityViewModel<WalletViewModel>()
 
     val balanceWidgetVM =
         koinViewModel<BalanceWidgetVM> {
@@ -74,8 +77,6 @@ internal fun WrapSend(args: Send) {
     val exchangeRateRepository = koinInject<ExchangeRateRepository>()
 
     val hasCameraFeature = activity.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
-
-    val synchronizer = walletViewModel.synchronizer.collectAsStateWithLifecycle().value
 
     val selectedAccount = accountDataSource.selectedAccount.collectAsStateWithLifecycle(null).value
 
@@ -99,7 +100,6 @@ internal fun WrapSend(args: Send) {
         goBack = { navigationRouter.back() },
         hasCameraFeature = hasCameraFeature,
         sendArguments = args,
-        synchronizer = synchronizer,
         selectedAccount = selectedAccount
     )
 }
@@ -114,12 +114,13 @@ internal fun WrapSend(
     goBack: () -> Unit,
     hasCameraFeature: Boolean,
     sendArguments: Send,
-    synchronizer: Synchronizer?,
     selectedAccount: WalletAccount?,
 ) {
     val scope = rememberCoroutineScope()
 
     val viewModel = koinViewModel<SendViewModel>()
+
+    val validateAddress = koinInject<ValidateAddressUseCase>()
 
     val sendAddressBookState by viewModel.sendAddressBookState.collectAsStateWithLifecycle()
 
@@ -135,6 +136,12 @@ internal fun WrapSend(
     val (zecSend, setZecSend) = rememberSaveable(stateSaver = ZecSend.Saver) { mutableStateOf(null) }
 
     val recipientAddressState by viewModel.recipientAddressState.collectAsStateWithLifecycle()
+
+    val maxChipState by viewModel.maxChipState.collectAsStateWithLifecycle()
+
+    val maxFeedback by viewModel.maxFeedbackState.collectAsStateWithLifecycle()
+    val tooManyNotesSheet by viewModel.tooManyNotesSheet.collectAsStateWithLifecycle()
+    val amountFocusRequester = remember { FocusRequester() }
 
     val observeClearSend = koinInject<ObserveClearSendUseCase>()
     val prefillSend = koinInject<PrefillSendUseCase>()
@@ -161,9 +168,7 @@ internal fun WrapSend(
                 AmountState.newFromZec(
                     value = zecSend?.amount?.toZecString(NUMBER_FORMAT_LOCALE) ?: "",
                     fiatValue = "",
-                    isTransparentOrTextRecipient =
-                        recipientAddressState.type?.let { it == AddressType.Transparent }
-                            ?: false,
+                    isTransparentOrTextRecipient = recipientAddressState.type.isTransparentOrTex,
                     exchangeRateState = exchangeRateState,
                 )
             )
@@ -178,9 +183,7 @@ internal fun WrapSend(
                 AmountState.newFromZec(
                     value = amountState.value.getString(context),
                     fiatValue = amountState.fiatValue.getString(context),
-                    isTransparentOrTextRecipient =
-                        recipientAddressState.type
-                            ?.let { it == AddressType.Transparent } ?: false,
+                    isTransparentOrTextRecipient = recipientAddressState.type.isTransparentOrTex,
                     exchangeRateState = exchangeRateState,
                     lastFieldChangedByUser = amountState.lastFieldChangedByUser,
                 )
@@ -188,9 +191,7 @@ internal fun WrapSend(
                 AmountState.newFromFiat(
                     value = amountState.value.getString(context),
                     fiatValue = amountState.fiatValue.getString(context),
-                    isTransparentOrTextRecipient =
-                        recipientAddressState.type
-                            ?.let { it == AddressType.Transparent } ?: false,
+                    isTransparentOrTextRecipient = recipientAddressState.type.isTransparentOrTex,
                     exchangeRateState = exchangeRateState,
                 )
             }
@@ -203,11 +204,46 @@ internal fun WrapSend(
             mutableStateOf(MemoState.new(zecSend?.memo?.value ?: ""))
         }
 
+    // The view model prices Max with the memo, so it follows every change, including prefill and restore
+    LaunchedEffect(memoState.text) { viewModel.onMemoChanged(memoState.text) }
+
+    // Max amount: applied only while the form is shown, so a late result never changes a reviewed amount.
+    val isFormStage by rememberUpdatedState(sendStage == SendStage.Form)
+    val currentExchangeRateState by rememberUpdatedState(exchangeRateState)
+    val currentRecipientType by rememberUpdatedState(recipientAddressState.type)
+
+    LaunchedEffect(Unit) {
+        viewModel.maxAmountResolved.collect {
+            if (isFormStage) {
+                setAmountState(
+                    it.toAmountState(
+                        isTransparentOrTextRecipient = currentRecipientType.isTransparentOrTex,
+                        exchangeRateState = currentExchangeRateState
+                    )
+                )
+            }
+        }
+    }
+
+    // The too-many-notes OK: clear the amount; the sheet focuses the field once it is hidden
+    LaunchedEffect(Unit) {
+        viewModel.amountClears.collect {
+            setAmountState(
+                AmountState.newFromZec(
+                    value = "",
+                    fiatValue = "",
+                    isTransparentOrTextRecipient = currentRecipientType.isTransparentOrTex,
+                    exchangeRateState = currentExchangeRateState,
+                )
+            )
+        }
+    }
+
     LaunchedEffect(Unit) {
         observeClearSend().collect {
             setSendStage(SendStage.Form)
             setZecSend(null)
-            viewModel.onRecipientAddressChanged(RecipientAddressState.new("", null))
+            viewModel.onRecipientAddressChanged(RecipientAddressState.new("", null), repriceMax = false)
             setAmountState(
                 AmountState.newFromZec(
                     value = "",
@@ -224,14 +260,17 @@ internal fun WrapSend(
         prefillSend().collect {
             when (it) {
                 is PrefillSendData.All -> {
-                    val type = synchronizer?.validateAddress(it.address.orEmpty())
+                    val type = validateAddress(it.address.orEmpty())
                     setSendStage(SendStage.Form)
                     setZecSend(null)
                     viewModel.onRecipientAddressChanged(
-                        RecipientAddressState.new(
-                            address = it.address.orEmpty(),
-                            type = type
-                        )
+                        state =
+                            RecipientAddressState.new(
+                                address = it.address.orEmpty(),
+                                type = type
+                            ),
+                        // the payment request brings its own amount
+                        repriceMax = false
                     )
 
                     val fee = it.fee
@@ -246,7 +285,7 @@ internal fun WrapSend(
                         AmountState.newFromZec(
                             value = stringRes(value, TickerLocation.HIDDEN).getString(context),
                             fiatValue = amountState.fiatValue.getString(context),
-                            isTransparentOrTextRecipient = type == AddressType.Transparent,
+                            isTransparentOrTextRecipient = type.isTransparentOrTex,
                             exchangeRateState = exchangeRateState,
                         )
                     )
@@ -254,7 +293,7 @@ internal fun WrapSend(
                 }
 
                 is PrefillSendData.FromAddressScan -> {
-                    val type = synchronizer?.validateAddress(it.address)
+                    val type = validateAddress(it.address)
                     setSendStage(SendStage.Form)
                     setZecSend(null)
                     viewModel.onRecipientAddressChanged(
@@ -278,13 +317,16 @@ internal fun WrapSend(
                 // no action - wait until the sending is done
             }
 
+            SendStage.TooManyNotes,
             is SendStage.SendFailure -> {
                 setSendStage(SendStage.Form)
             }
         }
     }
 
-    if (null == synchronizer || null == selectedAccount) {
+    val recipientValidationJob = remember { mutableStateOf<Job?>(null) }
+
+    if (null == selectedAccount) {
         // TODO [#1146]: Consider moving CircularScreenProgressIndicator from Android layer to View layer
         // TODO [#1146]: Improve this by allowing screen composition and updating it after the data is available
         // TODO [#1146]: https://github.com/Electric-Coin-Company/zashi-android/issues/1146
@@ -304,26 +346,41 @@ internal fun WrapSend(
             onQrScannerOpen = goToQrScanner,
             hasCameraFeature = hasCameraFeature,
             recipientAddressState = recipientAddressState,
-            onRecipientAddressChange = {
-                scope.launch {
-                    viewModel.onRecipientAddressChanged(
-                        RecipientAddressState.new(
-                            address = it,
-                            // TODO [#342]: Verify Addresses without Synchronizer
-                            // TODO [#342]: https://github.com/zcash/zcash-android-wallet-sdk/issues/342
-                            type = synchronizer.validateAddress(it)
+            onRecipientAddressChange = { newAddress ->
+                recipientValidationJob.value?.cancel()
+                recipientValidationJob.value =
+                    scope.launch {
+                        viewModel.onRecipientAddressChanged(
+                            RecipientAddressState.new(
+                                address = newAddress,
+                                // TODO [#342]: Verify Addresses without Synchronizer
+                                // TODO [#342]: https://github.com/zcash/zcash-android-wallet-sdk/issues/342
+                                type = validateAddress(newAddress)
+                            )
                         )
-                    )
-                }
+                    }
             },
-            setAmountState = setAmountState,
+            setAmountState = {
+                // Only the user's typing reaches here; Max results and restores write the state directly
+                viewModel.onAmountEdited()
+                setAmountState(it)
+            },
             amountState = amountState,
             setMemoState = setMemoState,
             memoState = memoState,
             selectedAccount = selectedAccount,
             exchangeRateState = exchangeRateState,
             sendAddressBookState = sendAddressBookState,
-            zashiMainTopAppBarState = zashiMainTopAppBarState
+            zashiMainTopAppBarState = zashiMainTopAppBarState,
+            maxChipState = maxChipState,
+            maxFeedback = maxFeedback,
+            amountFocusRequester = amountFocusRequester,
+            onTooManyNotesOk = viewModel::onTooManyNotesOk
+        )
+        ZashiMaxTooManyNotesSheet(
+            state = tooManyNotesSheet,
+            focusRequests = viewModel.amountFocusRequests,
+            focusRequester = amountFocusRequester
         )
     }
 }

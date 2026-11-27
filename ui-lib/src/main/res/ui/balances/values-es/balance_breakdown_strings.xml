@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="balance_breakdown_title">Saldo Total En Todos Los Pools</string>
+    <string name="balance_breakdown_subtitle">Tu saldo de ZEC ahora se desglosa por pool de Zcash, para que veas exactamente dónde están tus fondos.</string>
+    <string name="balance_breakdown_total">Saldo total</string>
+    <string name="balance_breakdown_pool_orchard">Orchard</string>
+    <string name="balance_breakdown_pool_sapling">Sapling</string>
+    <string name="balance_breakdown_pool_transparent">Transparente</string>
+    <string name="balance_breakdown_pool_ironwood">Ironwood</string>
+    <string name="balance_breakdown_got_it">Entendido</string>
+</resources>

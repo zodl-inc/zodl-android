@@ -471,7 +471,8 @@ val LightZashiColorsInternal =
                         utilityGray400 = Gray.`400`,
                         utilityGray300 = Gray.`300`,
                         utilityGray900 = Gray.`900`,
-                        utilityGray800 = Gray.`800`
+                        utilityGray800 = Gray.`800`,
+                        utilityGray950 = Gray.`950`
                     ),
                 SuccessGreen =
                     UtilitySuccessGreen(

@@ -1,39 +1,22 @@
 package co.electriccoin.zcash.ui.screen.swap
 
-import co.electriccoin.zcash.ui.NavigationRouter
-import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.SwapDirection
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
-import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
-import co.electriccoin.zcash.ui.common.repository.SwapRepository
-import co.electriccoin.zcash.ui.common.usecase.CancelSwapUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetCuratedSwapAssetsUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetPreselectedSwapAssetUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
-import co.electriccoin.zcash.ui.common.usecase.NavigateToScanGenericAddressUseCase
-import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectABSwapRecipientUseCase
-import co.electriccoin.zcash.ui.common.usecase.NavigateToSlippageUseCase
-import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapAssetPickerUseCase
-import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapInfoUseCase
-import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapQuoteIfAvailableUseCase
-import co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.ScanResult
+import co.electriccoin.zcash.ui.common.usecase.TooManyNotesOutcome
+import co.electriccoin.zcash.ui.design.component.NumberTextFieldInnerState
 import co.electriccoin.zcash.ui.screen.swap.info.SwapRefundAddressInfoArgs
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -69,7 +52,7 @@ class SwapVMTest {
     @Test
     fun preselectAppliedWhenNothingSelected() =
         runTest {
-            val harness = harness(preselect = SwapAssetTestFixture.asset(tokenTicker = "btc"))
+            val harness = swapVmHarness(preselect = SwapAssetTestFixture.asset(tokenTicker = "btc"))
 
             harness.collectState(this)
 
@@ -79,7 +62,7 @@ class SwapVMTest {
     @Test
     fun slippagePickerResultAppliedToState() =
         runTest {
-            val harness = harness(slippageResult = BigDecimal("7"))
+            val harness = swapVmHarness(slippageResult = BigDecimal("7"))
             harness.collectState(this)
 
             harness.onSlippageClick(null)
@@ -92,7 +75,7 @@ class SwapVMTest {
     fun assetPickerResultAppliedToState() =
         runTest {
             val asset = SwapAssetTestFixture.asset(tokenTicker = "eth", chainTicker = "eth")
-            val harness = harness(assetResult = asset)
+            val harness = swapVmHarness(assetResult = asset)
             harness.collectState(this)
 
             harness.onSwapAssetPickerClick()
@@ -101,9 +84,51 @@ class SwapVMTest {
         }
 
     @Test
+    fun theTooManyNotesOkClearsTheAmountAndAsksForFocus() =
+        runTest {
+            val harness = swapVmHarness()
+            harness.collectState(this)
+            val focusRequests = mutableListOf<Unit>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                harness.vm.amountFocusRequests.collect { focusRequests += it }
+            }
+            coEvery {
+                harness.requestSwapQuote.requestFlexInputIntoZec(any(), any(), any(), any(), any())
+            } returns TooManyNotesOutcome.OK
+            harness.onTextFieldChange(NumberTextFieldInnerState(amount = BigDecimal("3")))
+
+            assertEquals(BigDecimal("3"), harness.capturedState.amountTextState.amount)
+
+            harness.onRequestSwapQuoteClick(BigDecimal("3"), null, "refund-address")
+
+            assertNull(harness.capturedState.amountTextState.amount)
+            assertEquals(listOf(Unit), focusRequests)
+        }
+
+    @Test
+    fun aDismissedTooManyNotesSheetLeavesTheAmountAlone() =
+        runTest {
+            val harness = swapVmHarness()
+            harness.collectState(this)
+            val focusRequests = mutableListOf<Unit>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                harness.vm.amountFocusRequests.collect { focusRequests += it }
+            }
+            coEvery {
+                harness.requestSwapQuote.requestFlexInputIntoZec(any(), any(), any(), any(), any())
+            } returns TooManyNotesOutcome.DISMISSED
+            harness.onTextFieldChange(NumberTextFieldInnerState(amount = BigDecimal("3")))
+
+            harness.onRequestSwapQuoteClick(BigDecimal("3"), null, "refund-address")
+
+            assertEquals(BigDecimal("3"), harness.capturedState.amountTextState.amount)
+            assertEquals(emptyList(), focusRequests)
+        }
+
+    @Test
     fun changeButtonTogglesMode() =
         runTest {
-            val harness = harness()
+            val harness = swapVmHarness()
             harness.collectState(this)
 
             assertEquals(SwapDirection.SWAP_INTO_ZEC, harness.capturedState.swapDirection)
@@ -114,13 +139,67 @@ class SwapVMTest {
         }
 
     @Test
+    fun changeButtonIgnoredForViewOnlyAccount() =
+        runTest {
+            val harness = swapVmHarness(account = account(isSpendable = false))
+            harness.collectState(this)
+
+            harness.onChangeButtonClick()
+
+            assertEquals(SwapDirection.SWAP_INTO_ZEC, harness.capturedState.swapDirection)
+        }
+
+    @Test
+    fun changeButtonIgnoredWhileAccountLoading() =
+        runTest {
+            val harness = swapVmHarness(account = null)
+            harness.collectState(this)
+
+            harness.onChangeButtonClick()
+
+            assertEquals(SwapDirection.SWAP_INTO_ZEC, harness.capturedState.swapDirection)
+        }
+
+    @Test
+    fun switchingToViewOnlyAccountResetsModeToIntoZec() =
+        runTest {
+            val asset = SwapAssetTestFixture.asset(tokenTicker = "btc")
+            val harness = swapVmHarness(preselect = asset)
+            harness.collectState(this)
+            harness.onChangeButtonClick()
+            assertEquals(SwapDirection.SWAP_FROM_ZEC, harness.capturedState.swapDirection)
+
+            harness.accountFlow.value = account(isSpendable = false)
+
+            assertEquals(SwapDirection.SWAP_INTO_ZEC, harness.capturedState.swapDirection)
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
+            coVerify(exactly = 0) { harness.requestSwapQuote.requestExactInput(any(), any(), any(), any(), any()) }
+            coVerify(exactly = 1) {
+                harness.requestSwapQuote.requestFlexInputIntoZec(any(), "refund-address", asset, any(), any())
+            }
+        }
+
+    @Test
+    fun switchingBackToSpendableAccountKeepsIntoZecAndAllowsToggle() =
+        runTest {
+            val harness = swapVmHarness(account = account(isSpendable = false))
+            harness.collectState(this)
+
+            harness.accountFlow.value = account(isSpendable = true)
+            assertEquals(SwapDirection.SWAP_INTO_ZEC, harness.capturedState.swapDirection)
+
+            harness.onChangeButtonClick()
+            assertEquals(SwapDirection.SWAP_FROM_ZEC, harness.capturedState.swapDirection)
+        }
+
+    @Test
     fun requestQuotePinsSelectedAssetAndSlippage() =
         runTest {
             val asset = SwapAssetTestFixture.asset(tokenTicker = "btc")
-            val harness = harness(preselect = asset)
+            val harness = swapVmHarness(preselect = asset)
             harness.collectState(this)
 
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "refund-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
 
             // Default mode is SWAP_INTO_ZEC -> flex input, pinned to the preselected asset + default slippage.
             coVerify(exactly = 1) {
@@ -138,11 +217,11 @@ class SwapVMTest {
     fun swappingFromZecRequestsExactInputQuote() =
         runTest {
             val asset = SwapAssetTestFixture.asset(tokenTicker = "btc")
-            val harness = harness(preselect = asset)
+            val harness = swapVmHarness(preselect = asset)
             harness.collectState(this)
 
             harness.onChangeButtonClick() // SWAP_INTO_ZEC -> SWAP_FROM_ZEC
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "destination-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "destination-address")
 
             coVerify(exactly = 1) {
                 harness.requestSwapQuote.requestExactInput(
@@ -158,7 +237,7 @@ class SwapVMTest {
     @Test
     fun slippageModeFollowsSwapDirection() =
         runTest {
-            val harness = harness()
+            val harness = swapVmHarness()
             harness.collectState(this)
 
             // SWAP_INTO_ZEC opens the slippage screen in flex-input mode.
@@ -176,7 +255,7 @@ class SwapVMTest {
         runTest {
             val eth = SwapAssetTestFixture.asset(tokenTicker = "eth", chainTicker = "eth")
             val harness =
-                harness(
+                swapVmHarness(
                     preselect = SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc"),
                     assets = SwapAssetTestFixture.assetsData(data = listOf(eth)),
                     recipient = contactOnChain("eth")
@@ -192,7 +271,7 @@ class SwapVMTest {
     fun pickingAbContactOnNewChainWithMultipleAssetsClearsSelection() =
         runTest {
             val harness =
-                harness(
+                swapVmHarness(
                     preselect = SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc"),
                     assets =
                         SwapAssetTestFixture.assetsData(
@@ -217,10 +296,10 @@ class SwapVMTest {
     @Test
     fun requestQuoteIgnoredWhenNoAssetSelected() =
         runTest {
-            val harness = harness(preselect = null)
+            val harness = swapVmHarness(preselect = null)
             harness.collectState(this)
 
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "refund-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
 
             assertNull(harness.capturedState.swapAsset)
             coVerify(exactly = 0) {
@@ -231,15 +310,47 @@ class SwapVMTest {
     @Test
     fun requestingQuoteTogglesRequestingFlag() =
         runTest {
-            val harness = harness()
+            val harness = swapVmHarness()
             harness.collectState(this)
             val gate = harness.makeQuoteHang()
 
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "refund-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
             assertEquals(true, harness.capturedState.isRequestingQuote)
 
             gate.complete(Unit)
             assertEquals(false, harness.capturedState.isRequestingQuote)
+        }
+
+    @Test
+    fun refundWarningCancelledSkipsQuoteAndClearsRequestingFlag() =
+        runTest {
+            val harness = swapVmHarness(refundWarningResult = false)
+            harness.collectState(this)
+
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), BigDecimal("100"), "refund-address")
+
+            coVerify(exactly = 0) {
+                harness.requestSwapQuote.requestFlexInputIntoZec(any(), any(), any(), any(), any())
+            }
+            assertEquals(false, harness.capturedState.isRequestingQuote)
+        }
+
+    @Test
+    fun refundWarningModeFollowsSwapDirection() =
+        runTest {
+            val harness = swapVmHarness()
+            harness.collectState(this)
+
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), BigDecimal("100"), "refund-address")
+            coVerify(exactly = 1) {
+                harness.navigateToSwapRefundWarning(fiatAmount = BigDecimal("100"), mode = SwapMode.FLEX_INPUT)
+            }
+
+            harness.onChangeButtonClick()
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), BigDecimal("50"), "destination-address")
+            coVerify(exactly = 1) {
+                harness.navigateToSwapRefundWarning(fiatAmount = BigDecimal("50"), mode = SwapMode.EXACT_INPUT)
+            }
         }
 
     // endregion
@@ -249,7 +360,7 @@ class SwapVMTest {
     @Test
     fun backCancelsSwapWhenNoQuotePending() =
         runTest {
-            val harness = harness()
+            val harness = swapVmHarness()
             harness.collectState(this)
 
             harness.onBack()
@@ -261,10 +372,10 @@ class SwapVMTest {
     @Test
     fun backWhileRequestingShowsCancelConfirmation() =
         runTest {
-            val harness = harness()
+            val harness = swapVmHarness()
             harness.collectState(this)
             harness.makeQuoteHang()
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "refund-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
 
             harness.onBack()
 
@@ -274,10 +385,10 @@ class SwapVMTest {
     @Test
     fun backFromCancelConfirmationChecksForAvailableQuote() =
         runTest {
-            val harness = harness()
+            val harness = swapVmHarness()
             harness.collectState(this)
             val gate = harness.makeQuoteHang()
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "refund-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
             harness.onBack() // requesting -> show cancel confirmation
             gate.complete(Unit) // request finishes -> no longer requesting, sheet still visible
 
@@ -290,10 +401,10 @@ class SwapVMTest {
     @Test
     fun cancelConfirmationNegativeButtonCancelsSwap() =
         runTest {
-            val harness = harness()
+            val harness = swapVmHarness()
             harness.collectState(this)
             harness.makeQuoteHang()
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "refund-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
             harness.onBack()
 
             harness.vm.cancelState.value
@@ -309,10 +420,10 @@ class SwapVMTest {
     @Test
     fun cancelConfirmationPositiveButtonChecksForQuote() =
         runTest {
-            val harness = harness()
+            val harness = swapVmHarness()
             harness.collectState(this)
             harness.makeQuoteHang()
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "refund-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
             harness.onBack()
 
             harness.vm.cancelState.value
@@ -331,7 +442,7 @@ class SwapVMTest {
     @Test
     fun swapCurrencyTypeTogglesTypeAndRebuildsAmount() =
         runTest {
-            val harness = harness()
+            val harness = swapVmHarness()
             harness.collectState(this)
 
             assertEquals(CurrencyType.TOKEN, harness.capturedState.currencyType)
@@ -346,11 +457,15 @@ class SwapVMTest {
     fun preselectChainSkippedWhenSwappingFromZec() =
         runTest {
             val harness =
-                harness(
+                swapVmHarness(
                     preselect = SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc"),
                     assets =
                         SwapAssetTestFixture.assetsData(
-                            data = listOf(SwapAssetTestFixture.asset(tokenTicker = "eth", chainTicker = "eth"))
+                            data =
+                                listOf(
+                                    SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc"),
+                                    SwapAssetTestFixture.asset(tokenTicker = "eth", chainTicker = "eth")
+                                )
                         ),
                     recipient = contactOnChain("eth")
                 )
@@ -366,7 +481,7 @@ class SwapVMTest {
     fun preselectChainSkippedWhenChainUnchanged() =
         runTest {
             val harness =
-                harness(
+                swapVmHarness(
                     preselect = SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc"),
                     recipient = contactOnChain("btc")
                 )
@@ -381,7 +496,7 @@ class SwapVMTest {
     fun preselectChainSkippedWhenContactHasNoChain() =
         runTest {
             val harness =
-                harness(
+                swapVmHarness(
                     preselect = SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc"),
                     recipient = mockk(relaxed = true) { every { blockchain } returns null }
                 )
@@ -396,12 +511,16 @@ class SwapVMTest {
     fun scanResultAppliesAddressAndAmountAndClearsContact() =
         runTest {
             val harness =
-                harness(
+                swapVmHarness(
                     recipient = contactOnChain("btc"),
                     scanResult = ScanResult(address = "scanned-address", amount = BigDecimal("2.5"))
                 )
             harness.collectState(this)
             harness.onAddressBookClick() // select a contact first, to prove the scan clears it
+            // The default SWAP_INTO_ZEC direction treats a scan as a refund-address scan, which
+            // deliberately does not apply the resolved asset/amount (see onQrCodeScannerClick) --
+            // switch to SWAP_FROM_ZEC, where the scanned address is the actual swap counterparty.
+            harness.onChangeButtonClick()
 
             harness.onQrCodeScannerClick()
 
@@ -414,7 +533,7 @@ class SwapVMTest {
     @Test
     fun addressChangeClearsSelectedContact() =
         runTest {
-            val harness = harness(recipient = contactOnChain("btc"))
+            val harness = swapVmHarness(recipient = contactOnChain("btc"))
             harness.collectState(this)
             harness.onAddressBookClick()
             assertNotNull(harness.capturedState.selectedContact)
@@ -430,7 +549,7 @@ class SwapVMTest {
         runTest {
             val eth = SwapAssetTestFixture.asset(tokenTicker = "eth", chainTicker = "eth")
             val harness =
-                harness(
+                swapVmHarness(
                     assets = SwapAssetTestFixture.assetsData(data = listOf(eth)),
                     recipient = contactOnChain("eth")
                 )
@@ -445,7 +564,8 @@ class SwapVMTest {
     @Test
     fun addressClickForwardsRefundAddressInfoArgs() =
         runTest {
-            val harness = harness(preselect = SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc"))
+            val harness =
+                swapVmHarness(preselect = SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc"))
             harness.collectState(this)
 
             harness.onAddressClick()
@@ -459,138 +579,10 @@ class SwapVMTest {
 
     // endregion
 
+    /** A relaxed account mock reports `isSpendable = false`, so the spend authority is always stubbed explicitly. */
+    private fun account(isSpendable: Boolean): WalletAccount =
+        mockk(relaxed = true) { every { this@mockk.isSpendable } returns isSpendable }
+
     private fun contactOnChain(chainTicker: String): EnhancedABContact =
         mockk(relaxed = true) { every { blockchain } returns SwapAssetTestFixture.blockchain(chainTicker) }
-
-    @Suppress("LongMethod")
-    private fun harness(
-        preselect: SwapAsset? = SwapAssetTestFixture.asset(),
-        slippageResult: BigDecimal? = null,
-        assetResult: SwapAsset? = null,
-        recipient: EnhancedABContact? = null,
-        scanResult: ScanResult? = null,
-        assets: SwapAssetsData = SwapAssetTestFixture.assetsData()
-    ): Harness {
-        val navigateToSlippage =
-            mockk<NavigateToSlippageUseCase> {
-                coEvery { this@mockk.invoke(any(), any(), any()) } returns slippageResult
-            }
-        val navigateToSwapAssetPicker =
-            mockk<NavigateToSwapAssetPickerUseCase> {
-                coEvery { this@mockk.invoke(any()) } returns assetResult
-            }
-        val navigateToSelectSwapRecipient =
-            mockk<NavigateToSelectABSwapRecipientUseCase> { coEvery { this@mockk.invoke() } returns recipient }
-        val navigateToScanAddress =
-            mockk<NavigateToScanGenericAddressUseCase> { coEvery { this@mockk.invoke() } returns scanResult }
-        val getPreselectedSwapAsset =
-            mockk<GetPreselectedSwapAssetUseCase> {
-                if (preselect != null) {
-                    coEvery { this@mockk.invoke() } returns preselect
-                } else {
-                    // Never resolves -> the VM keeps `swapAsset` null (covers the no-asset-selected path).
-                    coEvery { this@mockk.invoke() } coAnswers { awaitCancellation() }
-                }
-            }
-        val requestSwapQuote = mockk<RequestSwapQuoteUseCase>(relaxed = true)
-        val cancelSwap = mockk<CancelSwapUseCase>(relaxed = true)
-        val navigateToSwapQuoteIfAvailable = mockk<NavigateToSwapQuoteIfAvailableUseCase>(relaxed = true)
-        val navigationRouter = mockk<NavigationRouter>(relaxed = true)
-        val getSwapAssets =
-            mockk<GetCuratedSwapAssetsUseCase> {
-                every { observe() } returns MutableStateFlow(assets)
-                every { this@mockk() } returns assets
-            }
-        val getSelectedWalletAccount =
-            mockk<GetSelectedWalletAccountUseCase> {
-                every { observe() } returns MutableStateFlow<WalletAccount?>(null)
-            }
-        val mapper = mockk<SwapVMMapper>()
-        val swapRepository =
-            mockk<SwapRepository>(relaxed = true) { every { this@mockk.assets } returns MutableStateFlow(assets) }
-
-        val harness =
-            Harness(
-                navigateToSlippage = navigateToSlippage,
-                navigateToSwapAssetPicker = navigateToSwapAssetPicker,
-                requestSwapQuote = requestSwapQuote,
-                cancelSwap = cancelSwap,
-                navigateToSwapQuoteIfAvailable = navigateToSwapQuoteIfAvailable,
-                navigationRouter = navigationRouter
-            )
-
-        // The VM exposes its callbacks only through SwapVMMapper.createState; capture the callbacks
-        // object and pull each handler out by name, so the tests can drive the VM the same way the
-        // View would — and adding/reordering a callback can't silently misroute the others.
-        every { mapper.createState(any(), any()) } answers {
-            val callbacks = arg<SwapStateCallbacks>(1)
-            harness.capturedState = firstArg()
-            harness.onBack = callbacks.onBack
-            harness.onSwapAssetPickerClick = callbacks.onSwapAssetPickerClick
-            harness.onSwapCurrencyTypeClick = callbacks.onSwapCurrencyTypeClick
-            harness.onSlippageClick = callbacks.onSlippageClick
-            harness.onRequestSwapQuoteClick = callbacks.onRequestSwapQuoteClick
-            harness.onAddressChange = callbacks.onAddressChange
-            harness.onQrCodeScannerClick = callbacks.onQrCodeScannerClick
-            harness.onAddressBookClick = callbacks.onAddressBookClick
-            harness.onChangeButtonClick = callbacks.onChangeButtonClick
-            harness.onAddressClick = callbacks.onAddressClick
-            mockk()
-        }
-
-        harness.vm =
-            SwapVM(
-                getCuratedSwapAssetsUseCase = getSwapAssets,
-                getSelectedWalletAccount = getSelectedWalletAccount,
-                getPreselectedSwapAsset = getPreselectedSwapAsset,
-                swapRepository = swapRepository,
-                navigateToSwapInfo = mockk<NavigateToSwapInfoUseCase>(relaxed = true),
-                cancelSwap = cancelSwap,
-                navigationRouter = navigationRouter,
-                requestSwapQuote = requestSwapQuote,
-                navigateToSwapQuoteIfAvailable = navigateToSwapQuoteIfAvailable,
-                swapVMMapper = mapper,
-                navigateToScanAddress = navigateToScanAddress,
-                navigateToSelectSwapRecipient = navigateToSelectSwapRecipient,
-                navigateToSlippage = navigateToSlippage,
-                navigateToSwapAssetPicker = navigateToSwapAssetPicker,
-            )
-        return harness
-    }
-
-    private class Harness(
-        val navigateToSlippage: NavigateToSlippageUseCase,
-        val navigateToSwapAssetPicker: NavigateToSwapAssetPickerUseCase,
-        val requestSwapQuote: RequestSwapQuoteUseCase,
-        val cancelSwap: CancelSwapUseCase,
-        val navigateToSwapQuoteIfAvailable: NavigateToSwapQuoteIfAvailableUseCase,
-        val navigationRouter: NavigationRouter,
-    ) {
-        lateinit var vm: SwapVM
-        lateinit var capturedState: InternalState
-        var onBack: () -> Unit = {}
-        var onSlippageClick: (BigDecimal?) -> Unit = {}
-        var onSwapAssetPickerClick: () -> Unit = {}
-        var onSwapCurrencyTypeClick: (BigDecimal?) -> Unit = {}
-        var onChangeButtonClick: () -> Unit = {}
-        var onAddressBookClick: () -> Unit = {}
-        var onAddressChange: (String) -> Unit = {}
-        var onQrCodeScannerClick: () -> Unit = {}
-        var onAddressClick: () -> Unit = {}
-        var onRequestSwapQuoteClick: (BigDecimal, String) -> Unit = { _, _ -> }
-
-        /** Makes the next flex-input quote request hang so `isRequestingQuote` stays true. */
-        fun makeQuoteHang(): CompletableDeferred<Unit> {
-            val gate = CompletableDeferred<Unit>()
-            coEvery {
-                requestSwapQuote.requestFlexInputIntoZec(any(), any(), any(), any(), any())
-            } coAnswers { gate.await() }
-            return gate
-        }
-
-        fun collectState(scope: TestScope) {
-            scope.backgroundScope.launch(UnconfinedTestDispatcher(scope.testScheduler)) { vm.state.collect {} }
-            scope.backgroundScope.launch(UnconfinedTestDispatcher(scope.testScheduler)) { vm.cancelState.collect {} }
-        }
-    }
 }

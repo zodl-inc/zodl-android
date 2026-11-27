@@ -5,8 +5,12 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
 import co.electriccoin.zcash.ui.common.datasource.TexUnsupportedOnKSException
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposalNotCreatedException
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
+import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.common.usecase.Zip321ParseUriValidationUseCase.Zip321ParseUriValidation
@@ -24,6 +28,7 @@ import co.electriccoin.zcash.ui.screen.texunsupported.TEXUnsupportedArgs
 
 class OnZip321ScannedUseCase(
     private val keystoneProposalRepository: KeystoneProposalRepository,
+    private val ledgerProposalPipeline: LedgerProposalPipeline,
     private val zashiProposalRepository: ZashiProposalRepository,
     private val accountDataSource: AccountDataSource,
     private val navigationRouter: NavigationRouter,
@@ -70,7 +75,17 @@ class OnZip321ScannedUseCase(
                         result
                     }
 
-                    is ZashiAccount -> {
+                    is LedgerAccount -> {
+                        val result = ledgerProposalPipeline.createZip321Proposal(zip321.zip321Uri)
+                        ledgerProposalPipeline.createPCZTFromProposal()
+                        result
+                    }
+
+                    is ViewOnlyAccount -> {
+                        throw AccountOperationUnsupportedException.viewOnly()
+                    }
+
+                    is ZodlAccount -> {
                         zashiProposalRepository.createZip321Proposal(zip321.zip321Uri)
                     }
                 }
@@ -88,22 +103,27 @@ class OnZip321ScannedUseCase(
             )
             navigationRouter.replace(Send(), ReviewTransactionArgs)
         } catch (_: TexUnsupportedOnKSException) {
-            navigationRouter.forward(TEXUnsupportedArgs)
+            val isLedger = accountDataSource.getSelectedAccount() is LedgerAccount
+            navigationRouter.forward(TEXUnsupportedArgs(isLedger = isLedger))
             keystoneProposalRepository.clear()
+            ledgerProposalPipeline.clear()
             zashiProposalRepository.clear()
         } catch (_: InsufficientFundsException) {
             zashiProposalRepository.clear()
             keystoneProposalRepository.clear()
+            ledgerProposalPipeline.clear()
             navigationRouter.replace(InsufficientFundsArgs)
         } catch (_: TransactionProposalNotCreatedException) {
             prefillSend.requestFromZip321(zip321.payment)
             navigationRouter.replace(Send())
             zashiProposalRepository.clear()
             keystoneProposalRepository.clear()
+            ledgerProposalPipeline.clear()
         } catch (e: Exception) {
             navigateToErrorUseCase(ErrorArgs.General(e))
             zashiProposalRepository.clear()
             keystoneProposalRepository.clear()
+            ledgerProposalPipeline.clear()
         }
     }
 
@@ -118,7 +138,17 @@ class OnZip321ScannedUseCase(
                         result
                     }
 
-                    is ZashiAccount -> {
+                    is LedgerAccount -> {
+                        val result = ledgerProposalPipeline.createZip321Proposal(zip321.zip321Uri)
+                        ledgerProposalPipeline.createPCZTFromProposal()
+                        result
+                    }
+
+                    is ViewOnlyAccount -> {
+                        throw AccountOperationUnsupportedException.viewOnly()
+                    }
+
+                    is ZodlAccount -> {
                         zashiProposalRepository.createZip321Proposal(zip321.zip321Uri)
                     }
                 }
@@ -136,21 +166,26 @@ class OnZip321ScannedUseCase(
             )
             navigationRouter.replace(ReviewTransactionArgs)
         } catch (_: TexUnsupportedOnKSException) {
-            navigationRouter.forward(TEXUnsupportedArgs)
+            val isLedger = accountDataSource.getSelectedAccount() is LedgerAccount
+            navigationRouter.forward(TEXUnsupportedArgs(isLedger = isLedger))
             keystoneProposalRepository.clear()
+            ledgerProposalPipeline.clear()
             zashiProposalRepository.clear()
         } catch (_: InsufficientFundsException) {
             zashiProposalRepository.clear()
             keystoneProposalRepository.clear()
+            ledgerProposalPipeline.clear()
             navigationRouter.replace(InsufficientFundsArgs)
         } catch (_: TransactionProposalNotCreatedException) {
             zashiProposalRepository.clear()
             keystoneProposalRepository.clear()
+            ledgerProposalPipeline.clear()
             prefillSend.requestFromZip321(zip321.payment)
             navigationRouter.back()
         } catch (e: Exception) {
             zashiProposalRepository.clear()
             keystoneProposalRepository.clear()
+            ledgerProposalPipeline.clear()
             navigateToErrorUseCase(ErrorArgs.General(e)) { replace(it) }
         }
     }

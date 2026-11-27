@@ -80,6 +80,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiLinearProgressIndicator
 import co.electriccoin.zcash.ui.design.component.ZashiLinearProgressIndicatorDefaults
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
@@ -89,6 +90,7 @@ import co.electriccoin.zcash.ui.screen.scan.ScanScreenState
 import co.electriccoin.zcash.ui.screen.scan.ScanTag
 import co.electriccoin.zcash.ui.screen.scan.ScanValidationState
 import co.electriccoin.zcash.ui.screen.scan.util.QrCodeAnalyzerImpl
+import co.electriccoin.zcash.ui.screen.scankeystone.e2e.E2eKeystoneQrFrameSource
 import co.electriccoin.zcash.ui.screen.scankeystone.model.ScanKeystoneState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
@@ -113,7 +115,7 @@ fun ScanKeystoneView(
     onScanStateChange: (ScanScreenState) -> Unit,
     validationResult: ScanValidationState,
     state: ScanKeystoneState,
-) = ZcashTheme(forceDarkMode = true) {
+) = ZcashTheme(appearanceMode = AppearanceMode.DARK) {
     // forces dark theme for this screen
     val permissionState =
         if (LocalInspectionMode.current) {
@@ -247,7 +249,9 @@ fun ScanBottomItems(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(28.dp))
+        } else {
+            Spacer(modifier = Modifier.height(4.dp))
         }
 
         when (scanState) {
@@ -268,7 +272,7 @@ fun ScanBottomItems(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
     }
 }
@@ -405,13 +409,17 @@ private fun ScanMainContent(
                 onScanStateChange(ScanScreenState.Scanning)
 
                 if (!LocalInspectionMode.current) {
-                    ScanCameraView(
-                        framePosition = framePosition,
-                        isTorchOn = isTorchOn,
-                        onScan = onScan,
-                        permissionState = permissionState,
-                        setScanState = setScanState,
-                    )
+                    if (E2eKeystoneQrFrameSource.isEnabled(LocalContext.current)) {
+                        E2eKeystoneQrFrameSource.Compose(onScan = onScan)
+                    } else {
+                        ScanCameraView(
+                            framePosition = framePosition,
+                            isTorchOn = isTorchOn,
+                            onScan = onScan,
+                            permissionState = permissionState,
+                            setScanState = setScanState,
+                        )
+                    }
                 }
 
                 Canvas(modifier = Modifier.fillMaxSize()) {
@@ -737,7 +745,7 @@ fun ImageAnalysis.qrCodeFlow(framePosition: FramePosition): Flow<String> {
                 QrCodeAnalyzerImpl(
                     framePosition = framePosition,
                     onQrCodeScanned = { result ->
-                        Twig.debug { "Scan result onQrCodeScanned: $result" }
+                        Twig.debug { "Scan result onQrCodeScanned: ${result.length} chars" }
                         // Note that these callbacks aren't tied to the Compose lifecycle, so they could occur
                         // after the view goes away.  Collection needs to occur within the Compose lifecycle
                         // to make this not be a problem.

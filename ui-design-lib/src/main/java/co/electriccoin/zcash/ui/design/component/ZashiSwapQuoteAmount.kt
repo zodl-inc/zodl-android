@@ -140,46 +140,6 @@ private fun RowScope.TopBottom(state: SwapTokenAmountState?, end: Boolean) {
 }
 
 @Composable
-private fun ShimmerableText(
-    text: String?,
-    shimmerText: String,
-    style: TextStyle,
-    modifier: Modifier = Modifier,
-    fontWeight: FontWeight? = null,
-    color: Color = Color.Unspecified,
-    maxLines: Int = 1,
-    textAlign: TextAlign = TextAlign.Start,
-) {
-    if (text == null) {
-        with(
-            measureTextStyle(
-                text = shimmerText,
-                style = style.copy(fontWeight = fontWeight ?: style.fontWeight),
-            )
-        ) {
-            ShimmerRectangle(
-                modifier =
-                    Modifier
-                        .width(size.widthDp)
-                        .height(size.heightDp)
-                        .padding(1.dp),
-                color = ZashiColors.Surfaces.bgTertiary,
-            )
-        }
-    } else {
-        ZashiAutoSizeText(
-            modifier = modifier,
-            text = text,
-            style = style,
-            fontWeight = fontWeight,
-            color = color,
-            maxLines = maxLines,
-            textAlign = textAlign
-        )
-    }
-}
-
-@Composable
 private fun ShimmerableIcon(state: SwapTokenAmountState?) {
     if (state == null) {
         Box {

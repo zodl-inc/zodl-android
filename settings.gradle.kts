@@ -116,6 +116,7 @@ dependencyResolutionManagement {
             if (isRepoRestrictionEnabled) {
                 content {
                     includeGroup("cash.z.ecc.android")
+                    includeGroup("com.zodl.android")
                 }
             }
         }
@@ -126,6 +127,7 @@ dependencyResolutionManagement {
             if (isRepoRestrictionEnabled) {
                 content {
                     includeGroup("cash.z.ecc.android")
+                    includeGroup("com.zodl.android")
                 }
             }
         }
@@ -180,14 +182,15 @@ dependencyResolutionManagement {
             val tinkVersion = extra["TINK_VERSION"].toString()
             val zcashBip39Version = extra["ZCASH_BIP39_VERSION"].toString()
             val zcashSdkVersion = extra["ZCASH_SDK_VERSION"].toString()
+            val zodlAppConfigVersion = extra["ZODL_APP_CONFIG_VERSION"].toString()
             val zip321Version = extra["ZIP_321_VERSION"].toString()
             val zxingVersion = extra["ZXING_VERSION"].toString()
             val zxingCppVersion = extra["ZXING_CPP_VERSION"].toString()
             val koinVersion = extra["KOIN_VERSION"].toString()
-            val flexaVersion = extra["FLEXA_VERSION"].toString()
             val keystoneVersion = extra["KEYSTONE_VERSION"].toString()
             val shimmerVersion = extra["SHIMMER_VERSION"].toString()
             val ktorVersion = extra["KTOR_VERSION"].toString()
+            val hazeVersion = extra["HAZE_VERSION"].toString()
 
             // Standalone versions
             version("flank", flankVersion)
@@ -245,19 +248,19 @@ dependencyResolutionManagement {
             library("markdown", "org.jetbrains:markdown:$markdownVersion")
             library("mlkit-scanning", "com.google.mlkit:barcode-scanning:$mlkitScanningVersion")
             library("tink", "com.google.crypto.tink:tink-android:$tinkVersion")
-            library("zcash-sdk", "cash.z.ecc.android:zcash-android-sdk:$zcashSdkVersion")
-            library("zcash-sdk-backend", "cash.z.ecc.android:zcash-android-backend:$zcashSdkVersion")
-            library("zcash-sdk-incubator", "cash.z.ecc.android:zcash-android-sdk-incubator:$zcashSdkVersion")
+            library("zodl-app-config", "com.zodl.android:app-config:$zodlAppConfigVersion")
+            library("zcash-sdk", "com.zodl.android:zcash-android-sdk:$zcashSdkVersion")
+            library("zcash-sdk-backend", "com.zodl.android:zcash-android-backend:$zcashSdkVersion")
+            library("zcash-sdk-incubator", "com.zodl.android:zcash-android-sdk-incubator:$zcashSdkVersion")
             library("zcash-bip39", "cash.z.ecc.android:kotlin-bip39:$zcashBip39Version")
             library("zip321", "org.zecdev:zip321:$zip321Version")
             library("zxing", "com.google.zxing:core:$zxingVersion")
             library("zxingcpp", "io.github.zxing-cpp:android:$zxingCppVersion")
             library("koin", "io.insert-koin:koin-android:$koinVersion")
             library("koin-compose", "io.insert-koin:koin-androidx-compose:$koinVersion")
-            library("flexa-core", "co.flexa:core:$flexaVersion")
-            library("flexa-spend", "co.flexa:spend:$flexaVersion")
             library("keystone", "com.github.KeystoneHQ:keystone-sdk-android:$keystoneVersion")
             library("compose-shimmer", "com.valentinilk.shimmer:compose-shimmer:$shimmerVersion")
+            library("haze", "dev.chrisbanes.haze:haze:$hazeVersion")
             library("ktor-bom", "io.ktor:ktor-bom:$ktorVersion")
             library("ktor-core", "io.ktor" ,"ktor-client-core").withoutVersion()
             library("ktor-okhttp", "io.ktor" ,"ktor-client-okhttp").withoutVersion()
@@ -351,6 +354,12 @@ include("configuration-api-lib")
 include("configuration-impl-android-lib")
 include("crash-lib")
 include("crash-android-lib")
+include("feature-ledger")
+include("feature-migration")
+include("feature-viewing-key")
+include("feature-voting")
+include("flexa-core")
+include("flexa-spend")
 include("preference-api-lib")
 include("preference-impl-android-lib")
 include("sdk-ext-lib")
@@ -363,15 +372,34 @@ include("ui-integration-test")
 include("ui-lib")
 include("ui-screenshot-test")
 
+project(":flexa-core").projectDir = file("third-party/flexa/core")
+project(":flexa-spend").projectDir = file("third-party/flexa/spend")
+
 val zcashSdkIncludedBuildPath = extra["SDK_INCLUDED_BUILD_PATH"].toString()
 
 if (zcashSdkIncludedBuildPath.isNotEmpty()) {
     logger.lifecycle("The SDK will be used from $zcashSdkIncludedBuildPath instead of Maven Central.")
     includeBuild(zcashSdkIncludedBuildPath) {
         dependencySubstitution {
-            substitute(module("cash.z.ecc.android:zcash-android-sdk")).using(project(":sdk-lib"))
-            substitute(module("cash.z.ecc.android:zcash-android-backend")).using(project(":backend-lib"))
-            substitute(module("cash.z.ecc.android:zcash-android-sdk-incubator")).using(project(":sdk-incubator-lib"))
+            substitute(module("com.zodl.android:zcash-android-sdk")).using(project(":sdk-lib"))
+            substitute(module("com.zodl.android:zcash-android-backend")).using(project(":backend-lib"))
+            substitute(module("com.zodl.android:zcash-android-sdk-incubator")).using(project(":sdk-incubator-lib"))
+        }
+    }
+}
+
+// Substitute only the lightwallet-client module (gRPC transport, incl. the OHTTP channel) with a local
+// SDK checkout while keeping sdk-lib/backend-lib from Maven. Avoids the Rust toolchain build and lets
+// the transport layer be iterated independently. Mutually exclusive with SDK_INCLUDED_BUILD_PATH.
+val lightwalletClientIncludedBuildPath = (extra.properties["LIGHTWALLET_CLIENT_INCLUDED_BUILD_PATH"] ?: "").toString()
+
+if (lightwalletClientIncludedBuildPath.isNotEmpty() && zcashSdkIncludedBuildPath.isEmpty()) {
+    logger.lifecycle(
+        "lightwallet-client will be used from $lightwalletClientIncludedBuildPath instead of Maven Central."
+    )
+    includeBuild(lightwalletClientIncludedBuildPath) {
+        dependencySubstitution {
+            substitute(module("com.zodl.android:lightwallet-client")).using(project(":lightwallet-client-lib"))
         }
     }
 }

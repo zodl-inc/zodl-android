@@ -2,21 +2,31 @@ package co.electriccoin.zcash.ui.common.repository
 
 import cash.z.ecc.android.sdk.exception.PcztException
 import cash.z.ecc.android.sdk.model.Pczt
+import cash.z.ecc.android.sdk.model.Proposal
+import cash.z.ecc.android.sdk.model.WalletAddress
+import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.ExactInputSwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.ExactOutputSwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
+import co.electriccoin.zcash.ui.common.datasource.MigrationSweepTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.ProposalDataSource
+import co.electriccoin.zcash.ui.common.datasource.SendTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TexUnsupportedOnKSException
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposalNotCreatedException
 import co.electriccoin.zcash.ui.common.datasource.Zip321TransactionProposal
+import co.electriccoin.zcash.ui.common.datasource.sizeBoundFor
+import co.electriccoin.zcash.ui.common.model.KeystoneFirmwarePolicy
+import co.electriccoin.zcash.ui.common.model.KeystoneFirmwareVersion
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapQuote
+import co.electriccoin.zcash.ui.common.model.readKeystoneFwStamp
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKException
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
 import com.sparrowwallet.hummingbird.UR
 import com.sparrowwallet.hummingbird.UREncoder
 import kotlinx.coroutines.CoroutineScope
@@ -39,43 +49,53 @@ interface KeystoneProposalRepository {
 
     val submitState: StateFlow<SubmitProposalState?>
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createProposal(zecSend: ZecSend)
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createExactInputSwapProposal(zecSend: ZecSend, quote: SwapQuote): ExactInputSwapTransactionProposal
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createExactOutputSwapProposal(zecSend: ZecSend, quote: SwapQuote): ExactOutputSwapTransactionProposal
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createZip321Proposal(zip321Uri: String): Zip321TransactionProposal
 
     @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createShieldProposal()
 
-    @Throws(PcztException.CreatePcztFromProposalException::class)
+    /**
+     * Adopts an already-built migration send-max [Proposal] (see
+     * [cash.z.ecc.android.sdk.OrchardMigrationSdk.proposeImmediateMigration]) so [createPCZTFromProposal]
+     * can build a Keystone PCZT from it exactly as it would from any other proposal.
+     */
+    fun setMigrationSweepProposal(proposal: Proposal, amount: Zatoshi)
+
+    /**
+     * The SDK rejects any multi-step proposal for PCZT generation. That rejection is surfaced as
+     * [TexUnsupportedOnKSException] only when the current proposal actually pays a TEX (ZIP-320)
+     * address — the one flow where a multi-step proposal is the expected shape. For every other
+     * proposal (shielding, migration sweeps), the raw
+     * [PcztException.MultiStepProposalUnsupportedException] propagates so a TEX-specific error can
+     * never be shown for a failure unrelated to TEX.
+     */
+    @Throws(
+        PcztException.CreatePcztFromProposalException::class,
+        PcztException.MultiStepProposalUnsupportedException::class,
+        TexUnsupportedOnKSException::class
+    )
     suspend fun createPCZTFromProposal()
 
     @Throws(IllegalStateException::class)
     suspend fun createPCZTEncoder(): UREncoder
 
+    /**
+     * Parses a Keystone-signed PCZT and enforces the firmware minimum-version gate (MOB-1510).
+     * Firmware >= 2.4.6 stamps its raw internal version into the signed PCZT's proprietary
+     * fields; this normalizes that stamp to display numbering and refuses signatures from
+     * firmware below [KeystoneFirmwareVersion.MINIMUM_SUPPORTED] (or too old to stamp a version
+     * at all) before they can reach submission.
+     */
     @Throws(ParsePCZTException::class)
     suspend fun parsePCZT(ur: UR)
 
@@ -90,6 +110,18 @@ interface KeystoneProposalRepository {
 
 class ParsePCZTException : Exception()
 
+/**
+ * The scanned signed PCZT came from Keystone firmware below
+ * [KeystoneFirmwareVersion.MINIMUM_SUPPORTED]. [detected] is `null` when the firmware is too old
+ * to stamp its version at all.
+ */
+class KeystoneFirmwareBelowMinimumException(
+    val detected: KeystoneFirmwareVersion?
+) : Exception(
+        "Keystone firmware ${detected ?: "unstamped"} is below minimum supported " +
+            "${KeystoneFirmwareVersion.MINIMUM_SUPPORTED}"
+    )
+
 sealed interface SubmitProposalState {
     data object Submitting : SubmitProposalState
 
@@ -103,6 +135,7 @@ class KeystoneProposalRepositoryImpl(
     private val accountDataSource: AccountDataSource,
     private val proposalDataSource: ProposalDataSource,
     private val keystoneSDKProvider: KeystoneSDKProvider,
+    private val signerCapabilitiesProvider: SignerCapabilitiesProvider,
 ) : KeystoneProposalRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -165,15 +198,29 @@ class KeystoneProposalRepositoryImpl(
         }
     }
 
+    override fun setMigrationSweepProposal(proposal: Proposal, amount: Zatoshi) {
+        transactionProposal.update { MigrationSweepTransactionProposal(amount, proposal) }
+    }
+
     override suspend fun createPCZTFromProposal() {
+        val transactionProposal = getTransactionProposal()
+        val account = accountDataSource.getSelectedAccount()
         val result =
-            proposalDataSource.createPcztFromProposal(
-                account = accountDataSource.getSelectedAccount(),
-                proposal = getTransactionProposal().proposal
-            )
+            try {
+                proposalDataSource.createPcztFromProposal(
+                    account = account,
+                    proposal = transactionProposal.proposal,
+                    sizeBound = signerCapabilitiesProvider.sizeBoundFor(account, transactionProposal)
+                )
+            } catch (e: PcztException.MultiStepProposalUnsupportedException) {
+                if (transactionProposal.paysTexAddress()) throw TexUnsupportedOnKSException() else throw e
+            }
         proposalPczt = result
         addProofsToPczt(result)
     }
+
+    private fun TransactionProposal.paysTexAddress(): Boolean =
+        this is SendTransactionProposal && destination is WalletAddress.Tex
 
     private fun addProofsToPczt(proposalPczt: Pczt) {
         pcztWithProofsJob?.cancel()
@@ -183,8 +230,9 @@ class KeystoneProposalRepositoryImpl(
                 try {
                     val result = proposalDataSource.addProofsToPczt(proposalPczt.clonePczt())
                     pcztWithProofs.update { PcztState(isLoading = false, pczt = result) }
-                } catch (_: PcztException.AddProofsToPcztException) {
-                    pcztWithProofs.update { PcztState(isLoading = false, pczt = null) }
+                } catch (e: PcztException.AddProofsToPcztException) {
+                    Twig.error(e) { "Failed to add proofs to PCZT" }
+                    pcztWithProofs.update { PcztState(isLoading = false, pczt = null, error = e) }
                 }
             }
     }
@@ -203,11 +251,28 @@ class KeystoneProposalRepositoryImpl(
 
     override suspend fun parsePCZT(ur: UR) =
         withContext(Dispatchers.IO) {
-            try {
-                pcztWithSignatures = Pczt(keystoneSDKProvider.parsePczt(ur))
-            } catch (_: Exception) {
-                throw ParsePCZTException()
+            val parsed =
+                try {
+                    keystoneSDKProvider.parsePczt(ur)
+                } catch (_: Exception) {
+                    throw ParsePCZTException()
+                }
+
+            val stamp = parsed.readKeystoneFwStamp()
+            val detected = stamp?.let(KeystoneFirmwareVersion::fromStamp)
+            val outcome = KeystoneFirmwarePolicy.evaluate(detected, KeystoneFirmwareVersion.MINIMUM_SUPPORTED)
+            val logMessage = {
+                "Keystone firmware on signed PCZT: raw stamp ${stamp ?: "absent"}, normalized " +
+                    "${detected ?: "unknown"} (required ${KeystoneFirmwareVersion.MINIMUM_SUPPORTED}) -> $outcome"
             }
+            if (outcome != KeystoneFirmwarePolicy.Outcome.OK) {
+                Twig.warn(logMessage)
+                throw KeystoneFirmwareBelowMinimumException(detected)
+            } else {
+                Twig.info(logMessage)
+            }
+
+            pcztWithSignatures = Pczt(parsed)
         }
 
     @Suppress("UseCheckOrError", "ThrowingExceptionsWithoutMessageOrCause", "TooGenericExceptionCaught")
@@ -223,9 +288,12 @@ class KeystoneProposalRepositoryImpl(
                     throw cause
                 } else {
                     submitState.update { SubmitProposalState.Submitting }
-                    val pcztWithProofs = pcztWithProofs.filter { !it.isLoading }.first().pczt
+                    val pcztWithProofsState = pcztWithProofs.filter { !it.isLoading }.first()
+                    val pcztWithProofs = pcztWithProofsState.pczt
                     if (pcztWithProofs == null) {
-                        val cause = IllegalStateException("PCZT with proofs is null")
+                        val cause =
+                            pcztWithProofsState.error
+                                ?: IllegalStateException("PCZT with proofs is null")
                         submitState.update { SubmitProposalState.Result(SubmitResult.Error(cause)) }
                         throw cause
                     } else {
@@ -236,6 +304,7 @@ class KeystoneProposalRepositoryImpl(
                                     pcztWithSignatures = pcztWithSignatures
                                 )
                             submitState.update { SubmitProposalState.Result(result) }
+                            if (result is SubmitResult.Success) signerCapabilitiesProvider.endFlow()
                             result
                         } catch (e: Exception) {
                             val result = SubmitResult.Error(e)
@@ -281,5 +350,6 @@ class KeystoneProposalRepositoryImpl(
 
 private data class PcztState(
     val isLoading: Boolean,
-    val pczt: Pczt?
+    val pczt: Pczt?,
+    val error: Exception? = null
 )

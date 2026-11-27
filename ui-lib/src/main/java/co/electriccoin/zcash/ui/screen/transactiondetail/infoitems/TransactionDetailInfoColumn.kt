@@ -20,8 +20,10 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.PressMorphDefaults
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
@@ -29,14 +31,17 @@ fun TransactionDetailInfoColumn(
     state: TransactionDetailInfoColumnState,
     modifier: Modifier = Modifier
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     val clickModifier =
         if (state.onClick != null) {
-            Modifier.clickable(
-                indication = ripple(),
-                interactionSource = remember { MutableInteractionSource() },
-                onClick = state.onClick,
-                role = Role.Button,
-            )
+            Modifier
+                .pressMorph(interactionSource, PressMorphDefaults.PRESSED_SCALE_SUBTLE)
+                .clickable(
+                    indication = ripple(),
+                    interactionSource = interactionSource,
+                    onClick = state.onClick,
+                    role = Role.Button,
+                )
         } else {
             Modifier
         }

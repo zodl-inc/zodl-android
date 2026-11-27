@@ -1,6 +1,13 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="amount_with_fiat_currency_symbol" formatted="true"><xliff:g example="$" id="fiat_currency_symbol">%1$s</xliff:g><xliff:g example="123" id="amount">%2$s</xliff:g></string>
     <string name="general_hideBalancesMost">-----</string>
+    <string name="general_max">Máx.</string>
+    <string name="general_maxFeeHint">Máx. deja margen para la comisión de la transacción.</string>
+    <string name="general_maxFeeSlippageHint">Máx. deja margen para comisiones y slippage, y se actualiza con cada nueva cotización.</string>
+    <string name="general_maxUnavailableSend">Máx. no está disponible ahora. Ingresa el monto que quieres enviar.</string>
+    <string name="general_maxUnavailableSwap">Máx. no está disponible ahora. Ingresa el monto que quieres intercambiar.</string>
+    <string name="general_maxTooManyNotesTitle">Demasiadas notas para enviar a la vez</string>
+    <string name="general_maxTooManyNotesBody">Tu saldo está dividido en muchas partes pequeñas, así que no se puede enviar todo en una sola transacción. Intenta enviar un monto menor.</string>
     <string name="triple_dots">…</string>
     <string name="seed_recovery_reveal">Mostrar frase de recuperación</string>
     <string name="general_masked_seed_word">•••••</string>
@@ -19,6 +26,8 @@
     <string name="general_less">Menos</string>
     <string name="general_loading">Cargando</string>
     <string name="general_ok">OK</string>
+    <string name="general_dismiss">Descartar</string>
+    <string name="general_report">Reportar</string>
     <string name="restoreInfo_gotIt">¡Entendido!</string>
     <string name="send_report">Reportar</string>
     <string name="general_zec">%1$s %2$s</string>
@@ -46,6 +55,7 @@
     <string name="empty_char">-</string>
     <string name="zcash_logo_content_description">Logo de Zcash</string>
     <string name="balance_widget_available">Saldo disponible:</string>
+    <string name="hide_balance_placeholder">-----</string>
     <string name="hide_balances_content_description">Ocultar saldos</string>
     <string name="unable_to_open_email">No se pudo abrir la app de correo.</string>
     <string name="restoring_wallet_label">[Restaurando tu billetera…]</string>
@@ -73,22 +83,31 @@
     <string name="about_title">Acerca de</string>
     <string name="about_subtitle">Presentando Zodl</string>
     <string name="about_overflow_menu_content_description">Más opciones</string>
-    <string name="whatsNew_version" formatted="true">VersiÃ³n de Zodl <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="whatsNew_version" formatted="true">Versión de Zodl <xliff:g example="1" id="version">%s</xliff:g></string>
     <string name="about_debug_menu_app_name">Nombre de la app:<xliff:g example="Zodl" id="app_name">%1$s</xliff:g></string>
-    <string name="about_debug_menu_build">CompilaciÃ³n: <xliff:g example="635dac0eb9ddc2bc6da5177f0dd495d8b76af4dc" id="git_commit_hash">%1$s</xliff:g></string>
-    <string name="about_description">Zodl es una wallet mÃ³vil impulsada por Zcash, creada para pagos privados imparables.
-        EstÃ¡ optimizada para almacenar y usar en el mundo real $ZEC protegido: la criptomoneda verdaderamente privada.\n\nDesarrollada por el equipo que estableciÃ³ el estÃ¡ndar de la industria en privacidad en cadena (on-chain), los desarrolladores originales del protocolo Zcash.
+    <string name="about_debug_menu_build">Compilación: <xliff:g example="635dac0eb9ddc2bc6da5177f0dd495d8b76af4dc" id="git_commit_hash">%1$s</xliff:g></string>
+    <string name="about_description">Zodl es una wallet móvil impulsada por Zcash, creada para pagos privados imparables.
+        Está optimizada para almacenar y usar en el mundo real $ZEC protegido: la criptomoneda verdaderamente privada.\n\nDesarrollada por el equipo que estableció el estándar de la industria en privacidad en cadena (on-chain), los desarrolladores originales del protocolo Zcash.
     </string>
-    <string name="about_termsOfUse">TÃ©rminos del Servicio</string>
-    <string name="about_unable_to_web_browser">No se pudo encontrar una aplicaciÃ³n de navegador web.</string>
-    <string name="about_privacyPolicy">PolÃ­tica de privacidad</string>
+    <string name="about_termsOfUse">Términos del Servicio</string>
+    <string name="about_unable_to_web_browser">No se pudo encontrar una aplicación de navegador web.</string>
+    <string name="about_privacyPolicy">Política de privacidad</string>
 
     <!-- ===== account_list ===== -->
-    <string name="keystone_drawer_title">Billeteras y Dispositivos</string>
-    <string name="keystone_drawer_banner_title">Billetera de Hardware Keystone</string>
-    <string name="keystone_drawer_banner_desc">Obtén un 5%% de descuento en la billetera de hardware
-        aislada. Código promocional “Zashi”.</string>
-    <string name="keystone_connect">Conectar Billetera de Hardware</string>
+    <string name="hwWallet_drawer_title">Billeteras y Dispositivos</string>
+    <string name="hwWallet_connect">Conectar Billetera de Hardware</string>
+    <string name="hwWallet_section_zodl">Billetera Zodl</string>
+    <string name="hwWallet_section_keystone">Billetera Keystone</string>
+    <string name="hwWallet_section_keystone_plural">Billeteras Keystone</string>
+    <string name="hwWallet_section_ledger">Billetera Ledger</string>
+    <string name="hwWallet_section_ledger_plural">Billeteras Ledger</string>
+    <string name="hwWallet_walletOptions_contentDescription">Opciones de %1$s</string>
+    <string name="hwWallet_promo_title">Billetera de hardware Keystone</string>
+    <string name="hwWallet_promo_message">Obtén un 5%% de descuento en una billetera de hardware aislada. Código promocional “Zodl”.</string>
+    <string name="hwWallet_options_title">Opciones de billetera</string>
+    <string name="hwWallet_options_disconnect_title">Desconectar billetera de hardware</string>
+    <string name="hwWallet_options_disconnect_keystone">Desvincula tu dispositivo Keystone.</string>
+    <string name="hwWallet_options_disconnect_ledger">Desvincula tu dispositivo Ledger.</string>
 
     <!-- ===== add_contact ===== -->
     <string name="addressBook_addNewContact">Agregar nuevo contacto</string>
@@ -116,7 +135,6 @@
     <string name="settings_deleteZashi">Restablecer Zodl</string>
     <string name="taxExport_taxFile">Exportar archivo fiscal</string>
     <string name="resyncWallet_title">Resincronizar Billetera</string>
-    <string name="disconnectHWWallet_cta">Desconectar Hardware</string>
     <string name="disconnect_hardware_wallet_biometric_message">Confirma para desconectar tu hardware wallet</string>
     <string name="deleteKeystoneTitle">Desconectar Keystone</string>
     <string name="deleteKeystoneDesc">Desconectar tu hardware wallet eliminará permanentemente algunos datos locales que no pueden recuperarse de la blockchain.</string>
@@ -127,7 +145,9 @@
     <string name="keystoneHW">Hardware Keystone</string>
     <string name="currentlyConnected">Conectado actualmente</string>
     <string name="connectedHWInfo">Si desconectas ahora, tu Keystone dejará de estar vinculado con tu billetera Zodl.</string>
+    <string name="connectedHWInfo_ledger">Si desconectas ahora, tu Ledger dejará de estar vinculado con tu billetera Zodl.</string>
     <string name="disconnectHWWallet_title">Desconectar</string>
+    <string name="disconnectHWWallet_button">Desconectar</string>
     <string name="disconnectHWWallet_sheetDesc">Desconectar el hardware wallet no se puede deshacer.</string>
     <string name="disconnectHWWallet_failureTitle">Error al Desconectar</string>
     <string name="disconnect_hardware_wallet_error_message">No se pudo finalizar la desconexión del hardware wallet. Por favor, inténtalo de nuevo o informa del problema.</string>
@@ -168,6 +188,14 @@
     <string name="smartBanner_content_shield_button">Proteger</string>
     <string name="smartBanner_help_shield_transparent">Transparente</string>
     <string name="widget_balances_button_spendable">Disponible</string>
+    <string name="balance_breakdown_title">Saldo Total En Todos Los Pools</string>
+    <string name="balance_breakdown_subtitle">Tu saldo de ZEC ahora se desglosa por pool de Zcash, para que veas exactamente dónde están tus fondos.</string>
+    <string name="balance_breakdown_total">Saldo total</string>
+    <string name="balance_breakdown_pool_orchard">Orchard</string>
+    <string name="balance_breakdown_pool_sapling">Sapling</string>
+    <string name="balance_breakdown_pool_transparent">Transparente</string>
+    <string name="balance_breakdown_pool_ironwood">Ironwood</string>
+    <string name="balance_breakdown_got_it">Entendido</string>
 
     <!-- ===== choose_server ===== -->
     <string name="serverSetup_title">Servidor</string>
@@ -193,7 +221,28 @@
     <string name="serverSetup_performingTest">Realizando prueba de servidor…</string>
     <string name="serverSetup_couldTakeTime">Esto puede tardar un momento…</string>
     <string name="serverSetup_connectionMode">Modo de conexión</string>
-    <string name="serverSetup_automatic">Automático</string>
+    <string name="serverSetup_private">Privado</string>
+    <string name="serverSetup_privateSubtitle">Servidores de ZODL</string>
+    <string name="serverSetup_public">Público</string>
+    <string name="serverSetup_unavailable">No disponible</string>
+    <string name="serverSetup_notPrivate">No privado</string>
+    <string name="serverSetup_privateInfo">Más información sobre la conexión privada</string>
+    <string name="ohttpInfo_title">Conexión privada</string>
+    <string name="ohttpInfo_body">Zodl envía sus solicitudes a los servidores de la billetera a través de un relé privado mediante Oblivious HTTP (OHTTP), en lugar de conectarse directamente a ellos.</string>
+    <string name="ohttpInfo_item1Title">Tu IP sigue siendo tuya</string>
+    <string name="ohttpInfo_item1Body">Los servidores de la billetera que responden a las solicitudes de Zodl no pueden ver de dónde provienen. Esto no incluye las páginas e imágenes de Flexa, los servidores personalizados ni los enlaces que abras.</string>
+    <string name="ohttpInfo_item2Title">Tus solicitudes permanecen selladas</string>
+    <string name="ohttpInfo_item2Body">El relé intermedio las transmite sin leerlas.</string>
+    <string name="ohttpInfo_item3Title">Siempre se te pregunta primero</string>
+    <string name="ohttpInfo_item3Body">Si el relé privado deja de funcionar, Zodl no cambiará a servidores públicos sin tu consentimiento.</string>
+    <string name="ohttpInfo_gotIt">Entendido</string>
+    <string name="ohttpOptIn_widgetTitle">Conexión privada disponible</string>
+    <string name="ohttpOptIn_widgetSubtitle">Oculta tu dirección IP</string>
+    <string name="ohttpOptIn_widgetView">Ver</string>
+    <string name="ohttpOptIn_title">Oculta tu dirección IP</string>
+    <string name="ohttpOptIn_body">Zodl puede enviar sus solicitudes a través de un relé privado mediante Oblivious HTTP (OHTTP) en lugar de conectarse directamente a los servidores.</string>
+    <string name="ohttpOptIn_notNow">Ahora no</string>
+    <string name="ohttpOptIn_turnOn">Activar la conexión privada</string>
     <string name="serverSetup_manual">Manual</string>
     <string name="serverSetup_fastestServers">Servidores más rápidos</string>
     <string name="serverSetup_otherServers">Otros servidores</string>
@@ -201,10 +250,22 @@
     <string name="serverSetup_refresh">Actualizar</string>
     <string name="serverSetup_active">Activo</string>
     <string name="serverSetup_testing">Probando</string>
-    <string name="serverSetup_default">Predeterminado</string>
+    <string name="serverSetup_clearnetNotPrivate">Clearnet · no privado</string>
+    <string name="serverSetup_customNotPrivate">Personalizado · no privado</string>
+    <string name="serverSetup_ohttpTestRelayNotPrivate">OHTTP · relay de prueba, no privado</string>
+    <string name="coinVote_pollsList_customServerNotPrivate">Servidor personalizado · no privado</string>
+    <string name="choose_server_ohttp_gateway_mainnet">Servidor privado de Zodl</string>
+    <string name="choose_server_ohttp_gateway_testnet">Servidor privado de Zodl (OHTTP, Testnet)</string>
     <string name="choose_server_multi_server_info">Podemos usar varios servidores para optimizar el rendimiento. Para reducir la exposición de metadatos, selecciona el modo de conexión Manual para elegir un único servidor de tu preferencia y asegúrate de que Tor esté habilitado en Configuración Avanzada.</string>
+    <string name="ohttpUnavailableSheet_title">Conexión privada no disponible</string>
+    <string name="ohttpUnavailableSheet_body">Zodl no puede conectar con su relé privado en este momento. Puedes seguir esperando o cambiar a servidores públicos, que pueden ver tu dirección IP a menos que actives Tor abajo o uses una VPN. Zodl te devolverá automáticamente a la conexión privada cuando el relé vuelva a estar disponible. Los swaps y los precios de las divisas se quedan en pausa hasta que vuelva la conexión privada.</string>
+    <string name="ohttpUnavailableSheet_torTitle">Activar la protección Tor</string>
+    <string name="ohttpUnavailableSheet_torBody">Oculta tu dirección IP enviando el tráfico a través de la red Tor.</string>
+    <string name="ohttpUnavailableSheet_keepWaiting">Seguir esperando</string>
+    <string name="ohttpUnavailableSheet_switchToPublic">Cambiar a servidores públicos</string>
 
-    <!-- ===== connect_keystone ===== --><string name="keystone_addHWWallet_scan">Escanea el código QR de tu dispositivo para conectarte.</string>
+    <!-- ===== connect_keystone ===== -->
+    <string name="keystone_addHWWallet_scan">Escanea el código QR de tu dispositivo para conectarte.</string>
     <string name="keystone_addHWWallet_tutorial">Ver tutorial de Keystone</string>
     <string name="keystone_addHWWallet_step1">Desbloquea tu Keystone</string>
     <string name="keystone_addHWWallet_step2">Toca el ícono del menú</string>
@@ -275,15 +336,17 @@
     <string name="shieldFunds_error_title">Error de protección</string>
     <string name="shieldFunds_error_failure_message">Ocurrió un error durante la última transacción de protección. Puedes intentarlo nuevamente más tarde o reportar este problema si persiste.\n\n%s</string>
     <string name="shieldFunds_error_gprc_message">Ocurrió un error durante la última transacción de protección. Intentaremos reenviar la transacción más tarde. Si falla, es posible que debas repetir el intento de protección en otro momento.</string>
-    <string name="torSetup_alert_title">¿Desactivar Tor?</string>
-    <string name="torSetup_alert_msg">Se detectaron problemas de conexión con Tor. Para mejorar el rendimiento, intenta desactivar Tor. Esto detendrá las actualizaciones del tipo de cambio. Puedes volver a activarlo más tarde en Configuración avanzada.</string>
-    <string name="torSetup_alert_disable">Desactivar</string>
-    <string name="torSetup_alert_dontDisable">No desactivar</string>
+    <string name="error_keystone_firmware_title">Actualización de Firmware de Keystone Requerida</string>
+    <string name="error_keystone_firmware_message">El firmware de tu Keystone (%1$s) está por debajo de la versión mínima admitida (%2$s). Actualiza el firmware de tu dispositivo y vuelve a intentarlo.</string>
+    <string name="error_keystone_firmware_message_legacy">El firmware de tu Keystone es demasiado antiguo para informar su versión y está por debajo de la versión mínima admitida (%1$s). Actualiza el firmware de tu dispositivo y vuelve a intentarlo.</string>
+    <string name="error_keystone_firmware_close">Cerrar</string>
+    <string name="error_keystone_account_title">No Se Puede Añadir la Cuenta Keystone</string>
+    <string name="error_keystone_account_message">La cuenta Keystone escaneada no se puede usar con esta aplicación. Asegúrate de que tu dispositivo Keystone esté configurado en la misma red que esta aplicación y vuelve a escanear el código QR.</string>
 
     <!-- ===== exchange_rate ===== -->
     <string name="currencyConversion_ipTitle">Protección de dirección IP</string>
     <string name="currencyConversion_ipDesc">La función de conversión de moneda de Zodl no compromete tu dirección IP.</string>
-    <string name="exchange_rate_info_subtitle_1_no_cmc">Las tasas de cambio son obtenidas a travez de Tor para proteger tu dirección IP. Verifica si el uso de Tor esta permitido en tu region.</string>
+    <string name="exchange_rate_info_subtitle_1_no_cmc">Las tasas de cambio son obtenidas de forma privada vía OHTTP para proteger tu dirección IP.</string>
     <string name="currencyConversion_refresh">Actualización de tasa</string>
     <string name="currencyConversion_refreshDesc">La tasa se actualiza automáticamente y también se puede actualizar manualmente.</string>
     <string name="tooltip_exchangeRate_title">Tasa de cambio no disponible</string>
@@ -309,6 +372,7 @@
     <string name="currencyConversion_torOnInfo">Desactivar la Protección Tor también desactivará la función de Conversión de Moneda hasta que se vuelva a activar.</string>
     <string name="currencyConversion_torOffInfo">Si deseas proteger tu dirección IP, activa la Protección Tor en la Configuración Avanzada.</string>
     <string name="currencyConversion_selectCurrencyTitle">Seleccionar moneda</string>
+    <string name="currencyConversion_pickerErrorDesc">No pudimos cargar las monedas. Verifica tu conexión e inténtalo de nuevo.</string>
 
     <!-- ===== export_data ===== -->
     <string name="privateDataConsent_screenTitle">Exportar Datos</string>
@@ -416,14 +480,15 @@
     <string name="integrations_disabled_info">Durante el proceso de restauración no es posible usar integraciones de pago.</string>
     <string name="settings_flexa">Pagar con Flexa</string>
     <string name="settings_flexaDesc">Gasta ZEC en miles de establecimientos comerciales.</string>
+    <string name="settings_flexaIpDesc">Flexa puede ver tu dirección IP al mostrar comercios y sus páginas. Zodl no la ve.</string>
     <string name="integrations_flexa_biometric_message">Autentícate para pagar con Flexa</string>
-    <string name="settings_keystone">Conectar Keystone</string>
-    <string name="settings_keystoneDesc">Conecta una billetera de hardware aislada (air-gapped) para almacenar ZEC protegidos.</string>
     <string name="integrations_disabled_info_flexa">Cambia de Keystone a Zodl para usar Flexa.</string>
     <string name="integrations_dialog_more_options">Más opciones</string>
     <string name="integrations_near_swap">Haz swap de %s con NEAR Intents</string>
     <string name="integrations_near_swap_message">Haz swap de %s con otras criptomonedas.</string>
     <string name="integrations_coinbase_subtitle_disabled">Coinbase Onramp está temporalmente no disponible.</string>
+    <string name="integrations_redeemGift">Canjear tarjeta de regalo</string>
+    <string name="integrations_redeemGift_subtitle">Escanea o pega una tarjeta de regalo de Zcash para sumar sus fondos a tu billetera.</string>
 
     <!-- ===== keep_open ===== -->
     <string name="restoreInfo_title">¡Mantén Zodl abierto!</string>
@@ -433,6 +498,7 @@
     <string name="keepZodlOpenInstructionsHWWallet">Zodl está escaneando la cadena de bloques para recuperar tus transacciones. Las billeteras más antiguas pueden tardar horas en completar la sincronización. Sigue estos pasos para evitar interrupciones:</string>
     <string name="keepZodlOpenSubtitleHWWallet">Tu billetera se está sincronizando.</string>
     <string name="keep_open_keystone_warning">No podrás usar tus fondos de Zodl hasta que tu billetera Keystone esté sincronizada.</string>
+    <string name="keep_open_hw_wallet_warning">No podrás usar los fondos de esta billetera hasta que termine la sincronización.</string>
     <string name="keepScreenOnSyncing">Mantener la pantalla encendida mientras se sincroniza</string>
     <string name="keepZodlOpenInstructionsResyncing">Zodl está escaneando la cadena de bloques para recuperar tus transacciones. Las billeteras más antiguas pueden tardar horas en resincronizarse. Sigue estos pasos para evitar interrupciones:</string>
     <string name="keepZodlOpenSubtitleResync">Tu billetera se está resincronizando.</string>
@@ -449,7 +515,7 @@
 
     <!-- ===== pay ===== -->
     <string name="crosspay_help_payWith">CrossPay con</string>
-    <string name="pay_info_subtitle">Haz pagos entre cadenas en cualquier moneda o token compatible con NEAR.\n\nSi el deslizamiento real y las condiciones de la red resultan en que tu destinatario reciba menos de la cantidad prometida, tu transacción será revertida. Recibirás un reembolso completo menos las comisiones de red.</string>
+    <string name="pay_info_subtitle">Haz pagos entre cadenas en cualquier moneda o token compatible con NEAR.\n\nSi el deslizamiento o las condiciones de la red resultan en que tu destinatario reciba menos de la cantidad prometida, tu pago será reembolsado menos las comisiones de red.\n\nLos reembolsos solo se aplican a pagos de $300 o más. Los pagos de menos de $300 no son elegibles para reembolso. Verifica todos los detalles antes de continuar.</string>
     <string name="swapAndPay_slippageWarn">Cualquier parte no utilizada de la comisión por deslizamiento será reembolsada si el intercambio se ejecuta con un deslizamiento menor al esperado.</string>
 
     <!-- ===== payment_request ===== -->
@@ -464,7 +530,8 @@
     <string name="payment_request_dialog_error_grpc_text">Zodl encontró algunos problemas de conexión al enviar la transacción a la red. Volverá a intentarlo durante los próximos minutos.</string>
     <string name="payment_request_send_failed_report_unable_open_email">No se pudo iniciar la aplicación de correo.</string>
 
-    <!-- ===== qr_code ===== --><string name="qr_code_unified_content_description">Código QR de Dirección Unificada</string>
+    <!-- ===== qr_code ===== -->
+    <string name="qr_code_unified_content_description">Código QR de Dirección Unificada</string>
     <string name="qr_code_sapling_content_description">Código QR de Dirección Sapling</string>
     <string name="qr_code_transparent_content_description">Código QR de Dirección Transparente</string>
     <string name="accounts_zashi_shieldedAddress">Dirección Protegida de Zcash</string>
@@ -504,7 +571,53 @@
     <string name="receive_help_transparent_desc3">Para proteger tu privacidad, Zodl te guiará para proteger cualquier %s transparente que recibas con un solo clic.</string>
     <string name="receive_info_transparent_bullet_4">No podrás gastar tus %s transparentes hasta que los protejas.</string>
 
-    <!-- ===== request ===== --><string name="zecKeyboard_invalid">Este monto de transacción no es válido</string>
+    <!-- ===== redeem_gift ===== -->
+    <string name="redeemGift_title">Canjear tarjeta de regalo</string>
+    <string name="redeemGift_scan_invalid">Esta no es una tarjeta de regalo válida. Escanea el código QR de la tarjeta o copia su enlace e inténtalo de nuevo.</string>
+    <string name="redeemGift_scan_externalLink">Parece que abriste una tarjeta de regalo desde otra aplicación. Para mayor seguridad y protección, escanea el código QR de la tarjeta de regalo con Zodl.</string>
+    <string name="redeemGift_paste_title">Pega el enlace de tu tarjeta de regalo</string>
+    <string name="redeemGift_paste_subtitle">Pega el enlace que vino con tu tarjeta de regalo de Zcash. Verás el monto antes de canjearla.</string>
+    <string name="redeemGift_paste_label">Enlace de la tarjeta de regalo</string>
+    <string name="redeemGift_paste_placeholder">Pega el enlace aquí</string>
+    <string name="redeemGift_paste_paste">Pegar</string>
+    <string name="redeemGift_paste_clear">Borrar</string>
+    <string name="redeemGift_paste_invalid">Este enlace no es una tarjeta de regalo válida. Revísalo e inténtalo de nuevo.</string>
+    <string name="redeemGift_paste_continue">Continuar</string>
+    <string name="redeemGift_checking_title">Buscando tu regalo…</string>
+    <string name="redeemGift_checking_subtitle">Verificando tu tarjeta de regalo. Esto puede tardar un momento.</string>
+    <string name="redeemGift_ready_title">¡Recibiste un regalo!</string>
+    <string name="redeemGift_ready_messageLabel">Mensaje de quien la envía</string>
+    <string name="redeemGift_ready_disclaimer">Los fondos se enviarán a tu billetera <xliff:g id="wallet" example="Zodl">%1$s</xliff:g>. La comisión de red ya está descontada del monto mostrado.</string>
+    <string name="redeemGift_ready_disclaimer_noWallet">La comisión de red ya está descontada del monto mostrado.</string>
+    <string name="redeemGift_memo">Tarjeta de regalo</string>
+    <string name="redeemGift_redeem">Canjear</string>
+    <string name="redeemGift_pending_title">Preparando tu regalo…</string>
+    <string name="redeemGift_pending_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> necesita algunas confirmaciones más antes de poder canjearse. Seguiremos verificando mientras esta pantalla esté abierta.</string>
+    <string name="redeemGift_empty_title">Nada para canjear</string>
+    <string name="redeemGift_empty_subtitle">Esta tarjeta de regalo ya fue canjeada o aún no tiene fondos. Inténtalo de nuevo en unos minutos.</string>
+    <string name="redeemGift_empty_subtitle_dust">Esta tarjeta de regalo tiene muy poco para cubrir la comisión de red, así que no hay nada que canjear.</string>
+    <string name="redeemGift_invalid_title">Tarjeta de regalo inválida</string>
+    <string name="redeemGift_invalid_subtitle">Este enlace no es una tarjeta de regalo válida. Revisa el enlace e inténtalo de nuevo.</string>
+    <string name="redeemGift_wrongNetwork_title">Red incorrecta</string>
+    <string name="redeemGift_wrongNetwork_subtitle">Esta tarjeta de regalo fue creada para una red de Zcash distinta a la de esta billetera.</string>
+    <string name="redeemGift_linkUnavailable_title">Abre la tarjeta de regalo de nuevo</string>
+    <string name="redeemGift_linkUnavailable_subtitle">El enlace de la tarjeta de regalo ya no está disponible. Escanea su código QR o abre su enlace de nuevo.</string>
+    <string name="redeemGift_notAvailable_title">Todavía no disponible</string>
+    <string name="redeemGift_notAvailable_subtitle">Canjear tarjetas de regalo no está disponible en esta versión de la app.</string>
+    <string name="redeemGift_checkFailed_title">No pudimos verificar tu regalo</string>
+    <string name="redeemGift_checkFailed_subtitle">Algo salió mal al verificar la tarjeta de regalo. Revisa tu conexión e inténtalo de nuevo.</string>
+    <string name="redeemGift_redeeming_title">Canjeando tu regalo…</string>
+    <string name="redeemGift_redeeming_subtitle">Enviando los fondos de la tarjeta de regalo a tu billetera.</string>
+    <string name="redeemGift_success_title">¡Regalo canjeado!</string>
+    <string name="redeemGift_success_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> está en camino a tu billetera.\nAparecerá en tu actividad en breve.</string>
+    <string name="redeemGift_success_subtitle_noAmount">Tu regalo está en camino a tu billetera.\nAparecerá en tu actividad en breve.</string>
+    <string name="redeemGift_failure_title">Canje no confirmado</string>
+    <string name="redeemGift_failure_subtitle">No pudimos confirmar el canje. Toca Intentar de nuevo para comprobar el estado actual de la tarjeta.</string>
+    <string name="redeemGift_retry">Intentar de nuevo</string>
+    <string name="redeemGift_checkAgain">Verificar de nuevo</string>
+
+    <!-- ===== request ===== -->
+    <string name="zecKeyboard_invalid">Este monto de transacción no es válido</string>
     <string name="general_next">Siguiente</string>
     <string name="requestZec_summary_shareQR">Compartir Código QR</string>
     <string name="request_amount_empty">0</string>
@@ -529,7 +642,8 @@
     <string name="request_qr_code_share_chooser_text">Hola, ¡escanea este código QR para enviarme un pago en %s! Enlace de descarga:
         https://play.google.com/store/apps/details?id=co.electriccoin.zcash</string>
 
-    <!-- ===== restore ===== --><string name="restore_subtitle">Frase de Recuperación</string>
+    <!-- ===== restore ===== -->
+    <string name="restore_subtitle">Frase de Recuperación</string>
     <string name="restoreWallet_info">Por favor, ingresa tu frase secreta de recuperación de 24 palabras en el orden correcto.</string>
     <string name="restore_dialog_message_1_bold_part">La Frase Secreta de Recuperación</string>
     <string name="restore_dialog_message_1">es un conjunto único de 24 palabras que aparecen en un orden preciso. Puede usarse para obtener control total de tus fondos desde cualquier dispositivo a través de cualquier app de billetera Zcash. Piénsala como la llave maestra de tu billetera. Está guardada en la Configuración Avanzada de Zodl.</string>
@@ -564,6 +678,7 @@
     <string name="scan_invalidImage">Esta imagen no contiene una dirección Zcash válida.</string>
     <string name="scan_severalCodesFound">Esta imagen contiene varias direcciones Zcash válidas.</string>
     <string name="scan_torch_content_description">Alternar linterna de la cámara</string>
+    <string name="scan_pasteLink">Pegar enlace</string>
     <string name="gallery_content_description">Galería</string>
     <string name="deeplinkWarning_screenTitle">¡Hola!</string>
     <string name="deeplinkWarning_title">Parece que utilizaste una aplicación de terceros para escanear un pago.</string>
@@ -611,7 +726,8 @@
     <string name="keystone_addHWWallet_title">Confirmar Cuenta a Acceder</string>
     <string name="keystone_addHWWallet_desc">Selecciona la billetera que deseas conectar para continuar. Una vez conectado, podrás firmar transacciones de forma inalámbrica con tu hardware wallet.</string>
 
-    <!-- ===== send ===== --><string name="send_scan_content_description">Escanear</string>
+    <!-- ===== send ===== -->
+    <string name="send_scan_content_description">Escanear</string>
     <string name="send_to">Enviar a</string>
     <string name="send_addressPlaceholder">Dirección de Zcash</string>
     <string name="send_amount">Monto</string>
@@ -631,6 +747,10 @@
 
     <!-- ===== send_confirmation ===== -->
     <string name="send_confirmationTitle">Confirmación</string>
+    <string name="send_orchardWarning_title">Este envío requiere gastar fondos de Orchard</string>
+    <string name="send_orchardWarning_message">Recomendamos migrar tus fondos primero para evitar filtrar el monto de la transacción en la cadena.</string>
+    <string name="send_orchardWarning_continue">Continuar de todos modos</string>
+    <string name="send_orchardWarning_cancel">Cancelar</string>
     <string name="send_amountSummary">Monto Total</string>
     <string name="accounts_sendingFrom">Enviar desde</string>
     <string name="send_message">Mensaje</string>
@@ -672,6 +792,11 @@
         gRPC: <xliff:g example="true" id="grpc">%2$s</xliff:g>,
         código: <xliff:g example="123" id="code">%3$d</xliff:g>,
         descripción: <xliff:g example="Network unreachable" id="desc">%4$s</xliff:g>
+    </string>
+    <string name="send_confirmation_report_status_presubmission_failure" formatted="true">Fallo antes del envío
+        de la transacción (no se realizó ninguna llamada gRPC):
+        <xliff:g example="IOException" id="type">%1$s</xliff:g>:
+        <xliff:g example="Failed to download Sapling parameters" id="detail">%2$s</xliff:g>
     </string>
     <string name="send_confirmation_multiple_trx_failure_report_unable_open_email">No se pudo abrir la app de correo.</string>
     <string name="send_confirmation_multiple_trx_failure_copy_tag">IDs de Transacción</string>
@@ -716,7 +841,8 @@
     <string name="keystoneTransactionReject_rejectSig">Rechazar firma</string>
 
     <!-- ===== swap ===== -->
-    <string name="swap_info_message">Haz swap de %1$s con cualquier token compatible con NEAR.\n\nSi haces swap HACIA %2$s, enviarás fondos desde una wallet de terceros y deberás proporcionar una dirección donde se pueda reembolsar el cambio.\n\nSi haces swap DESDE %3$s, debes proporcionar una dirección válida para el activo al que haces swap.</string>
+    <string name="swap_info_message">Haz swap entre %1$s y cualquier moneda o token compatible con NEAR.\n\nSi haces swap HACIA %2$s, enviarás fondos desde una wallet de terceros y deberás proporcionar una dirección donde se puedan reembolsar los fondos.\n\nLos reembolsos solo se aplican a swaps de $300 o más. Los swaps de menos de $300 no son elegibles para reembolso si se envía el activo incorrecto o se envía por la red incorrecta.\n\nSi haces swap DESDE %3$s, debes proporcionar una dirección válida para el activo al que haces swap.</string>
+    <string name="swap_info_learn_more">Más información</string>
     <string name="swapAndPay_help_swapWith">Swap con</string>
     <string name="swap_select_token">Seleccionar token</string>
     <string name="swapAndPay_search">Buscar por nombre o ticker…</string>
@@ -742,6 +868,8 @@
     <string name="swap_cancel_positive">No cancelar</string>
     <string name="swap_quote_error_too_low_try_at_least">El monto es muy bajo para el puente, intenta al menos %s</string>
     <string name="swap_quote_error_too_low_try_higher">El monto es muy bajo para el puente, intenta con un monto mayor.</string>
+    <string name="swap_error_giftCardLink">Los enlaces de tarjetas de regalo no se pueden usar como direcciones de intercambio. Usa Canjear tarjeta de regalo.</string>
+    <string name="contact_error_giftCardLink">Los enlaces de tarjetas de regalo no se pueden guardar como contactos. Usa Canjear tarjeta de regalo.</string>
     <string name="swap_quoteUnavailable">Intentamos, pero no pudimos obtener una cotización para un pago con tus parámetros. Puedes ajustar el slippage o intentarlo más tarde.</string>
     <string name="swap_quoteUnavailableSwap">Intentamos, pero no pudimos obtener una cotización para un swap con tus parámetros. Puedes ajustar el slippage o intentarlo más tarde.</string>
     <string name="swapAndPay_quoteUnavailable">Cotización no disponible</string>
@@ -755,7 +883,6 @@
     <string name="swapAndPay_totalFees">Comisiones totales</string>
     <string name="swapAndPay_maxSlippage">Slippage máximo %s</string>
     <string name="swapAndPay_totalAmount">Monto total</string>
-    <string name="swapAndPay_quote_zashi">Zodl</string>
     <string name="swapAndPay_swapQuoteSlippageWarn">Podrías recibir hasta %s menos según el deslizamiento %s que configuraste.</string>
     <string name="swapAndPay_getQuote">Obtener cotización</string>
     <string name="swapAndPay_custom">Otro</string>
@@ -767,8 +894,13 @@
     <string name="swap_to_zec_share_text">Dirección de depósito para %1$s %2$s en %3$s swap a %4$s en Zodl</string>
     <string name="swapToZec_refundAddress">Dirección de reembolso</string>
     <string name="swapToZec_refundAddress_title">Dirección de reembolso</string>
-    <string name="swap_refund_address_info_message_empty">Si el swap falla o cambian las condiciones del mercado, tu transacción puede ser reembolsada menos las comisiones de transacción.\n\nEl monto reembolsado será devuelto a tu wallet en la moneda de origen. Por favor, ingresa una dirección válida para evitar la pérdida de fondos.</string>
-    <string name="swap_refund_address_info_message">Si el swap falla o cambian las condiciones del mercado, tu transacción puede ser reembolsada menos las comisiones de transacción.\n\nEl monto reembolsado será devuelto a tu wallet en la moneda de origen - %s en %s. Por favor, ingresa una dirección válida para evitar la pérdida de fondos.</string>
+    <string name="swap_refund_address_info_message_empty">Si el swap falla o cambian las condiciones del mercado, tu transacción puede ser reembolsada menos las comisiones de red.\n\nLos reembolsos solo se aplican a swaps de $300 o más. Los swaps de menos de $300 no son elegibles para reembolso.\n\nEl monto reembolsado será devuelto a tu wallet en la moneda de origen. Por favor, ingresa una dirección válida para evitar la pérdida de fondos.</string>
+    <string name="swap_refund_address_info_message">Si el swap falla o cambian las condiciones del mercado, tu transacción puede ser reembolsada menos las comisiones de red.\n\nLos reembolsos solo se aplican a swaps de $300 o más. Los swaps de menos de $300 no son elegibles para reembolso.\n\nEl monto reembolsado será devuelto a tu wallet en la moneda de origen en la misma red. Por favor, ingresa una dirección válida para evitar la pérdida de fondos.</string>
+    <string name="swap_refund_warning_title">Sin reembolsos por debajo de $300</string>
+    <string name="swap_refund_warning_message_swap">NEAR no reembolsa errores como un activo incorrecto o una red incorrecta en swaps de menos de $300. Verifica todos los detalles antes de continuar.</string>
+    <string name="swap_refund_warning_message_pay">NEAR no reembolsa errores como un activo incorrecto o una red incorrecta en pagos de menos de $300. Verifica todos los detalles antes de continuar.</string>
+    <string name="swap_refund_warning_checkbox">No volver a mostrar este mensaje</string>
+    <string name="swap_refund_warning_continue">Continuar</string>
     <string name="swapToZec_swapDetails">Detalles del swap</string>
     <string name="swapToZec_depositTo">Depositar en</string>
     <string name="swapStatus_swapExpired">Swap expirado</string>
@@ -795,6 +927,7 @@
     <!-- ===== tex_unsupported ===== -->
     <string name="texKeystone_title">Tipo de dirección no compatible</string>
     <string name="texKeystone_warn1">Actualmente, Keystone no es compatible con transferencias a direcciones Binance TEX.</string>
+    <string name="texLedger_warn1">Actualmente, Ledger no es compatible con transferencias a direcciones Binance TEX.</string>
     <string name="texKeystone_warn2">Por favor, utiliza los pasos a continuación para completar tu transacción.</string>
     <string name="texKeystone_workaround">Pasos alternativos</string>
     <string name="tex_unsupported_step_1_badge">Paso 1</string>
@@ -832,6 +965,12 @@
     <string name="transactionHistory_sendAgain">Enviar de nuevo</string>
     <string name="transaction_sent">Enviado</string>
     <string name="transaction_sending">Enviando</string>
+    <string name="transaction_noteSplit">Saldo dividido</string>
+    <string name="transaction_noteSplitting">Dividiendo saldo</string>
+    <string name="transaction_noteSplitFailed">Error al dividir el saldo</string>
+    <string name="transaction_migrated">Migrado</string>
+    <string name="transaction_migrating">Migrando</string>
+    <string name="transaction_migrationFailed">Error al migrar</string>
     <string name="transaction_received">Recibido</string>
     <string name="transaction_receiving">Recibiendo</string>
     <string name="transaction_failedReceive">Error al recibir</string>
@@ -858,6 +997,31 @@
     <string name="reportSwap_msg">Al tocar el botón de abajo, se enviarán detalles de este swap (como la dirección de depósito y el activo destino) al equipo de soporte de Zodl para que puedan ayudarte a resolver tu problema. La información de la transacción se incluye automáticamente.</string>
     <string name="transaction_detail_support_email_subject">Problema con transacción de swap</string>
     <string name="transaction_detail_support_email_body">Por favor describe tu problema aquí:\n\n\n\nDetalles del swap:\nDirección de depósito: %1$s\nActivo de origen: %2$s\nActivo destino: %3$s</string>
+    <string name="swap_mismatch_title">Los detalles del swap no coincidieron</string>
+    <string name="swap_mismatch_msg_1">Recibimos una cotización del proveedor de swap, pero no coincidió con algunos de los detalles que proporcionaste. Hacemos esta comprobación para asegurarnos de que tu swap sea el que esperas.</string>
+    <string name="swap_mismatch_msg_2">Te agradeceríamos que nos lo reportaras para que podamos investigarlo con el proveedor de swap.</string>
+    <string name="swap_mismatch_msg_3">Lo reportes o no, también puedes intentarlo de nuevo. Si los detalles coinciden, no verás esta pantalla y podrás continuar.</string>
+    <string name="swap_mismatch_goBack">Volver</string>
+    <string name="swap_mismatch_support_email_subject">Zodl Swap: discrepancia en la API</string>
+    <string name="swap_mismatch_support_email_body">Zodl detectó el siguiente error en la respuesta de la API del proveedor de swap. Proporcionar estos detalles nos permite plantearlo con ellos para investigarlo. No compartiremos tus datos personales con el proveedor de swap. Puedes enviarlo tal cual o incluir una nota para nosotros. Gracias de antemano.\n\nProveedor de swap: %1$s\nTipo de swap: %2$s\nTipo de discrepancia: %3$s\nID de cotización: %4$s</string>
+    <string name="swap_mismatch_mode_swap">Swap</string>
+    <string name="swap_mismatch_mode_crosspay">CrossPay</string>
+    <string name="swap_mismatch_mode_swapIntoZec">Swap a ZEC</string>
+    <string name="swap_mismatch_type_recipientAddress">Dirección del destinatario</string>
+    <string name="swap_mismatch_type_refundAddress">Dirección de reembolso</string>
+    <string name="swap_mismatch_type_originAsset">Activo de origen</string>
+    <string name="swap_mismatch_type_destinationAsset">Activo destino</string>
+    <string name="swap_mismatch_type_swapType">Tipo de swap</string>
+    <string name="swap_mismatch_type_slippageTolerance">Tolerancia de slippage</string>
+    <string name="swap_mismatch_type_inputAmount">Monto de entrada</string>
+    <string name="swap_mismatch_type_outputAmount">Monto de salida</string>
+    <string name="swap_mismatch_type_requestedAmount">Monto solicitado</string>
+    <string name="swap_mismatch_type_slippageExceeded">Slippage excedido</string>
+    <string name="swap_mismatch_type_nonPositiveAmount">Monto no positivo</string>
+    <string name="swap_mismatch_provider_near">NEAR</string>
+    <string name="swap_mismatch_quoteId_unknown">desconocido</string>
+    <string name="swap_mismatch_swapType_format">%1$s - %2$s &gt; %3$s</string>
+    <string name="swap_mismatch_asset_format">%1$s (%2$s)</string>
     <string name="deposits_info">Los depósitos pueden tardar varios minutos en confirmarse.</string>
     <string name="swapAndPay_status_incompleteDeposit">Depósito incompleto</string>
     <string name="swapAndPay_status_pending">Pendiente</string>
@@ -903,6 +1067,9 @@
     <string name="filter_search">Buscar</string>
     <string name="transaction_history_sending">Enviando…</string>
     <string name="transaction_history_sending_failed">Error al enviar</string>
+    <string name="transaction_history_noteSplitting">Dividiendo saldo…</string>
+    <string name="transaction_history_noteSplitFailed">Error al dividir</string>
+    <string name="transaction_history_migrating">Migrando…</string>
     <string name="transaction_history_receiving">Recibiendo…</string>
     <string name="transaction_history_receiving_failed">Error al recibir</string>
     <string name="transaction_history_shielding">Protegiendo…</string>
@@ -913,7 +1080,8 @@
     <string name="transaction_history_swapping">Haciendo swap…</string>
     <string name="swapStatus_paymentExpired">Pago expirado</string>
 
-    <!-- ===== transaction_note ===== --><string name="annotation_edit">Editar una nota</string>
+    <!-- ===== transaction_note ===== -->
+    <string name="annotation_edit">Editar una nota</string>
     <string name="annotation_delete">Eliminar nota</string>
     <string name="transaction_note_max_length"><xliff:g example="34" id="chars">%s</xliff:g>/90 caracteres</string>
     <string name="annotation_add">Agregar nota</string>
@@ -933,7 +1101,7 @@
 
     <!-- ===== update_contact ===== -->
     <string name="update_contact_title">Contacto</string>
-    <string name="deleteWallet_sheet_title">Are you sure?</string>
+    <string name="deleteWallet_sheet_title">¿Estás seguro?</string>
     <string name="addressBook_alert_message">You are about to delete this contact. This cannot be undone.</string>
 
     <!-- ===== warning ===== -->
@@ -946,5 +1114,265 @@
 
     <!-- ===== whats_new ===== -->
     <string name="whats_new_title">Novedades</string>
-    
+
+    <!-- ===== migration (MigrationNotifier: notification channel + Orchard→Ironwood progress) ===== -->
+    <string name="migration_notification_channelName">Migración a Ironwood</string>
+    <string name="migration_notification_channelDescription">Notificaciones sobre el progreso de la migración de Orchard a Ironwood</string>
+    <string name="migration_notification_title">Migración a Ironwood</string>
+    <string name="migration_notification_noteSplitProgress">División de notas %1$d de %2$d</string>
+    <string name="migration_notification_noteSplitPreparing">Preparando tu saldo para la migración</string>
+    <string name="migration_notification_transferComplete">Transferencia %1$d de %2$d completada</string>
+    <string name="migration_notification_rescheduleWithCounts">La transferencia %1$d de %2$d no se pudo enviar — toca para reprogramar la migración.</string>
+    <string name="migration_notification_rescheduleGeneric">La migración está bloqueada — toca para reprogramar.</string>
+    <string name="migration_notification_actionRequiredTitle">Migración: Acción requerida</string>
+    <string name="migration_notification_manualConfirmationWithCounts">La transferencia %1$d de %2$d está lista. Toca para confirmar.</string>
+    <string name="migration_notification_manualConfirmationGeneric">Una transferencia de migración está lista. Toca para confirmar.</string>
+    <string name="migration_notification_torFailureTitle">Migración: No se pudo conectar a Tor</string>
+    <string name="migration_notification_torFailureText">Una transferencia programada no se pudo enviar por Tor. Abre Zodl para resolverlo.</string>
+    <string name="migration_notification_stepDueText">Tu migración está lista para continuar — toca para ejecutar el siguiente paso.</string>
+    <string name="migration_notification_planInvalidText">El plan de migración necesita actualizarse. Abre Zodl para revisar los detalles.</string>
+    <string name="migration_notification_transferExpiredText">Una transferencia expiró. Abre Zodl para continuar tu migración.</string>
+    <string name="migration_notification_completeTitle">Migración a Ironwood completada</string>
+    <string name="migration_notification_completeText">Todos tus fondos han sido migrados a Ironwood.</string>
+
+    <!-- Restart Migration -->
+    <string name="restartMigration_settingsItem">Reiniciar migración</string>
+    <string name="restartMigration_title">Reiniciar migración</string>
+    <string name="restartMigration_body">Si tu migración parece atascada, puedes reiniciarla de forma segura. Esto crea un nuevo plan para tus fondos restantes. Las transferencias completadas no se ven afectadas.</string>
+    <string name="restartMigration_summaryMigratedLabel">Migrado</string>
+    <string name="restartMigration_summaryMigratedValue">%1$d de %2$d transferencias</string>
+    <string name="restartMigration_summaryRemainingLabel">Saldo restante</string>
+    <string name="restartMigration_warning">Esto cancela el plan de migración actual. No se puede deshacer una vez confirmado.</string>
+    <string name="restartMigration_support">Si reiniciar no resuelve el problema, contacta al soporte de Zodl a través de Enviar comentarios.</string>
+    <string name="restartMigration_next">Siguiente</string>
+    <string name="restartMigration_confirmTitle">¿Reiniciar esta migración?</string>
+    <string name="restartMigration_confirmMessage">Se creará un nuevo plan para tu saldo restante de %1$s. Las %2$d transferencias ya completadas se mantienen como están y no se repetirán.</string>
+    <string name="restartMigration_confirmPrimary">Confirmar reinicio</string>
+
+    <!-- ===== migration (feature-migration screens UI copy) ===== -->
+    <string name="migration_common_gotIt">Entendido</string>
+    <string name="migration_common_skip">Omitir</string>
+    <string name="migration_common_allow">Permitir</string>
+    <string name="migration_common_continue">Continuar</string>
+    <string name="migration_common_retry">Reintentar</string>
+    <string name="migration_common_dismiss">Descartar</string>
+    <string name="migration_common_continueWithoutTor">Continuar sin Tor</string>
+    <string name="migration_common_tryAgain">Intentar de nuevo</string>
+    <string name="migration_common_whatAreTheRisks">¿Cuáles son los riesgos?</string>
+    <string name="migration_common_splitBalanceTitle">División de saldo</string>
+    <string name="migration_common_splitBalanceNumbered">División de saldo %1$d</string>
+    <string name="migration_common_transferTitle">Transferencia %1$d</string>
+    <string name="migration_common_showDetails">Ver detalles</string>
+    <string name="migration_common_progressTitle">Progreso de la migración</string>
+    <string name="migration_common_enableTorProtectionTitle">Activar protección Tor</string>
+    <string name="migration_common_torCheckboxSubtitle">Enruta tu conexión a través de la red Tor para mayor anonimato y protección de la privacidad.</string>
+
+    <string name="migration_status_done">Listo</string>
+
+    <string name="migrationPrivacy_bodyImmediate">Si Tor está disponible en tu región, te recomendamos encarecidamente activarlo para evitar vincular tu saldo con tu dirección IP. También puedes usar una VPN de confianza si Tor no está disponible en tu región.</string>
+    <string name="migrationPrivacy_bodyAutomatic">Si Tor está disponible en tu región, te recomendamos encarecidamente activarlo para evitar vincular los montos de la migración con tu dirección IP. También puedes usar una VPN de confianza si Tor no está disponible en tu región.</string>
+
+    <string name="migrationKeystoneScan_instructions">Escanea el código QR que aparece en tu dispositivo Keystone después de firmar.</string>
+    <string name="migrationKeystoneScan_errorMessage">Ocurrió un error al procesar ese escaneo. Inténtalo de nuevo.</string>
+    <string name="migrationKeystoneScan_firmwareUnsupported">El firmware de tu Keystone todavía no admite la migración. Actualiza tu dispositivo Keystone y vuelve a intentarlo.</string>
+
+    <string name="migrationSuccess_title">¡Enviado!</string>
+    <string name="migrationSuccess_subtitle">Tus ZEC se migraron\ncorrectamente a Ironwood.</string>
+    <string name="migrationSuccess_viewTransaction">Ver transacción</string>
+
+    <string name="migrationSending_title">Enviando...</string>
+    <string name="migrationSending_subtitle">Tus ZEC se están migrando a\nIronwood...</string>
+
+    <string name="migrationProgress_subtitleComplete">Las %1$d transferencias están completas.</string>
+    <string name="migrationProgress_subtitlePreStart">Tu saldo se divide en %1$d transferencias a lo largo de %2$s. Quedan %3$d transferencias.</string>
+    <string name="migrationProgress_subtitleInProgressRemaining">Tu saldo se divide en %1$d transferencias. Quedan aproximadamente %2$s. Quedan %3$d transferencias.</string>
+    <string name="migrationProgress_subtitleInProgressLate">Tu saldo se divide en %1$d transferencias. Terminando… Quedan %2$d transferencias.</string>
+    <string name="migrationProgress_orchardLabel">Orchard</string>
+    <string name="migrationProgress_ironwoodLabel">Ironwood</string>
+
+    <string name="migrationComplete_title">Migración completa</string>
+    <string name="migrationComplete_subtitle">Tus ZEC ya están en el pool de Ironwood.</string>
+    <string name="migrationComplete_totalTransferredLabel">Total transferido</string>
+    <string name="migrationComplete_remainingDustLabel">Polvo restante</string>
+    <string name="migrationComplete_transfersLabel">Transferencias</string>
+    <string name="migrationComplete_durationLabel">Duración</string>
+    <string name="migrationComplete_orchardBalanceRemainingTitle">Saldo restante en Orchard</string>
+    <string name="migrationComplete_orchardBalanceRemainingBody">%1$s permaneció en Orchard. Un monto tan específico puede identificarte en la red. Para proteger tu privacidad, te recomendamos bloquear este saldo en lugar de migrarlo.</string>
+    <string name="migrationComplete_migrateAnyway">Migrar de todas formas</string>
+    <string name="migrationComplete_migrating">Migrando…</string>
+    <string name="migrationComplete_lockBalance">Bloquear saldo</string>
+    <string name="migrationComplete_lockingBalance">Bloqueando saldo…</string>
+    <string name="migrationComplete_orchardBalanceLockedTitle">Saldo de Orchard bloqueado</string>
+    <string name="migrationComplete_orchardBalanceLockedBody">%1$s ahora está bloqueado en Orchard. El bloqueo hace que este monto no se pueda gastar para proteger tu privacidad.</string>
+    <string name="migrationComplete_transfersProgress">%1$d de %2$d enviadas</string>
+    <string name="migrationComplete_migrateAnywayFailureNetworkError">No se pudo conectar a la red. Revisa tu conexión e inténtalo de nuevo.</string>
+    <string name="migrationComplete_migrateAnywayFailureRejected">La red rechazó esta transacción. Comunícate con el soporte.</string>
+    <string name="migrationComplete_migrateAnywayFailureError">Ocurrió un error al enviar. Comunícate con el soporte.</string>
+    <string name="migrationComplete_migrateAnywayFailurePartial">Se enviaron algunas partes de esta transacción, pero no todas. Comunícate con el soporte.</string>
+    <string name="migrationComplete_residueTitle">Te has movido a Ironwood</string>
+    <string name="migrationComplete_residueSubtitle">Un pequeño saldo todavía permanece en Orchard.</string>
+    <string name="migrationComplete_inIronwoodLabel">En Ironwood</string>
+    <string name="migrationComplete_leftInOrchardLabel">Restante en Orchard</string>
+    <string name="migrationComplete_residueRecommendationBody">%1$s todavía está en Orchard. Mover un monto tan específico podría vincular tus fondos de Ironwood con tu historial de Orchard. Te recomendamos bloquearlo en su lugar.</string>
+
+    <string name="migrationNotifPermission_title">Permitir notificaciones</string>
+    <string name="migrationNotifPermission_subtitle">Si se pierde una transferencia programada o falla un envío en segundo plano, podemos enviarte una notificación local para que abras Zodl. Recibe avisos sobre:</string>
+    <string name="migrationNotifPermission_statusTitle">Estado de la migración</string>
+    <string name="migrationNotifPermission_statusBody">Te avisaremos cuando tus fondos se hayan migrado por completo a Ironwood.</string>
+    <string name="migrationNotifPermission_actionNeededTitle">Acción necesaria</string>
+    <string name="migrationNotifPermission_actionNeededBody">Si se pierde una ventana de envío, te pediremos que abras la app y envíes una transferencia manualmente.</string>
+    <string name="migrationNotifPermission_planChangesTitle">Cambios en el plan de transferencias</string>
+    <string name="migrationNotifPermission_planChangesBody">Si se gastan los fondos asignados o una transferencia programada ya no se puede enviar, te lo haremos saber.</string>
+    <string name="migrationNotifPermission_warningHint">Sin notificaciones, tendrás que abrir Zodl para revisar el progreso de la migración y aprobar tú mismo cualquier transferencia manual.</string>
+
+    <string name="migrationCustomServerTor_title">Tu servidor no admite Tor</string>
+    <string name="migrationCustomServerTor_bodyImmediate">La transacción de migración no se puede transmitir por Tor cuando usas un servidor personalizado. Si continúas, esta transacción se enviará sin la protección de IP de Tor.</string>
+    <string name="migrationCustomServerTor_bodyAutomatic">Las transacciones de migración no se pueden transmitir por Tor cuando usas un servidor personalizado. Si continúas, estas transacciones se enviarán sin la protección de IP de Tor.</string>
+    <string name="migrationCustomServerTor_riskBodyImmediate">Sin Tor, tu dirección IP queda expuesta al servidor personalizado y podría vincularse con tu saldo completo.</string>
+    <string name="migrationCustomServerTor_riskBodyAutomatic">Sin Tor, tu dirección IP queda expuesta al servidor personalizado y podría vincularse con los montos de la migración.</string>
+    <string name="migrationCustomServerTor_switchServer">Cambiar servidor</string>
+
+    <string name="migrationTorFailure_title">No se pudo conectar a Tor</string>
+    <string name="migrationTorFailure_body">No pudimos establecer una conexión Tor. Puedes continuar sin la protección de Tor, o cancelar e intentarlo de nuevo.</string>
+    <string name="migrationTorFailure_riskBody">Sin Tor, tu dirección IP queda expuesta al servidor y podría vincularse con los montos de la migración.</string>
+
+    <string name="migrationSetup_title">Mover a Ironwood</string>
+    <string name="migrationSetup_bodyPrefix">"La última actualización de la red Zcash requiere mover tu "</string>
+    <string name="migrationSetup_bodyFiatSuffix">" (%1$s)"</string>
+    <string name="migrationSetup_bodySuffix">" del pool de Orchard al nuevo pool de Ironwood. Tus fondos están seguros."</string>
+    <string name="migrationSetup_findOutMore">Más información</string>
+    <string name="migrationSetup_immediateWarning">Todos los fondos transferidos en esta transacción se revelarán en la cadena de bloques.</string>
+    <string name="migrationSetup_automaticWarning">El monto de cada transferencia individual entre pools se revela en la cadena de bloques.</string>
+    <string name="migrationSetup_automaticTitle">Migrar con privacidad</string>
+    <string name="migrationSetup_automaticSubtitle">Transferencias divididas en el tiempo · Programadas en segundo plano · Máxima privacidad</string>
+    <string name="migrationSetup_immediateTitle">Migrar de inmediato</string>
+    <string name="migrationSetup_immediateSubtitle">Transferencia única · Se envía ahora · Menor privacidad</string>
+
+    <string name="migrationLockExplainer_title">¿Qué hace el bloqueo?</string>
+    <string name="migrationLockExplainer_bullet1Prefix">Bloquear marca este saldo como </string>
+    <string name="migrationLockExplainer_bullet1Bold">no gastable</string>
+    <string name="migrationLockExplainer_bullet1Suffix">, así no podrá comprometer tu privacidad en futuras transacciones.</string>
+    <string name="migrationLockExplainer_bullet2Bold">El bloqueo existe solo en esta instancia de Zodl/Keystone.</string>
+    <string name="migrationLockExplainer_bullet2Suffix"> Restaurar tu wallet no lo trasladará.</string>
+    <string name="migrationLockExplainer_bullet3Prefix">Una futura versión te permitirá </string>
+    <string name="migrationLockExplainer_bullet3Bold">desbloquear este saldo.</string>
+
+    <string name="migrationFailureSheet_title">No se pudo enviar</string>
+    <string name="migrationFailureMessage_networkError">No se pudo conectar a la red. Revisa tu conexión e inténtalo de nuevo.</string>
+    <string name="migrationFailureMessage_invalidNote">La nota de esta transferencia ya se gastó en otro lugar. Reprográmala para planear una nueva.</string>
+    <string name="migrationFailureMessage_expired">El anchor de esta transferencia caducó. Reprográmala para planear una nueva.</string>
+    <string name="migrationSending_notReady">Esta transferencia todavía no está lista para enviarse. Inténtalo de nuevo en un momento.</string>
+
+    <string name="migrationPreparationDetails_title">Preparar tu saldo</string>
+    <string name="migrationPreparationDetails_body">Tu saldo debe dividirse en notas del tamaño de una transferencia en %1$d pasos antes de que comiencen tus transferencias programadas.</string>
+    <string name="migrationPreparationDetails_stepsTitle">Pasos de preparación</string>
+    <string name="migrationPreparationDetails_amountBeingSplitTitle">Monto a dividir</string>
+
+    <string name="migrationTransferInvalid_planUpdateTitle">Actualizar plan de migración</string>
+    <string name="migrationTransferInvalid_planUpdateBody">Algunas notas de Orchard se gastaron fuera del flujo de migración, lo que invalidó el plan de transferencias prefirmado. El plan debe volver a crearse para el saldo restante. No se pierden fondos: solo se descartan las transacciones prefirmadas.</string>
+    <string name="migrationTransferInvalid_planUpdateFirstStep">Se descarta la transferencia invalidada</string>
+    <string name="migrationTransferInvalid_transferExpiredTitle">La transferencia ya no es válida</string>
+    <string name="migrationTransferInvalid_transferExpiredBodyPlural">Las transferencias %1$s caducaron sin enviarse: la app no se abrió a tiempo para transmitirlas. El plan de migración debe volver a crearse para el saldo restante. No se pierden fondos: solo se descartan las transacciones prefirmadas.</string>
+    <string name="migrationTransferInvalid_transferExpiredBodySingular">La transferencia %1$s caducó sin enviarse: la app no se abrió a tiempo para transmitirla. El plan de migración debe volver a crearse para el saldo restante. No se pierden fondos: solo se descartan las transacciones prefirmadas.</string>
+    <string name="migrationTransferInvalid_expiredStepLabelPlural">Se descartan las transferencias caducadas</string>
+    <string name="migrationTransferInvalid_expiredStepLabelSingular">Se descarta la transferencia caducada</string>
+    <string name="migrationTransferInvalid_whatHappensNextTitle">Qué sucede a continuación</string>
+    <string name="migrationTransferInvalid_remainingBalanceReproposed">El saldo restante se vuelve a proponer</string>
+    <string name="migrationTransferInvalid_transfersDoneProgress">%1$d de %2$d transferencias completadas; la migración continuará.</string>
+
+    <string name="migrationHowItWorks_title">Cómo funciona</string>
+    <string name="migrationHowItWorks_subtitle">Mover fondos entre pools de Zcash revela el monto de cada transferencia. Así protegemos tu privacidad durante la migración.</string>
+    <string name="migrationHowItWorks_splitScheduleTitle">Dividir y programar</string>
+    <string name="migrationHowItWorks_splitScheduleDescription">Tu saldo se divide en montos más pequeños y se distribuye en el tiempo, lo que dificulta vincularlos entre sí.</string>
+    <string name="migrationHowItWorks_approveOnceTitle">Aprueba una vez</string>
+    <string name="migrationHowItWorks_approveOnceDescription">Zodl se encarga del resto, enviando cada transferencia automáticamente en su ventana programada mientras la app se ejecuta en segundo plano.</string>
+    <string name="migrationHowItWorks_ifSomethingFailsTitle">Si algo falla</string>
+    <string name="migrationHowItWorks_ifSomethingFailsDescription">Te avisaremos para que puedas completarla manualmente.</string>
+    <string name="migrationHowItWorks_largeBalanceTitle">Saldo grande</string>
+    <string name="migrationHowItWorks_largeBalanceDescription">Si tu wallet tiene un saldo grande o muchas notas pequeñas, la migración puede ejecutarse en varias rondas programadas.</string>
+    <string name="migrationHowItWorks_disclaimer">Elegir esta opción puede requerir dejar una pequeña cantidad (menos de 0.01 ZEC) en el pool de Orchard, que no se transferirá.</string>
+
+    <string name="migrationReview_title">Revisar transferencia</string>
+    <string name="migrationReview_immediateBody">Todo tu saldo de Orchard se transferirá a Ironwood en una sola transferencia en cadena. Una vez confirmada, esta transferencia no se puede cancelar.</string>
+    <string name="migrationReview_feeLabel">Comisión</string>
+    <string name="migrationReview_amountLabel">Monto</string>
+    <string name="migrationReview_signing">Firmando...</string>
+    <string name="migrationReview_confirm">Confirmar</string>
+    <string name="migrationReview_confirmTransferPlanTitle">Confirmar plan de transferencias</string>
+    <string name="migrationReview_privacyBody">Tu saldo se divide en %1$d transferencias a lo largo de %2$s. Apruébalo una vez y nosotros nos encargamos del resto: solo mantén la app ejecutándose en segundo plano. Los montos se aleatorizan por privacidad. Si se pierde una ventana de envío, Zodl te avisará la próxima vez que abras la app.</string>
+    <string name="migrationReview_roundOfTotal">Ronda %1$d de %2$d</string>
+    <string name="migrationReview_startMigration">Iniciar migración</string>
+    <string name="migrationReview_sendImmediately">Enviar de inmediato</string>
+
+    <string name="migrationKeystoneSign_prepareErrorMessage">No se pudo preparar la migración para firmar. Inténtalo de nuevo.</string>
+    <string name="migrationKeystoneSign_barTitle">Firmar transacción</string>
+    <string name="migrationKeystoneSign_scanWithKeystone">Escanea con tu wallet Keystone%1$s</string>
+    <string name="migrationKeystoneSign_roundSuffix"> (%1$d de %2$d)</string>
+    <string name="migrationKeystoneSign_subtitle">Después de firmar con Keystone, toca el botón Obtener firma que aparece abajo.</string>
+    <string name="migrationKeystoneSign_badgeHardware">Hardware</string>
+    <string name="migrationKeystoneSign_getSignature">Obtener firma</string>
+    <string name="migrationKeystoneSign_reject">Rechazar</string>
+
+    <string name="migrationBattery_title">Permitir envío en segundo plano</string>
+    <string name="migrationBattery_body">Para enviar las transferencias de migración en sus horarios programados, Zodl necesita seguir ejecutándose en segundo plano. Permite la actividad en segundo plano para Zodl en la configuración de tu dispositivo.</string>
+    <string name="migrationBattery_scheduledWindowsTitle">Las transferencias se envían en sus ventanas programadas</string>
+    <string name="migrationBattery_scheduledWindowsBody">Zodl se activa y envía cada transferencia en el horario programado, sin que tengas que hacer nada.</string>
+    <string name="migrationBattery_noNeedToOpenTitle">No hace falta abrir la app para cada envío</string>
+    <string name="migrationBattery_noNeedToOpenBody">Una vez que confirmes el nuevo calendario, enviaremos las transferencias en segundo plano.</string>
+    <string name="migrationBattery_fixedScheduleTitle">Se envían en un horario fijo, no según tu actividad</string>
+    <string name="migrationBattery_fixedScheduleBody">Las transferencias se envían en horarios fijos de la red, por lo que no están vinculadas a cuándo abres Zodl.</string>
+    <string name="migrationBattery_withoutPermissionHint">Sin este permiso, tendrás que abrir Zodl manualmente en cada horario programado para enviar.</string>
+
+    <string name="migrationScheduled_schedulingTitle">Programando...</string>
+    <string name="migrationScheduled_schedulingSubtitle">Se está confirmando el calendario de migración de tus ZEC.</string>
+    <string name="migrationScheduled_totalToTransferLabel">Total a transferir</string>
+    <string name="migrationScheduled_poolLabel">Pool</string>
+    <string name="migrationScheduled_poolValue">Orchard → Ironwood</string>
+    <string name="migrationScheduled_transfersLabel">Transferencias</string>
+    <string name="migrationScheduled_durationLabel">Duración</string>
+    <string name="migrationScheduled_doneTitle">Migración programada</string>
+    <string name="migrationScheduled_doneSubtitle">Tus ZEC se migrarán al pool de Ironwood según el calendario que aprobaste.</string>
+    <string name="migrationScheduled_finalizeErrorMessage">Ocurrió un error al finalizar el calendario de migración. Inténtalo de nuevo.</string>
+    <string name="migrationScheduled_backgroundActivityHint">Las transferencias se ejecutan cuando abres la app. Activa la actividad en segundo plano en Configuración para el envío automático.</string>
+    <string name="migrationScheduled_transfersProgressPending">0 de %1$d</string>
+
+    <string name="migrationHome_completeTitle">Migración completa</string>
+    <string name="migrationHome_requiredTitle">Migración necesaria</string>
+    <string name="migrationHome_readyToSendTitle">Transferencia lista</string>
+    <string name="migrationHome_attentionTitle">El plan de migración necesita actualización</string>
+    <string name="migrationHome_defaultSubtitle">Mueve tus fondos a Ironwood.</string>
+    <string name="migrationHome_residueTitle">%1$s restante en Orchard</string>
+    <string name="migrationHome_residueSubtitle">Toca para decidir qué hacer con él</string>
+    <string name="coinVote_confirmSubmission_detailExcludedWeight">Excluido de esta votación</string>
+
+    <string name="migrationSetup_automaticPausedSubtitle">Disponible después de la actualización de la red, alrededor del %1$s</string>
+    <string name="migrationSetup_automaticPausedSubtitleNoDate">Disponible después de la actualización de la red</string>
+    <string name="migrationUpgradePaused_title">La migración está en pausa</string>
+    <string name="migrationUpgradePaused_message">Una migración programada no puede iniciarse antes de la actualización de la red. Inténtalo de nuevo después.</string>
+    <string name="migrationTipUnavailable_title">Zodl sigue sincronizando</string>
+    <string name="migrationTipUnavailable_message">Zodl debe terminar de sincronizar antes de planificar una migración. Inténtalo de nuevo en un momento.</string>
+    <string name="migrationHome_upgradeStoppedTitle">Migración detenida</string>
+    <string name="migrationHome_upgradeStoppedSubtitle">La actualización de la red de Zcash detuvo tu migración antes de que terminara. Las transferencias confirmadas no se ven afectadas. Los fondos de las transferencias sin confirmar pueden seguir sin estar disponibles hasta que esas transacciones caduquen y tu billetera se sincronice. Toca para migrar lo que queda.</string>
+    <string name="colorPicker_title">Colores</string>
+    <string name="colorPicker_grid">Cuadrícula</string>
+    <string name="colorPicker_spectrum">Espectro</string>
+    <string name="colorPicker_sliders">Controles</string>
+    <string name="colorPicker_red">Rojo</string>
+    <string name="colorPicker_green">Verde</string>
+    <string name="colorPicker_blue">Azul</string>
+    <string name="colorPicker_hex">Color hex #</string>
+    <string name="colorPicker_done">Listo</string>
+    <string name="colorPicker_edit">Cambiar color</string>
+    <string name="colorPicker_gridDescription">Cuadrícula de colores</string>
+    <string name="colorPicker_spectrumDescription">Espectro de colores</string>
+    <string name="colorPicker_selectedHex">Color seleccionado #%1$s</string>
+    <string name="editAccount_title">Editar cuenta</string>
+    <string name="accountName_heading">Personalizar cuenta</string>
+    <string name="accountName_message">Elige un nombre para distinguirla de tus otras cuentas.</string>
+    <string name="accountName_label">Nombre de la cuenta</string>
+    <string name="accountName_placeholder">Ingresa...</string>
+    <string name="accountName_counter">%1$d/%2$d</string>
+    <string name="accountName_duplicate">Ya existe una cuenta con este nombre</string>
+    <string name="editAccount_save">Guardar cambios</string>
+
 </resources>

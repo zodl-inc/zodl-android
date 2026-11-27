@@ -5,6 +5,7 @@ import co.electriccoin.zcash.ui.common.model.SwapAddress
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapQuote
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
 import java.math.BigDecimal
 import java.math.MathContext
@@ -32,12 +33,14 @@ data class NearSwapQuoteStatus(
             }
             requireConsistent(
                 name = "amountIn",
+                type = SwapQuoteMismatchType.INPUT_AMOUNT,
                 raw = details.amountIn,
                 formatted = details.amountInFormatted,
                 decimals = origin.decimals
             )
             requireConsistent(
                 name = "amountOut",
+                type = SwapQuoteMismatchType.OUTPUT_AMOUNT,
                 raw = details.amountOut,
                 formatted = details.amountOutFormatted,
                 decimals = destination.decimals

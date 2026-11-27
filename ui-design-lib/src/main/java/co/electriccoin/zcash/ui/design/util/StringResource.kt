@@ -417,11 +417,11 @@ private fun String.ellipsizeMiddle(size: Int): String {
 private fun String.ellipsizeEnd(size: Int) = "${this.take(size)}$DOTS"
 
 private fun StringResource.ByTransactionId.convertTransactionId(): String =
-    if (abbreviated) transactionId.ellipsizeMiddle(TRANSACTION_MAX_PREFIX_SUFFIX_LENGTH) else transactionId
+    if (abbreviated) transactionId.ellipsizeMiddle(TRANSACTION_MAX_LENGTH_ABBREVIATED) else transactionId
 
 private const val DOTS = "..."
 
-private const val TRANSACTION_MAX_PREFIX_SUFFIX_LENGTH = 5
+private const val TRANSACTION_MAX_LENGTH_ABBREVIATED = 10
 
 private const val ADDRESS_MAX_LENGTH_ABBREVIATED = 20
 

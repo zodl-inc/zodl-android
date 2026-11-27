@@ -41,21 +41,22 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.R
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
-import co.electriccoin.zcash.ui.design.theme.internal.SecondaryTypography
 import co.electriccoin.zcash.ui.design.theme.internal.TopAppBarColors
+import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 
 @Preview
 @Composable
 private fun TopAppBarTextComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 navigationAction = {
@@ -74,7 +75,7 @@ private fun TopAppBarTextComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarTextDarkComposablePreview() {
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         BlankSurface {
             SmallTopAppBar(
                 navigationAction = {
@@ -93,7 +94,7 @@ private fun TopAppBarTextDarkComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarTextRestoringComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 navigationAction = {
@@ -113,7 +114,7 @@ private fun TopAppBarTextRestoringComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarTextRestoringLongComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 navigationAction = {
@@ -132,67 +133,8 @@ private fun TopAppBarTextRestoringLongComposablePreview() {
 
 @Preview
 @Composable
-private fun TopAppBarLogoComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
-        BlankSurface {
-            SmallTopAppBar(
-                navigationAction = {
-                    TopAppBarBackNavigation(
-                        onBack = {},
-                        backText = "BACK",
-                        backContentDescriptionText = "BACK"
-                    )
-                },
-                showTitleLogo = true
-            )
-        }
-    }
-}
-
-@Preview
-@Composable
-private fun TopAppBarLogoRestoringComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
-        BlankSurface {
-            SmallTopAppBar(
-                navigationAction = {
-                    TopAppBarBackNavigation(
-                        onBack = {},
-                        backText = "BACK",
-                        backContentDescriptionText = "BACK"
-                    )
-                },
-                showTitleLogo = true,
-                subTitle = "[RESTORING YOUR WALLET…]"
-            )
-        }
-    }
-}
-
-@Preview
-@Composable
-private fun TopAppBarLogoRestoringDarkComposablePreview() {
-    ZcashTheme(forceDarkMode = true) {
-        BlankSurface {
-            SmallTopAppBar(
-                navigationAction = {
-                    TopAppBarBackNavigation(
-                        onBack = {},
-                        backText = "BACK",
-                        backContentDescriptionText = "BACK"
-                    )
-                },
-                showTitleLogo = true,
-                subTitle = "[RESTORING YOUR WALLET…]"
-            )
-        }
-    }
-}
-
-@Preview
-@Composable
 private fun TopAppBarRegularMenuComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 titleText = "Screen B",
@@ -210,7 +152,7 @@ private fun TopAppBarRegularMenuComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarOneVisibleActionMenuComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 titleText = "Screen C",
@@ -234,7 +176,7 @@ private fun TopAppBarOneVisibleActionMenuComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarHamburgerMenuComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 titleText = "Screen D",
@@ -258,7 +200,7 @@ private fun TopAppBarHamburgerMenuComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarHamburgerPlusActionComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 titleText = "Screen E",
@@ -402,6 +344,10 @@ fun TopAppBarHideBalancesNavigation(
     }
 }
 
+/**
+ * Figma's top app bar: the title in Inter SemiBold 16 and the subtitle in Inter Medium 12, 4 dp
+ * below it.
+ */
 @Composable
 @Suppress("LongParameterList")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -412,10 +358,9 @@ fun SmallTopAppBar(
     navigationAction: @Composable () -> Unit = {},
     regularActions: (@Composable RowScope.() -> Unit)? = null,
     subTitle: String? = null,
-    showTitleLogo: Boolean = false,
     titleText: String? = null,
-    titleStyle: TextStyle = SecondaryTypography.headlineSmall,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
+    subTitleAllCaps: Boolean = true,
 ) {
     CenterAlignedTopAppBar(
         windowInsets = windowInsets,
@@ -428,18 +373,12 @@ fun SmallTopAppBar(
                 if (titleText != null) {
                     Text(
                         text = titleText.uppercase(),
-                        style = titleStyle,
+                        style = ZashiTypography.textMd,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
                         color = colors.titleColor,
                     )
                     restoringSpacerHeight = ZcashTheme.dimens.spacingTiny
-                } else if (showTitleLogo) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.zashi_text_logo),
-                        contentDescription = null,
-                        tint = colors.titleColor,
-                        modifier = Modifier.height(ZcashTheme.dimens.topAppBarZcashLogoHeight)
-                    )
-                    restoringSpacerHeight = ZcashTheme.dimens.spacingSmall
                 }
 
                 if (subTitle != null) {
@@ -447,8 +386,9 @@ fun SmallTopAppBar(
 
                     @Suppress("MagicNumber")
                     Text(
-                        text = subTitle.uppercase(),
-                        style = ZcashTheme.extendedTypography.restoringTopAppBarStyle,
+                        text = if (subTitleAllCaps) subTitle.uppercase() else subTitle,
+                        style = ZashiTypography.textXs,
+                        fontWeight = FontWeight.Medium,
                         color = colors.subTitleColor,
                         modifier = Modifier.fillMaxWidth(0.75f),
                         textAlign = TextAlign.Center,

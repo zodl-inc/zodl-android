@@ -1,7 +1,14 @@
 package co.electriccoin.zcash.di
 
+import android.os.SystemClock
+import co.electriccoin.zcash.ui.common.provider.ActivityManagerAvailableMemorySource
+import co.electriccoin.zcash.ui.common.provider.AppAccessLockProvider
+import co.electriccoin.zcash.ui.common.provider.AppAccessLockProviderImpl
+import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProvider
+import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProviderImpl
+import co.electriccoin.zcash.ui.common.provider.AvailableMemorySource
 import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.common.provider.BlockchainProviderImpl
 import co.electriccoin.zcash.ui.common.provider.CMCApiProvider
@@ -10,6 +17,8 @@ import co.electriccoin.zcash.ui.common.provider.CrashReportingStorageProvider
 import co.electriccoin.zcash.ui.common.provider.CrashReportingStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.EphemeralAddressStorageProvider
 import co.electriccoin.zcash.ui.common.provider.EphemeralAddressStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.ExternalSignerBudgetSource
+import co.electriccoin.zcash.ui.common.provider.GetMonotonicTimeProvider
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.common.provider.GetZcashCurrencyProvider
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteKeystoneStorageProvider
@@ -18,45 +27,66 @@ import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteStorageProvider
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.HttpClientProvider
 import co.electriccoin.zcash.ui.common.provider.HttpClientProviderImpl
-import co.electriccoin.zcash.ui.common.provider.HttpPirSnapshotResolver
+import co.electriccoin.zcash.ui.common.provider.IsBackgroundExecutionAvailableProvider
 import co.electriccoin.zcash.ui.common.provider.IsExchangeRateEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.IsExchangeRateEnabledStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.IsIronwoodAnnouncementShownStorageProvider
+import co.electriccoin.zcash.ui.common.provider.IsIronwoodAnnouncementShownStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProvider
 import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProviderImpl
+import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
+import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProviderImpl
+import co.electriccoin.zcash.ui.common.provider.IsOhttpOptInDismissedProvider
+import co.electriccoin.zcash.ui.common.provider.IsOhttpOptInDismissedProviderImpl
+import co.electriccoin.zcash.ui.common.provider.IsOledEnabledStorageProvider
+import co.electriccoin.zcash.ui.common.provider.IsOledEnabledStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProvider
+import co.electriccoin.zcash.ui.common.provider.IsPublicConnectionProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProviderImpl
+import co.electriccoin.zcash.ui.common.provider.IsSwapRefundWarningDismissedStorageProvider
+import co.electriccoin.zcash.ui.common.provider.IsSwapRefundWarningDismissedStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.KeepScreenOnSyncSessionProvider
+import co.electriccoin.zcash.ui.common.provider.KeepScreenOnSyncSessionProviderImpl
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProviderImpl
 import co.electriccoin.zcash.ui.common.provider.KtorNearApiProvider
-import co.electriccoin.zcash.ui.common.provider.KtorVotingApiProvider
+import co.electriccoin.zcash.ui.common.provider.LastNetworkActivityStorageProvider
+import co.electriccoin.zcash.ui.common.provider.LastNetworkActivityStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.LedgerAccountBindingProvider
+import co.electriccoin.zcash.ui.common.provider.LedgerAccountBindingProviderImpl
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.NearApiProvider
+import co.electriccoin.zcash.ui.common.provider.NetworkConnectivityProvider
+import co.electriccoin.zcash.ui.common.provider.NetworkConnectivityProviderImpl
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProviderImpl
-import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.PreferredFiatProvider
 import co.electriccoin.zcash.ui.common.provider.PreferredFiatProviderImpl
 import co.electriccoin.zcash.ui.common.provider.RestoreTimestampStorageProvider
 import co.electriccoin.zcash.ui.common.provider.RestoreTimestampStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProvider
+import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProviderImpl
+import co.electriccoin.zcash.ui.common.provider.SdkExternalSignerBudgetSource
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProvider
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProviderImpl
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionMutex
 import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProvider
 import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProviderImpl
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProvider
+import co.electriccoin.zcash.ui.common.provider.SignerCapabilitiesProviderImpl
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProviderImpl
+import co.electriccoin.zcash.ui.common.provider.SwapAssetCacheProvider
+import co.electriccoin.zcash.ui.common.provider.SwapAssetCacheProviderImpl
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProviderImpl
 import co.electriccoin.zcash.ui.common.provider.TokenIconProvider
 import co.electriccoin.zcash.ui.common.provider.TokenIconProviderImpl
 import co.electriccoin.zcash.ui.common.provider.TokenNameProvider
 import co.electriccoin.zcash.ui.common.provider.TokenNameProviderImpl
-import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
-import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
-import co.electriccoin.zcash.ui.common.provider.VotingCryptoClientImpl
-import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
-import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProviderImpl
 import co.electriccoin.zcash.ui.common.provider.WalletBackupConsentStorageProvider
 import co.electriccoin.zcash.ui.common.provider.WalletBackupConsentStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.WalletBackupFlagStorageProvider
@@ -67,7 +97,7 @@ import co.electriccoin.zcash.ui.common.provider.WalletBackupRemindMeTimestampSto
 import co.electriccoin.zcash.ui.common.provider.WalletBackupRemindMeTimestampStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProvider
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProviderImpl
-import co.electriccoin.zcash.work.VotingShareTrackingScheduler
+import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
@@ -76,20 +106,45 @@ import org.koin.dsl.module
 val providerModule =
     module {
         factoryOf(::LightWalletEndpointProvider)
+        singleOf(::GetMonotonicTimeProvider)
         singleOf(::GetVersionInfoProvider)
         singleOf(::GetZcashCurrencyProvider)
         singleOf(::SelectedAccountUUIDProviderImpl) bind SelectedAccountUUIDProvider::class
         singleOf(::PersistableWalletProviderImpl) bind PersistableWalletProvider::class
         singleOf(::PreferredFiatProviderImpl) bind PreferredFiatProvider::class
         singleOf(::IsServerSelectionAutomaticProviderImpl) bind IsServerSelectionAutomaticProvider::class
-        singleOf(::SynchronizerProviderImpl) bind SynchronizerProvider::class
+        singleOf(::IsOhttpFallbackActiveProviderImpl) bind IsOhttpFallbackActiveProvider::class
+        singleOf(::IsPublicConnectionProviderImpl) bind IsPublicConnectionProvider::class
+        singleOf(::IsOhttpOptInDismissedProviderImpl) bind IsOhttpOptInDismissedProvider::class
+        single {
+            SynchronizerProviderImpl(
+                walletCoordinator = get(),
+                persistableWalletProvider = get(),
+                // lazy {} breaks the AccountDataSource -> SynchronizerProvider resolution cycle
+                migrationSyncedHook = lazy { get() },
+            )
+        } bind SynchronizerProvider::class
         singleOf(::ApplicationStateProviderImpl) bind ApplicationStateProvider::class
+        single<AvailableMemorySource> { ActivityManagerAvailableMemorySource(androidContext()) }
+        singleOf(::SdkExternalSignerBudgetSource) bind ExternalSignerBudgetSource::class
+        single<SignerCapabilitiesProvider> {
+            SignerCapabilitiesProviderImpl(
+                availableMemorySource = get(),
+                externalSignerBudgetSource = get(),
+                elapsedRealtimeMillis = SystemClock::elapsedRealtime
+            )
+        }
+        singleOf(::AppAccessLockProviderImpl) bind AppAccessLockProvider::class
+        singleOf(::NetworkConnectivityProviderImpl) bind NetworkConnectivityProvider::class
+        singleOf(::ServerSelectionMutex)
         singleOf(::RestoreTimestampStorageProviderImpl) bind RestoreTimestampStorageProvider::class
         singleOf(::WalletBackupRemindMeCountStorageProviderImpl) bind
             WalletBackupRemindMeCountStorageProvider::class
         singleOf(::WalletBackupRemindMeTimestampStorageProviderImpl) bind
             WalletBackupRemindMeTimestampStorageProvider::class
         singleOf(::WalletBackupFlagStorageProviderImpl) bind WalletBackupFlagStorageProvider::class
+        singleOf(::IsIronwoodAnnouncementShownStorageProviderImpl) bind
+            IsIronwoodAnnouncementShownStorageProvider::class
         singleOf(::WalletBackupConsentStorageProviderImpl) bind WalletBackupConsentStorageProvider::class
         singleOf(::WalletRestoringStateProviderImpl) bind WalletRestoringStateProvider::class
         singleOf(::CrashReportingStorageProviderImpl) bind CrashReportingStorageProvider::class
@@ -98,20 +153,25 @@ val providerModule =
         singleOf(::HasSeenHowToVoteStorageProviderImpl) bind HasSeenHowToVoteStorageProvider::class
         singleOf(::HasSeenHowToVoteKeystoneStorageProviderImpl) bind
             HasSeenHowToVoteKeystoneStorageProvider::class
+        singleOf(::IsSwapRefundWarningDismissedStorageProviderImpl) bind
+            IsSwapRefundWarningDismissedStorageProvider::class
         singleOf(::IsTorEnabledStorageProviderImpl) bind IsTorEnabledStorageProvider::class
+        singleOf(::AppearanceModeStorageProviderImpl) bind AppearanceModeStorageProvider::class
+        singleOf(::IsOledEnabledStorageProviderImpl) bind IsOledEnabledStorageProvider::class
         singleOf(::BlockchainProviderImpl) bind BlockchainProvider::class
         singleOf(::TokenIconProviderImpl) bind TokenIconProvider::class
         singleOf(::TokenNameProviderImpl) bind TokenNameProvider::class
         singleOf(::KtorNearApiProvider) bind NearApiProvider::class
         factoryOf(::HttpClientProviderImpl) bind HttpClientProvider::class
-        singleOf(::HttpPirSnapshotResolver) bind PirSnapshotResolver::class
         singleOf(::SimpleSwapAssetProviderImpl) bind SimpleSwapAssetProvider::class
+        singleOf(::SwapAssetCacheProviderImpl) bind SwapAssetCacheProvider::class
         factoryOf(::IsKeepScreenOnDuringRestoreProviderImpl) bind IsKeepScreenOnDuringRestoreProvider::class
+        factoryOf(::KeepScreenOnSyncSessionProviderImpl) bind KeepScreenOnSyncSessionProvider::class
         singleOf(::EphemeralAddressStorageProviderImpl) bind EphemeralAddressStorageProvider::class
         singleOf(::CMCApiProviderImpl) bind CMCApiProvider::class
         factoryOf(::KeystoneSDKProviderImpl) bind KeystoneSDKProvider::class
-        singleOf(::VotingCryptoClientImpl) bind VotingCryptoClient::class
-        singleOf(::VotingHotkeySeedProviderImpl) bind VotingHotkeySeedProvider::class
-        singleOf(::KtorVotingApiProvider) bind VotingApiProvider::class
-        singleOf(::VotingShareTrackingScheduler)
+        singleOf(::LastNetworkActivityStorageProviderImpl) bind LastNetworkActivityStorageProvider::class
+        singleOf(::LedgerAccountBindingProviderImpl) bind LedgerAccountBindingProvider::class
+        factoryOf(::IsBackgroundExecutionAvailableProvider)
+        singleOf(::SdkEncryptedPreferenceRecoveryProviderImpl) bind SdkEncryptedPreferenceRecoveryProvider::class
     }

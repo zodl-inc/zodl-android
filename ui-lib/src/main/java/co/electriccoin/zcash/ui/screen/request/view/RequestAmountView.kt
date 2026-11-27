@@ -53,9 +53,10 @@ internal fun RequestAmountView(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier =
-            modifier
+            Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .then(modifier),
     ) {
         Spacer(Modifier.height(ZcashTheme.dimens.spacingDefault))
 

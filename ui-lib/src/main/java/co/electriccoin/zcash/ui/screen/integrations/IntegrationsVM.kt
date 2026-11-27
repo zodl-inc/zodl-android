@@ -6,36 +6,37 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.usecase.GetFlexaStatusUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetKeystoneStatusUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletRestoringStateUseCase
 import co.electriccoin.zcash.ui.common.usecase.Status
 import co.electriccoin.zcash.ui.common.usecase.Status.DISABLED
 import co.electriccoin.zcash.ui.common.usecase.Status.ENABLED
 import co.electriccoin.zcash.ui.common.usecase.Status.UNAVAILABLE
+import co.electriccoin.zcash.ui.common.viewonly.ViewOnlyContent
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneArgs
 import co.electriccoin.zcash.ui.screen.flexa.Flexa
 import co.electriccoin.zcash.ui.screen.more.MoreArgs
+import co.electriccoin.zcash.ui.screen.redeemgift.ScanGiftCardArgs
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 class IntegrationsVM(
     getWalletRestoringState: GetWalletRestoringStateUseCase,
     getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     getFlexaStatus: GetFlexaStatusUseCase,
-    getKeystoneStatus: GetKeystoneStatusUseCase,
     private val navigationRouter: NavigationRouter,
+    private val viewOnlyContent: ViewOnlyContent,
 ) : ViewModel() {
     private val isRestoring = getWalletRestoringState.observe().map { it == WalletRestoringState.RESTORING }
 
@@ -44,31 +45,48 @@ class IntegrationsVM(
             isRestoring,
             getSelectedWalletAccount.observe(),
             getFlexaStatus.observe(),
-            getKeystoneStatus.observe(),
-        ) { isRestoring, selectedAccount, flexaStatus, keystoneStatus ->
+        ) { isRestoring, selectedAccount, flexaStatus ->
             createState(
                 isRestoring = isRestoring,
                 selectedAccount = selectedAccount,
                 flexaStatus = flexaStatus,
-                keystoneStatus = keystoneStatus,
             )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
-            initialValue = null
+            initialValue = null,
         )
 
     private fun createState(
         isRestoring: Boolean,
         selectedAccount: WalletAccount?,
         flexaStatus: Status,
-        keystoneStatus: Status
     ) = IntegrationsState(
         disabledInfo =
             when {
-                isRestoring -> stringRes(R.string.integrations_disabled_info)
-                selectedAccount is KeystoneAccount -> stringRes(R.string.integrations_disabled_info_flexa)
-                else -> null
+                isRestoring -> {
+                    stringRes(R.string.integrations_disabled_info)
+                }
+
+                flexaStatus == UNAVAILABLE -> {
+                    null
+                }
+
+                selectedAccount is KeystoneAccount -> {
+                    stringRes(R.string.integrations_disabled_info_flexa)
+                }
+
+                selectedAccount is LedgerAccount -> {
+                    stringRes(R.string.integrations_disabled_info_flexa_ledger)
+                }
+
+                selectedAccount is ViewOnlyAccount -> {
+                    viewOnlyContent.integrationsDisabledInfo
+                }
+
+                else -> {
+                    null
+                }
             },
         onBack = ::onBack,
         items =
@@ -76,40 +94,45 @@ class IntegrationsVM(
                 ListItemState(
                     // Set the wallet currency by app build is more future-proof, although we hide it from
                     // the UI in the Testnet build
-                    isEnabled = isRestoring.not() && selectedAccount is ZashiAccount,
+                    isEnabled = isRestoring.not() && selectedAccount is ZodlAccount,
                     bigIcon =
                         imageRes(
                             when (flexaStatus) {
                                 ENABLED -> R.drawable.ic_integrations_flexa
                                 DISABLED -> R.drawable.ic_integrations_flexa_disabled
                                 UNAVAILABLE -> R.drawable.ic_integrations_flexa_disabled
-                            }
+                            },
                         ),
                     title = stringRes(R.string.settings_flexa),
-                    subtitle = stringRes(R.string.settings_flexaDesc),
-                    onClick = ::onFlexaClicked
+                    subtitle =
+                        stringRes(R.string.settings_flexaDesc) +
+                            stringRes("\n") +
+                            stringRes(
+                                co.electriccoin.zcash.ui.design.R.string.settings_flexaIpDesc,
+                            ),
+                    onClick = ::onFlexaClicked,
                 ).takeIf { flexaStatus != UNAVAILABLE },
                 ListItemState(
-                    title = stringRes(R.string.settings_keystone),
-                    subtitle = stringRes(R.string.settings_keystoneDesc),
-                    bigIcon = imageRes(R.drawable.ic_integrations_keystone),
-                    onClick = ::onConnectKeystoneClick
-                ).takeIf { keystoneStatus != UNAVAILABLE },
+                    title = stringRes(R.string.integrations_redeemGift),
+                    subtitle = stringRes(R.string.integrations_redeemGift_subtitle),
+                    bigIcon = imageRes(R.drawable.ic_integrations_gift),
+                    onClick = ::onRedeemGiftClick,
+                ),
                 ListItemState(
                     title =
                         stringRes(co.electriccoin.zcash.ui.design.R.string.general_more) +
                             stringRes("..."),
                     bigIcon = imageRes(R.drawable.ic_integrations_more),
-                    onClick = ::onMoreClick
+                    onClick = ::onMoreClick,
                 ),
             ),
     )
 
     private fun onBack() = navigationRouter.back()
 
-    private fun onConnectKeystoneClick() = viewModelScope.launch { navigationRouter.replace(ConnectKeystoneArgs) }
-
     private fun onFlexaClicked() = navigationRouter.replace(Flexa)
 
     private fun onMoreClick() = navigationRouter.forward(MoreArgs)
+
+    private fun onRedeemGiftClick() = navigationRouter.replace(ScanGiftCardArgs())
 }

@@ -11,7 +11,11 @@ import co.electriccoin.zcash.di.providerModule
 import co.electriccoin.zcash.di.repositoryModule
 import co.electriccoin.zcash.di.useCaseModule
 import co.electriccoin.zcash.di.viewModelModule
+import co.electriccoin.zcash.ledger.di.featureLedgerModule
+import co.electriccoin.zcash.migration.di.featureMigrationModule
 import co.electriccoin.zcash.test.ZcashUiTestRunner
+import co.electriccoin.zcash.viewingkey.di.featureViewingKeyModule
+import co.electriccoin.zcash.voting.di.featureVotingModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
@@ -39,7 +43,11 @@ class ZcashUiTestApplication : Application() {
                 metadataModule,
                 useCaseModule,
                 mapperModule,
-                viewModelModule
+                viewModelModule,
+                featureMigrationModule,
+                featureVotingModule,
+                featureLedgerModule,
+                featureViewingKeyModule
             )
         }
     }

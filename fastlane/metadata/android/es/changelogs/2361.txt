@@ -1,0 +1,2 @@
+Corregido:
+- Solucionamos un caso único de migración y un problema de visualización del historial de transacciones.

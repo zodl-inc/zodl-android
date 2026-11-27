@@ -5,7 +5,10 @@ import android.app.Activity
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.serialization.generateHashCode
+import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProvider
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
+import co.electriccoin.zcash.ui.common.provider.IsOledEnabledStorageProvider
+import co.electriccoin.zcash.ui.common.provider.getOrSystem
 import co.electriccoin.zcash.ui.design.KeyboardManager
 import co.electriccoin.zcash.ui.screen.ExternalUrl
 import co.electriccoin.zcash.ui.screen.about.util.WebBrowserUtil
@@ -21,12 +24,15 @@ interface Navigator {
     suspend fun executeCommand(command: CustomNavigationCommand)
 }
 
+@Suppress("TooManyFunctions")
 class NavigatorImpl(
     private val activity: Activity,
     private val navController: NavHostController,
     private val flexaViewModel: FlexaViewModel,
     private val keyboardManager: KeyboardManager,
     private val applicationStateProvider: ApplicationStateProvider,
+    private val appearanceModeStorageProvider: AppearanceModeStorageProvider,
+    private val isOledEnabledStorageProvider: IsOledEnabledStorageProvider,
 ) : Navigator {
     override suspend fun executeCommand(command: NavigationCommand) {
         keyboardManager.close()
@@ -35,6 +41,7 @@ class NavigatorImpl(
             is NavigationCommand.Forward -> forward(command)
             is NavigationCommand.Replace -> replace(command)
             is NavigationCommand.ReplaceAll -> replaceAll(command)
+            is NavigationCommand.ReplaceFrom -> replaceFrom(command)
             NavigationCommand.Back -> navController.popBackStack()
             is NavigationCommand.BackTo -> backTo(command)
             NavigationCommand.BackToRoot -> backToRoot()
@@ -67,7 +74,7 @@ class NavigatorImpl(
         }
     }
 
-    private fun replaceAll(command: NavigationCommand.ReplaceAll) {
+    private suspend fun replaceAll(command: NavigationCommand.ReplaceAll) {
         command.routes.forEachIndexed { index, route ->
             when (route) {
                 co.electriccoin.zcash.ui.screen.flexa.Flexa -> {
@@ -102,7 +109,7 @@ class NavigatorImpl(
                     }
 
                     applicationStateProvider.onThirdPartyUiShown()
-                    WebBrowserUtil.startActivity(activity, route.url)
+                    startWebBrowser(route)
                 }
 
                 else -> {
@@ -120,7 +127,51 @@ class NavigatorImpl(
         }
     }
 
-    private fun replace(command: NavigationCommand.Replace) {
+    @SuppressLint("RestrictedApi")
+    @OptIn(InternalSerializationApi::class)
+    private suspend fun replaceFrom(command: NavigationCommand.ReplaceFrom) {
+        val popUpToId = command.route.serializer().generateHashCode()
+        command.routes.forEachIndexed { index, route ->
+            when (route) {
+                co.electriccoin.zcash.ui.screen.flexa.Flexa -> {
+                    if (index == 0) {
+                        navController.popBackStack(destinationId = popUpToId, inclusive = true)
+                    }
+
+                    if (index != command.routes.lastIndex) {
+                        throw UnsupportedOperationException("Flexa can be opened as last screen only")
+                    }
+
+                    createFlexaFlow(flexaViewModel)
+                }
+
+                is ExternalUrl -> {
+                    if (index == 0) {
+                        navController.popBackStack(destinationId = popUpToId, inclusive = true)
+                    }
+
+                    if (index != command.routes.lastIndex) {
+                        throw UnsupportedOperationException("External url can be opened as last screen only")
+                    }
+
+                    applicationStateProvider.onThirdPartyUiShown()
+                    startWebBrowser(route)
+                }
+
+                else -> {
+                    navController.executeNavigation(route = route) {
+                        if (index == 0) {
+                            popUpTo(popUpToId) {
+                                inclusive = true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun replace(command: NavigationCommand.Replace) {
         command.routes.forEachIndexed { index, route ->
             when (route) {
                 co.electriccoin.zcash.ui.screen.flexa.Flexa -> {
@@ -145,7 +196,7 @@ class NavigatorImpl(
                     }
 
                     applicationStateProvider.onThirdPartyUiShown()
-                    WebBrowserUtil.startActivity(activity, route.url)
+                    startWebBrowser(route)
                 }
 
                 else -> {
@@ -161,11 +212,11 @@ class NavigatorImpl(
         }
     }
 
-    private fun forward(command: NavigationCommand.Forward) {
+    private suspend fun forward(command: NavigationCommand.Forward) {
         command.routes.forEach { route ->
             when (route) {
                 co.electriccoin.zcash.ui.screen.flexa.Flexa -> createFlexaFlow(flexaViewModel)
-                is ExternalUrl -> WebBrowserUtil.startActivity(activity, route.url)
+                is ExternalUrl -> startWebBrowser(route)
                 else -> navController.executeNavigation(route = route)
             }
         }
@@ -173,6 +224,15 @@ class NavigatorImpl(
         if (command.routes.lastOrNull() in listOf(ExternalUrl, co.electriccoin.zcash.ui.screen.flexa.Flexa)) {
             applicationStateProvider.onThirdPartyUiShown()
         }
+    }
+
+    private suspend fun startWebBrowser(route: ExternalUrl) {
+        WebBrowserUtil.startActivity(
+            activity = activity,
+            url = route.url,
+            appearanceMode = appearanceModeStorageProvider.getOrSystem(),
+            isOledEnabled = isOledEnabledStorageProvider.get() == true
+        )
     }
 
     private fun NavHostController.executeNavigation(

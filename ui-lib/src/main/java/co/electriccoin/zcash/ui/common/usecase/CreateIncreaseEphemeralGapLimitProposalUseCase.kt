@@ -5,8 +5,11 @@ import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.model.AccountOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.ViewOnlyAccount
+import co.electriccoin.zcash.ui.common.model.ZodlAccount
 import co.electriccoin.zcash.ui.common.repository.EphemeralAddressRepository
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
@@ -17,7 +20,7 @@ class CreateIncreaseEphemeralGapLimitProposalUseCase(
     private val accountDataSource: AccountDataSource,
     private val ephemeralAddressRepository: EphemeralAddressRepository
 ) {
-    @Suppress("TooGenericExceptionCaught", "MagicNumber", "UseCheckOrError")
+    @Suppress("TooGenericExceptionCaught", "MagicNumber", "UseCheckOrError", "ThrowsCount")
     suspend operator fun invoke() {
         val address =
             ephemeralAddressRepository.get()?.address
@@ -36,7 +39,15 @@ class CreateIncreaseEphemeralGapLimitProposalUseCase(
                     keystoneProposalRepository.createPCZTFromProposal()
                 }
 
-                is ZashiAccount -> {
+                is LedgerAccount -> {
+                    throw AccountOperationUnsupportedException.ledger()
+                }
+
+                is ViewOnlyAccount -> {
+                    throw AccountOperationUnsupportedException.viewOnly()
+                }
+
+                is ZodlAccount -> {
                     zashiProposalRepository.createProposal(normalized)
                 }
             }

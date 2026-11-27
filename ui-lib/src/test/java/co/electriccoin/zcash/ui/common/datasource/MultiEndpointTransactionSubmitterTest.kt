@@ -2,6 +2,8 @@ package co.electriccoin.zcash.ui.common.datasource
 
 import cash.z.ecc.android.sdk.model.CreatedTransaction
 import cash.z.ecc.android.sdk.model.FirstClassByteArray
+import cash.z.ecc.android.sdk.model.SubmitRejection
+import cash.z.ecc.android.sdk.model.TransactionId
 import cash.z.ecc.android.sdk.model.TransactionSubmitResult
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.common.model.SubmitResult
@@ -21,6 +23,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.time.Duration.Companion.milliseconds
 
+@Suppress("LargeClass")
 class MultiEndpointTransactionSubmitterTest {
     @Test
     fun manualModeSubmitsOnlyToSelectedEndpoint() =
@@ -242,6 +245,102 @@ class MultiEndpointTransactionSubmitterTest {
         }
 
     @Test
+    fun anExplicitRejectionBesideATransportFailureIsFailedOnlyWithTheSdkVerdict() =
+        runTest {
+            val transaction = transaction(15)
+            val submitter =
+                MultiEndpointTransactionSubmitter(
+                    closeableScopeHolder = CloseableScopeHolderImpl(backgroundScope),
+                    logger = noOpLogger,
+                    submit = { _, submittedEndpoint ->
+                        when (submittedEndpoint.host) {
+                            "first.example.com" -> {
+                                failure(
+                                    transaction,
+                                    code = -1,
+                                    grpcError = true,
+                                    description = MULTI_SUBMIT_TIMEOUT_DESCRIPTION
+                                )
+                            }
+
+                            "second.example.com" -> {
+                                failure(
+                                    transaction,
+                                    code = -25,
+                                    grpcError = false,
+                                    description = "exceeding the configured mempool maximum"
+                                )
+                            }
+
+                            else -> {
+                                error("Unexpected endpoint $submittedEndpoint")
+                            }
+                        }
+                    }
+                )
+
+            val results =
+                submitter.submitTransactions(
+                    transactions = listOf(transaction),
+                    endpoints = listOf(endpoint("first.example.com"), endpoint("second.example.com")),
+                    logTag = LOG_TAG
+                )
+
+            // The raw refusal carries no verdict: only the SDK's verdict fails the transaction.
+            val answer = assertIs<TransactionSubmitResult.Failure>(results.single())
+            assertEquals(null, answer.rejection)
+            assertIs<SubmitResult.GrpcFailure>(results.toSubmitResult(emptyMap()))
+            val failure =
+                assertIs<SubmitResult.Failure>(
+                    results.toSubmitResult(
+                        mapOf(TransactionId.new(transaction.txId) to SubmitRejection.TOO_LARGE)
+                    )
+                )
+            assertEquals(SubmitRejection.TOO_LARGE, failure.rejection)
+        }
+
+    @Test
+    fun anExplicitRejectionIsPreferredOverAnEarlierNonGrpcFailureWhenNoEndpointAccepts() =
+        runTest {
+            val transaction = transaction(13)
+            val submitter =
+                MultiEndpointTransactionSubmitter(
+                    closeableScopeHolder = CloseableScopeHolderImpl(backgroundScope),
+                    logger = noOpLogger,
+                    submit = { _, submittedEndpoint ->
+                        when (submittedEndpoint.host) {
+                            "first.example.com" -> {
+                                failure(transaction, code = 18, grpcError = false)
+                            }
+
+                            "second.example.com" -> {
+                                failure(
+                                    transaction,
+                                    code = -25,
+                                    grpcError = false,
+                                    description = "exceeding the configured mempool maximum"
+                                ).copy(rejection = SubmitRejection.TOO_LARGE)
+                            }
+
+                            else -> {
+                                error("Unexpected endpoint $submittedEndpoint")
+                            }
+                        }
+                    }
+                )
+
+            val results =
+                submitter.submitTransactions(
+                    transactions = listOf(transaction),
+                    endpoints = listOf(endpoint("first.example.com"), endpoint("second.example.com")),
+                    logTag = LOG_TAG
+                )
+
+            val result = assertIs<TransactionSubmitResult.Failure>(results.single())
+            assertEquals(SubmitRejection.TOO_LARGE, result.rejection)
+        }
+
+    @Test
     fun timeoutWithIncompleteEndpointReportsGrpcFailure() =
         runTest {
             val transaction = transaction(4)
@@ -277,7 +376,7 @@ class MultiEndpointTransactionSubmitterTest {
                     description = MULTI_SUBMIT_TIMEOUT_DESCRIPTION,
                     reason = SubmitResult.GrpcFailure.Reason.TIMEOUT
                 ),
-                results.toSubmitResult()
+                results.toSubmitResult(emptyMap())
             )
         }
 
@@ -411,39 +510,57 @@ class MultiEndpointTransactionSubmitterTest {
 
             val result = assertIs<TransactionSubmitResult.Failure>(results.single())
             assertEquals(true, result.grpcError)
-            assertEquals("Endpoint submission failed", result.description)
+            assertEquals(MULTI_SUBMIT_UNANSWERED_DESCRIPTION, result.description)
             assertEquals(false, logger.messages.any { it.contains("private.example.com") || it.contains(":443") })
         }
 
     @Test
-    fun acceptedTransactionThenGrpcFailureMapsToPartialResult() {
+    fun acceptedTransactionThenGrpcFailureMapsToPendingResult() {
         val firstTransaction = transaction(10)
         val secondTransaction = transaction(11)
-        val thirdTransaction = transaction(12)
 
         val result =
             listOf(
                 TransactionSubmitResult.Success(firstTransaction.txId),
-                failure(secondTransaction, code = -1, grpcError = true),
-                TransactionSubmitResult.NotAttempted(thirdTransaction.txId)
-            ).toSubmitResult()
+                failure(secondTransaction, code = -1, grpcError = true)
+            ).toSubmitResult(emptyMap())
 
         assertEquals(
-            SubmitResult.Partial(
-                txIds =
-                    listOf(
-                        firstTransaction.txIdString(),
-                        secondTransaction.txIdString(),
-                        thirdTransaction.txIdString()
-                    ),
-                statuses = listOf("success", "grpcFailure", "notAttempted")
+            SubmitResult.GrpcFailure(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString())
             ),
             result
         )
     }
 
     @Test
-    fun nonGrpcFailuresMapToFirstFailureDetail() {
+    fun acceptedTransactionThenTimeoutMapsToPendingResultWithTimeoutMetadata() {
+        val firstTransaction = transaction(12)
+        val secondTransaction = transaction(13)
+
+        val result =
+            listOf(
+                TransactionSubmitResult.Success(firstTransaction.txId),
+                failure(
+                    secondTransaction,
+                    code = -1,
+                    grpcError = true,
+                    description = MULTI_SUBMIT_TIMEOUT_DESCRIPTION
+                )
+            ).toSubmitResult(emptyMap())
+
+        assertEquals(
+            SubmitResult.GrpcFailure(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString()),
+                description = MULTI_SUBMIT_TIMEOUT_DESCRIPTION,
+                reason = SubmitResult.GrpcFailure.Reason.TIMEOUT
+            ),
+            result
+        )
+    }
+
+    @Test
+    fun nonGrpcFailuresWithoutARejectionMapToPending() {
         val firstTransaction = transaction(13)
         val secondTransaction = transaction(14)
 
@@ -451,13 +568,11 @@ class MultiEndpointTransactionSubmitterTest {
             listOf(
                 failure(firstTransaction, code = 18, grpcError = false),
                 failure(secondTransaction, code = 19, grpcError = false)
-            ).toSubmitResult()
+            ).toSubmitResult(emptyMap())
 
         assertEquals(
-            SubmitResult.Failure(
-                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString()),
-                code = 18,
-                description = "failure 18"
+            SubmitResult.GrpcFailure(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString())
             ),
             result
         )
@@ -472,7 +587,7 @@ class MultiEndpointTransactionSubmitterTest {
             listOf(
                 failure(firstTransaction, code = -1, grpcError = true),
                 failure(secondTransaction, code = -1, grpcError = true)
-            ).toSubmitResult()
+            ).toSubmitResult(emptyMap())
 
         assertEquals(
             SubmitResult.GrpcFailure(
@@ -491,7 +606,7 @@ class MultiEndpointTransactionSubmitterTest {
             listOf(
                 failure(firstTransaction, code = -1, grpcError = true),
                 TransactionSubmitResult.NotAttempted(secondTransaction.txId)
-            ).toSubmitResult()
+            ).toSubmitResult(emptyMap())
 
         assertEquals(
             SubmitResult.Partial(
@@ -503,7 +618,27 @@ class MultiEndpointTransactionSubmitterTest {
     }
 
     @Test
-    fun grpcFailurePartialStatusDoesNotExposeDescription() {
+    fun onlyNotAttemptedTransactionsMapToPartialResult() {
+        val firstTransaction = transaction(19)
+        val secondTransaction = transaction(20)
+
+        val result =
+            listOf(
+                TransactionSubmitResult.NotAttempted(firstTransaction.txId),
+                TransactionSubmitResult.NotAttempted(secondTransaction.txId)
+            ).toSubmitResult(emptyMap())
+
+        assertEquals(
+            SubmitResult.Partial(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString()),
+                statuses = listOf("notAttempted", "notAttempted")
+            ),
+            result
+        )
+    }
+
+    @Test
+    fun grpcFailurePendingResultDoesNotExposeDescription() {
         val firstTransaction = transaction(21)
         val secondTransaction = transaction(22)
 
@@ -515,13 +650,17 @@ class MultiEndpointTransactionSubmitterTest {
                     code = -1,
                     description = "private.example.com:443 failed"
                 ),
-                TransactionSubmitResult.NotAttempted(secondTransaction.txId)
-            ).toSubmitResult()
+                TransactionSubmitResult.Failure(
+                    txId = secondTransaction.txId,
+                    grpcError = true,
+                    code = -1,
+                    description = "private-backup.example.com:443 failed"
+                )
+            ).toSubmitResult(emptyMap())
 
         assertEquals(
-            SubmitResult.Partial(
-                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString()),
-                statuses = listOf("grpcFailure", "notAttempted")
+            SubmitResult.GrpcFailure(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString())
             ),
             result
         )
@@ -529,7 +668,7 @@ class MultiEndpointTransactionSubmitterTest {
 
     @Test
     fun emptyCreatedTransactionsMapToFailureResult() {
-        val result = emptyList<TransactionSubmitResult>().toSubmitResult()
+        val result = emptyList<TransactionSubmitResult>().toSubmitResult(emptyMap())
 
         assertEquals(
             SubmitResult.Failure(
@@ -550,7 +689,7 @@ class MultiEndpointTransactionSubmitterTest {
             listOf(
                 TransactionSubmitResult.Success(firstTransaction.txId),
                 TransactionSubmitResult.Success(secondTransaction.txId)
-            ).toSubmitResult()
+            ).toSubmitResult(emptyMap())
 
         assertEquals(
             SubmitResult.Success(
@@ -561,11 +700,7 @@ class MultiEndpointTransactionSubmitterTest {
     }
 
     @Test
-    fun partialWithNonGrpcFailureRedactsServerDescription() {
-        // A multi-transaction proposal where one transaction broadcast and another was rejected for a
-        // real (non-gRPC) reason is Partial. The rejected transaction's status carries only the code:
-        // the server-provided description must not leak into the partial-failure support email.
-        // Matches the iOS Broadcaster integration, which redacts to "rejected code: <code>".
+    fun acceptedThenNonGrpcFailureMapsToPendingWhileRetryPlanRemainsActive() {
         val firstTransaction = transaction(27)
         val secondTransaction = transaction(28)
 
@@ -573,12 +708,38 @@ class MultiEndpointTransactionSubmitterTest {
             listOf(
                 TransactionSubmitResult.Success(firstTransaction.txId),
                 failure(secondTransaction, code = 18, grpcError = false)
-            ).toSubmitResult()
+            ).toSubmitResult(emptyMap())
+
+        assertEquals(
+            SubmitResult.GrpcFailure(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString())
+            ),
+            result
+        )
+    }
+
+    @Test
+    fun acceptedThenRejectedThenNotAttemptedRemainsPartial() {
+        val firstTransaction = transaction(29)
+        val secondTransaction = transaction(30)
+        val thirdTransaction = transaction(31)
+
+        val result =
+            listOf(
+                TransactionSubmitResult.Success(firstTransaction.txId),
+                failure(secondTransaction, code = 18, grpcError = false),
+                TransactionSubmitResult.NotAttempted(thirdTransaction.txId)
+            ).toSubmitResult(emptyMap())
 
         assertEquals(
             SubmitResult.Partial(
-                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString()),
-                statuses = listOf("success", "rejected code: 18")
+                txIds =
+                    listOf(
+                        firstTransaction.txIdString(),
+                        secondTransaction.txIdString(),
+                        thirdTransaction.txIdString()
+                    ),
+                statuses = listOf("success", "rejected code: 18", "notAttempted")
             ),
             result
         )
@@ -594,12 +755,13 @@ class MultiEndpointTransactionSubmitterTest {
     private fun failure(
         transaction: CreatedTransaction,
         code: Int,
-        grpcError: Boolean
+        grpcError: Boolean,
+        description: String = "failure $code"
     ) = TransactionSubmitResult.Failure(
         txId = transaction.txId,
         grpcError = grpcError,
         code = code,
-        description = "failure $code"
+        description = description
     )
 
     private fun endpoint(host: String) =

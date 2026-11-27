@@ -1,12 +1,22 @@
 package co.electriccoin.zcash.ui.common.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.SeedPhrase
 import cash.z.ecc.android.sdk.model.ZcashNetwork
+import co.electriccoin.zcash.ui.common.model.migration.MIGRATION_DUST_THRESHOLD_ZATOSHI
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
+import co.electriccoin.zcash.ui.screen.ironwood.IronwoodActivation
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
+import kotlin.time.Duration.Companion.seconds
 
 // To make this more multiplatform compatible, we need to remove the dependency on Context
 // for loading the preferences.
@@ -19,6 +29,46 @@ class WalletViewModel(
     val synchronizer = synchronizerProvider.synchronizer
 
     val secretState: StateFlow<SecretState> = walletRepository.secretState
+
+    /**
+     * Emits `true` once — on the first launch that satisfies all Ironwood-announcement conditions:
+     * the wallet has synced past the Ironwood activation height, holds a spendable Orchard balance
+     * above the dust threshold, and the one-time announcement has not been shown yet. Stays `false`
+     * while syncing or while the balance is unknown.
+     *
+     * Gated on [MIGRATION_DUST_THRESHOLD_ZATOSHI] rather than a bare `> 0L`, matching the same
+     * dust floor `migrationMessageFor`'s home banner uses (MOB-1620): `isIronwoodAnnouncementShown`
+     * is a local flag that resets on wallet re-import even though on-chain state didn't change, so
+     * a wallet with only dust-level residual Orchard balance (e.g. a previously locked residue)
+     * used to re-trigger this full-screen announcement on every re-import — a bare `> 0L` check
+     * doesn't distinguish that from a genuinely unmigrated balance worth announcing.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val shouldShowIronwoodAnnouncement: StateFlow<Boolean> =
+        synchronizer
+            .flatMapLatest { synchronizer ->
+                if (synchronizer == null) {
+                    flowOf(false)
+                } else {
+                    combine(
+                        synchronizer.fullyScannedHeight,
+                        synchronizer.walletBalances,
+                        walletRepository.isIronwoodAnnouncementShown,
+                    ) { scannedHeight, balances, isShown ->
+                        val activationHeight = IronwoodActivation.heightFor(synchronizer.network)
+                        // `isShown` is null when never set and true once dismissed — show while it is not true.
+                        isShown != true &&
+                            scannedHeight != null &&
+                            scannedHeight >= activationHeight &&
+                            balances != null &&
+                            balances.values.any { it.orchard.available.value > MIGRATION_DUST_THRESHOLD_ZATOSHI }
+                    }
+                }
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5.seconds.inWholeMilliseconds),
+                initialValue = false
+            )
 
     fun createNewWallet() {
         walletRepository.createNewWallet()

@@ -29,6 +29,13 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        // Android SDK stubs (e.g. android.util.Log, used by Twig) throw by default under plain
+        // JVM unit tests instead of no-oping — needed so ViewModel logging doesn't crash tests
+        // that don't otherwise touch Android framework classes.
+        unitTests.isReturnDefaultValues = true
+    }
+
     composeOptions {
         kotlinCompilerExtensionVersion = libs.androidx.compose.compiler.get().versionConstraint.displayName
     }
@@ -51,15 +58,18 @@ android {
                     "src/main/res/ui/common",
                     "src/main/res/ui/contact",
                     "src/main/res/ui/connect_keystone",
+                    "src/main/res/ui/connect_ledger",
                     "src/main/res/ui/crash_reporting_opt_in",
                     "src/main/res/ui/delete_wallet",
                     "src/main/res/ui/export_data",
+                    "src/main/res/ui/export_viewing_key",
                     "src/main/res/ui/error",
                     "src/main/res/ui/home",
                     "src/main/res/ui/keep_open",
                     "src/main/res/ui/insufficient_funds",
                     "src/main/res/ui/choose_server",
                     "src/main/res/ui/integrations",
+                    "src/main/res/ui/ironwood",
                     "src/main/res/ui/onboarding",
                     "src/main/res/ui/pay",
                     "src/main/res/ui/payment_request",
@@ -85,6 +95,7 @@ android {
                     "src/main/res/ui/transaction_note",
                     "src/main/res/ui/tax_export",
                     "src/main/res/ui/tex_unsupported",
+                    "src/main/res/ui/theme_settings",
                     "src/main/res/ui/feedback",
                     "src/main/res/ui/voting",
                     "src/main/res/ui/update",
@@ -142,19 +153,11 @@ androidComponents {
             )
         )
         variant.buildConfigFields?.put(
-            "ZCASH_FLEXA_KEY",
+            "OHTTP_CLIENT_TRACE_PREFIX",
             BuildConfigField(
                 type = "String",
-                value = "\"${project.property("ZCASH_FLEXA_KEY")?.toString().orEmpty()}\"",
-                comment = "Publishable key of the Flexa integration"
-            )
-        )
-        variant.buildConfigFields?.put(
-            "ZCASH_CMC_KEY",
-            BuildConfigField(
-                type = "String",
-                value = "\"${project.property("ZCASH_CMC_KEY")?.toString().orEmpty()}\"",
-                comment = "Publishable key of the CMC integration"
+                value = "\"${project.property("ZCASH_OHTTP_TRACE_PREFIX")?.toString().orEmpty()}\"",
+                comment = "OHTTP client trace ID prefix for debug request tracking (DEBUG builds only)"
             )
         )
         // To configure screen orientation in runtime
@@ -200,8 +203,8 @@ dependencies {
     implementation(libs.tink)
     implementation(libs.zxing)
 
-    api(libs.flexa.core)
-    api(libs.flexa.spend)
+    api(projects.flexaCore)
+    api(projects.flexaSpend)
 
     implementation(projects.buildInfoLib)
     implementation(projects.configurationApiLib)
@@ -220,11 +223,16 @@ dependencies {
     api(libs.keystone)
 
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.zodl.app.config)
     testImplementation(libs.kotlin.reflect)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)
     testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.compose.test.junit)
+    testImplementation(libs.androidx.compose.test.manifest)
     testImplementation("io.ktor:ktor-client-mock")
+    // The Flexa SDK's event stream reader (okhttp-sse, a non-transitive dependency of flexaCore).
+    testImplementation("com.squareup.okhttp3:okhttp-sse:5.1.0")
 
     androidTestImplementation(projects.testLib)
     androidTestImplementation(libs.bundles.androidx.test)

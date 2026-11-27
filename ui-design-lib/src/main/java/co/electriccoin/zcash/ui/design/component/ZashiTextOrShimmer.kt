@@ -20,6 +20,10 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.valentinilk.shimmer.shimmer
 
+/**
+ * Self-contained, single-element: owns its own .shimmer(), unlike ShimmerableText which relies on the caller
+ * wrapping a group of elements in one shared Modifier.shimmer(...) sweep.
+ */
 @Composable
 fun ZashiTextOrShimmer(
     text: String?,

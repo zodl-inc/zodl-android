@@ -72,7 +72,7 @@ object ZashiLinearProgressIndicatorDefaults {
 @Preview
 @Composable
 private fun ZashiLinearProgressIndicatorPreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         @Suppress("MagicNumber")
         ZashiLinearProgressIndicator(0.75f)
     }

@@ -14,7 +14,9 @@ import androidx.compose.material3.SheetValue.Expanded
 import androidx.compose.material3.SheetValue.Hidden
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -31,7 +33,6 @@ fun <T : ModalBottomSheetState> ZashiInScreenModalBottomSheet(
     modifier: Modifier = Modifier,
     sheetState: SheetState = rememberInScreenModalBottomSheetState(),
     shape: Shape = ZashiModalBottomSheetDefaults.SheetShape,
-    containerColor: Color = ZashiModalBottomSheetDefaults.ContainerColor,
     dragHandle: @Composable (() -> Unit)? = { ZashiModalBottomSheetDragHandle() },
     content: @Composable ColumnScope.(T) -> Unit = {},
 ) {
@@ -42,11 +43,20 @@ fun <T : ModalBottomSheetState> ZashiInScreenModalBottomSheet(
             onDismissRequest = { it.onBack() },
             modifier = modifier,
             sheetState = sheetState,
+            scrimColor = Color.Transparent,
             shape = shape,
-            containerColor = containerColor,
             properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
             dragHandle = dragHandle
         ) {
+            val sheetWindow = currentDialogWindow()
+            val openFraction = remember { mutableFloatStateOf(0f) }
+            SideEffect {
+                sheetWindow?.setSheetScrim(fraction = openFraction.floatValue)
+            }
+            SheetOpenFractionTracker { fraction ->
+                openFraction.floatValue = fraction
+                sheetWindow?.setSheetScrim(fraction = fraction)
+            }
             BackHandler { it.onBack() }
             content(it)
             Spacer(24.dp)

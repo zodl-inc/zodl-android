@@ -6,31 +6,41 @@ import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
 import co.electriccoin.zcash.ui.screen.ScreenTimeoutVM
 import co.electriccoin.zcash.ui.screen.accountlist.AccountListVM
+import co.electriccoin.zcash.ui.screen.accountlist.options.WalletOptionsVM
 import co.electriccoin.zcash.ui.screen.addressbook.AddressBookVM
 import co.electriccoin.zcash.ui.screen.addressbook.SelectABRecipientVM
 import co.electriccoin.zcash.ui.screen.advancedsettings.AdvancedSettingsVM
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.DebugVM
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.db.DebugDBVM
+import co.electriccoin.zcash.ui.screen.advancedsettings.debug.orchardbalance.DebugOrchardBalanceVM
 import co.electriccoin.zcash.ui.screen.balances.BalanceWidgetVM
+import co.electriccoin.zcash.ui.screen.balances.breakdown.BalanceBreakdownVM
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceVM
+import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletVM
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerVM
+import co.electriccoin.zcash.ui.screen.chooseserver.ohttpinfo.OhttpInfoVM
+import co.electriccoin.zcash.ui.screen.colorpicker.ColorPickerVM
+import co.electriccoin.zcash.ui.screen.connecthw.date.HWDateVM
+import co.electriccoin.zcash.ui.screen.connecthw.estimation.HWEstimationVM
+import co.electriccoin.zcash.ui.screen.connecthw.height.HWHeightVM
+import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveVM
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.KeystoneConnectVM
-import co.electriccoin.zcash.ui.screen.connectkeystone.date.KeystoneDateVM
-import co.electriccoin.zcash.ui.screen.connectkeystone.estimation.KeystoneEstimationVM
-import co.electriccoin.zcash.ui.screen.connectkeystone.height.KeystoneHeightVM
-import co.electriccoin.zcash.ui.screen.connectkeystone.neworactive.KeystoneNewOrActiveVM
 import co.electriccoin.zcash.ui.screen.contact.AddGenericABContactVM
 import co.electriccoin.zcash.ui.screen.contact.AddZashiABContactVM
 import co.electriccoin.zcash.ui.screen.contact.UpdateGenericABContactVM
 import co.electriccoin.zcash.ui.screen.crashreporting.viewmodel.CrashReportingViewModel
 import co.electriccoin.zcash.ui.screen.deletewallet.ResetZashiVM
 import co.electriccoin.zcash.ui.screen.disconnect.DisconnectVM
+import co.electriccoin.zcash.ui.screen.editaccount.EditAccountVM
 import co.electriccoin.zcash.ui.screen.error.ErrorVM
 import co.electriccoin.zcash.ui.screen.error.SyncErrorVM
 import co.electriccoin.zcash.ui.screen.exchangerate.optin.ExchangeRateOptInVM
 import co.electriccoin.zcash.ui.screen.exchangerate.picker.CurrencyConversionPickerVM
 import co.electriccoin.zcash.ui.screen.exchangerate.settings.ExchangeRateSettingsVM
 import co.electriccoin.zcash.ui.screen.exchangerateunavailable.ExchangeRateUnavailableVM
+import co.electriccoin.zcash.ui.screen.exportvk.ExportVKVM
+import co.electriccoin.zcash.ui.screen.exportvk.confirm.ExportVKConfirmVM
+import co.electriccoin.zcash.ui.screen.exportvk.detail.VKDetailVM
 import co.electriccoin.zcash.ui.screen.feedback.FeedbackVM
 import co.electriccoin.zcash.ui.screen.flexa.FlexaViewModel
 import co.electriccoin.zcash.ui.screen.home.HomeVM
@@ -43,11 +53,17 @@ import co.electriccoin.zcash.ui.screen.hotfix.enhancement.EnhancementHotfixVM
 import co.electriccoin.zcash.ui.screen.hotfix.ephemeral.EphemeralHotfixVM
 import co.electriccoin.zcash.ui.screen.insufficientfunds.InsufficientFundsVM
 import co.electriccoin.zcash.ui.screen.integrations.IntegrationsVM
+import co.electriccoin.zcash.ui.screen.ironwood.IronwoodAnnouncementVM
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenVM
 import co.electriccoin.zcash.ui.screen.more.MoreVM
+import co.electriccoin.zcash.ui.screen.ohttpoptin.OhttpOptInVM
+import co.electriccoin.zcash.ui.screen.ohttpunavailable.OhttpUnavailableVM
 import co.electriccoin.zcash.ui.screen.pay.PayVM
 import co.electriccoin.zcash.ui.screen.qrcode.QrCodeVM
 import co.electriccoin.zcash.ui.screen.receive.ReceiveVM
+import co.electriccoin.zcash.ui.screen.redeemgift.RedeemGiftVM
+import co.electriccoin.zcash.ui.screen.redeemgift.ScanGiftCardVM
+import co.electriccoin.zcash.ui.screen.redeemgift.paste.PasteGiftCardLinkVM
 import co.electriccoin.zcash.ui.screen.request.viewmodel.RequestVM
 import co.electriccoin.zcash.ui.screen.restore.date.RestoreDateVM
 import co.electriccoin.zcash.ui.screen.restore.estimation.RestoreEstimationVM
@@ -75,13 +91,19 @@ import co.electriccoin.zcash.ui.screen.swap.detail.SwapDetailVM
 import co.electriccoin.zcash.ui.screen.swap.detail.support.SwapSupportVM
 import co.electriccoin.zcash.ui.screen.swap.info.SwapRefundAddressInfoVM
 import co.electriccoin.zcash.ui.screen.swap.lock.EphemeralLockVM
+import co.electriccoin.zcash.ui.screen.swap.mismatch.SwapQuoteMismatchVM
 import co.electriccoin.zcash.ui.screen.swap.orconfirmation.ORSwapConfirmationVM
 import co.electriccoin.zcash.ui.screen.swap.picker.SwapAssetPickerVM
 import co.electriccoin.zcash.ui.screen.swap.picker.SwapBlockchainPickerVM
 import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteVM
+import co.electriccoin.zcash.ui.screen.swap.refundwarning.SwapRefundWarningVM
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageVM
 import co.electriccoin.zcash.ui.screen.taxexport.TaxExportViewModel
 import co.electriccoin.zcash.ui.screen.texunsupported.TEXUnsupportedVM
+import co.electriccoin.zcash.ui.screen.theme.ThemeVM
+import co.electriccoin.zcash.ui.screen.theme.darklook.ThemeDarkLookVM
+import co.electriccoin.zcash.ui.screen.theme.settings.ThemeSettingsVM
+import co.electriccoin.zcash.ui.screen.toomanynotes.TooManyNotesVM
 import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInVM
 import co.electriccoin.zcash.ui.screen.tor.settings.TorSettingsVM
 import co.electriccoin.zcash.ui.screen.transactiondetail.TransactionDetailVM
@@ -90,16 +112,6 @@ import co.electriccoin.zcash.ui.screen.transactionhistory.ActivityHistoryVM
 import co.electriccoin.zcash.ui.screen.transactionhistory.widget.ActivityWidgetVM
 import co.electriccoin.zcash.ui.screen.transactionnote.viewmodel.TransactionNoteViewModel
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressVM
-import co.electriccoin.zcash.ui.screen.voting.chainconfig.VoteChainConfigVM
-import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingVM
-import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionVM
-import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteVM
-import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailVM
-import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListVM
-import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsVM
-import co.electriccoin.zcash.ui.screen.voting.scankeystone.viewmodel.ScanKeystoneVotingPCZTViewModel
-import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingVM
-import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingVM
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackupViewModel
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
 import co.electriccoin.zcash.ui.screen.whatsnew.viewmodel.WhatsNewViewModel
@@ -109,6 +121,7 @@ import org.koin.dsl.module
 val viewModelModule =
     module {
         viewModelOf(::WalletViewModel)
+        viewModelOf(::IronwoodAnnouncementVM)
         viewModelOf(::AuthenticationViewModel)
         viewModelOf(::OldHomeViewModel)
         viewModelOf(::StorageCheckViewModel)
@@ -118,6 +131,9 @@ val viewModelModule =
         viewModelOf(::SupportViewModel)
         viewModelOf(::WhatsNewViewModel)
         viewModelOf(::ChooseServerVM)
+        viewModelOf(::OhttpInfoVM)
+        viewModelOf(::OhttpUnavailableVM)
+        viewModelOf(::OhttpOptInVM)
         viewModelOf(::ReceiveVM)
         viewModelOf(::QrCodeVM)
         viewModelOf(::RequestVM)
@@ -132,6 +148,8 @@ val viewModelModule =
         viewModelOf(::FeedbackVM)
         viewModelOf(::SignKeystoneTransactionVM)
         viewModelOf(::AccountListVM)
+        viewModelOf(::WalletOptionsVM)
+        viewModelOf(::EditAccountVM)
         viewModelOf(::ZashiTopAppBarVM)
         viewModelOf(::SelectKeystoneAccountViewModel)
         viewModelOf(::ReviewTransactionVM)
@@ -161,18 +179,30 @@ val viewModelModule =
         viewModelOf(::ErrorVM)
         viewModelOf(::SyncErrorVM)
         viewModelOf(::SpendableBalanceVM)
+        viewModelOf(::BalanceBreakdownVM)
         viewModelOf(::CrashReportOptInViewModel)
         viewModelOf(::WalletRestoringInfoViewModel)
         viewModelOf(::ThirdPartyScanViewModel)
         viewModelOf(::TorSettingsVM)
+        viewModelOf(::ThemeVM)
+        viewModelOf(::ThemeSettingsVM)
+        viewModelOf(::ThemeDarkLookVM)
+        viewModelOf(::ExportVKVM)
+        viewModelOf(::ExportVKConfirmVM)
+        viewModelOf(::VKDetailVM)
         viewModelOf(::TorOptInVM)
         viewModelOf(::ExchangeRateOptInVM)
         viewModelOf(::SwapAssetPickerVM)
         viewModelOf(::SwapSlippageVM)
+        viewModelOf(::ColorPickerVM)
+        viewModelOf(::SwapRefundWarningVM)
         viewModelOf(::SwapVM)
         viewModelOf(::PayVM)
         viewModelOf(::SwapQuoteVM)
         viewModelOf(::ScanGenericAddressVM)
+        viewModelOf(::ScanGiftCardVM)
+        viewModelOf(::PasteGiftCardLinkVM)
+        viewModelOf(::RedeemGiftVM)
         viewModelOf(::SelectSwapABRecipientVM)
         viewModelOf(::SwapBlockchainPickerVM)
         viewModelOf(::CurrencyConversionPickerVM)
@@ -183,6 +213,7 @@ val viewModelModule =
         viewModelOf(::ORSwapConfirmationVM)
         viewModelOf(::SwapDetailVM)
         viewModelOf(::SwapSupportVM)
+        viewModelOf(::SwapQuoteMismatchVM)
         viewModelOf(::SwapRefundAddressInfoVM)
         viewModelOf(::ScreenTimeoutVM)
         viewModelOf(::EphemeralHotfixVM)
@@ -190,25 +221,18 @@ val viewModelModule =
         viewModelOf(::EphemeralLockVM)
         viewModelOf(::DebugVM)
         viewModelOf(::DebugDBVM)
+        viewModelOf(::DebugOrchardBalanceVM)
         viewModelOf(::TEXUnsupportedVM)
         viewModelOf(::InsufficientFundsVM)
+        viewModelOf(::TooManyNotesVM)
         viewModelOf(::RestoreTorVM)
         viewModelOf(::ResetZashiVM)
         viewModelOf(::DisconnectVM)
-        viewModelOf(::VoteCoinholderPollingVM)
-        viewModelOf(::VoteChainConfigVM)
-        viewModelOf(::VoteHowToVoteVM)
-        viewModelOf(::VoteProposalListVM)
-        viewModelOf(::VoteProposalDetailVM)
-        viewModelOf(::VoteConfirmSubmissionVM)
-        viewModelOf(::VoteTallyingVM)
-        viewModelOf(::VoteResultsVM)
-        viewModelOf(::SignKeystoneVotingVM)
-        viewModelOf(::ScanKeystoneVotingPCZTViewModel)
         viewModelOf(::KeystoneConnectVM)
-        viewModelOf(::KeystoneNewOrActiveVM)
-        viewModelOf(::KeystoneDateVM)
-        viewModelOf(::KeystoneEstimationVM)
-        viewModelOf(::KeystoneHeightVM)
+        viewModelOf(::HWNewOrActiveVM)
+        viewModelOf(::HWDateVM)
+        viewModelOf(::HWEstimationVM)
+        viewModelOf(::HWHeightVM)
+        viewModelOf(::ChooseHWWalletVM)
         viewModelOf(::KeepOpenVM)
     }

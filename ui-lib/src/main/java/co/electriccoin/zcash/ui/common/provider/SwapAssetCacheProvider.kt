@@ -1,0 +1,83 @@
+package co.electriccoin.zcash.ui.common.provider
+
+import co.electriccoin.zcash.crash.android.GlobalCrashReporter
+import co.electriccoin.zcash.preference.StandardPreferenceProvider
+import co.electriccoin.zcash.preference.model.entry.PreferenceKey
+import co.electriccoin.zcash.preference.model.entry.StringPreferenceDefault
+import co.electriccoin.zcash.ui.common.model.SwapAsset
+import co.electriccoin.zcash.ui.common.model.near.NearSwapAsset
+import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+interface SwapAssetCacheProvider {
+    suspend fun get(): List<SwapAsset>
+
+    suspend fun store(assets: List<SwapAsset>)
+}
+
+class SwapAssetCacheProviderImpl(
+    private val standardPreferenceProvider: StandardPreferenceProvider,
+    private val tokenIconProvider: TokenIconProvider,
+    private val tokenNameProvider: TokenNameProvider,
+    private val blockchainProvider: BlockchainProvider,
+) : SwapAssetCacheProvider {
+    private val preference = StringPreferenceDefault(PreferenceKey(CACHE_KEY), "")
+    private val json = Json { ignoreUnknownKeys = true }
+
+    @Suppress("TooGenericExceptionCaught")
+    override suspend fun get(): List<SwapAsset> =
+        try {
+            preference
+                .getValue(standardPreferenceProvider())
+                .takeIf { it.isNotEmpty() }
+                ?.let { json.decodeFromString<List<CachedSwapAsset>>(it) }
+                .orEmpty()
+                .map { it.toSwapAsset() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            GlobalCrashReporter.reportCaughtException(e)
+            emptyList()
+        }
+
+    override suspend fun store(assets: List<SwapAsset>) {
+        val cachedAssets =
+            assets.map {
+                CachedSwapAsset(
+                    assetId = it.assetId,
+                    tokenTicker = it.tokenTicker,
+                    chainTicker = it.chainTicker,
+                    decimals = it.decimals,
+                )
+            }
+        val encoded = json.encodeToString(cachedAssets)
+        val preferences = standardPreferenceProvider()
+        if (preference.getValue(preferences) != encoded) {
+            preference.putValue(preferences, encoded)
+        }
+    }
+
+    private fun CachedSwapAsset.toSwapAsset(): SwapAsset =
+        NearSwapAsset(
+            tokenTicker = tokenTicker,
+            tokenName = tokenNameProvider.getName(tokenTicker),
+            tokenIcon = tokenIconProvider.getIcon(tokenTicker),
+            usdPrice = null,
+            assetId = assetId,
+            decimals = decimals,
+            blockchain = blockchainProvider.getBlockchain(chainTicker),
+        )
+
+    @Serializable
+    private data class CachedSwapAsset(
+        val assetId: String,
+        val tokenTicker: String,
+        val chainTicker: String,
+        val decimals: Int,
+    )
+
+    private companion object {
+        const val CACHE_KEY = "swap_asset_metadata_cache_v1"
+    }
+}

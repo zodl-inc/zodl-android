@@ -189,6 +189,26 @@ internal val DarkExtendedColorPalette =
         tertiaryButtonColors = Dark.tertiaryButtonColors,
     )
 
+internal object OledDark {
+    val backgroundColor = Color(0xFF000000)
+    val panelBackgroundColor = Color(0xFF231F20)
+    val historyBackgroundColor = Color(0xFF231F20)
+}
+
+internal val OledColorPalette =
+    DarkColorPalette.copy(
+        surface = OledDark.backgroundColor,
+        background = OledDark.backgroundColor,
+    )
+
+internal val OledExtendedColorPalette =
+    DarkExtendedColorPalette.copy(
+        backgroundColor = OledDark.backgroundColor,
+        panelBackgroundColor = OledDark.panelBackgroundColor,
+        historyBackgroundColor = OledDark.historyBackgroundColor,
+        topAppBarColors = Dark.topAppBarColors.copyColors(containerColor = OledDark.backgroundColor),
+    )
+
 internal val LightExtendedColorPalette =
     ExtendedColors(
         primaryColor = Light.primaryColor,

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+
+        <!-- Fired by MigrationDueAlarmScheduler's AlarmManager alarm when a scheduled migration
+             transfer becomes due — see MigrationTransferDueReceiver's kdoc (spec §6.4). Not
+             registered under an intent-filter since it's only ever targeted explicitly via
+             PendingIntent.getBroadcast. -->
+        <receiver
+            android:name="co.electriccoin.zcash.work.MigrationTransferDueReceiver"
+            android:exported="false" />
+
+    </application>
+
+</manifest>

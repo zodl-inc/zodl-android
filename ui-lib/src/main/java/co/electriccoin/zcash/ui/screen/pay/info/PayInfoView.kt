@@ -21,17 +21,22 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.common.InfoBottomSheetView
+import co.electriccoin.zcash.ui.screen.common.ZodlInfoBottomSheetView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PayInfoView(state: PayInfoState) {
-    InfoBottomSheetView(
+    ZodlInfoBottomSheetView(
         onBack = state.onBack,
         primaryButton =
             ButtonState(
-                text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok),
+                text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_dismiss),
                 onClick = state.onBack,
+            ),
+        secondaryButton =
+            ButtonState(
+                text = stringRes(R.string.swap_info_learn_more),
+                onClick = state.onLearnMoreClick,
             ),
     ) {
         Row(
@@ -59,4 +64,4 @@ fun PayInfoView(state: PayInfoState) {
 
 @PreviewScreens
 @Composable
-private fun Preview() = ZcashTheme { PayInfoView(state = PayInfoState(onBack = {})) }
+private fun Preview() = ZcashTheme { PayInfoView(state = PayInfoState(onBack = {}, onLearnMoreClick = {})) }

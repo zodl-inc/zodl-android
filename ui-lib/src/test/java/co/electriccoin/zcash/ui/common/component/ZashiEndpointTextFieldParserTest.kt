@@ -25,8 +25,10 @@ class ZashiEndpointTextFieldParserTest {
         // The androidx String.toUri() extension is inline and delegates to Uri.parse, so stubbing
         // Uri.parse covers the host/port extraction for well-formed inputs.
         every { Uri.parse(any()) } answers {
-            val raw = firstArg<String>().substringAfter("://")
+            val input = firstArg<String>()
+            val raw = input.substringAfter("://")
             mockk<Uri> {
+                every { scheme } returns input.substringBefore("://")
                 every { host } returns raw.substringBeforeLast(":")
                 every { port } returns raw.substringAfterLast(":").toInt()
             }

@@ -4,6 +4,12 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSourceImpl
 import co.electriccoin.zcash.ui.common.datasource.ExchangeRateDataSource
 import co.electriccoin.zcash.ui.common.datasource.ExchangeRateDataSourceImpl
+import co.electriccoin.zcash.ui.common.datasource.FiatCurrencyDataSource
+import co.electriccoin.zcash.ui.common.datasource.FiatCurrencyDataSourceImpl
+import co.electriccoin.zcash.ui.common.datasource.GiftCardDataSource
+import co.electriccoin.zcash.ui.common.datasource.GiftCardDataSourceImpl
+import co.electriccoin.zcash.ui.common.datasource.MaxSendAmountDataSource
+import co.electriccoin.zcash.ui.common.datasource.MaxSendAmountDataSourceImpl
 import co.electriccoin.zcash.ui.common.datasource.MessageAvailabilityDataSource
 import co.electriccoin.zcash.ui.common.datasource.MessageAvailabilityDataSourceImpl
 import co.electriccoin.zcash.ui.common.datasource.NearSwapDataSource
@@ -25,9 +31,12 @@ val dataSourceModule =
         singleOf(::AccountDataSourceImpl) bind AccountDataSource::class
         singleOf(::ZashiSpendingKeyDataSourceImpl) bind ZashiSpendingKeyDataSource::class
         singleOf(::ProposalDataSourceImpl) bind ProposalDataSource::class
+        singleOf(::MaxSendAmountDataSourceImpl) bind MaxSendAmountDataSource::class
         singleOf(::RestoreTimestampDataSourceImpl) bind RestoreTimestampDataSource::class
         singleOf(::MessageAvailabilityDataSourceImpl) bind MessageAvailabilityDataSource::class
         singleOf(::WalletSnapshotDataSourceImpl) bind WalletSnapshotDataSource::class
         singleOf(::NearSwapDataSource) bind SwapDataSource::class
         singleOf(::ExchangeRateDataSourceImpl) bind ExchangeRateDataSource::class
+        single<FiatCurrencyDataSource> { FiatCurrencyDataSourceImpl(cmcApiProvider = get()) }
+        singleOf(::GiftCardDataSourceImpl) bind GiftCardDataSource::class
     }

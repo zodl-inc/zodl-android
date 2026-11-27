@@ -1,0 +1,3 @@
+Añadido:
+- Añadimos las cuentas de solo lectura. Importa una clave de visualización completa pegándola o escaneando un código QR para seguir el saldo y la actividad de una cuenta sin poder gastar desde ella.
+- Añadimos la opción de cambiar el nombre y el color de una cuenta de solo lectura, o de eliminarla de la app.
