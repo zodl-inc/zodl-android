@@ -18,8 +18,13 @@ class SharedPaymentViewModel(
 ) : ViewModel() {
     private val pending = MutableStateFlow<SharedPayment?>(null)
 
+    /**
+     * Takes the share out of [intent]. Like a gift card link opened from outside the app, shared text may carry a
+     * spending secret, so it does not stay around in the Activity's intent once read.
+     */
     fun accept(intent: Intent) {
-        intent.sharedPayment()?.let { pending.value = it }
+        pending.value = intent.sharedPayment() ?: return
+        intent.removeExtra(Intent.EXTRA_TEXT)
     }
 
     suspend fun handlePending() {

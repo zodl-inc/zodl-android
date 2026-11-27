@@ -29,6 +29,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -149,6 +150,22 @@ class SharedPaymentViewModelTest {
             coVerify(exactly = 1) { handleSharedPayment("pending") }
             coVerify(exactly = 0) { handleSharedPayment("replay") }
         }
+
+    @Test
+    fun sharedTextDoesNotStayInTheIntent() {
+        val intent = textIntent("payment")
+        vm.accept(intent)
+
+        assertNull(intent.getStringExtra(Intent.EXTRA_TEXT))
+    }
+
+    @Test
+    fun textOfAnIntentThatIsNotAShareIsKept() {
+        val intent = textIntent("replay").addFlags(Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY)
+        vm.accept(intent)
+
+        assertEquals("replay", intent.getStringExtra(Intent.EXTRA_TEXT))
+    }
 
     private fun TestScope.startCollecting() {
         val owner = TestOwner()
